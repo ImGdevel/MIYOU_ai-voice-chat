@@ -15,8 +15,10 @@ import org.mockito.junit.jupiter.MockitoExtension;
 import com.study.webflux.rag.application.monitoring.DialoguePipelineMonitor;
 import com.study.webflux.rag.domain.model.conversation.ConversationTurn;
 import com.study.webflux.rag.domain.model.llm.CompletionRequest;
+import com.study.webflux.rag.domain.model.memory.MemoryRetrievalResult;
 import com.study.webflux.rag.domain.model.rag.RetrievalContext;
 import com.study.webflux.rag.domain.model.rag.RetrievalDocument;
+import com.study.webflux.rag.domain.port.out.ConversationCounterPort;
 import com.study.webflux.rag.domain.port.out.ConversationRepository;
 import com.study.webflux.rag.domain.port.out.LlmPort;
 import com.study.webflux.rag.domain.port.out.RetrievalPort;
@@ -42,6 +44,12 @@ class DialoguePipelineServiceTest {
 	@Mock
 	private ConversationRepository conversationRepository;
 
+	@Mock
+	private ConversationCounterPort conversationCounterPort;
+
+	@Mock
+	private MemoryExtractionService memoryExtractionService;
+
 	private SentenceAssembler sentenceAssembler;
 
 	private DialoguePipelineService service;
@@ -53,13 +61,18 @@ class DialoguePipelineServiceTest {
 		pipelineMonitor = new DialoguePipelineMonitor(summary -> {});
 		when(ttsPort.prepare()).thenReturn(Mono.empty());
 		when(conversationRepository.findRecent(anyInt())).thenReturn(Flux.empty());
+		when(conversationCounterPort.increment()).thenReturn(Mono.just(1L));
+		when(memoryExtractionService.checkAndExtract()).thenReturn(Mono.empty());
+		when(retrievalPort.retrieveMemories(anyString(), anyInt())).thenReturn(Mono.just(MemoryRetrievalResult.empty()));
 		service = new DialoguePipelineService(
 			llmPort,
 			ttsPort,
 			retrievalPort,
 			conversationRepository,
 			sentenceAssembler,
-			pipelineMonitor
+			pipelineMonitor,
+			conversationCounterPort,
+			memoryExtractionService
 		);
 	}
 
