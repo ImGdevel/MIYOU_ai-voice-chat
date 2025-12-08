@@ -9,6 +9,7 @@ import java.util.stream.Collectors;
 import org.springframework.stereotype.Component;
 
 import com.study.webflux.rag.domain.model.conversation.ConversationTurn;
+import com.study.webflux.rag.domain.model.memory.MemoryRetrievalResult;
 import com.study.webflux.rag.domain.model.rag.RetrievalContext;
 import com.study.webflux.rag.domain.model.rag.RetrievalDocument;
 import com.study.webflux.rag.domain.port.out.ConversationRepository;
@@ -42,6 +43,11 @@ public class InMemoryRetrievalAdapter implements RetrievalPort {
 
 				return RetrievalContext.of(query, documents);
 			});
+	}
+
+	@Override
+	public Mono<MemoryRetrievalResult> retrieveMemories(String query, int topK) {
+		return Mono.just(MemoryRetrievalResult.empty());
 	}
 
 	private int calculateSimilarity(String query, String candidate) {
