@@ -85,17 +85,6 @@ public class DialoguePipelineService implements DialoguePipelineUseCase {
 
 		Mono<ConversationTurn> queryTurn = tracker.traceMono(DialoguePipelineStage.QUERY_PERSISTENCE, () -> saveQuery(text));
 
-		Mono<Void> memoryExtraction = queryTurn
-			.flatMap(turn -> conversationCounterPort.increment())
-			.flatMap(count -> memoryExtractionService.checkAndExtract())
-			.subscribeOn(Schedulers.boundedElastic())
-			.onErrorResume(error -> {
-				log.warn("Pipeline {} memory extraction failed", tracker.pipelineId(), error);
-				return Mono.empty();
-			});
-
-		memoryExtraction.subscribe();
-
 		Mono<MemoryRetrievalResult> memoryResult = queryTurn
 			.flatMap(turn -> tracker.traceMono(
 				DialoguePipelineStage.MEMORY_RETRIEVAL,
@@ -179,6 +168,18 @@ public class DialoguePipelineService implements DialoguePipelineUseCase {
 			.doOnNext(chunk -> {
 				tracker.incrementStageCounter(DialoguePipelineStage.TTS_SYNTHESIS, "audioChunks", 1);
 				tracker.markResponseEmission();
+			})
+			.doOnComplete(() -> {
+				queryTurn
+					.flatMap(turn -> conversationCounterPort.increment())
+					.filter(count -> count % 5 == 0)
+					.flatMap(count -> memoryExtractionService.checkAndExtract())
+					.subscribeOn(Schedulers.boundedElastic())
+					.onErrorResume(error -> {
+						log.warn("Pipeline {} memory extraction failed after response completion", tracker.pipelineId(), error);
+						return Mono.empty();
+					})
+					.subscribe();
 			});
 
 		return tracker.attachLifecycle(audioStream);

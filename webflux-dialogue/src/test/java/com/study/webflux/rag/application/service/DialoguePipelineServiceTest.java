@@ -61,8 +61,6 @@ class DialoguePipelineServiceTest {
 		pipelineMonitor = new DialoguePipelineMonitor(summary -> {});
 		when(ttsPort.prepare()).thenReturn(Mono.empty());
 		when(conversationRepository.findRecent(anyInt())).thenReturn(Flux.empty());
-		when(conversationCounterPort.increment()).thenReturn(Mono.just(1L));
-		when(memoryExtractionService.checkAndExtract()).thenReturn(Mono.empty());
 		when(retrievalPort.retrieveMemories(anyString(), anyInt())).thenReturn(Mono.just(MemoryRetrievalResult.empty()));
 		service = new DialoguePipelineService(
 			llmPort,
@@ -93,6 +91,8 @@ class DialoguePipelineServiceTest {
 			.thenReturn(Flux.just("Hello", " world", "."));
 		when(ttsPort.streamSynthesize(anyString()))
 			.thenReturn(Flux.just(audioBytes));
+		lenient().when(conversationCounterPort.increment()).thenReturn(Mono.just(1L));
+		lenient().when(memoryExtractionService.checkAndExtract()).thenReturn(Mono.empty());
 
 		StepVerifier.create(service.executeStreaming(testText))
 			.expectNext(expectedBase64)
@@ -124,6 +124,8 @@ class DialoguePipelineServiceTest {
 			.thenReturn(Flux.just(audioBytes1));
 		when(ttsPort.streamSynthesize("Second sentence."))
 			.thenReturn(Flux.just(audioBytes2));
+		lenient().when(conversationCounterPort.increment()).thenReturn(Mono.just(1L));
+		lenient().when(memoryExtractionService.checkAndExtract()).thenReturn(Mono.empty());
 
 		StepVerifier.create(service.executeAudioStreaming(testText))
 			.expectNext(audioBytes1)
@@ -150,6 +152,8 @@ class DialoguePipelineServiceTest {
 			.thenReturn(Flux.just("Response", "."));
 		when(ttsPort.streamSynthesize(anyString()))
 			.thenReturn(Flux.just(audioBytes));
+		lenient().when(conversationCounterPort.increment()).thenReturn(Mono.just(1L));
+		lenient().when(memoryExtractionService.checkAndExtract()).thenReturn(Mono.empty());
 
 		StepVerifier.create(service.executeAudioStreaming(testText))
 			.expectNext(audioBytes)
@@ -179,6 +183,8 @@ class DialoguePipelineServiceTest {
 			.thenReturn(Flux.just(audio2));
 		when(ttsPort.streamSynthesize("세번째?"))
 			.thenReturn(Flux.just(audio3));
+		lenient().when(conversationCounterPort.increment()).thenReturn(Mono.just(1L));
+		lenient().when(memoryExtractionService.checkAndExtract()).thenReturn(Mono.empty());
 
 		StepVerifier.create(service.executeAudioStreaming(testText))
 			.expectNext(audio1)
