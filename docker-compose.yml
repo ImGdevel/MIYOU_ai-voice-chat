@@ -3,7 +3,7 @@ services:
     image: mongo:7.0
     container_name: webflux-mongodb
     ports:
-      - "27017:27017"
+      - "27018:27017"
     environment:
       MONGO_INITDB_DATABASE: ragdb
     volumes:
@@ -15,16 +15,28 @@ services:
     image: redis:7.2-alpine
     container_name: webflux-redis
     ports:
-      - "6379:6379"
+      - "16379:6379"
     command: redis-server --appendonly yes
     volumes:
       - redis-data:/data
     networks:
       - webflux-network
 
+  qdrant:
+    image: qdrant/qdrant:latest
+    container_name: webflux-qdrant
+    ports:
+      - "6333:6333"
+      - "6334:6334"
+    volumes:
+      - qdrant-data:/qdrant/storage
+    networks:
+      - webflux-network
+
 volumes:
   mongodb-data:
   redis-data:
+  qdrant-data:
 
 networks:
   webflux-network:
