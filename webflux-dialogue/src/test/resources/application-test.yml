@@ -1,0 +1,57 @@
+spring:
+  application:
+    name: webflux-dialogue-test
+  data:
+    mongodb:
+      uri: mongodb://localhost:27017/ragdb-test
+    redis:
+      host: localhost
+      port: 6379
+  ai:
+    openai:
+      api-key: REDACTED_API_KEY
+      base-url: https://api.openai.com/v1
+      chat:
+        options:
+          model: gpt-4o-mini
+          temperature: 0.7
+
+server:
+  port: 0
+
+rag:
+  dialogue:
+    openai:
+      api-key: REDACTED_API_KEY
+      base-url: https://api.openai.com/v1
+      model: gpt-3.5-turbo
+    supertone:
+      endpoints:
+        - id: test-endpoint-1
+          api-key: test-api-key-1
+          base-url: https://test.supertone.com
+        - id: test-endpoint-2
+          api-key: test-api-key-2
+          base-url: https://test.supertone.com
+        - id: test-endpoint-3
+          api-key: test-api-key-3
+          base-url: https://test.supertone.com
+      voice-id: test-voice-id
+      language: ko
+      style: neutral
+      output-format: mp3
+      voice-settings:
+        pitch-shift: 0
+        pitch-variance: 1.0
+        speed: 1.1
+    qdrant:
+      url: http://localhost:6333
+      api-key: ""
+      vector-dimension: 1536
+      collection-name: user_memories_test
+    memory:
+      embedding-model: text-embedding-3-small
+      extraction-model: gpt-4o-mini
+      conversation-threshold: 5
+      importance-boost: 0.05
+      importance-threshold: 0.3

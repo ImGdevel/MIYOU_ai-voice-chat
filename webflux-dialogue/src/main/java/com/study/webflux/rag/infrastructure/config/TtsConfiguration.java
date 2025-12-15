@@ -1,5 +1,6 @@
 package com.study.webflux.rag.infrastructure.config;
 
+import com.study.webflux.rag.infrastructure.adapter.tts.SupertoneConfig;
 import java.util.List;
 import java.util.stream.Collectors;
 
@@ -36,7 +37,12 @@ public class TtsConfiguration {
 			))
 			.collect(Collectors.toList());
 
-		return new TtsLoadBalancer(endpoints);
+		TtsLoadBalancer loadBalancer = new TtsLoadBalancer(endpoints);
+		loadBalancer.setFailureEventPublisher(event -> {
+			System.err.println("TTS 엔드포인트 영구 장애 발생: " + event);
+		});
+
+		return loadBalancer;
 	}
 
 	@Bean
@@ -47,5 +53,20 @@ public class TtsConfiguration {
 		Voice voice
 	) {
 		return new LoadBalancedSupertoneTtsAdapter(webClientBuilder, loadBalancer, voice);
+	}
+
+	@Bean
+	public SupertoneConfig supertoneConfig(
+		RagDialogueProperties properties
+	) {
+		var supertone = properties.getSupertone();
+		if (supertone.getEndpoints().isEmpty()) {
+			throw new IllegalStateException("최소 하나 이상의 TTS 엔드포인트를 설정해야 합니다");
+		}
+		var firstEndpoint = supertone.getEndpoints().get(0);
+		return new com.study.webflux.rag.infrastructure.adapter.tts.SupertoneConfig(
+			firstEndpoint.getApiKey(),
+			firstEndpoint.getBaseUrl()
+		);
 	}
 }
