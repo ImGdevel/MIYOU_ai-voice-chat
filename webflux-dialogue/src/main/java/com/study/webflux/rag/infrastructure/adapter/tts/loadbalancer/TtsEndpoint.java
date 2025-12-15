@@ -41,7 +41,7 @@ public class TtsEndpoint {
 
 	public void setHealth(EndpointHealth health) {
 		this.health = health;
-		if (health == EndpointHealth.CIRCUIT_OPEN) {
+		if (health == EndpointHealth.TEMPORARY_FAILURE || health == EndpointHealth.PERMANENT_FAILURE) {
 			this.circuitOpenedAt = Instant.now();
 		} else if (health == EndpointHealth.HEALTHY) {
 			this.circuitOpenedAt = null;
@@ -73,8 +73,17 @@ public class TtsEndpoint {
 	 */
 	public enum EndpointHealth {
 		HEALTHY,
-		RATE_LIMITED,
-		CIRCUIT_OPEN,
-		QUOTA_EXCEEDED
+		TEMPORARY_FAILURE,
+		PERMANENT_FAILURE,
+		CLIENT_ERROR
+	}
+
+	/**
+	 * 실패 유형
+	 */
+	public enum FailureType {
+		TEMPORARY,
+		PERMANENT,
+		CLIENT_ERROR
 	}
 }
