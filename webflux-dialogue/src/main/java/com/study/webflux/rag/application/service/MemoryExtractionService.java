@@ -21,6 +21,9 @@ import com.study.webflux.rag.infrastructure.adapter.memory.MemoryExtractionConfi
 
 import reactor.core.publisher.Mono;
 
+/**
+ * MemoryExtractionService는 메모리 추출 작업을 수행하는 서비스를 정의합니다.
+ */
 @Slf4j
 @Service
 @RequiredArgsConstructor
@@ -35,16 +38,24 @@ public class MemoryExtractionService {
 	private final int conversationThreshold;
 
 
+	/**
+	 * 메모리 추출 작업을 트리거합니다.
+	 * @return Mono<Void> 메모리 추출 작업 결과
+	 */
 	public Mono<Void> checkAndExtract() {
 		return counterPort.get()
 			.filter(count -> count > 0 && count % conversationThreshold == 0)
 			.flatMap(count -> {
-				log.info("Triggering memory extraction at conversation count: {}", count);
+				log.info("메모리 추출 트리거: 대화 횟수={}", count);
 				return performExtraction();
 			})
 			.then();
 	}
 
+	/**
+	 * 메모리 추출 작업을 수행합니다.
+	 * @return Mono<Void> 메모리 추출 작업 결과
+	 */
 	private Mono<Void> performExtraction() {
 		Mono<List<ConversationTurn>> recentConversations =
 			conversationRepository.findRecent(conversationThreshold)
@@ -66,7 +77,7 @@ public class MemoryExtractionService {
 			.flatMapMany(extractionPort::extractMemories)
 			.flatMap(this::saveExtractedMemory)
 			.doOnNext(memory -> log.info(
-				"Extracted and saved memory: type={}, importance={}, content={}",
+				"추출 및 저장된 메모리: type={}, importance={}, content={}",
 				memory.type(),
 				memory.importance(),
 				memory.content()
@@ -74,6 +85,11 @@ public class MemoryExtractionService {
 			.then();
 	}
 
+	/**
+	 * 추출된 메모리를 저장합니다.
+	 * @param extracted 추출된 메모리
+	 * @return Mono<Memory> 저장된 메모리
+	 */
 	private Mono<Memory> saveExtractedMemory(ExtractedMemory extracted) {
 		Memory memory = extracted.toMemory();
 
