@@ -3,10 +3,10 @@ spring:
     name: webflux-dialogue
   data:
     mongodb:
-      uri: mongodb://localhost:27017/ragdb
+      uri: ${MONGODB_URI:mongodb://localhost:27018/ragdb}
     redis:
-      host: localhost
-      port: 6379
+      host: ${REDIS_HOST:localhost}
+      port: ${REDIS_PORT:16379}
 
 server:
   port: 8081
@@ -36,3 +36,14 @@ rag:
         pitch-shift: 0
         pitch-variance: 1.0
         speed: 1.1
+    qdrant:
+      url: ${QDRANT_URL:http://localhost:6333}
+      api-key: ${QDRANT_API_KEY:}
+      vector-dimension: 1536
+      collection-name: user_memories
+    memory:
+      embedding-model: text-embedding-3-small
+      extraction-model: gpt-4o-mini
+      conversation-threshold: 5
+      importance-boost: 0.05
+      importance-threshold: 0.3
