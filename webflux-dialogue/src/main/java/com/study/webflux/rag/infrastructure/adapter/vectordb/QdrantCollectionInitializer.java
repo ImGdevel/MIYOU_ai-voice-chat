@@ -1,5 +1,7 @@
 package com.study.webflux.rag.infrastructure.adapter.vectordb;
 
+import java.time.Duration;
+
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.springframework.http.HttpHeaders;
@@ -21,7 +23,7 @@ public class QdrantCollectionInitializer {
 	private final int vectorDimension;
 
 	public QdrantCollectionInitializer(WebClient.Builder builder, QdrantConfig config) {
-		WebClient.Builder clientBuilder = builder
+		WebClient.Builder clientBuilder = builder.clone()
 			.baseUrl(config.url())
 			.defaultHeader(HttpHeaders.CONTENT_TYPE, MediaType.APPLICATION_JSON_VALUE);
 
@@ -40,14 +42,23 @@ public class QdrantCollectionInitializer {
 			new QdrantCreateCollectionRequest.VectorParams(vectorDimension, "Cosine")
 		);
 
-		webClient.put()
-			.uri("/collections/{collection}", collectionName)
-			.bodyValue(request)
-			.retrieve()
-			.bodyToMono(String.class)
-			.subscribe(
-				response -> log.info("Qdrant collection '{}' initialized", collectionName),
-				error -> log.warn("Failed to create collection '{}': {}", collectionName, error.getMessage())
-			);
+		try {
+			webClient.put()
+				.uri("/collections/{collection}", collectionName)
+				.bodyValue(request)
+				.retrieve()
+				.bodyToMono(String.class)
+				.timeout(Duration.ofSeconds(10))
+				.doOnSuccess(response -> log.info("Qdrant 컬렉션 '{}' 초기화 완료", collectionName))
+				.doOnError(error -> log.warn("Failed to create collection '{}': {}", collectionName, error.getMessage()))
+				.onErrorResume(e -> {
+					log.info("컬렉션 '{}' 이 이미 존재하거나 초기화 건너뛰었습니다", collectionName);
+					return reactor.core.publisher.Mono.empty();
+				})
+				.block();
+		} catch (Exception e) {
+			log.warn("Qdrant 컬렉션 초기화 오류: {}", e.getMessage());
+		}
+		log.info("Qdrant 컬렉션 '{}' 초기화 완료", collectionName);
 	}
 }
