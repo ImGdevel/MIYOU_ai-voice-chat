@@ -40,8 +40,8 @@ public class OpenAiEmbeddingAdapter implements EmbeddingPort {
 			.retrieve()
 			.bodyToMono(EmbeddingResponse.class)
 			.map(response -> {
-				if (response.data().isEmpty()) {
-					throw new RuntimeException("No embedding data returned");
+                if (response.data() == null || response.data().isEmpty()) {
+					throw new RuntimeException("임베딩 생성에 실패했습니다");
 				}
 				return MemoryEmbedding.of(text, response.data().get(0).embedding());
 			});
