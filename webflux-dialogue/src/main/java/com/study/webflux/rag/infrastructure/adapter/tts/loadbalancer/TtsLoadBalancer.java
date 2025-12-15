@@ -5,9 +5,11 @@ import java.time.Instant;
 import java.util.Comparator;
 import java.util.List;
 import java.util.concurrent.atomic.AtomicInteger;
+import java.util.function.Consumer;
 
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
+import org.springframework.web.reactive.function.client.WebClientResponseException;
 
 /**
  * TTS 엔드포인트 로드 밸런서
@@ -19,12 +21,13 @@ import org.slf4j.LoggerFactory;
  */
 public class TtsLoadBalancer {
 	private static final Logger log = LoggerFactory.getLogger(TtsLoadBalancer.class);
-	private static final Duration CIRCUIT_BREAKER_TIMEOUT = Duration.ofMinutes(5);
-	private static final long CIRCUIT_BREAKER_CHECK_INTERVAL_NANOS = Duration.ofSeconds(10).toNanos();
+	private static final Duration TEMPORARY_FAILURE_RECOVERY_INTERVAL = Duration.ofSeconds(30);
+	private static final long RECOVERY_CHECK_INTERVAL_NANOS = Duration.ofSeconds(10).toNanos();
 
 	private final List<TtsEndpoint> endpoints;
 	private final AtomicInteger roundRobinIndex;
-	private volatile long lastCircuitBreakerCheckTime;
+	private volatile long lastRecoveryCheckTime;
+	private volatile Consumer<TtsEndpointFailureEvent> failureEventPublisher;
 
 	public TtsLoadBalancer(List<TtsEndpoint> endpoints) {
 		if (endpoints == null || endpoints.isEmpty()) {
@@ -32,14 +35,18 @@ public class TtsLoadBalancer {
 		}
 		this.endpoints = endpoints;
 		this.roundRobinIndex = new AtomicInteger(0);
-		this.lastCircuitBreakerCheckTime = System.nanoTime();
+		this.lastRecoveryCheckTime = System.nanoTime();
+	}
+
+	public void setFailureEventPublisher(Consumer<TtsEndpointFailureEvent> publisher) {
+		this.failureEventPublisher = publisher;
 	}
 
 	public TtsEndpoint selectEndpoint() {
 		long currentTime = System.nanoTime();
-		if (currentTime - lastCircuitBreakerCheckTime > CIRCUIT_BREAKER_CHECK_INTERVAL_NANOS) {
-			tryRecoverCircuitBreakers();
-			lastCircuitBreakerCheckTime = currentTime;
+		if (currentTime - lastRecoveryCheckTime > RECOVERY_CHECK_INTERVAL_NANOS) {
+			tryRecoverTemporaryFailures();
+			lastRecoveryCheckTime = currentTime;
 		}
 
 		TtsEndpoint bestEndpoint = null;
@@ -70,7 +77,7 @@ public class TtsLoadBalancer {
 			return bestEndpoint;
 		}
 
-		int targetIndex = roundRobinIndex.getAndIncrement() % countAtMinLoad;
+		int targetIndex = (roundRobinIndex.getAndIncrement() & Integer.MAX_VALUE) % countAtMinLoad;
 		int currentIndex = 0;
 		for (TtsEndpoint endpoint : endpoints) {
 			if (endpoint.isAvailable() && endpoint.getActiveRequests() == minLoad) {
@@ -84,13 +91,14 @@ public class TtsLoadBalancer {
 		return bestEndpoint;
 	}
 
-	private void tryRecoverCircuitBreakers() {
+	private void tryRecoverTemporaryFailures() {
 		Instant now = Instant.now();
 		for (TtsEndpoint endpoint : endpoints) {
-			if (endpoint.getHealth() == TtsEndpoint.EndpointHealth.CIRCUIT_OPEN
+			if (endpoint.getHealth() == TtsEndpoint.EndpointHealth.TEMPORARY_FAILURE
 				&& endpoint.getCircuitOpenedAt() != null
-				&& Duration.between(endpoint.getCircuitOpenedAt(), now).compareTo(CIRCUIT_BREAKER_TIMEOUT) > 0) {
-				log.info("엔드포인트 {} 서킷 브레이커 복구", endpoint.getId());
+				&& Duration.between(endpoint.getCircuitOpenedAt(), now)
+				.compareTo(TEMPORARY_FAILURE_RECOVERY_INTERVAL) > 0) {
+				log.info("엔드포인트 {} 일시적 장애 복구 시도", endpoint.getId());
 				endpoint.setHealth(TtsEndpoint.EndpointHealth.HEALTHY);
 			}
 		}
@@ -104,23 +112,48 @@ public class TtsLoadBalancer {
 	}
 
 	public void reportFailure(TtsEndpoint endpoint, Throwable error) {
-		String errorMessage = error.getMessage();
+		TtsEndpoint.FailureType failureType = TtsErrorClassifier.classifyError(error);
 
-		if (errorMessage != null) {
-			if (errorMessage.contains("429") || errorMessage.contains("rate limit")) {
-				log.warn("엔드포인트 {} 요청 제한 상태", endpoint.getId());
-				endpoint.setHealth(TtsEndpoint.EndpointHealth.RATE_LIMITED);
-			} else if (errorMessage.contains("quota") || errorMessage.contains("insufficient")) {
-				log.warn("엔드포인트 {} 할당량 초과", endpoint.getId());
-				endpoint.setHealth(TtsEndpoint.EndpointHealth.QUOTA_EXCEEDED);
-			} else {
-				log.error("엔드포인트 {} 장애 발생, 서킷 브레이커 활성화", endpoint.getId(), error);
-				endpoint.setHealth(TtsEndpoint.EndpointHealth.CIRCUIT_OPEN);
-			}
-		} else {
-			log.error("엔드포인트 {} 알 수 없는 오류 발생, 서킷 브레이커 활성화", endpoint.getId(), error);
-			endpoint.setHealth(TtsEndpoint.EndpointHealth.CIRCUIT_OPEN);
+		switch (failureType) {
+			case TEMPORARY -> handleTemporaryFailure(endpoint, error);
+			case PERMANENT -> handlePermanentFailure(endpoint, error);
+			case CLIENT_ERROR -> handleClientError(endpoint, error);
 		}
+	}
+
+	private void handleTemporaryFailure(TtsEndpoint endpoint, Throwable error) {
+		String description = getErrorDescription(error);
+		log.warn("엔드포인트 {} 일시적 장애: {}", endpoint.getId(), description);
+		endpoint.setHealth(TtsEndpoint.EndpointHealth.TEMPORARY_FAILURE);
+	}
+
+	private void handlePermanentFailure(TtsEndpoint endpoint, Throwable error) {
+		String description = getErrorDescription(error);
+		log.error("엔드포인트 {} 영구 장애: {}", endpoint.getId(), description);
+		endpoint.setHealth(TtsEndpoint.EndpointHealth.PERMANENT_FAILURE);
+
+		if (failureEventPublisher != null) {
+			TtsEndpointFailureEvent event = new TtsEndpointFailureEvent(
+				endpoint.getId(),
+				"PERMANENT_FAILURE",
+				description
+			);
+			failureEventPublisher.accept(event);
+		}
+	}
+
+	private void handleClientError(TtsEndpoint endpoint, Throwable error) {
+		String description = getErrorDescription(error);
+		log.warn("엔드포인트 {} 클라이언트 에러: {}", endpoint.getId(), description);
+		endpoint.setHealth(TtsEndpoint.EndpointHealth.CLIENT_ERROR);
+	}
+
+	private String getErrorDescription(Throwable error) {
+		if (error instanceof WebClientResponseException webClientError) {
+			int statusCode = webClientError.getStatusCode().value();
+			return String.format("[%d] %s", statusCode, TtsErrorClassifier.getErrorDescription(statusCode));
+		}
+		return error.getMessage() != null ? error.getMessage() : "알 수 없는 오류";
 	}
 
 	public List<TtsEndpoint> getEndpoints() {
