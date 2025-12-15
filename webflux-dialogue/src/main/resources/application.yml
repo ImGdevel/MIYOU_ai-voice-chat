@@ -18,8 +18,16 @@ rag:
       base-url: https://api.openai.com/v1
       model: gpt-3.5-turbo
     supertone:
-      api-key: ${SUPERTONE_API_KEY:}
-      base-url: https://supertoneapi.com
+      endpoints:
+        - id: endpoint-1
+          api-key: ${SUPERTONE_API_KEY_1:}
+          base-url: https://supertoneapi.com
+        - id: endpoint-2
+          api-key: ${SUPERTONE_API_KEY_2:}
+          base-url: https://supertoneapi.com
+        - id: endpoint-3
+          api-key: ${SUPERTONE_API_KEY_3:}
+          base-url: https://supertoneapi.com
       voice-id: 2c5f135cb33f49a2c8882d
       language: ko
       style: neutral
