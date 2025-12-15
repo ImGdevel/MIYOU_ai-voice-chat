@@ -87,6 +87,7 @@ public class LoadBalancedSupertoneTtsAdapter implements TtsPort {
 			.accept(MediaType.parseMediaType(voice.getOutputFormat().getMediaType()))
 			.retrieve()
 			.bodyToFlux(DataBuffer.class)
+			.timeout(Duration.ofSeconds(10))
 			.map(dataBuffer -> {
 				byte[] bytes = new byte[dataBuffer.readableByteCount()];
 				dataBuffer.read(bytes);
