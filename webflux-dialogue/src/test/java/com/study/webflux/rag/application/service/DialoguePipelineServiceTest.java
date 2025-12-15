@@ -3,6 +3,7 @@ package com.study.webflux.rag.application.service;
 import static org.mockito.ArgumentMatchers.*;
 import static org.mockito.Mockito.*;
 
+import com.study.webflux.rag.infrastructure.config.properties.RagDialogueProperties;
 import java.util.Base64;
 import java.util.List;
 
@@ -70,7 +71,8 @@ class DialoguePipelineServiceTest {
 			sentenceAssembler,
 			pipelineMonitor,
 			conversationCounterPort,
-			memoryExtractionService
+			memoryExtractionService,
+			5
 		);
 	}
 
