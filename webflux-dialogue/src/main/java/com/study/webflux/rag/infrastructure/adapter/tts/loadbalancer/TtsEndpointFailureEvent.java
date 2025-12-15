@@ -12,6 +12,15 @@ public class TtsEndpointFailureEvent {
 	private final Instant occurredAt;
 
 	public TtsEndpointFailureEvent(String endpointId, String errorType, String errorMessage) {
+		if (endpointId == null || endpointId.isBlank()) {
+			throw new IllegalArgumentException("엔드포인트 ID는 필수입니다");
+		}
+		if (errorType == null || errorType.isBlank()) {
+			throw new IllegalArgumentException("에러 타입은 필수입니다");
+		}
+		if (errorMessage == null) {
+			throw new IllegalArgumentException("에러 메시지는 필수입니다");
+		}
 		this.endpointId = endpointId;
 		this.errorType = errorType;
 		this.errorMessage = errorMessage;
