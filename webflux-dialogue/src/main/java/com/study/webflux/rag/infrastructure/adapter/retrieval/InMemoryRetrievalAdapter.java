@@ -6,6 +6,7 @@ import java.util.List;
 import java.util.Set;
 import java.util.stream.Collectors;
 
+import lombok.RequiredArgsConstructor;
 import org.springframework.stereotype.Component;
 
 import com.study.webflux.rag.domain.model.conversation.ConversationTurn;
@@ -18,13 +19,10 @@ import com.study.webflux.rag.domain.port.out.RetrievalPort;
 import reactor.core.publisher.Mono;
 
 @Component
+@RequiredArgsConstructor
 public class InMemoryRetrievalAdapter implements RetrievalPort {
 
 	private final ConversationRepository conversationRepository;
-
-	public InMemoryRetrievalAdapter(ConversationRepository conversationRepository) {
-		this.conversationRepository = conversationRepository;
-	}
 
 	@Override
 	public Mono<RetrievalContext> retrieve(String query, int topK) {

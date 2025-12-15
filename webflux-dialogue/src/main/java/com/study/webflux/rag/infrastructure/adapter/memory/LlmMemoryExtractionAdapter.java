@@ -2,6 +2,8 @@ package com.study.webflux.rag.infrastructure.adapter.memory;
 
 import java.util.List;
 
+import lombok.RequiredArgsConstructor;
+import lombok.extern.slf4j.Slf4j;
 import org.springframework.stereotype.Component;
 
 import com.fasterxml.jackson.core.type.TypeReference;
@@ -16,6 +18,8 @@ import com.study.webflux.rag.domain.port.out.MemoryExtractionPort;
 
 import reactor.core.publisher.Flux;
 
+
+@Slf4j
 @Component
 public class LlmMemoryExtractionAdapter implements MemoryExtractionPort {
 
@@ -131,6 +135,7 @@ public class LlmMemoryExtractionAdapter implements MemoryExtractionPort {
 			return Flux.fromIterable(dtos)
 				.map(MemoryExtractionDto::toExtractedMemory);
 		} catch (Exception e) {
+            log.warn("메모리 추출 응답 파싱 실패: {}", jsonResponse, e);
 			return Flux.empty();
 		}
 	}
