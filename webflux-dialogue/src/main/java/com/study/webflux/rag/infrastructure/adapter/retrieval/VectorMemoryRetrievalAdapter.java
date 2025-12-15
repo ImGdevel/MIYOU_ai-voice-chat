@@ -34,7 +34,7 @@ public class VectorMemoryRetrievalAdapter implements RetrievalPort {
 
 	@Override
 	public Mono<RetrievalContext> retrieve(String query, int topK) {
-		Mono<RetrievalContext> conversationContext = conversationRepository.findAll()
+		Mono<RetrievalContext> conversationContext = conversationRepository.findRecent(topK * 10)
 			.collectList()
 			.map(turns -> turns.stream()
 				.map(turn -> {
