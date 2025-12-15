@@ -77,7 +77,7 @@ public class TtsLoadBalancer {
 			return bestEndpoint;
 		}
 
-		int targetIndex = roundRobinIndex.getAndIncrement() % countAtMinLoad;
+		int targetIndex = (roundRobinIndex.getAndIncrement() & Integer.MAX_VALUE) % countAtMinLoad;
 		int currentIndex = 0;
 		for (TtsEndpoint endpoint : endpoints) {
 			if (endpoint.isAvailable() && endpoint.getActiveRequests() == minLoad) {
