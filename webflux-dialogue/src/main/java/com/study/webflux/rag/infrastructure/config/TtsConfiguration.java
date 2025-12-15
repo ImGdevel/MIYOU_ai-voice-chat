@@ -1,10 +1,12 @@
 package com.study.webflux.rag.infrastructure.config;
 
+import com.study.webflux.rag.infrastructure.adapter.tts.SupertoneConfig;
 import java.util.List;
 import java.util.stream.Collectors;
 
 import org.springframework.context.annotation.Bean;
 import org.springframework.context.annotation.Configuration;
+import org.springframework.context.annotation.Primary;
 import org.springframework.web.reactive.function.client.WebClient;
 
 import com.study.webflux.rag.domain.model.voice.Voice;
@@ -37,11 +39,24 @@ public class TtsConfiguration {
 	}
 
 	@Bean
+	@Primary
 	public TtsPort ttsPort(
 		WebClient.Builder webClientBuilder,
 		TtsLoadBalancer loadBalancer,
 		Voice voice
 	) {
 		return new LoadBalancedSupertoneTtsAdapter(webClientBuilder, loadBalancer, voice);
+	}
+
+	@Bean
+	public SupertoneConfig supertoneConfig(
+		RagDialogueProperties properties
+	) {
+		var supertone = properties.getSupertone();
+		var firstEndpoint = supertone.getEndpoints().get(0);
+		return new com.study.webflux.rag.infrastructure.adapter.tts.SupertoneConfig(
+			firstEndpoint.getApiKey(),
+			firstEndpoint.getBaseUrl()
+		);
 	}
 }
