@@ -28,7 +28,12 @@ public class TtsConfiguration {
 			))
 			.collect(Collectors.toList());
 
-		return new TtsLoadBalancer(endpoints);
+		TtsLoadBalancer loadBalancer = new TtsLoadBalancer(endpoints);
+		loadBalancer.setFailureEventPublisher(event -> {
+			System.err.println("TTS 엔드포인트 영구 장애 발생: " + event);
+		});
+
+		return loadBalancer;
 	}
 
 	@Bean
