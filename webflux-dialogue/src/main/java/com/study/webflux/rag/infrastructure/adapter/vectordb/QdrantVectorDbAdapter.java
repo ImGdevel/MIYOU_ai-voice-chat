@@ -7,6 +7,8 @@ import java.util.Map;
 import java.util.UUID;
 import java.util.stream.Collectors;
 
+import lombok.RequiredArgsConstructor;
+import lombok.extern.slf4j.Slf4j;
 import org.springframework.http.HttpHeaders;
 import org.springframework.http.MediaType;
 import org.springframework.stereotype.Component;
@@ -27,6 +29,7 @@ import com.study.webflux.rag.infrastructure.adapter.vectordb.dto.QdrantUpsertRes
 import reactor.core.publisher.Flux;
 import reactor.core.publisher.Mono;
 
+@Slf4j
 @Component
 public class QdrantVectorDbAdapter implements VectorMemoryPort {
 
@@ -123,33 +126,55 @@ public class QdrantVectorDbAdapter implements VectorMemoryPort {
 			.bodyValue(request)
 			.retrieve()
 			.bodyToMono(Void.class)
+            .doOnError(e -> log.warn("메모리 ID={}의 중요도 업데이트 실패: {}", memoryId, e.getMessage()))
 			.onErrorResume(e -> Mono.empty());
 	}
 
 	private Memory toMemory(QdrantScoredPoint point) {
 		Map<String, Object> payload = point.payload();
 
-		String type = (String)payload.get("type");
-		String content = (String)payload.get("content");
+		Object typeObj = payload.get("type");
+		Object contentObj = payload.get("content");
+
+		if (!(typeObj instanceof String) || !(contentObj instanceof String)) {
+			throw new IllegalStateException(
+				"잘못된 페이로드: 포인트 " + point.id() + "의 type/content 누락 또는 잘못됨"
+			);
+		}
+
+		String type = (String)typeObj;
+		String content = (String)contentObj;
 
 		Float importance = null;
 		if (payload.containsKey("importance")) {
-			importance = ((Number)payload.get("importance")).floatValue();
+			Object importanceObj = payload.get("importance");
+			if (importanceObj instanceof Number) {
+				importance = ((Number)importanceObj).floatValue();
+			}
 		}
 
 		Instant createdAt = null;
 		if (payload.containsKey("createdAt")) {
-			createdAt = Instant.ofEpochSecond(((Number)payload.get("createdAt")).longValue());
+			Object createdAtObj = payload.get("createdAt");
+			if (createdAtObj instanceof Number) {
+				createdAt = Instant.ofEpochSecond(((Number)createdAtObj).longValue());
+			}
 		}
 
 		Instant lastAccessedAt = null;
 		if (payload.containsKey("lastAccessedAt")) {
-			lastAccessedAt = Instant.ofEpochSecond(((Number)payload.get("lastAccessedAt")).longValue());
+			Object lastAccessedAtObj = payload.get("lastAccessedAt");
+			if (lastAccessedAtObj instanceof Number) {
+				lastAccessedAt = Instant.ofEpochSecond(((Number)lastAccessedAtObj).longValue());
+			}
 		}
 
 		Integer accessCount = null;
 		if (payload.containsKey("accessCount")) {
-			accessCount = ((Number)payload.get("accessCount")).intValue();
+			Object accessCountObj = payload.get("accessCount");
+			if (accessCountObj instanceof Number) {
+				accessCount = ((Number)accessCountObj).intValue();
+			}
 		}
 
 		return new Memory(
