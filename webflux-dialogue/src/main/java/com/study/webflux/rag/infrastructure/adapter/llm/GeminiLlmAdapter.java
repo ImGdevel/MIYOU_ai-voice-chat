@@ -10,11 +10,11 @@ public class GeminiLlmAdapter implements LlmPort {
 
 	@Override
 	public Flux<String> streamCompletion(CompletionRequest request) {
-		return Flux.error(new UnsupportedOperationException("Gemini LLM adapter not yet implemented"));
+		return Flux.error(new UnsupportedOperationException("Gemini LLM 어뎁터는 아직 구현되지 않았습니다"));
 	}
 
 	@Override
 	public Mono<String> complete(CompletionRequest request) {
-		return Mono.error(new UnsupportedOperationException("Gemini LLM adapter not yet implemented"));
+		return Mono.error(new UnsupportedOperationException("Gemini LLM 어뎁터는 아직 구현되지 않았습니다"));
 	}
 }

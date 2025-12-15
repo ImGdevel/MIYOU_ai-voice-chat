@@ -2,6 +2,8 @@ package com.study.webflux.rag.application.service;
 
 import java.util.List;
 
+import lombok.RequiredArgsConstructor;
+import lombok.extern.slf4j.Slf4j;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.springframework.stereotype.Service;
@@ -19,10 +21,10 @@ import com.study.webflux.rag.infrastructure.adapter.memory.MemoryExtractionConfi
 
 import reactor.core.publisher.Mono;
 
+@Slf4j
 @Service
+@RequiredArgsConstructor
 public class MemoryExtractionService {
-
-	private static final Logger log = LoggerFactory.getLogger(MemoryExtractionService.class);
 
 	private final ConversationRepository conversationRepository;
 	private final ConversationCounterPort counterPort;
@@ -32,23 +34,6 @@ public class MemoryExtractionService {
 	private final MemoryRetrievalService retrievalService;
 	private final int conversationThreshold;
 
-	public MemoryExtractionService(
-		ConversationRepository conversationRepository,
-		ConversationCounterPort counterPort,
-		MemoryExtractionPort extractionPort,
-		EmbeddingPort embeddingPort,
-		VectorMemoryPort vectorMemoryPort,
-		MemoryRetrievalService retrievalService,
-		MemoryExtractionConfig config
-	) {
-		this.conversationRepository = conversationRepository;
-		this.counterPort = counterPort;
-		this.extractionPort = extractionPort;
-		this.embeddingPort = embeddingPort;
-		this.vectorMemoryPort = vectorMemoryPort;
-		this.retrievalService = retrievalService;
-		this.conversationThreshold = config.conversationThreshold();
-	}
 
 	public Mono<Void> checkAndExtract() {
 		return counterPort.get()

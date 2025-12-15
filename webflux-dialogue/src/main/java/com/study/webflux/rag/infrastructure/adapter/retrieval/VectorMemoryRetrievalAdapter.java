@@ -5,6 +5,7 @@ import java.util.HashSet;
 import java.util.Set;
 import java.util.stream.Collectors;
 
+import lombok.RequiredArgsConstructor;
 import org.springframework.context.annotation.Primary;
 import org.springframework.stereotype.Component;
 
@@ -18,19 +19,12 @@ import com.study.webflux.rag.domain.port.out.RetrievalPort;
 import reactor.core.publisher.Mono;
 
 @Component
+@RequiredArgsConstructor
 @Primary
 public class VectorMemoryRetrievalAdapter implements RetrievalPort {
 
 	private final MemoryRetrievalService memoryRetrievalService;
 	private final ConversationRepository conversationRepository;
-
-	public VectorMemoryRetrievalAdapter(
-		MemoryRetrievalService memoryRetrievalService,
-		ConversationRepository conversationRepository
-	) {
-		this.memoryRetrievalService = memoryRetrievalService;
-		this.conversationRepository = conversationRepository;
-	}
 
 	@Override
 	public Mono<RetrievalContext> retrieve(String query, int topK) {
