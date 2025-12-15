@@ -21,6 +21,10 @@ server:
 
 rag:
   dialogue:
+    openai:
+      api-key: REDACTED_API_KEY
+      base-url: https://api.openai.com/v1
+      model: gpt-3.5-turbo
     supertone:
       endpoints:
         - id: test-endpoint-1
@@ -40,3 +44,14 @@ rag:
         pitch-shift: 0
         pitch-variance: 1.0
         speed: 1.1
+    qdrant:
+      url: http://localhost:6333
+      api-key: ""
+      vector-dimension: 1536
+      collection-name: user_memories_test
+    memory:
+      embedding-model: text-embedding-3-small
+      extraction-model: gpt-4o-mini
+      conversation-threshold: 5
+      importance-boost: 0.05
+      importance-threshold: 0.3

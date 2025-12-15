@@ -56,7 +56,7 @@ public class DialoguePipelineService implements DialoguePipelineUseCase {
 		DialoguePipelineMonitor pipelineMonitor,
 		ConversationCounterPort conversationCounterPort,
 		MemoryExtractionService memoryExtractionService,
-		RagDialogueProperties properties) {
+		int conversationThreshold) {
 		this.llmPort = llmPort;
 		this.ttsPort = ttsPort;
 		this.retrievalPort = retrievalPort;
@@ -65,7 +65,7 @@ public class DialoguePipelineService implements DialoguePipelineUseCase {
 		this.pipelineMonitor = pipelineMonitor;
 		this.conversationCounterPort = conversationCounterPort;
 		this.memoryExtractionService = memoryExtractionService;
-		this.conversationThreshold = properties.getMemory().getConversationThreshold();
+		this.conversationThreshold = conversationThreshold;
 	}
 
 	/**
