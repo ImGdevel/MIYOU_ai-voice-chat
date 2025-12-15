@@ -5,6 +5,8 @@ import java.util.HashMap;
 import java.util.Map;
 import java.util.concurrent.ConcurrentHashMap;
 
+import lombok.RequiredArgsConstructor;
+import lombok.extern.slf4j.Slf4j;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.springframework.core.io.buffer.DataBuffer;
@@ -23,25 +25,15 @@ import reactor.core.publisher.Mono;
 /**
  * Supertone TTS 어댑터 - 로드 밸런싱 지원
  */
+@Slf4j
 @Component
+@RequiredArgsConstructor
 public class LoadBalancedSupertoneTtsAdapter implements TtsPort {
-	private static final Logger log = LoggerFactory.getLogger(LoadBalancedSupertoneTtsAdapter.class);
 
 	private final WebClient.Builder webClientBuilder;
 	private final TtsLoadBalancer loadBalancer;
 	private final Voice voice;
-	private final Map<String, WebClient> webClientCache;
-
-	public LoadBalancedSupertoneTtsAdapter(
-		WebClient.Builder webClientBuilder,
-		TtsLoadBalancer loadBalancer,
-		Voice voice
-	) {
-		this.webClientBuilder = webClientBuilder;
-		this.loadBalancer = loadBalancer;
-		this.voice = voice;
-		this.webClientCache = new ConcurrentHashMap<>();
-	}
+	private final Map<String, WebClient> webClientCache = new ConcurrentHashMap<>();
 
 	@Override
 	public Flux<byte[]> streamSynthesize(String text) {
