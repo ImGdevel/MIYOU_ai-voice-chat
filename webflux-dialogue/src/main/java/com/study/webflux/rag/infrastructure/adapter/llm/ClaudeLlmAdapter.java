@@ -10,11 +10,11 @@ public class ClaudeLlmAdapter implements LlmPort {
 
 	@Override
 	public Flux<String> streamCompletion(CompletionRequest request) {
-		return Flux.error(new UnsupportedOperationException("Claude LLM adapter not yet implemented"));
+		return Flux.error(new UnsupportedOperationException("클로드 LLM 어댑터는 아직 구현되지 않았습니다"));
 	}
 
 	@Override
 	public Mono<String> complete(CompletionRequest request) {
-		return Mono.error(new UnsupportedOperationException("Claude LLM adapter not yet implemented"));
+		return Mono.error(new UnsupportedOperationException("클로드 LLM 어댑터는 아직 구현되지 않았습니다"));
 	}
 }
