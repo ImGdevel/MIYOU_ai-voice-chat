@@ -5,6 +5,9 @@ import org.springframework.stereotype.Component;
 
 import com.study.webflux.rag.infrastructure.config.constants.DialogueConstants;
 
+import java.util.ArrayList;
+import java.util.List;
+
 @Component
 @ConfigurationProperties(prefix = "rag.dialogue")
 public class RagDialogueProperties {
@@ -59,28 +62,19 @@ public class RagDialogueProperties {
 	}
 
 	public static class Supertone {
-		private String apiKey;
-		private String baseUrl = DialogueConstants.Supertone.BASE_URL;
+		private List<TtsEndpointConfig> endpoints = new ArrayList<>();
 		private String voiceId = DialogueConstants.Supertone.Voice.ADAM_ID;
 		private String language = DialogueConstants.Supertone.Language.KOREAN;
 		private String style = DialogueConstants.Supertone.Style.NEUTRAL;
 		private String outputFormat = DialogueConstants.Supertone.OutputFormat.WAV;
 		private VoiceSettings voiceSettings = new VoiceSettings();
 
-		public String getApiKey() {
-			return apiKey;
+		public List<TtsEndpointConfig> getEndpoints() {
+			return endpoints;
 		}
 
-		public void setApiKey(String apiKey) {
-			this.apiKey = apiKey;
-		}
-
-		public String getBaseUrl() {
-			return baseUrl;
-		}
-
-		public void setBaseUrl(String baseUrl) {
-			this.baseUrl = baseUrl;
+		public void setEndpoints(List<TtsEndpointConfig> endpoints) {
+			this.endpoints = endpoints;
 		}
 
 		public String getVoiceId() {
@@ -151,6 +145,36 @@ public class RagDialogueProperties {
 			public void setSpeed(double speed) {
 				this.speed = speed;
 			}
+		}
+	}
+
+	public static class TtsEndpointConfig {
+		private String id;
+		private String apiKey;
+		private String baseUrl = DialogueConstants.Supertone.BASE_URL;
+
+		public String getId() {
+			return id;
+		}
+
+		public void setId(String id) {
+			this.id = id;
+		}
+
+		public String getApiKey() {
+			return apiKey;
+		}
+
+		public void setApiKey(String apiKey) {
+			this.apiKey = apiKey;
+		}
+
+		public String getBaseUrl() {
+			return baseUrl;
+		}
+
+		public void setBaseUrl(String baseUrl) {
+			this.baseUrl = baseUrl;
 		}
 	}
 }

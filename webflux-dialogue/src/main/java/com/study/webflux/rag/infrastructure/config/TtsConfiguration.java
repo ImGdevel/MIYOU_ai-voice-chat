@@ -1,26 +1,42 @@
 package com.study.webflux.rag.infrastructure.config;
 
+import java.util.List;
+import java.util.stream.Collectors;
+
 import org.springframework.context.annotation.Bean;
 import org.springframework.context.annotation.Configuration;
 import org.springframework.web.reactive.function.client.WebClient;
 
 import com.study.webflux.rag.domain.model.voice.Voice;
 import com.study.webflux.rag.domain.port.out.TtsPort;
-import com.study.webflux.rag.infrastructure.adapter.tts.SupertoneConfig;
-import com.study.webflux.rag.infrastructure.adapter.tts.SupertoneTtsAdapter;
+import com.study.webflux.rag.infrastructure.adapter.tts.LoadBalancedSupertoneTtsAdapter;
+import com.study.webflux.rag.infrastructure.adapter.tts.loadbalancer.TtsEndpoint;
+import com.study.webflux.rag.infrastructure.adapter.tts.loadbalancer.TtsLoadBalancer;
 import com.study.webflux.rag.infrastructure.config.properties.RagDialogueProperties;
 
 @Configuration
 public class TtsConfiguration {
 
 	@Bean
-	public SupertoneConfig supertoneConfig(RagDialogueProperties properties) {
+	public TtsLoadBalancer ttsLoadBalancer(RagDialogueProperties properties) {
 		var supertone = properties.getSupertone();
-		return new SupertoneConfig(supertone.getApiKey(), supertone.getBaseUrl());
+		List<TtsEndpoint> endpoints = supertone.getEndpoints().stream()
+			.map(config -> new TtsEndpoint(
+				config.getId(),
+				config.getApiKey(),
+				config.getBaseUrl()
+			))
+			.collect(Collectors.toList());
+
+		return new TtsLoadBalancer(endpoints);
 	}
 
 	@Bean
-	public TtsPort ttsPort(WebClient.Builder webClientBuilder, SupertoneConfig config, Voice voice) {
-		return new SupertoneTtsAdapter(webClientBuilder, config, voice);
+	public TtsPort ttsPort(
+		WebClient.Builder webClientBuilder,
+		TtsLoadBalancer loadBalancer,
+		Voice voice
+	) {
+		return new LoadBalancedSupertoneTtsAdapter(webClientBuilder, loadBalancer, voice);
 	}
 }
