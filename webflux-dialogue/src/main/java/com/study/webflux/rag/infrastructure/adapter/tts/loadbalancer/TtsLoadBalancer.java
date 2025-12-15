@@ -27,7 +27,7 @@ public class TtsLoadBalancer {
 	private final List<TtsEndpoint> endpoints;
 	private final AtomicInteger roundRobinIndex;
 	private volatile long lastRecoveryCheckTime;
-	private Consumer<TtsEndpointFailureEvent> failureEventPublisher;
+	private volatile Consumer<TtsEndpointFailureEvent> failureEventPublisher;
 
 	public TtsLoadBalancer(List<TtsEndpoint> endpoints) {
 		if (endpoints == null || endpoints.isEmpty()) {
