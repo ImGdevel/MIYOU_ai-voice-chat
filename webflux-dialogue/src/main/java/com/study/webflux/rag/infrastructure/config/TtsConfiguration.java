@@ -20,6 +20,16 @@ import com.study.webflux.rag.infrastructure.config.properties.RagDialoguePropert
 public class TtsConfiguration {
 
 	@Bean
+	public SupertoneConfig supertoneConfig(RagDialogueProperties properties) {
+		var supertone = properties.getSupertone();
+		if (supertone.getEndpoints().isEmpty()) {
+			throw new IllegalStateException("최소 하나 이상의 TTS 엔드포인트를 설정해야 합니다");
+		}
+		var firstEndpoint = supertone.getEndpoints().get(0);
+		return new SupertoneConfig(firstEndpoint.getApiKey(), firstEndpoint.getBaseUrl());
+	}
+
+	@Bean
 	public TtsLoadBalancer ttsLoadBalancer(RagDialogueProperties properties) {
 		var supertone = properties.getSupertone();
 		List<TtsEndpoint> endpoints = supertone.getEndpoints().stream()
@@ -46,20 +56,5 @@ public class TtsConfiguration {
 		Voice voice
 	) {
 		return new LoadBalancedSupertoneTtsAdapter(webClientBuilder, loadBalancer, voice);
-	}
-
-	@Bean
-	public SupertoneConfig supertoneConfig(
-		RagDialogueProperties properties
-	) {
-		var supertone = properties.getSupertone();
-		if (supertone.getEndpoints().isEmpty()) {
-			throw new IllegalStateException("최소 하나 이상의 TTS 엔드포인트를 설정해야 합니다");
-		}
-		var firstEndpoint = supertone.getEndpoints().get(0);
-		return new com.study.webflux.rag.infrastructure.adapter.tts.SupertoneConfig(
-			firstEndpoint.getApiKey(),
-			firstEndpoint.getBaseUrl()
-		);
 	}
 }

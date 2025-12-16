@@ -8,35 +8,11 @@ import org.springframework.data.redis.serializer.GenericToStringSerializer;
 import org.springframework.data.redis.serializer.RedisSerializationContext;
 import org.springframework.data.redis.serializer.StringRedisSerializer;
 
-import com.study.webflux.rag.infrastructure.adapter.embedding.OpenAiEmbeddingConfig;
 import com.study.webflux.rag.infrastructure.adapter.memory.MemoryExtractionConfig;
-import com.study.webflux.rag.infrastructure.adapter.vectordb.QdrantConfig;
 import com.study.webflux.rag.infrastructure.config.properties.RagDialogueProperties;
 
 @Configuration
 public class MemoryConfiguration {
-
-	@Bean
-	public QdrantConfig qdrantConfig(RagDialogueProperties properties) {
-		var qdrant = properties.getQdrant();
-		return new QdrantConfig(
-			qdrant.getUrl(),
-			qdrant.getApiKey(),
-			qdrant.getVectorDimension(),
-			qdrant.getCollectionName()
-		);
-	}
-
-	@Bean
-	public OpenAiEmbeddingConfig openAiEmbeddingConfig(RagDialogueProperties properties) {
-		var openai = properties.getOpenai();
-		var memory = properties.getMemory();
-		return new OpenAiEmbeddingConfig(
-			openai.getApiKey(),
-			openai.getBaseUrl(),
-			memory.getEmbeddingModel()
-		);
-	}
 
 	@Bean
 	public MemoryExtractionConfig memoryExtractionConfig(RagDialogueProperties properties) {
