@@ -13,6 +13,7 @@ import java.util.concurrent.CopyOnWriteArrayList;
 import java.util.concurrent.atomic.AtomicBoolean;
 import java.util.concurrent.atomic.AtomicReference;
 import java.util.function.Supplier;
+import java.util.stream.Collectors;
 
 import reactor.core.publisher.Flux;
 import reactor.core.publisher.Mono;
@@ -90,7 +91,7 @@ public class DialoguePipelineTracker {
 	}
 
 	public void recordLlmOutput(String sentence) {
-		if (sentence != null && !sentence.isBlank()) {
+		if (sentence != null && !sentence.isBlank() && llmOutputs.size() < 20) {
 			llmOutputs.add(sentence);
 		}
 	}
@@ -117,7 +118,8 @@ public class DialoguePipelineTracker {
 			this.finishedAt = clock.instant();
 			PipelineSummary summary = new PipelineSummary(pipelineId, status, startedAt, finishedAt,
 				Map.copyOf(attributes),
-				stageMetrics.values().stream().map(StageMetric::snapshot).toList(),
+				stageMetrics.values().stream().map(StageMetric::snapshot)
+					.collect(Collectors.toList()),
 				List.copyOf(llmOutputs), latencyFromStart(firstResponseAt.get()),
 				latencyFromStart(lastResponseAt.get()));
 			reporter.report(summary);
