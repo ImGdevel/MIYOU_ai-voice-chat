@@ -186,13 +186,13 @@ public class SpringAiVectorDbAdapter implements VectorMemoryPort {
 		Instant createdAt = null;
 		Object createdAtObj = metadata.get("createdAt");
 		if (createdAtObj instanceof Number) {
-			createdAt = Instant.ofEpochSecond(((Number) createdAtObj).longValue());
+            createdAt = Instant.ofEpochMilli(((Number) createdAtObj).longValue());
 		}
 
 		Instant lastAccessedAt = null;
 		Object lastAccessedAtObj = metadata.get("lastAccessedAt");
 		if (lastAccessedAtObj instanceof Number) {
-			lastAccessedAt = Instant.ofEpochSecond(((Number) lastAccessedAtObj).longValue());
+            lastAccessedAt = Instant.ofEpochMilli(((Number) lastAccessedAtObj).longValue());
 		}
 
 		Integer accessCount = null;
