@@ -10,7 +10,7 @@ spring:
   ai:
     openai:
       api-key: sk-proj-test1234567890abcdefghijklmnopqrstuvwxyzABCDEFGHIJKLMNOPQRSTUVWXYZ1234567890abcdefghijklmnopqrstuvwxyzABCDEFGHIJKLMNOPQRSTUVWXYZ1234567890
-      base-url: https://api.openai.com/v1
+      base-url: https://api.openai.com
       chat:
         options:
           model: gpt-4o-mini
@@ -23,7 +23,7 @@ rag:
   dialogue:
     openai:
       api-key: sk-proj-test1234567890abcdefghijklmnopqrstuvwxyzABCDEFGHIJKLMNOPQRSTUVWXYZ1234567890abcdefghijklmnopqrstuvwxyzABCDEFGHIJKLMNOPQRSTUVWXYZ1234567890
-      base-url: https://api.openai.com/v1
+      base-url: https://api.openai.com
       model: gpt-3.5-turbo
     supertone:
       endpoints:
