@@ -193,7 +193,7 @@ class LoadBalancedSupertoneTtsAdapterTest {
 	@Test
 	@DisplayName("타임아웃 발생 시 재시도")
 	void streamSynthesize_Timeout_Retry() {
-		fakeServer.setEndpointBehavior("key-1", FakeSupertoneServer.ServerBehavior.delayed(15000));
+		fakeServer.setEndpointBehavior("key-1", FakeSupertoneServer.ServerBehavior.timeout());
 		fakeServer.setEndpointBehavior("key-2", FakeSupertoneServer.ServerBehavior.success());
 		fakeServer.setEndpointBehavior("key-3", FakeSupertoneServer.ServerBehavior.success());
 

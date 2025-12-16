@@ -2,6 +2,7 @@ package com.study.webflux.rag.infrastructure.adapter.tts.loadbalancer;
 
 import java.util.Map;
 import java.util.concurrent.ConcurrentHashMap;
+import java.util.concurrent.TimeoutException;
 import java.util.concurrent.atomic.AtomicInteger;
 
 import org.springframework.http.HttpStatus;
@@ -11,6 +12,7 @@ import org.springframework.web.reactive.function.server.RouterFunctions;
 import org.springframework.web.reactive.function.server.ServerRequest;
 import org.springframework.web.reactive.function.server.ServerResponse;
 
+import reactor.core.publisher.Flux;
 import reactor.core.publisher.Mono;
 
 public class FakeSupertoneServer {
@@ -93,6 +95,12 @@ public class FakeSupertoneServer {
 		static ServerBehavior delayed(long delayMillis) {
 			return (request, text) -> Mono.delay(java.time.Duration.ofMillis(delayMillis))
 				.then(success().apply(request, text));
+		}
+
+		static ServerBehavior timeout() {
+			return (request, text) -> ServerResponse.ok()
+				.contentType(MediaType.parseMediaType("audio/wav"))
+				.body(Flux.<byte[]>error(new TimeoutException("Request timeout")), byte[].class);
 		}
 	}
 }
