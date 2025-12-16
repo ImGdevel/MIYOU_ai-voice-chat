@@ -18,7 +18,7 @@ spring:
     vectorstore:
       qdrant:
         host: ${QDRANT_HOST:localhost}
-        port: ${QDRANT_PORT:6333}
+        port: ${QDRANT_PORT:6334}
         collection-name: ${QDRANT_COLLECTION:user_memories}
 
 server:
@@ -46,7 +46,7 @@ rag:
         pitch-variance: 1.0
         speed: 1.1
     qdrant:
-      url: ${QDRANT_URL:http://localhost:6333}
+      url: ${QDRANT_URL:http://localhost:6334}
       api-key: ${QDRANT_API_KEY:}
       vector-dimension: 1536
       collection-name: user_memories
