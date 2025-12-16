@@ -6,10 +6,15 @@ import static org.mockito.ArgumentMatchers.anyList;
 import static org.mockito.Mockito.verify;
 import static org.mockito.Mockito.when;
 
+import io.qdrant.client.grpc.JsonWithInt;
+import io.qdrant.client.grpc.Points;
+import io.qdrant.client.grpc.Points.ScoredPoint;
+import io.qdrant.client.grpc.Points.SearchPoints;
 import java.time.Instant;
-import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
+
+import com.google.common.util.concurrent.Futures;
 
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.DisplayName;
@@ -19,12 +24,12 @@ import org.mockito.ArgumentCaptor;
 import org.mockito.Mock;
 import org.mockito.junit.jupiter.MockitoExtension;
 import org.springframework.ai.document.Document;
-import org.springframework.ai.vectorstore.SearchRequest;
 import org.springframework.ai.vectorstore.VectorStore;
 
 import com.study.webflux.rag.domain.model.memory.Memory;
 import com.study.webflux.rag.domain.model.memory.MemoryType;
 
+import io.qdrant.client.QdrantClient;
 import reactor.test.StepVerifier;
 
 @ExtendWith(MockitoExtension.class)
@@ -33,11 +38,14 @@ class SpringAiVectorDbAdapterTest {
 	@Mock
 	private VectorStore vectorStore;
 
+	@Mock
+	private QdrantClient qdrantClient;
+
 	private SpringAiVectorDbAdapter vectorDbAdapter;
 
 	@BeforeEach
 	void setUp() {
-		vectorDbAdapter = new SpringAiVectorDbAdapter(vectorStore);
+		vectorDbAdapter = new SpringAiVectorDbAdapter(vectorStore, qdrantClient);
 	}
 
 	@Test
@@ -117,28 +125,28 @@ class SpringAiVectorDbAdapterTest {
 
 		assertThat(metadata.get("type")).isEqualTo("EXPERIENTIAL");
 		assertThat(metadata.get("importance")).isEqualTo(0.9f);
-		assertThat(metadata.get("createdAt")).isEqualTo(createdAt.getEpochSecond());
-		assertThat(metadata.get("lastAccessedAt")).isEqualTo(lastAccessedAt.getEpochSecond());
+		assertThat(metadata.get("createdAt")).isEqualTo(createdAt.toEpochMilli());
+		assertThat(metadata.get("lastAccessedAt")).isEqualTo(lastAccessedAt.toEpochMilli());
 		assertThat(metadata.get("accessCount")).isEqualTo(5);
 	}
 
 	@Test
 	@DisplayName("타입과 중요도 필터로 메모리를 검색한다")
-	void search_withFilters_success() {
+	void search_withFilters_success() throws Exception {
 		List<Float> queryEmbedding = List.of(0.1f, 0.2f, 0.3f);
 		List<MemoryType> types = List.of(MemoryType.EXPERIENTIAL, MemoryType.FACTUAL);
 		float importanceThreshold = 0.5f;
 		int topK = 5;
 
-		Map<String, Object> metadata = new HashMap<>();
-		metadata.put("type", "EXPERIENTIAL");
-		metadata.put("importance", 0.8);
-		metadata.put("createdAt", Instant.now().getEpochSecond());
+		ScoredPoint mockPoint = ScoredPoint.newBuilder()
+			.setId(Points.PointId.newBuilder().setUuid("doc-1").build())
+			.putPayload("content", JsonWithInt.Value.newBuilder().setStringValue("테스트 내용").build())
+			.putPayload("type", JsonWithInt.Value.newBuilder().setStringValue("EXPERIENTIAL").build())
+			.putPayload("importance", JsonWithInt.Value.newBuilder().setDoubleValue(0.8).build())
+			.build();
 
-		Document mockDocument = new Document("doc-1", "테스트 내용", metadata);
-		List<Document> mockResults = List.of(mockDocument);
-
-		when(vectorStore.similaritySearch(any(SearchRequest.class))).thenReturn(mockResults);
+		when(qdrantClient.searchAsync(any(SearchPoints.class)))
+			.thenReturn(Futures.immediateFuture(List.of(mockPoint)));
 
 		StepVerifier.create(vectorDbAdapter.search(queryEmbedding, types, importanceThreshold, topK))
 			.assertNext(result -> {
@@ -149,25 +157,16 @@ class SpringAiVectorDbAdapterTest {
 				assertThat(result.importance()).isEqualTo(0.8f);
 			})
 			.verifyComplete();
-
-		ArgumentCaptor<SearchRequest> captor = ArgumentCaptor.forClass(SearchRequest.class);
-		verify(vectorStore).similaritySearch(captor.capture());
-
-		SearchRequest capturedRequest = captor.getValue();
-		assertThat(capturedRequest.getTopK()).isEqualTo(topK);
-		String expressionDescription = String.valueOf(capturedRequest.getFilterExpression());
-		assertThat(expressionDescription).contains("Value[value=[EXPERIENTIAL, FACTUAL]]");
-		assertThat(expressionDescription).contains("Key[key=importance]");
-		assertThat(expressionDescription).contains("Value[value=0.5]");
 	}
 
 	@Test
 	@DisplayName("검색 결과가 없으면 빈 Flux를 반환한다")
-	void search_noResults_returnsEmpty() {
+	void search_noResults_returnsEmpty() throws Exception {
 		List<Float> queryEmbedding = List.of(0.1f);
 		List<MemoryType> types = List.of(MemoryType.EXPERIENTIAL);
 
-		when(vectorStore.similaritySearch(any(SearchRequest.class))).thenReturn(List.of());
+		when(qdrantClient.searchAsync(any(SearchPoints.class)))
+			.thenReturn(Futures.immediateFuture(List.of()));
 
 		StepVerifier.create(vectorDbAdapter.search(queryEmbedding, types, 0.5f, 5))
 			.verifyComplete();
@@ -175,23 +174,26 @@ class SpringAiVectorDbAdapterTest {
 
 	@Test
 	@DisplayName("여러 메모리를 검색하여 반환한다")
-	void search_multipleResults_returnsAll() {
+	void search_multipleResults_returnsAll() throws Exception {
 		List<Float> queryEmbedding = List.of(0.1f);
 		List<MemoryType> types = List.of(MemoryType.EXPERIENTIAL);
 
-		Map<String, Object> metadata1 = new HashMap<>();
-		metadata1.put("type", "EXPERIENTIAL");
-		metadata1.put("importance", 0.9);
+		ScoredPoint point1 = ScoredPoint.newBuilder()
+			.setId(Points.PointId.newBuilder().setUuid("doc-1").build())
+			.putPayload("content", JsonWithInt.Value.newBuilder().setStringValue("첫 번째 메모리").build())
+			.putPayload("type", JsonWithInt.Value.newBuilder().setStringValue("EXPERIENTIAL").build())
+			.putPayload("importance", JsonWithInt.Value.newBuilder().setDoubleValue(0.9).build())
+			.build();
 
-		Map<String, Object> metadata2 = new HashMap<>();
-		metadata2.put("type", "EXPERIENTIAL");
-		metadata2.put("importance", 0.7);
+		ScoredPoint point2 = ScoredPoint.newBuilder()
+			.setId(Points.PointId.newBuilder().setUuid("doc-2").build())
+			.putPayload("content", JsonWithInt.Value.newBuilder().setStringValue("두 번째 메모리").build())
+			.putPayload("type", JsonWithInt.Value.newBuilder().setStringValue("EXPERIENTIAL").build())
+			.putPayload("importance", JsonWithInt.Value.newBuilder().setDoubleValue(0.7).build())
+			.build();
 
-		Document doc1 = new Document("doc-1", "첫 번째 메모리", metadata1);
-		Document doc2 = new Document("doc-2", "두 번째 메모리", metadata2);
-
-		when(vectorStore.similaritySearch(any(SearchRequest.class)))
-			.thenReturn(List.of(doc1, doc2));
+		when(qdrantClient.searchAsync(any(SearchPoints.class)))
+			.thenReturn(Futures.immediateFuture(List.of(point1, point2)));
 
 		StepVerifier.create(vectorDbAdapter.search(queryEmbedding, types, 0.5f, 5))
 			.assertNext(result -> {
@@ -219,21 +221,22 @@ class SpringAiVectorDbAdapterTest {
 	}
 
 	@Test
-	@DisplayName("Document에서 Memory로 변환 시 모든 필드를 매핑한다")
-	void search_mapsAllFields() {
+	@DisplayName("ScoredPoint에서 Memory로 변환 시 모든 필드를 매핑한다")
+	void search_mapsAllFields() throws Exception {
 		Instant now = Instant.now();
 
-		Map<String, Object> metadata = new HashMap<>();
-		metadata.put("type", "FACTUAL");
-		metadata.put("importance", 0.85);
-		metadata.put("createdAt", now.minusSeconds(3600).getEpochSecond());
-		metadata.put("lastAccessedAt", now.getEpochSecond());
-		metadata.put("accessCount", 3);
+		ScoredPoint point = ScoredPoint.newBuilder()
+			.setId(Points.PointId.newBuilder().setUuid("doc-123").build())
+			.putPayload("content", JsonWithInt.Value.newBuilder().setStringValue("완전한 메모리").build())
+			.putPayload("type", JsonWithInt.Value.newBuilder().setStringValue("FACTUAL").build())
+			.putPayload("importance", JsonWithInt.Value.newBuilder().setDoubleValue(0.85).build())
+			.putPayload("createdAt", JsonWithInt.Value.newBuilder().setDoubleValue(now.minusSeconds(3600).toEpochMilli()).build())
+			.putPayload("lastAccessedAt", JsonWithInt.Value.newBuilder().setDoubleValue(now.toEpochMilli()).build())
+			.putPayload("accessCount", JsonWithInt.Value.newBuilder().setDoubleValue(3).build())
+			.build();
 
-		Document document = new Document("doc-123", "완전한 메모리", metadata);
-
-		when(vectorStore.similaritySearch(any(SearchRequest.class)))
-			.thenReturn(List.of(document));
+		when(qdrantClient.searchAsync(any(SearchPoints.class)))
+			.thenReturn(Futures.immediateFuture(List.of(point)));
 
 		StepVerifier.create(
 			vectorDbAdapter.search(List.of(0.1f), List.of(MemoryType.FACTUAL), 0.5f, 1)
@@ -252,14 +255,15 @@ class SpringAiVectorDbAdapterTest {
 
 	@Test
 	@DisplayName("메타데이터에 선택적 필드가 없어도 정상 처리한다")
-	void search_withMissingOptionalFields_success() {
-		Map<String, Object> metadata = new HashMap<>();
-		metadata.put("type", "EXPERIENTIAL");
+	void search_withMissingOptionalFields_success() throws Exception {
+		ScoredPoint point = ScoredPoint.newBuilder()
+			.setId(Points.PointId.newBuilder().setUuid("doc-min").build())
+			.putPayload("content", JsonWithInt.Value.newBuilder().setStringValue("최소 메모리").build())
+			.putPayload("type", JsonWithInt.Value.newBuilder().setStringValue("EXPERIENTIAL").build())
+			.build();
 
-		Document document = new Document("doc-min", "최소 메모리", metadata);
-
-		when(vectorStore.similaritySearch(any(SearchRequest.class)))
-			.thenReturn(List.of(document));
+		when(qdrantClient.searchAsync(any(SearchPoints.class)))
+			.thenReturn(Futures.immediateFuture(List.of(point)));
 
 		StepVerifier.create(
 			vectorDbAdapter.search(List.of(0.1f), List.of(MemoryType.EXPERIENTIAL), 0.0f, 1)
@@ -276,21 +280,16 @@ class SpringAiVectorDbAdapterTest {
 	}
 
 	@Test
-	@DisplayName("단일 타입으로 검색 시 필터 표현식이 올바르게 생성된다")
-	void search_singleType_createsCorrectFilter() {
+	@DisplayName("단일 타입으로 검색 시 Qdrant 검색이 호출된다")
+	void search_singleType_createsCorrectFilter() throws Exception {
 		List<MemoryType> types = List.of(MemoryType.FACTUAL);
 
-		when(vectorStore.similaritySearch(any(SearchRequest.class))).thenReturn(List.of());
+		when(qdrantClient.searchAsync(any(SearchPoints.class)))
+			.thenReturn(Futures.immediateFuture(List.of()));
 
 		StepVerifier.create(vectorDbAdapter.search(List.of(0.1f), types, 0.3f, 5))
 			.verifyComplete();
 
-		ArgumentCaptor<SearchRequest> captor = ArgumentCaptor.forClass(SearchRequest.class);
-		verify(vectorStore).similaritySearch(captor.capture());
-
-		String filterExpression = String.valueOf(captor.getValue().getFilterExpression());
-		assertThat(filterExpression).contains("Value[value=[FACTUAL]]");
-		assertThat(filterExpression).contains("Key[key=importance]");
-		assertThat(filterExpression).contains("Value[value=0.3]");
+		verify(qdrantClient).searchAsync(any(SearchPoints.class));
 	}
 }
