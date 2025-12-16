@@ -14,11 +14,12 @@ import org.springframework.stereotype.Component;
 
 import com.study.webflux.rag.domain.model.llm.CompletionRequest;
 import com.study.webflux.rag.domain.model.llm.Message;
-import com.study.webflux.rag.domain.model.llm.MessageRole;
 import com.study.webflux.rag.domain.port.out.LlmPort;
+
 
 import reactor.core.publisher.Flux;
 import reactor.core.publisher.Mono;
+import reactor.core.scheduler.Schedulers;
 
 @Primary
 @Component
@@ -49,7 +50,7 @@ public class SpringAiLlmAdapter implements LlmPort {
 			chatClient.prompt(prompt)
 				.call()
 				.content()
-		);
+        ).subscribeOn(Schedulers.boundedElastic());
 	}
 
 	private List<org.springframework.ai.chat.messages.Message> convertMessages(List<Message> messages) {
