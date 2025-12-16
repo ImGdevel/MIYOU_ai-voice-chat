@@ -1,8 +1,5 @@
 package com.study.webflux.rag.application.controller;
 
-import com.study.webflux.rag.application.dto.RagDialogueRequest;
-import com.study.webflux.rag.domain.port.in.DialoguePipelineUseCase;
-import jakarta.validation.Valid;
 import org.springframework.core.io.buffer.DataBuffer;
 import org.springframework.core.io.buffer.DataBufferFactory;
 import org.springframework.core.io.buffer.DefaultDataBufferFactory;
@@ -12,6 +9,10 @@ import org.springframework.web.bind.annotation.PostMapping;
 import org.springframework.web.bind.annotation.RequestBody;
 import org.springframework.web.bind.annotation.RequestMapping;
 import org.springframework.web.bind.annotation.RestController;
+
+import com.study.webflux.rag.application.dto.RagDialogueRequest;
+import com.study.webflux.rag.domain.port.in.DialoguePipelineUseCase;
+import jakarta.validation.Valid;
 import reactor.core.publisher.Flux;
 
 @Validated

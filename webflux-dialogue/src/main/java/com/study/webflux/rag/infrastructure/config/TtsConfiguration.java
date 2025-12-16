@@ -1,5 +1,13 @@
 package com.study.webflux.rag.infrastructure.config;
 
+import java.util.List;
+import java.util.stream.Collectors;
+
+import org.springframework.context.annotation.Bean;
+import org.springframework.context.annotation.Configuration;
+import org.springframework.context.annotation.Primary;
+import org.springframework.web.reactive.function.client.WebClient;
+
 import com.study.webflux.rag.domain.model.voice.Voice;
 import com.study.webflux.rag.domain.port.out.TtsPort;
 import com.study.webflux.rag.infrastructure.adapter.tts.LoadBalancedSupertoneTtsAdapter;
@@ -7,12 +15,6 @@ import com.study.webflux.rag.infrastructure.adapter.tts.SupertoneConfig;
 import com.study.webflux.rag.infrastructure.adapter.tts.loadbalancer.TtsEndpoint;
 import com.study.webflux.rag.infrastructure.adapter.tts.loadbalancer.TtsLoadBalancer;
 import com.study.webflux.rag.infrastructure.config.properties.RagDialogueProperties;
-import java.util.List;
-import java.util.stream.Collectors;
-import org.springframework.context.annotation.Bean;
-import org.springframework.context.annotation.Configuration;
-import org.springframework.context.annotation.Primary;
-import org.springframework.web.reactive.function.client.WebClient;
 
 @Configuration
 public class TtsConfiguration {

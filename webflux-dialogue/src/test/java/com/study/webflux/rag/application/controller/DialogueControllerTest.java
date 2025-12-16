@@ -1,20 +1,22 @@
 package com.study.webflux.rag.application.controller;
 
-import static org.mockito.ArgumentMatchers.eq;
-import static org.mockito.Mockito.verify;
-import static org.mockito.Mockito.when;
-
-import com.study.webflux.rag.application.dto.RagDialogueRequest;
-import com.study.webflux.rag.domain.port.in.DialoguePipelineUseCase;
 import java.time.Instant;
 import java.util.Base64;
-import org.junit.jupiter.api.Test;
+
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.boot.test.autoconfigure.web.reactive.WebFluxTest;
 import org.springframework.http.MediaType;
 import org.springframework.test.context.bean.override.mockito.MockitoBean;
 import org.springframework.test.web.reactive.server.WebTestClient;
+
+import com.study.webflux.rag.application.dto.RagDialogueRequest;
+import com.study.webflux.rag.domain.port.in.DialoguePipelineUseCase;
+import org.junit.jupiter.api.Test;
 import reactor.core.publisher.Flux;
+
+import static org.mockito.ArgumentMatchers.eq;
+import static org.mockito.Mockito.verify;
+import static org.mockito.Mockito.when;
 
 @WebFluxTest(DialogueController.class)
 class DialogueControllerTest {

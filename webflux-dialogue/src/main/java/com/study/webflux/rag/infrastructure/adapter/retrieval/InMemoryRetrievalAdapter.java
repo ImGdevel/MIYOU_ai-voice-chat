@@ -1,17 +1,20 @@
 package com.study.webflux.rag.infrastructure.adapter.retrieval;
 
-import com.study.webflux.rag.domain.model.memory.MemoryRetrievalResult;
-import com.study.webflux.rag.domain.model.rag.RetrievalContext;
-import com.study.webflux.rag.domain.model.rag.RetrievalDocument;
-import com.study.webflux.rag.domain.port.out.ConversationRepository;
-import com.study.webflux.rag.domain.port.out.RetrievalPort;
 import java.util.Arrays;
 import java.util.HashSet;
 import java.util.List;
 import java.util.Set;
 import java.util.stream.Collectors;
+
 import lombok.RequiredArgsConstructor;
+
 import org.springframework.stereotype.Component;
+
+import com.study.webflux.rag.domain.model.memory.MemoryRetrievalResult;
+import com.study.webflux.rag.domain.model.rag.RetrievalContext;
+import com.study.webflux.rag.domain.model.rag.RetrievalDocument;
+import com.study.webflux.rag.domain.port.out.ConversationRepository;
+import com.study.webflux.rag.domain.port.out.RetrievalPort;
 import reactor.core.publisher.Mono;
 
 @Component
