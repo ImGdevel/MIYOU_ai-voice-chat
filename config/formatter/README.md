@@ -96,6 +96,39 @@ public record RagDialogueRequest(
 - `build.gradle`: Spotless 플러그인 설정
 - `config/formatter/eclipse-formatter.xml`: Eclipse 포맷터 상세 설정
 
+## Git Hooks (Husky)
+
+프로젝트에는 자동 코드 품질 관리를 위한 Git 훅이 설정되어 있습니다.
+
+### Pre-commit Hook
+커밋 시 자동으로 다음 작업을 수행합니다:
+- 코드 포맷팅 (`spotlessApply`)
+- Import 정리
+- 포맷팅된 파일을 staging area에 자동 추가
+
+```bash
+# .husky/pre-commit
+./gradlew spotlessApply
+git add -u
+```
+
+### Pre-push Hook
+Push 시 자동으로 다음 작업을 수행합니다:
+- 모든 테스트 실행
+- 테스트 실패 시 push 취소
+
+```bash
+# .husky/pre-push
+./gradlew test
+```
+
+### Hook 비활성화
+특별한 경우 hook을 건너뛰려면:
+```bash
+git commit --no-verify -m "message"
+git push --no-verify
+```
+
 ## 특정 코드 블록 포맷 제외
 
 포맷을 적용하지 않으려는 코드가 있다면:
@@ -109,3 +142,4 @@ public record RagDialogueRequest(
 ## 변경 이력
 
 - 2025-12-16: `io.spring.javaformat`에서 Spotless로 마이그레이션
+- 2025-12-16: Git hooks 설정 (pre-commit: 포맷팅, pre-push: 테스트)

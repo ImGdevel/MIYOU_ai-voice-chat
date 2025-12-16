@@ -1,5 +1,12 @@
 package com.study.webflux.rag.application.service;
 
+import java.util.List;
+
+import lombok.RequiredArgsConstructor;
+import lombok.extern.slf4j.Slf4j;
+
+import org.springframework.stereotype.Service;
+
 import com.study.webflux.rag.domain.model.conversation.ConversationTurn;
 import com.study.webflux.rag.domain.model.memory.ExtractedMemory;
 import com.study.webflux.rag.domain.model.memory.Memory;
@@ -9,10 +16,6 @@ import com.study.webflux.rag.domain.port.out.ConversationRepository;
 import com.study.webflux.rag.domain.port.out.EmbeddingPort;
 import com.study.webflux.rag.domain.port.out.MemoryExtractionPort;
 import com.study.webflux.rag.domain.port.out.VectorMemoryPort;
-import java.util.List;
-import lombok.RequiredArgsConstructor;
-import lombok.extern.slf4j.Slf4j;
-import org.springframework.stereotype.Service;
 import reactor.core.publisher.Mono;
 
 /**

@@ -1,13 +1,7 @@
 package com.study.webflux.rag.application.service;
 
-import static org.mockito.ArgumentMatchers.any;
-import static org.mockito.ArgumentMatchers.anyInt;
-import static org.mockito.ArgumentMatchers.anyString;
-import static org.mockito.ArgumentMatchers.eq;
-import static org.mockito.Mockito.atLeastOnce;
-import static org.mockito.Mockito.lenient;
-import static org.mockito.Mockito.verify;
-import static org.mockito.Mockito.when;
+import java.util.Base64;
+import java.util.List;
 
 import com.study.webflux.rag.application.monitoring.DialoguePipelineMonitor;
 import com.study.webflux.rag.domain.model.conversation.ConversationTurn;
@@ -21,8 +15,6 @@ import com.study.webflux.rag.domain.port.out.LlmPort;
 import com.study.webflux.rag.domain.port.out.RetrievalPort;
 import com.study.webflux.rag.domain.port.out.TtsPort;
 import com.study.webflux.rag.domain.service.SentenceAssembler;
-import java.util.Base64;
-import java.util.List;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.extension.ExtendWith;
@@ -31,6 +23,15 @@ import org.mockito.junit.jupiter.MockitoExtension;
 import reactor.core.publisher.Flux;
 import reactor.core.publisher.Mono;
 import reactor.test.StepVerifier;
+
+import static org.mockito.ArgumentMatchers.any;
+import static org.mockito.ArgumentMatchers.anyInt;
+import static org.mockito.ArgumentMatchers.anyString;
+import static org.mockito.ArgumentMatchers.eq;
+import static org.mockito.Mockito.atLeastOnce;
+import static org.mockito.Mockito.lenient;
+import static org.mockito.Mockito.verify;
+import static org.mockito.Mockito.when;
 
 @ExtendWith(MockitoExtension.class)
 class DialoguePipelineServiceTest {

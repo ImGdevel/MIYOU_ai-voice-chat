@@ -1,12 +1,14 @@
 package com.study.webflux.rag.domain.service;
 
+import java.util.Map;
+import java.util.stream.Collectors;
+
+import org.springframework.stereotype.Component;
+
 import com.study.webflux.rag.domain.model.conversation.ConversationContext;
 import com.study.webflux.rag.domain.model.rag.RetrievalContext;
 import com.study.webflux.rag.domain.port.out.PromptTemplatePort;
 import com.study.webflux.rag.infrastructure.template.FileBasedPromptTemplate;
-import java.util.Map;
-import java.util.stream.Collectors;
-import org.springframework.stereotype.Component;
 
 @Component
 public class PromptBuilder implements PromptTemplatePort {

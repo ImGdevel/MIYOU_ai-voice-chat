@@ -1,12 +1,13 @@
 package com.study.webflux.rag.infrastructure.config;
 
+import org.springframework.context.annotation.Bean;
+import org.springframework.context.annotation.Configuration;
+
 import com.study.webflux.rag.domain.model.voice.AudioFormat;
 import com.study.webflux.rag.domain.model.voice.Voice;
 import com.study.webflux.rag.domain.model.voice.VoiceSettings;
 import com.study.webflux.rag.domain.model.voice.VoiceStyle;
 import com.study.webflux.rag.infrastructure.config.properties.RagDialogueProperties;
-import org.springframework.context.annotation.Bean;
-import org.springframework.context.annotation.Configuration;
 
 @Configuration
 public class DialogueVoiceConfiguration {

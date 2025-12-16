@@ -1,5 +1,11 @@
 package com.study.webflux.rag.infrastructure.adapter.memory;
 
+import java.util.List;
+
+import lombok.extern.slf4j.Slf4j;
+
+import org.springframework.stereotype.Component;
+
 import com.fasterxml.jackson.core.type.TypeReference;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import com.study.webflux.rag.domain.model.conversation.ConversationTurn;
@@ -9,9 +15,6 @@ import com.study.webflux.rag.domain.model.memory.ExtractedMemory;
 import com.study.webflux.rag.domain.model.memory.MemoryExtractionContext;
 import com.study.webflux.rag.domain.port.out.LlmPort;
 import com.study.webflux.rag.domain.port.out.MemoryExtractionPort;
-import java.util.List;
-import lombok.extern.slf4j.Slf4j;
-import org.springframework.stereotype.Component;
 import reactor.core.publisher.Flux;
 
 @Slf4j

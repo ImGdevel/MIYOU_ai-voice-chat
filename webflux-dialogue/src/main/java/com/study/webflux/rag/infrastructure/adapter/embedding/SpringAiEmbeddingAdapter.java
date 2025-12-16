@@ -1,13 +1,15 @@
 package com.study.webflux.rag.infrastructure.adapter.embedding;
 
-import com.study.webflux.rag.domain.model.memory.MemoryEmbedding;
-import com.study.webflux.rag.domain.port.out.EmbeddingPort;
 import java.util.List;
+
 import org.springframework.ai.embedding.EmbeddingModel;
 import org.springframework.ai.embedding.EmbeddingRequest;
 import org.springframework.ai.embedding.EmbeddingResponse;
 import org.springframework.context.annotation.Primary;
 import org.springframework.stereotype.Component;
+
+import com.study.webflux.rag.domain.model.memory.MemoryEmbedding;
+import com.study.webflux.rag.domain.port.out.EmbeddingPort;
 import reactor.core.publisher.Mono;
 import reactor.core.scheduler.Schedulers;
 

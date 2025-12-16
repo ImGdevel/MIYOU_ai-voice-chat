@@ -1,7 +1,8 @@
 package com.study.webflux.rag.domain.model.memory;
 
-import com.study.webflux.rag.domain.model.conversation.ConversationTurn;
 import java.util.List;
+
+import com.study.webflux.rag.domain.model.conversation.ConversationTurn;
 
 public record MemoryExtractionContext(
 	List<ConversationTurn> recentConversations,

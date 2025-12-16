@@ -1,15 +1,18 @@
 package com.study.webflux.rag.application.service;
 
+import java.util.Comparator;
+import java.util.List;
+
+import lombok.extern.slf4j.Slf4j;
+
+import org.springframework.stereotype.Service;
+
 import com.study.webflux.rag.domain.model.memory.Memory;
 import com.study.webflux.rag.domain.model.memory.MemoryRetrievalResult;
 import com.study.webflux.rag.domain.model.memory.MemoryType;
 import com.study.webflux.rag.domain.port.out.EmbeddingPort;
 import com.study.webflux.rag.domain.port.out.VectorMemoryPort;
 import com.study.webflux.rag.infrastructure.adapter.memory.MemoryExtractionConfig;
-import java.util.Comparator;
-import java.util.List;
-import lombok.extern.slf4j.Slf4j;
-import org.springframework.stereotype.Service;
 import reactor.core.publisher.Mono;
 
 /**

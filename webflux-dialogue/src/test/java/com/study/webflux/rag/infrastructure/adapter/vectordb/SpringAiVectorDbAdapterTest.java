@@ -1,10 +1,11 @@
 package com.study.webflux.rag.infrastructure.adapter.vectordb;
 
-import static org.assertj.core.api.Assertions.assertThat;
-import static org.mockito.ArgumentMatchers.any;
-import static org.mockito.ArgumentMatchers.anyList;
-import static org.mockito.Mockito.verify;
-import static org.mockito.Mockito.when;
+import java.time.Instant;
+import java.util.List;
+import java.util.Map;
+
+import org.springframework.ai.document.Document;
+import org.springframework.ai.vectorstore.VectorStore;
 
 import com.google.common.util.concurrent.Futures;
 import com.study.webflux.rag.domain.model.memory.Memory;
@@ -14,9 +15,6 @@ import io.qdrant.client.grpc.JsonWithInt;
 import io.qdrant.client.grpc.Points;
 import io.qdrant.client.grpc.Points.ScoredPoint;
 import io.qdrant.client.grpc.Points.SearchPoints;
-import java.time.Instant;
-import java.util.List;
-import java.util.Map;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Test;
@@ -24,9 +22,13 @@ import org.junit.jupiter.api.extension.ExtendWith;
 import org.mockito.ArgumentCaptor;
 import org.mockito.Mock;
 import org.mockito.junit.jupiter.MockitoExtension;
-import org.springframework.ai.document.Document;
-import org.springframework.ai.vectorstore.VectorStore;
 import reactor.test.StepVerifier;
+
+import static org.assertj.core.api.Assertions.assertThat;
+import static org.mockito.ArgumentMatchers.any;
+import static org.mockito.ArgumentMatchers.anyList;
+import static org.mockito.Mockito.verify;
+import static org.mockito.Mockito.when;
 
 @ExtendWith(MockitoExtension.class)
 class SpringAiVectorDbAdapterTest {

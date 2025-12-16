@@ -1,6 +1,12 @@
 #!/usr/bin/env sh
 
-echo "Husky pre-push 훅이 실행됩니다."
+echo "🧪 테스트를 시작합니다..."
 
-echo "✅ pre-push"
-exit 0
+./gradlew test
+
+if [ $? -ne 0 ]; then
+  echo "❌ 테스트 실패 - push가 취소되었습니다"
+  exit 1
+fi
+
+echo "✅ 모든 테스트 통과"
