@@ -49,4 +49,9 @@ public class DialogueController {
 	public Flux<DataBuffer> ragDialogueAudio(@Valid @RequestBody RagDialogueRequest request) {
 		return ragDialogueAudioWav(request);
 	}
+
+	@PostMapping(path = "/text", produces = MediaType.TEXT_EVENT_STREAM_VALUE)
+	public Flux<String> ragDialogueText(@Valid @RequestBody RagDialogueRequest request) {
+		return dialoguePipelineUseCase.executeTextOnly(request.text());
+	}
 }
