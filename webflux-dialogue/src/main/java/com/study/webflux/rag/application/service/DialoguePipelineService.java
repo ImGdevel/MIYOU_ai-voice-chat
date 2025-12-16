@@ -76,6 +76,69 @@ public class DialoguePipelineService implements DialoguePipelineUseCase {
 		return executeAudioStreaming(text).map(bytes -> Base64.getEncoder().encodeToString(bytes));
 	}
 
+	@Override
+	public Flux<String> executeTextOnly(String text) {
+		DialoguePipelineTracker tracker = pipelineMonitor.create(text);
+
+		Mono<ConversationTurn> queryTurn = tracker
+			.traceMono(DialoguePipelineStage.QUERY_PERSISTENCE, () -> saveQuery(text));
+
+		Mono<MemoryRetrievalResult> memoryResult = queryTurn
+			.flatMap(turn -> tracker.traceMono(DialoguePipelineStage.MEMORY_RETRIEVAL,
+				() -> retrievalPort.retrieveMemories(text, 5)))
+			.doOnNext(result -> tracker.recordStageAttribute(DialoguePipelineStage.MEMORY_RETRIEVAL,
+				"memoryCount",
+				result.totalCount()));
+
+		Mono<RetrievalContext> retrievalContext = queryTurn
+			.flatMap(turn -> tracker.traceMono(DialoguePipelineStage.RETRIEVAL,
+				() -> retrievalPort.retrieve(text, 3)))
+			.doOnNext(context -> tracker.recordStageAttribute(DialoguePipelineStage.RETRIEVAL,
+				"documentCount",
+				context.documentCount()));
+
+		Flux<String> llmTokens = Mono
+			.zip(retrievalContext, memoryResult, loadConversationHistory(), queryTurn)
+			.flatMapMany(tuple -> {
+				RetrievalContext context = tuple.getT1();
+				MemoryRetrievalResult memories = tuple.getT2();
+				ConversationContext conversationContext = tuple.getT3();
+				ConversationTurn currentTurn = tuple.getT4();
+
+				return tracker.traceMono(DialoguePipelineStage.PROMPT_BUILDING,
+					() -> Mono.fromCallable(() -> buildMessages(context,
+						memories,
+						conversationContext,
+						currentTurn.query())))
+					.flatMapMany(messages -> {
+						CompletionRequest request = CompletionRequest
+							.withMessages(messages, "gpt-4o-mini", true);
+						tracker.recordStageAttribute(DialoguePipelineStage.LLM_COMPLETION,
+							"model",
+							request.model());
+						return tracker.traceFlux(DialoguePipelineStage.LLM_COMPLETION,
+							() -> llmPort.streamCompletion(request));
+					});
+			}).subscribeOn(Schedulers.boundedElastic()).doOnNext(token -> tracker
+				.incrementStageCounter(DialoguePipelineStage.LLM_COMPLETION, "tokenCount", 1));
+
+		Flux<String> textStream = llmTokens.cache();
+
+		textStream.collectList().flatMap(tokens -> {
+			String fullResponse = String.join("", tokens);
+			return queryTurn
+				.flatMap(turn -> conversationRepository.save(turn.withResponse(fullResponse)));
+		}).flatMap(turn -> conversationCounterPort.increment())
+			.filter(count -> count % conversationThreshold == 0)
+			.flatMap(count -> memoryExtractionService.checkAndExtract())
+			.subscribeOn(Schedulers.boundedElastic()).onErrorResume(error -> {
+				log.warn("파이프라인 {}의 메모리 추출 실패: {}", tracker.pipelineId(), error.getMessage());
+				return Mono.empty();
+			}).subscribe();
+
+		return tracker.attachLifecycle(textStream);
+	}
+
 	/**
 	 * 대화 파이프라인을 실행하고 오디오 스트림을 반환합니다.
 	 *
