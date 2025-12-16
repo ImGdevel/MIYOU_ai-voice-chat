@@ -1,11 +1,5 @@
 package com.study.webflux.rag.infrastructure.adapter.memory;
 
-import java.util.List;
-
-import lombok.RequiredArgsConstructor;
-import lombok.extern.slf4j.Slf4j;
-import org.springframework.stereotype.Component;
-
 import com.fasterxml.jackson.core.type.TypeReference;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import com.study.webflux.rag.domain.model.conversation.ConversationTurn;
@@ -15,9 +9,10 @@ import com.study.webflux.rag.domain.model.memory.ExtractedMemory;
 import com.study.webflux.rag.domain.model.memory.MemoryExtractionContext;
 import com.study.webflux.rag.domain.port.out.LlmPort;
 import com.study.webflux.rag.domain.port.out.MemoryExtractionPort;
-
+import java.util.List;
+import lombok.extern.slf4j.Slf4j;
+import org.springframework.stereotype.Component;
 import reactor.core.publisher.Flux;
-
 
 @Slf4j
 @Component
@@ -27,11 +22,9 @@ public class LlmMemoryExtractionAdapter implements MemoryExtractionPort {
 	private final ObjectMapper objectMapper;
 	private final String extractionModel;
 
-	public LlmMemoryExtractionAdapter(
-		LlmPort llmPort,
+	public LlmMemoryExtractionAdapter(LlmPort llmPort,
 		ObjectMapper objectMapper,
-		MemoryExtractionConfig config
-	) {
+		MemoryExtractionConfig config) {
 		this.llmPort = llmPort;
 		this.objectMapper = objectMapper;
 		this.extractionModel = config.model();
@@ -41,19 +34,12 @@ public class LlmMemoryExtractionAdapter implements MemoryExtractionPort {
 	public Flux<ExtractedMemory> extractMemories(MemoryExtractionContext context) {
 		String prompt = buildExtractionPrompt(context);
 
-		List<Message> messages = List.of(
-			Message.system(getSystemPrompt()),
-			Message.user(prompt)
-		);
+		List<Message> messages = List.of(Message.system(getSystemPrompt()), Message.user(prompt));
 
-		CompletionRequest request = CompletionRequest.withMessages(
-			messages,
-			extractionModel,
-			false
-		);
+		CompletionRequest request = CompletionRequest
+			.withMessages(messages, extractionModel, false);
 
-		return llmPort.complete(request)
-			.flatMapMany(this::parseExtractedMemories);
+		return llmPort.complete(request).flatMapMany(this::parseExtractedMemories);
 	}
 
 	private String getSystemPrompt() {
@@ -72,12 +58,12 @@ public class LlmMemoryExtractionAdapter implements MemoryExtractionPort {
 
 			Output ONLY valid JSON array:
 			[
-			  {
-			    "type": "EXPERIENTIAL",
-			    "content": "clear, concise memory statement",
-			    "importance": 0.8,
-			    "reasoning": "why this matters"
-			  }
+			{
+				"type": "EXPERIENTIAL",
+				"content": "clear, concise memory statement",
+				"importance": 0.8,
+				"reasoning": "why this matters"
+			}
 			]
 
 			Return empty array [] if no new memories to extract.
@@ -98,17 +84,13 @@ public class LlmMemoryExtractionAdapter implements MemoryExtractionPort {
 		if (!context.existingMemories().isEmpty()) {
 			prompt.append("\nExisting Memories (for deduplication):\n");
 			context.existingMemories().forEach(memory -> {
-				prompt.append("- [")
-					.append(memory.type())
-					.append(", importance: ");
+				prompt.append("- [").append(memory.type()).append(", importance: ");
 				if (memory.importance() != null) {
 					prompt.append(String.format("%.2f", memory.importance()));
 				} else {
 					prompt.append("N/A");
 				}
-				prompt.append("] ")
-					.append(memory.content())
-					.append("\n");
+				prompt.append("] ").append(memory.content()).append("\n");
 			});
 		}
 
@@ -126,16 +108,13 @@ public class LlmMemoryExtractionAdapter implements MemoryExtractionPort {
 			}
 			cleaned = cleaned.trim();
 
-			List<MemoryExtractionDto> dtos = objectMapper.readValue(
-				cleaned,
+			List<MemoryExtractionDto> dtos = objectMapper.readValue(cleaned,
 				new TypeReference<List<MemoryExtractionDto>>() {
-				}
-			);
+				});
 
-			return Flux.fromIterable(dtos)
-				.map(MemoryExtractionDto::toExtractedMemory);
+			return Flux.fromIterable(dtos).map(MemoryExtractionDto::toExtractedMemory);
 		} catch (Exception e) {
-            log.warn("메모리 추출 응답 파싱 실패: {}", jsonResponse, e);
+			log.warn("메모리 추출 응답 파싱 실패: {}", jsonResponse, e);
 			return Flux.empty();
 		}
 	}

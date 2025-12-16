@@ -2,11 +2,9 @@ package com.study.webflux.rag.infrastructure.adapter.tts.loadbalancer;
 
 import java.time.Duration;
 import java.time.Instant;
-import java.util.Comparator;
 import java.util.List;
 import java.util.concurrent.atomic.AtomicInteger;
 import java.util.function.Consumer;
-
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.springframework.web.reactive.function.client.WebClientResponseException;
@@ -14,10 +12,8 @@ import org.springframework.web.reactive.function.client.WebClientResponseExcepti
 /**
  * TTS 엔드포인트 로드 밸런서
  *
- * 아래와 같은 전략을 사용하여 TTS 엔드포인트를 선택합니다.
- * Health-aware: Circuit breaker 상태의 endpoint 자동 제외 및 복구
- * Least-loaded: 활성 요청 수가 가장 적은 endpoint 우선 선택
- * Round-robin: 동일 부하일 때 순차 분배
+ * 아래와 같은 전략을 사용하여 TTS 엔드포인트를 선택합니다. Health-aware: Circuit breaker 상태의 endpoint 자동 제외 및 복구 Least-loaded: 활성 요청 수가 가장 적은
+ * endpoint 우선 선택 Round-robin: 동일 부하일 때 순차 분배
  */
 public class TtsLoadBalancer {
 	private static final Logger log = LoggerFactory.getLogger(TtsLoadBalancer.class);
@@ -97,7 +93,7 @@ public class TtsLoadBalancer {
 			if (endpoint.getHealth() == TtsEndpoint.EndpointHealth.TEMPORARY_FAILURE
 				&& endpoint.getCircuitOpenedAt() != null
 				&& Duration.between(endpoint.getCircuitOpenedAt(), now)
-				.compareTo(TEMPORARY_FAILURE_RECOVERY_INTERVAL) > 0) {
+					.compareTo(TEMPORARY_FAILURE_RECOVERY_INTERVAL) > 0) {
 				log.info("엔드포인트 {} 일시적 장애 복구 시도", endpoint.getId());
 				endpoint.setHealth(TtsEndpoint.EndpointHealth.HEALTHY);
 			}
@@ -133,11 +129,8 @@ public class TtsLoadBalancer {
 		endpoint.setHealth(TtsEndpoint.EndpointHealth.PERMANENT_FAILURE);
 
 		if (failureEventPublisher != null) {
-			TtsEndpointFailureEvent event = new TtsEndpointFailureEvent(
-				endpoint.getId(),
-				"PERMANENT_FAILURE",
-				description
-			);
+			TtsEndpointFailureEvent event = new TtsEndpointFailureEvent(endpoint.getId(),
+				"PERMANENT_FAILURE", description);
 			failureEventPublisher.accept(event);
 		}
 	}
@@ -151,7 +144,8 @@ public class TtsLoadBalancer {
 	private String getErrorDescription(Throwable error) {
 		if (error instanceof WebClientResponseException webClientError) {
 			int statusCode = webClientError.getStatusCode().value();
-			return String.format("[%d] %s", statusCode, TtsErrorClassifier.getErrorDescription(statusCode));
+			return String
+				.format("[%d] %s", statusCode, TtsErrorClassifier.getErrorDescription(statusCode));
 		}
 		return error.getMessage() != null ? error.getMessage() : "알 수 없는 오류";
 	}

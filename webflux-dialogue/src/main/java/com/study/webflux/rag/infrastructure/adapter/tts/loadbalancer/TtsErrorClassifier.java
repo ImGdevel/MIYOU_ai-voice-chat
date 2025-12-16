@@ -34,7 +34,9 @@ public class TtsErrorClassifier {
 			case 408 -> TtsEndpoint.FailureType.TEMPORARY;
 			case 429 -> TtsEndpoint.FailureType.TEMPORARY;
 			case 500 -> TtsEndpoint.FailureType.TEMPORARY;
-			default -> statusCode >= 500 ? TtsEndpoint.FailureType.TEMPORARY : TtsEndpoint.FailureType.PERMANENT;
+			default -> statusCode >= 500
+				? TtsEndpoint.FailureType.TEMPORARY
+				: TtsEndpoint.FailureType.PERMANENT;
 		};
 	}
 

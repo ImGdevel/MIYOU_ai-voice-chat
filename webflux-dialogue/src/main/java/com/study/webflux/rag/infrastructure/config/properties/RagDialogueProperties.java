@@ -1,12 +1,10 @@
 package com.study.webflux.rag.infrastructure.config.properties;
 
-import org.springframework.boot.context.properties.ConfigurationProperties;
-import org.springframework.stereotype.Component;
-
 import com.study.webflux.rag.infrastructure.config.constants.DialogueConstants;
-
 import java.util.ArrayList;
 import java.util.List;
+import org.springframework.boot.context.properties.ConfigurationProperties;
+import org.springframework.stereotype.Component;
 
 @Component
 @ConfigurationProperties(prefix = "rag.dialogue")

@@ -41,7 +41,8 @@ public class TtsEndpoint {
 
 	public void setHealth(EndpointHealth health) {
 		this.health = health;
-		if (health == EndpointHealth.TEMPORARY_FAILURE || health == EndpointHealth.PERMANENT_FAILURE) {
+		if (health == EndpointHealth.TEMPORARY_FAILURE
+			|| health == EndpointHealth.PERMANENT_FAILURE) {
 			this.circuitOpenedAt = Instant.now();
 		} else if (health == EndpointHealth.HEALTHY) {
 			this.circuitOpenedAt = null;

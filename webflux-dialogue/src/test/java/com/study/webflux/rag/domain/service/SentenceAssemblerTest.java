@@ -2,7 +2,6 @@ package com.study.webflux.rag.domain.service;
 
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
-
 import reactor.core.publisher.Flux;
 import reactor.test.StepVerifier;
 
@@ -21,39 +20,26 @@ class SentenceAssemblerTest {
 
 		Flux<String> result = sentenceAssembler.assemble(tokens);
 
-		StepVerifier.create(result)
-			.expectNext("Hello world.")
-			.verifyComplete();
+		StepVerifier.create(result).expectNext("Hello world.").verifyComplete();
 	}
 
 	@Test
 	void assemble_shouldHandleMultipleSentences() {
-		Flux<String> tokens = Flux.just(
-			"First", " sentence", ".",
-			" Second", " sentence", "!"
-		);
+		Flux<String> tokens = Flux.just("First", " sentence", ".", " Second", " sentence", "!");
 
 		Flux<String> result = sentenceAssembler.assemble(tokens);
 
-		StepVerifier.create(result)
-			.expectNext("First sentence.")
-			.expectNext("Second sentence!")
+		StepVerifier.create(result).expectNext("First sentence.").expectNext("Second sentence!")
 			.verifyComplete();
 	}
 
 	@Test
 	void assemble_shouldHandleKoreanSentences() {
-		Flux<String> tokens = Flux.just(
-			"안녕", "하세요", ".",
-			" 반갑", "습니", "다", "."
-		);
+		Flux<String> tokens = Flux.just("안녕", "하세요", ".", " 반갑", "습니", "다", ".");
 
 		Flux<String> result = sentenceAssembler.assemble(tokens);
 
-		StepVerifier.create(result)
-			.expectNext("안녕하세요.")
-			.expectNext("반갑습니다.")
-			.verifyComplete();
+		StepVerifier.create(result).expectNext("안녕하세요.").expectNext("반갑습니다.").verifyComplete();
 	}
 
 	@Test
@@ -62,9 +48,7 @@ class SentenceAssemblerTest {
 
 		Flux<String> result = sentenceAssembler.assemble(tokens);
 
-		StepVerifier.create(result)
-			.expectNext("How are you?")
-			.verifyComplete();
+		StepVerifier.create(result).expectNext("How are you?").verifyComplete();
 	}
 
 	@Test
@@ -73,9 +57,7 @@ class SentenceAssemblerTest {
 
 		Flux<String> result = sentenceAssembler.assemble(tokens);
 
-		StepVerifier.create(result)
-			.expectNext("Great news!")
-			.verifyComplete();
+		StepVerifier.create(result).expectNext("Great news!").verifyComplete();
 	}
 
 	@Test
@@ -84,25 +66,16 @@ class SentenceAssemblerTest {
 
 		Flux<String> result = sentenceAssembler.assemble(tokens);
 
-		StepVerifier.create(result)
-			.expectNext("Hello world.")
-			.verifyComplete();
+		StepVerifier.create(result).expectNext("Hello world.").verifyComplete();
 	}
 
 	@Test
 	void assemble_shouldHandleMixedPunctuation() {
-		Flux<String> tokens = Flux.just(
-			"First", ".",
-			" Second", "!",
-			" Third", "?"
-		);
+		Flux<String> tokens = Flux.just("First", ".", " Second", "!", " Third", "?");
 
 		Flux<String> result = sentenceAssembler.assemble(tokens);
 
-		StepVerifier.create(result)
-			.expectNext("First.")
-			.expectNext("Second!")
-			.expectNext("Third?")
+		StepVerifier.create(result).expectNext("First.").expectNext("Second!").expectNext("Third?")
 			.verifyComplete();
 	}
 
@@ -112,7 +85,6 @@ class SentenceAssemblerTest {
 
 		Flux<String> result = sentenceAssembler.assemble(tokens);
 
-		StepVerifier.create(result)
-			.verifyComplete();
+		StepVerifier.create(result).verifyComplete();
 	}
 }

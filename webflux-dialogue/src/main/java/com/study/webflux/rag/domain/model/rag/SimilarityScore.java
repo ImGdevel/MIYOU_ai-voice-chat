@@ -1,6 +1,8 @@
 package com.study.webflux.rag.domain.model.rag;
 
-public record SimilarityScore(int value) {
+public record SimilarityScore(
+	int value
+) {
 	public SimilarityScore {
 		if (value < 0) {
 			throw new IllegalArgumentException("Similarity score cannot be negative");

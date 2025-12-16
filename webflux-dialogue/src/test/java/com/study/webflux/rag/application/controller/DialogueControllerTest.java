@@ -1,21 +1,19 @@
 package com.study.webflux.rag.application.controller;
 
-import static org.mockito.ArgumentMatchers.*;
-import static org.mockito.Mockito.*;
+import static org.mockito.ArgumentMatchers.eq;
+import static org.mockito.Mockito.verify;
+import static org.mockito.Mockito.when;
 
+import com.study.webflux.rag.application.dto.RagDialogueRequest;
+import com.study.webflux.rag.domain.port.in.DialoguePipelineUseCase;
 import java.time.Instant;
 import java.util.Base64;
-
 import org.junit.jupiter.api.Test;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.boot.test.autoconfigure.web.reactive.WebFluxTest;
 import org.springframework.http.MediaType;
 import org.springframework.test.context.bean.override.mockito.MockitoBean;
 import org.springframework.test.web.reactive.server.WebTestClient;
-
-import com.study.webflux.rag.application.dto.RagDialogueRequest;
-import com.study.webflux.rag.domain.port.in.DialoguePipelineUseCase;
-
 import reactor.core.publisher.Flux;
 
 @WebFluxTest(DialogueController.class)
@@ -37,12 +35,8 @@ class DialogueControllerTest {
 		when(dialoguePipelineUseCase.executeStreaming(eq(testText)))
 			.thenReturn(Flux.just(base64Audio));
 
-		webTestClient.post()
-			.uri("/rag/dialogue/sse")
-			.contentType(MediaType.APPLICATION_JSON)
-			.bodyValue(request)
-			.exchange()
-			.expectStatus().isOk();
+		webTestClient.post().uri("/rag/dialogue/sse").contentType(MediaType.APPLICATION_JSON)
+			.bodyValue(request).exchange().expectStatus().isOk();
 
 		verify(dialoguePipelineUseCase).executeStreaming(testText);
 	}
@@ -57,13 +51,9 @@ class DialogueControllerTest {
 		when(dialoguePipelineUseCase.executeAudioStreaming(eq(testText)))
 			.thenReturn(Flux.just(audioBytes));
 
-		webTestClient.post()
-			.uri("/rag/dialogue/audio/wav")
-			.contentType(MediaType.APPLICATION_JSON)
-			.bodyValue(request)
-			.exchange()
-			.expectStatus().isOk()
-			.expectHeader().contentType("audio/wav");
+		webTestClient.post().uri("/rag/dialogue/audio/wav").contentType(MediaType.APPLICATION_JSON)
+			.bodyValue(request).exchange().expectStatus().isOk().expectHeader()
+			.contentType("audio/wav");
 
 		verify(dialoguePipelineUseCase).executeAudioStreaming(testText);
 	}
@@ -78,13 +68,9 @@ class DialogueControllerTest {
 		when(dialoguePipelineUseCase.executeAudioStreaming(eq(testText)))
 			.thenReturn(Flux.just(audioBytes));
 
-		webTestClient.post()
-			.uri("/rag/dialogue/audio/mp3")
-			.contentType(MediaType.APPLICATION_JSON)
-			.bodyValue(request)
-			.exchange()
-			.expectStatus().isOk()
-			.expectHeader().contentType("audio/mpeg");
+		webTestClient.post().uri("/rag/dialogue/audio/mp3").contentType(MediaType.APPLICATION_JSON)
+			.bodyValue(request).exchange().expectStatus().isOk().expectHeader()
+			.contentType("audio/mpeg");
 
 		verify(dialoguePipelineUseCase).executeAudioStreaming(testText);
 	}
@@ -99,13 +85,9 @@ class DialogueControllerTest {
 		when(dialoguePipelineUseCase.executeAudioStreaming(eq(testText)))
 			.thenReturn(Flux.just(audioBytes));
 
-		webTestClient.post()
-			.uri("/rag/dialogue/audio")
-			.contentType(MediaType.APPLICATION_JSON)
-			.bodyValue(request)
-			.exchange()
-			.expectStatus().isOk()
-			.expectHeader().contentType("audio/wav");
+		webTestClient.post().uri("/rag/dialogue/audio").contentType(MediaType.APPLICATION_JSON)
+			.bodyValue(request).exchange().expectStatus().isOk().expectHeader()
+			.contentType("audio/wav");
 
 		verify(dialoguePipelineUseCase).executeAudioStreaming(testText);
 	}
@@ -114,23 +96,15 @@ class DialogueControllerTest {
 	void ragDialogueStream_withBlankText_shouldReturnBadRequest() {
 		RagDialogueRequest request = new RagDialogueRequest("", Instant.now());
 
-		webTestClient.post()
-			.uri("/rag/dialogue/sse")
-			.contentType(MediaType.APPLICATION_JSON)
-			.bodyValue(request)
-			.exchange()
-			.expectStatus().isBadRequest();
+		webTestClient.post().uri("/rag/dialogue/sse").contentType(MediaType.APPLICATION_JSON)
+			.bodyValue(request).exchange().expectStatus().isBadRequest();
 	}
 
 	@Test
 	void ragDialogueStream_withNullTimestamp_shouldReturnBadRequest() {
 		RagDialogueRequest request = new RagDialogueRequest("test", null);
 
-		webTestClient.post()
-			.uri("/rag/dialogue/sse")
-			.contentType(MediaType.APPLICATION_JSON)
-			.bodyValue(request)
-			.exchange()
-			.expectStatus().isBadRequest();
+		webTestClient.post().uri("/rag/dialogue/sse").contentType(MediaType.APPLICATION_JSON)
+			.bodyValue(request).exchange().expectStatus().isBadRequest();
 	}
 }

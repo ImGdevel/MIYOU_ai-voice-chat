@@ -1,11 +1,10 @@
 package com.study.webflux.rag.infrastructure.adapter.tts.loadbalancer;
 
-import static org.assertj.core.api.Assertions.*;
+import static org.assertj.core.api.Assertions.assertThat;
 
 import java.util.ArrayList;
 import java.util.List;
 import java.util.concurrent.atomic.AtomicInteger;
-
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Test;
@@ -18,11 +17,9 @@ class TtsLoadBalancerTest {
 
 	@BeforeEach
 	void setUp() {
-		endpoints = List.of(
-			new TtsEndpoint("endpoint-1", "key-1", "http://localhost:8080"),
+		endpoints = List.of(new TtsEndpoint("endpoint-1", "key-1", "http://localhost:8080"),
 			new TtsEndpoint("endpoint-2", "key-2", "http://localhost:8080"),
-			new TtsEndpoint("endpoint-3", "key-3", "http://localhost:8080")
-		);
+			new TtsEndpoint("endpoint-3", "key-3", "http://localhost:8080"));
 		loadBalancer = new TtsLoadBalancer(new ArrayList<>(endpoints));
 	}
 
@@ -59,17 +56,20 @@ class TtsLoadBalancerTest {
 			selectedIds.add(loadBalancer.selectEndpoint().getId());
 		}
 
-		assertThat(selectedIds).containsExactlyInAnyOrder(
-			"endpoint-1", "endpoint-2", "endpoint-3",
-			"endpoint-1", "endpoint-2", "endpoint-3"
-		);
+		assertThat(selectedIds).containsExactlyInAnyOrder("endpoint-1",
+			"endpoint-2",
+			"endpoint-3",
+			"endpoint-1",
+			"endpoint-2",
+			"endpoint-3");
 	}
 
 	@Test
 	@DisplayName("일시적 에러 처리 및 복구")
 	void handleTemporaryFailure() {
 		TtsEndpoint endpoint = endpoints.get(0);
-		Exception error = WebClientResponseException.create(429, "Too Many Requests", null, null, null);
+		Exception error = WebClientResponseException
+			.create(429, "Too Many Requests", null, null, null);
 
 		loadBalancer.reportFailure(endpoint, error);
 
@@ -81,7 +81,8 @@ class TtsLoadBalancerTest {
 	@DisplayName("영구 장애 처리 및 이벤트 발행")
 	void handlePermanentFailure() {
 		TtsEndpoint endpoint = endpoints.get(0);
-		Exception error = WebClientResponseException.create(402, "Not Enough Credits", null, null, null);
+		Exception error = WebClientResponseException
+			.create(402, "Not Enough Credits", null, null, null);
 		AtomicInteger eventCount = new AtomicInteger(0);
 
 		loadBalancer.setFailureEventPublisher(event -> {
