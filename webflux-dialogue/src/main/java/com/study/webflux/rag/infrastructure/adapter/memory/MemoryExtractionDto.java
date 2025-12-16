@@ -7,14 +7,9 @@ record MemoryExtractionDto(
 	String type,
 	String content,
 	float importance,
-	String reasoning
-) {
+	String reasoning) {
 	ExtractedMemory toExtractedMemory() {
-		return new ExtractedMemory(
-			MemoryType.valueOf(type.toUpperCase()),
-			content,
-			importance,
-			reasoning
-		);
+		return new ExtractedMemory(MemoryType.valueOf(type.toUpperCase()), content, importance,
+			reasoning);
 	}
 }

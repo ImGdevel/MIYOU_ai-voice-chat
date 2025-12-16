@@ -6,6 +6,10 @@ import static org.mockito.ArgumentMatchers.anyList;
 import static org.mockito.Mockito.verify;
 import static org.mockito.Mockito.when;
 
+import com.google.common.util.concurrent.Futures;
+import com.study.webflux.rag.domain.model.memory.Memory;
+import com.study.webflux.rag.domain.model.memory.MemoryType;
+import io.qdrant.client.QdrantClient;
 import io.qdrant.client.grpc.JsonWithInt;
 import io.qdrant.client.grpc.Points;
 import io.qdrant.client.grpc.Points.ScoredPoint;
@@ -13,9 +17,6 @@ import io.qdrant.client.grpc.Points.SearchPoints;
 import java.time.Instant;
 import java.util.List;
 import java.util.Map;
-
-import com.google.common.util.concurrent.Futures;
-
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Test;
@@ -25,11 +26,6 @@ import org.mockito.Mock;
 import org.mockito.junit.jupiter.MockitoExtension;
 import org.springframework.ai.document.Document;
 import org.springframework.ai.vectorstore.VectorStore;
-
-import com.study.webflux.rag.domain.model.memory.Memory;
-import com.study.webflux.rag.domain.model.memory.MemoryType;
-
-import io.qdrant.client.QdrantClient;
 import reactor.test.StepVerifier;
 
 @ExtendWith(MockitoExtension.class)
@@ -51,25 +47,16 @@ class SpringAiVectorDbAdapterTest {
 	@Test
 	@DisplayName("메모리를 벡터 DB에 저장한다")
 	void upsert_success() {
-		Memory memory = new Memory(
-			null,
-			MemoryType.EXPERIENTIAL,
-			"테스트 메모리",
-			0.8f,
-			Instant.now(),
-			Instant.now(),
-			1
-		);
+		Memory memory = new Memory(null, MemoryType.EXPERIENTIAL, "테스트 메모리", 0.8f, Instant.now(),
+			Instant.now(), 1);
 		List<Float> embedding = List.of(0.1f, 0.2f, 0.3f);
 
-		StepVerifier.create(vectorDbAdapter.upsert(memory, embedding))
-			.assertNext(result -> {
-				assertThat(result).isNotNull();
-				assertThat(result.id()).isNotNull();
-				assertThat(result.content()).isEqualTo("테스트 메모리");
-				assertThat(result.type()).isEqualTo(MemoryType.EXPERIENTIAL);
-			})
-			.verifyComplete();
+		StepVerifier.create(vectorDbAdapter.upsert(memory, embedding)).assertNext(result -> {
+			assertThat(result).isNotNull();
+			assertThat(result.id()).isNotNull();
+			assertThat(result.content()).isEqualTo("테스트 메모리");
+			assertThat(result.type()).isEqualTo(MemoryType.EXPERIENTIAL);
+		}).verifyComplete();
 
 		verify(vectorStore).add(anyList());
 	}
@@ -78,22 +65,13 @@ class SpringAiVectorDbAdapterTest {
 	@DisplayName("ID가 있는 메모리를 저장할 때 ID를 유지한다")
 	void upsert_withExistingId_preservesId() {
 		String existingId = "existing-id-123";
-		Memory memory = new Memory(
-			existingId,
-			MemoryType.FACTUAL,
-			"기존 메모리",
-			0.5f,
-			null,
-			null,
-			null
-		);
+		Memory memory = new Memory(existingId, MemoryType.FACTUAL, "기존 메모리", 0.5f, null, null,
+			null);
 		List<Float> embedding = List.of(0.1f, 0.2f);
 
-		StepVerifier.create(vectorDbAdapter.upsert(memory, embedding))
-			.assertNext(result -> {
-				assertThat(result.id()).isEqualTo(existingId);
-			})
-			.verifyComplete();
+		StepVerifier.create(vectorDbAdapter.upsert(memory, embedding)).assertNext(result -> {
+			assertThat(result.id()).isEqualTo(existingId);
+		}).verifyComplete();
 	}
 
 	@Test
@@ -102,22 +80,14 @@ class SpringAiVectorDbAdapterTest {
 		Instant createdAt = Instant.parse("2025-01-01T00:00:00Z");
 		Instant lastAccessedAt = Instant.parse("2025-01-02T00:00:00Z");
 
-		Memory memory = new Memory(
-			null,
-			MemoryType.EXPERIENTIAL,
-			"메타데이터 테스트",
-			0.9f,
-			createdAt,
-			lastAccessedAt,
-			5
-		);
+		Memory memory = new Memory(null, MemoryType.EXPERIENTIAL, "메타데이터 테스트", 0.9f, createdAt,
+			lastAccessedAt, 5);
 		List<Float> embedding = List.of(0.1f);
 
 		ArgumentCaptor<List<Document>> captor = ArgumentCaptor.forClass(List.class);
 
 		StepVerifier.create(vectorDbAdapter.upsert(memory, embedding))
-			.assertNext(result -> assertThat(result).isNotNull())
-			.verifyComplete();
+			.assertNext(result -> assertThat(result).isNotNull()).verifyComplete();
 
 		verify(vectorStore).add(captor.capture());
 		Document capturedDoc = captor.getValue().get(0);
@@ -141,22 +111,23 @@ class SpringAiVectorDbAdapterTest {
 		ScoredPoint mockPoint = ScoredPoint.newBuilder()
 			.setId(Points.PointId.newBuilder().setUuid("doc-1").build())
 			.putPayload("content", JsonWithInt.Value.newBuilder().setStringValue("테스트 내용").build())
-			.putPayload("type", JsonWithInt.Value.newBuilder().setStringValue("EXPERIENTIAL").build())
+			.putPayload("type",
+				JsonWithInt.Value.newBuilder().setStringValue("EXPERIENTIAL").build())
 			.putPayload("importance", JsonWithInt.Value.newBuilder().setDoubleValue(0.8).build())
 			.build();
 
 		when(qdrantClient.searchAsync(any(SearchPoints.class)))
 			.thenReturn(Futures.immediateFuture(List.of(mockPoint)));
 
-		StepVerifier.create(vectorDbAdapter.search(queryEmbedding, types, importanceThreshold, topK))
+		StepVerifier
+			.create(vectorDbAdapter.search(queryEmbedding, types, importanceThreshold, topK))
 			.assertNext(result -> {
 				assertThat(result).isNotNull();
 				assertThat(result.id()).isEqualTo("doc-1");
 				assertThat(result.content()).isEqualTo("테스트 내용");
 				assertThat(result.type()).isEqualTo(MemoryType.EXPERIENTIAL);
 				assertThat(result.importance()).isEqualTo(0.8f);
-			})
-			.verifyComplete();
+			}).verifyComplete();
 	}
 
 	@Test
@@ -180,15 +151,19 @@ class SpringAiVectorDbAdapterTest {
 
 		ScoredPoint point1 = ScoredPoint.newBuilder()
 			.setId(Points.PointId.newBuilder().setUuid("doc-1").build())
-			.putPayload("content", JsonWithInt.Value.newBuilder().setStringValue("첫 번째 메모리").build())
-			.putPayload("type", JsonWithInt.Value.newBuilder().setStringValue("EXPERIENTIAL").build())
+			.putPayload("content",
+				JsonWithInt.Value.newBuilder().setStringValue("첫 번째 메모리").build())
+			.putPayload("type",
+				JsonWithInt.Value.newBuilder().setStringValue("EXPERIENTIAL").build())
 			.putPayload("importance", JsonWithInt.Value.newBuilder().setDoubleValue(0.9).build())
 			.build();
 
 		ScoredPoint point2 = ScoredPoint.newBuilder()
 			.setId(Points.PointId.newBuilder().setUuid("doc-2").build())
-			.putPayload("content", JsonWithInt.Value.newBuilder().setStringValue("두 번째 메모리").build())
-			.putPayload("type", JsonWithInt.Value.newBuilder().setStringValue("EXPERIENTIAL").build())
+			.putPayload("content",
+				JsonWithInt.Value.newBuilder().setStringValue("두 번째 메모리").build())
+			.putPayload("type",
+				JsonWithInt.Value.newBuilder().setStringValue("EXPERIENTIAL").build())
 			.putPayload("importance", JsonWithInt.Value.newBuilder().setDoubleValue(0.7).build())
 			.build();
 
@@ -199,12 +174,10 @@ class SpringAiVectorDbAdapterTest {
 			.assertNext(result -> {
 				assertThat(result.id()).isEqualTo("doc-1");
 				assertThat(result.importance()).isEqualTo(0.9f);
-			})
-			.assertNext(result -> {
+			}).assertNext(result -> {
 				assertThat(result.id()).isEqualTo("doc-2");
 				assertThat(result.importance()).isEqualTo(0.7f);
-			})
-			.verifyComplete();
+			}).verifyComplete();
 	}
 
 	@Test
@@ -215,9 +188,10 @@ class SpringAiVectorDbAdapterTest {
 		Instant lastAccessedAt = Instant.now();
 		int accessCount = 10;
 
-		StepVerifier.create(
-			vectorDbAdapter.updateImportance(memoryId, newImportance, lastAccessedAt, accessCount)
-		).verifyComplete();
+		StepVerifier
+			.create(vectorDbAdapter
+				.updateImportance(memoryId, newImportance, lastAccessedAt, accessCount))
+			.verifyComplete();
 	}
 
 	@Test
@@ -230,17 +204,19 @@ class SpringAiVectorDbAdapterTest {
 			.putPayload("content", JsonWithInt.Value.newBuilder().setStringValue("완전한 메모리").build())
 			.putPayload("type", JsonWithInt.Value.newBuilder().setStringValue("FACTUAL").build())
 			.putPayload("importance", JsonWithInt.Value.newBuilder().setDoubleValue(0.85).build())
-			.putPayload("createdAt", JsonWithInt.Value.newBuilder().setDoubleValue(now.minusSeconds(3600).toEpochMilli()).build())
-			.putPayload("lastAccessedAt", JsonWithInt.Value.newBuilder().setDoubleValue(now.toEpochMilli()).build())
+			.putPayload("createdAt",
+				JsonWithInt.Value.newBuilder().setDoubleValue(now.minusSeconds(3600).toEpochMilli())
+					.build())
+			.putPayload("lastAccessedAt",
+				JsonWithInt.Value.newBuilder().setDoubleValue(now.toEpochMilli()).build())
 			.putPayload("accessCount", JsonWithInt.Value.newBuilder().setDoubleValue(3).build())
 			.build();
 
 		when(qdrantClient.searchAsync(any(SearchPoints.class)))
 			.thenReturn(Futures.immediateFuture(List.of(point)));
 
-		StepVerifier.create(
-			vectorDbAdapter.search(List.of(0.1f), List.of(MemoryType.FACTUAL), 0.5f, 1)
-		)
+		StepVerifier
+			.create(vectorDbAdapter.search(List.of(0.1f), List.of(MemoryType.FACTUAL), 0.5f, 1))
 			.assertNext(result -> {
 				assertThat(result.id()).isEqualTo("doc-123");
 				assertThat(result.content()).isEqualTo("완전한 메모리");
@@ -249,8 +225,7 @@ class SpringAiVectorDbAdapterTest {
 				assertThat(result.createdAt()).isNotNull();
 				assertThat(result.lastAccessedAt()).isNotNull();
 				assertThat(result.accessCount()).isEqualTo(3);
-			})
-			.verifyComplete();
+			}).verifyComplete();
 	}
 
 	@Test
@@ -259,15 +234,16 @@ class SpringAiVectorDbAdapterTest {
 		ScoredPoint point = ScoredPoint.newBuilder()
 			.setId(Points.PointId.newBuilder().setUuid("doc-min").build())
 			.putPayload("content", JsonWithInt.Value.newBuilder().setStringValue("최소 메모리").build())
-			.putPayload("type", JsonWithInt.Value.newBuilder().setStringValue("EXPERIENTIAL").build())
+			.putPayload("type",
+				JsonWithInt.Value.newBuilder().setStringValue("EXPERIENTIAL").build())
 			.build();
 
 		when(qdrantClient.searchAsync(any(SearchPoints.class)))
 			.thenReturn(Futures.immediateFuture(List.of(point)));
 
-		StepVerifier.create(
-			vectorDbAdapter.search(List.of(0.1f), List.of(MemoryType.EXPERIENTIAL), 0.0f, 1)
-		)
+		StepVerifier
+			.create(
+				vectorDbAdapter.search(List.of(0.1f), List.of(MemoryType.EXPERIENTIAL), 0.0f, 1))
 			.assertNext(result -> {
 				assertThat(result.id()).isEqualTo("doc-min");
 				assertThat(result.type()).isEqualTo(MemoryType.EXPERIENTIAL);
@@ -275,8 +251,7 @@ class SpringAiVectorDbAdapterTest {
 				assertThat(result.createdAt()).isNull();
 				assertThat(result.lastAccessedAt()).isNull();
 				assertThat(result.accessCount()).isNull();
-			})
-			.verifyComplete();
+			}).verifyComplete();
 	}
 
 	@Test
@@ -287,8 +262,7 @@ class SpringAiVectorDbAdapterTest {
 		when(qdrantClient.searchAsync(any(SearchPoints.class)))
 			.thenReturn(Futures.immediateFuture(List.of()));
 
-		StepVerifier.create(vectorDbAdapter.search(List.of(0.1f), types, 0.3f, 5))
-			.verifyComplete();
+		StepVerifier.create(vectorDbAdapter.search(List.of(0.1f), types, 0.3f, 5)).verifyComplete();
 
 		verify(qdrantClient).searchAsync(any(SearchPoints.class));
 	}

@@ -36,7 +36,8 @@ public record Memory(
 		float currentImportance = importance != null ? importance : 0.0f;
 		float newImportance = Math.min(1.0f, currentImportance + importanceBoost);
 		int currentAccessCount = accessCount != null ? accessCount : 0;
-		return new Memory(id, type, content, newImportance, createdAt, Instant.now(), currentAccessCount + 1);
+		return new Memory(id, type, content, newImportance, createdAt, Instant.now(),
+			currentAccessCount + 1);
 	}
 
 	public float calculateRankedScore(float recencyWeight) {
@@ -46,7 +47,8 @@ public record Memory(
 			return baseImportance;
 		}
 
-		long hoursSinceAccess = (Instant.now().getEpochSecond() - lastAccessedAt.getEpochSecond()) / 3600;
+		long hoursSinceAccess = (Instant.now().getEpochSecond() - lastAccessedAt.getEpochSecond())
+			/ 3600;
 		float recencyFactor = (float) Math.exp(-recencyWeight * hoursSinceAccess / 24.0);
 		return baseImportance * recencyFactor;
 	}

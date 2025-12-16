@@ -23,7 +23,9 @@ public record RetrievalDocument(
 		return new RetrievalDocument(content, SimilarityScore.of(score), Map.of());
 	}
 
-	public static RetrievalDocument withMetadata(String content, int score, Map<String, Object> metadata) {
+	public static RetrievalDocument withMetadata(String content,
+		int score,
+		Map<String, Object> metadata) {
 		return new RetrievalDocument(content, SimilarityScore.of(score), metadata);
 	}
 }
