@@ -11,7 +11,6 @@ import lombok.extern.slf4j.Slf4j;
 
 import org.springframework.ai.document.Document;
 import org.springframework.ai.vectorstore.VectorStore;
-import org.springframework.ai.vectorstore.qdrant.QdrantVectorStore;
 import org.springframework.context.annotation.Primary;
 import org.springframework.stereotype.Component;
 
@@ -39,16 +38,12 @@ public class SpringAiVectorDbAdapter implements VectorMemoryPort {
 	private final QdrantClient qdrantClient;
 	private final String collectionName;
 
-	public SpringAiVectorDbAdapter(VectorStore vectorStore, QdrantClient qdrantClient) {
+	public SpringAiVectorDbAdapter(VectorStore vectorStore,
+		QdrantClient qdrantClient,
+		com.study.webflux.rag.infrastructure.config.properties.RagDialogueProperties properties) {
 		this.vectorStore = vectorStore;
 		this.qdrantClient = qdrantClient;
-
-		if (vectorStore instanceof QdrantVectorStore qdrantVectorStore) {
-			this.collectionName = "vector_store";
-		} else {
-			this.collectionName = "vector_store";
-			log.warn("VectorStore is not QdrantVectorStore, using default collection name");
-		}
+		this.collectionName = properties.getQdrant().getCollectionName();
 	}
 
 	private List<Float> toFloatList(double[] doubleArray) {
