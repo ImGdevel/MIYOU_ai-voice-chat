@@ -133,7 +133,7 @@ public class LoadBalancedSupertoneTtsAdapter implements TtsPort {
 	private Mono<Void> warmupEndpoint(TtsEndpoint endpoint) {
 		WebClient webClient = getOrCreateWebClient(endpoint);
 
-		return webClient.head().uri("/").retrieve().toBodilessEntity()
+		return webClient.get().uri("/v1/credits").retrieve().toBodilessEntity()
 			.timeout(Duration.ofSeconds(2)).then();
 	}
 }
