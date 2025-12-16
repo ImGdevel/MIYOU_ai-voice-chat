@@ -1,5 +1,20 @@
 package com.study.webflux.rag.infrastructure.adapter.vectordb;
 
+import java.time.Instant;
+import java.util.HashMap;
+import java.util.List;
+import java.util.Map;
+import java.util.UUID;
+import java.util.stream.Collectors;
+
+import lombok.extern.slf4j.Slf4j;
+
+import org.springframework.ai.document.Document;
+import org.springframework.ai.vectorstore.VectorStore;
+import org.springframework.ai.vectorstore.qdrant.QdrantVectorStore;
+import org.springframework.context.annotation.Primary;
+import org.springframework.stereotype.Component;
+
 import com.study.webflux.rag.domain.model.memory.Memory;
 import com.study.webflux.rag.domain.model.memory.MemoryType;
 import com.study.webflux.rag.domain.port.out.VectorMemoryPort;
@@ -11,18 +26,6 @@ import io.qdrant.client.grpc.Points.Match;
 import io.qdrant.client.grpc.Points.Range;
 import io.qdrant.client.grpc.Points.ScoredPoint;
 import io.qdrant.client.grpc.Points.SearchPoints;
-import java.time.Instant;
-import java.util.HashMap;
-import java.util.List;
-import java.util.Map;
-import java.util.UUID;
-import java.util.stream.Collectors;
-import lombok.extern.slf4j.Slf4j;
-import org.springframework.ai.document.Document;
-import org.springframework.ai.vectorstore.VectorStore;
-import org.springframework.ai.vectorstore.qdrant.QdrantVectorStore;
-import org.springframework.context.annotation.Primary;
-import org.springframework.stereotype.Component;
 import reactor.core.publisher.Flux;
 import reactor.core.publisher.Mono;
 import reactor.core.scheduler.Schedulers;

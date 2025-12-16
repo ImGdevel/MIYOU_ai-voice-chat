@@ -1,5 +1,14 @@
 package com.study.webflux.rag.application.service;
 
+import java.util.ArrayList;
+import java.util.Base64;
+import java.util.List;
+import java.util.stream.Collectors;
+
+import lombok.extern.slf4j.Slf4j;
+
+import org.springframework.stereotype.Service;
+
 import com.study.webflux.rag.application.monitoring.DialoguePipelineMonitor;
 import com.study.webflux.rag.application.monitoring.DialoguePipelineStage;
 import com.study.webflux.rag.application.monitoring.DialoguePipelineTracker;
@@ -16,12 +25,6 @@ import com.study.webflux.rag.domain.port.out.LlmPort;
 import com.study.webflux.rag.domain.port.out.RetrievalPort;
 import com.study.webflux.rag.domain.port.out.TtsPort;
 import com.study.webflux.rag.domain.service.SentenceAssembler;
-import java.util.ArrayList;
-import java.util.Base64;
-import java.util.List;
-import java.util.stream.Collectors;
-import lombok.extern.slf4j.Slf4j;
-import org.springframework.stereotype.Service;
 import reactor.core.publisher.Flux;
 import reactor.core.publisher.Mono;
 import reactor.core.scheduler.Schedulers;

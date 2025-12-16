@@ -1,11 +1,13 @@
 package com.study.webflux.rag.infrastructure.adapter.tts.loadbalancer;
 
-import static org.assertj.core.api.Assertions.assertThat;
-
 import java.util.concurrent.TimeoutException;
+
+import org.springframework.web.reactive.function.client.WebClientResponseException;
+
 import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Test;
-import org.springframework.web.reactive.function.client.WebClientResponseException;
+
+import static org.assertj.core.api.Assertions.assertThat;
 
 class TtsErrorClassifierTest {
 

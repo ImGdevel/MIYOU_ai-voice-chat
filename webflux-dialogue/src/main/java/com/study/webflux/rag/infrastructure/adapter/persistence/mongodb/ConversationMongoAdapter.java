@@ -1,8 +1,9 @@
 package com.study.webflux.rag.infrastructure.adapter.persistence.mongodb;
 
+import org.springframework.stereotype.Component;
+
 import com.study.webflux.rag.domain.model.conversation.ConversationTurn;
 import com.study.webflux.rag.domain.port.out.ConversationRepository;
-import org.springframework.stereotype.Component;
 import reactor.core.publisher.Flux;
 import reactor.core.publisher.Mono;
 

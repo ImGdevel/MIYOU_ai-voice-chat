@@ -1,10 +1,8 @@
 package com.study.webflux.rag.infrastructure.adapter.llm;
 
-import com.study.webflux.rag.domain.model.llm.CompletionRequest;
-import com.study.webflux.rag.domain.model.llm.Message;
-import com.study.webflux.rag.domain.port.out.LlmPort;
 import java.util.List;
 import java.util.stream.Collectors;
+
 import org.springframework.ai.chat.client.ChatClient;
 import org.springframework.ai.chat.messages.AssistantMessage;
 import org.springframework.ai.chat.messages.SystemMessage;
@@ -13,6 +11,10 @@ import org.springframework.ai.chat.model.ChatModel;
 import org.springframework.ai.chat.prompt.Prompt;
 import org.springframework.context.annotation.Primary;
 import org.springframework.stereotype.Component;
+
+import com.study.webflux.rag.domain.model.llm.CompletionRequest;
+import com.study.webflux.rag.domain.model.llm.Message;
+import com.study.webflux.rag.domain.port.out.LlmPort;
 import reactor.core.publisher.Flux;
 import reactor.core.publisher.Mono;
 import reactor.core.scheduler.Schedulers;

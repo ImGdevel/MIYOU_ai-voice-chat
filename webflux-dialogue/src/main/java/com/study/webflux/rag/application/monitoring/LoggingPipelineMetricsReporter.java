@@ -1,9 +1,11 @@
 package com.study.webflux.rag.application.monitoring;
 
 import java.util.stream.Collectors;
+
+import org.springframework.stereotype.Component;
+
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
-import org.springframework.stereotype.Component;
 
 @Component
 public class LoggingPipelineMetricsReporter implements PipelineMetricsReporter {

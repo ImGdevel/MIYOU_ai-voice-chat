@@ -1,8 +1,9 @@
 package com.study.webflux.rag.application.dto;
 
+import java.time.Instant;
+
 import jakarta.validation.constraints.NotBlank;
 import jakarta.validation.constraints.NotNull;
-import java.time.Instant;
 
 public record RagDialogueRequest(
 	@NotBlank String text,

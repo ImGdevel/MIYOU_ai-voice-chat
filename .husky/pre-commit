@@ -1,4 +1,14 @@
 #!/usr/bin/env sh
 
-echo "Husky pre-commit 훅이 실행됩니다."
-echo "현재 pre-commit 훅에서는 추가 검사를 수행하지 않습니다."
+echo "🎨 코드 포맷팅 및 import 정리를 시작합니다..."
+
+./gradlew spotlessApply
+
+if [ $? -ne 0 ]; then
+  echo "❌ 코드 포맷팅 실패"
+  exit 1
+fi
+
+git add -u
+
+echo "✅ 코드 포맷팅 완료"
