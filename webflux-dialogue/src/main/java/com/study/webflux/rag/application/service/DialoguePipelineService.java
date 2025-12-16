@@ -119,10 +119,13 @@ public class DialoguePipelineService implements DialoguePipelineUseCase {
 						return tracker.traceFlux(DialoguePipelineStage.LLM_COMPLETION,
 							() -> llmPort.streamCompletion(request));
 					});
-			}).subscribeOn(Schedulers.boundedElastic()).doOnNext(token -> tracker
-				.incrementStageCounter(DialoguePipelineStage.LLM_COMPLETION, "tokenCount", 1));
+			}).subscribeOn(Schedulers.boundedElastic()).doOnNext(token -> {
+				tracker
+					.incrementStageCounter(DialoguePipelineStage.LLM_COMPLETION, "tokenCount", 1);
+				log.debug("LLM Token: [{}]", token);
+			});
 
-		Flux<String> textStream = llmTokens.cache();
+		Flux<String> textStream = llmTokens.share();
 
 		textStream.collectList().flatMap(tokens -> {
 			String fullResponse = String.join("", tokens);
@@ -217,7 +220,7 @@ public class DialoguePipelineService implements DialoguePipelineUseCase {
 
 		/// 오디오 스트림 생성
 		Flux<byte[]> audioFlux = sentences.publish(sharedSentences -> {
-			Flux<String> cachedSentences = sharedSentences.cache();
+			Flux<String> cachedSentences = sharedSentences.replay().autoConnect(2);
 
 			cachedSentences.collectList().flatMap(sentenceList -> {
 				String fullResponse = String.join(" ", sentenceList);
