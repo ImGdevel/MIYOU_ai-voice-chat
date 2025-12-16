@@ -155,8 +155,14 @@ function toggleInputOverlay() {
     }
 }
 
+function toggleVoice() {
+    const voiceBtn = document.getElementById('voiceBtn');
+    voiceBtn.classList.toggle('active');
+}
+
 async function streamAudio() {
     const queryText = document.getElementById('queryText').value.trim();
+    const voiceEnabled = document.getElementById('voiceBtn').classList.contains('active');
 
     if (!queryText) {
         return;
@@ -170,6 +176,69 @@ async function streamAudio() {
     const sendBtn = document.getElementById('sendBtn');
     sendBtn.disabled = true;
 
+    if (voiceEnabled) {
+        await streamWithVoice(queryText, sendBtn);
+    } else {
+        await streamTextOnly(queryText, sendBtn);
+    }
+}
+
+async function streamTextOnly(queryText, sendBtn) {
+    try {
+        const response = await fetch('http://localhost:8081/rag/dialogue/text', {
+            method: 'POST',
+            headers: {
+                'Content-Type': 'application/json',
+            },
+            body: JSON.stringify({
+                text: queryText,
+                requestedAt: new Date().toISOString()
+            })
+        });
+
+        if (!response.ok) {
+            throw new Error(`HTTP error! status: ${response.status}`);
+        }
+
+        const reader = response.body.getReader();
+        const decoder = new TextDecoder('utf-8');
+        let fullResponse = '';
+        let buffer = '';
+
+        while (true) {
+            const { done, value } = await reader.read();
+
+            if (done) break;
+
+            buffer += decoder.decode(value, { stream: true });
+
+            const lines = buffer.split('\n');
+            buffer = lines.pop() || '';
+
+            for (const line of lines) {
+                if (line.startsWith('data:')) {
+                    const data = line.substring(5);
+                    console.log('Raw data:', JSON.stringify(data));
+                    if (data.length > 0) {
+                        const token = data.startsWith(' ') ? data.substring(1) : data;
+                        console.log('Processed token:', JSON.stringify(token));
+                        fullResponse += token;
+                        updateStatusText(fullResponse);
+                    }
+                }
+            }
+        }
+
+    } catch (error) {
+        console.error('Streaming error:', error);
+        updateStatusText('오류가 발생했습니다');
+    } finally {
+        sendBtn.disabled = false;
+        document.getElementById('queryText').value = '';
+    }
+}
+
+async function streamWithVoice(queryText, sendBtn) {
     startVisualizer();
 
     const audioElement = document.getElementById('audio');
