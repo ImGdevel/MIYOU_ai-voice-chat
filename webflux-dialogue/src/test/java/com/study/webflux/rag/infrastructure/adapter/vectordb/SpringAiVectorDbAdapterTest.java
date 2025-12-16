@@ -10,6 +10,7 @@ import org.springframework.ai.vectorstore.VectorStore;
 import com.google.common.util.concurrent.Futures;
 import com.study.webflux.rag.domain.model.memory.Memory;
 import com.study.webflux.rag.domain.model.memory.MemoryType;
+import com.study.webflux.rag.infrastructure.config.properties.RagDialogueProperties;
 import io.qdrant.client.QdrantClient;
 import io.qdrant.client.grpc.JsonWithInt;
 import io.qdrant.client.grpc.Points;
@@ -39,11 +40,18 @@ class SpringAiVectorDbAdapterTest {
 	@Mock
 	private QdrantClient qdrantClient;
 
+	@Mock
+	private RagDialogueProperties properties;
+
 	private SpringAiVectorDbAdapter vectorDbAdapter;
 
 	@BeforeEach
 	void setUp() {
-		vectorDbAdapter = new SpringAiVectorDbAdapter(vectorStore, qdrantClient);
+		RagDialogueProperties.Qdrant qdrantConfig = new RagDialogueProperties.Qdrant();
+		qdrantConfig.setCollectionName("user_memories");
+		when(properties.getQdrant()).thenReturn(qdrantConfig);
+
+		vectorDbAdapter = new SpringAiVectorDbAdapter(vectorStore, qdrantClient, properties);
 	}
 
 	@Test
