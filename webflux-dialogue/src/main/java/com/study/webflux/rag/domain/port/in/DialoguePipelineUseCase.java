@@ -23,4 +23,13 @@ public interface DialoguePipelineUseCase {
 	 * @return 오디오 스트림
 	 */
 	Flux<byte[]> executeAudioStreaming(String text);
+
+	/**
+	 * 대화 파이프라인을 실행하고 텍스트 스트림을 반환합니다.
+	 *
+	 * @param text
+	 *            대화 텍스트
+	 * @return 텍스트 스트림
+	 */
+	Flux<String> executeTextOnly(String text);
 }

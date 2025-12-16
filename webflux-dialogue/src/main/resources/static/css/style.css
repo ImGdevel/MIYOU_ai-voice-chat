@@ -86,6 +86,31 @@ body {
     align-items: flex-end;
 }
 
+.voice-btn {
+    flex-shrink: 0;
+    width: 40px;
+    height: 40px;
+    padding: 0;
+    background: #e0e0e0;
+    color: #999;
+    border: none;
+    border-radius: 50%;
+    cursor: pointer;
+    transition: all 0.2s;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+}
+
+.voice-btn.active {
+    background: #666;
+    color: white;
+}
+
+.voice-btn:hover {
+    opacity: 0.8;
+}
+
 textarea {
     flex: 1;
     padding: 10px 14px;
