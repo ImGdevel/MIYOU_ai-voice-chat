@@ -21,7 +21,10 @@ public record ConversationTurn(
 		return new ConversationTurn(null, query, null, Instant.now());
 	}
 
-	public static ConversationTurn withId(String id, String query, String response, Instant createdAt) {
+	public static ConversationTurn withId(String id,
+		String query,
+		String response,
+		Instant createdAt) {
 		return new ConversationTurn(id, query, response, createdAt);
 	}
 

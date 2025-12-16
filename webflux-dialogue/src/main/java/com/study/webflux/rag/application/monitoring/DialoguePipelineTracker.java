@@ -13,7 +13,6 @@ import java.util.concurrent.CopyOnWriteArrayList;
 import java.util.concurrent.atomic.AtomicBoolean;
 import java.util.concurrent.atomic.AtomicReference;
 import java.util.function.Supplier;
-
 import reactor.core.publisher.Flux;
 import reactor.core.publisher.Mono;
 
@@ -23,7 +22,8 @@ public class DialoguePipelineTracker {
 	private final PipelineMetricsReporter reporter;
 	private final Clock clock;
 	private final Instant startedAt;
-	private final Map<DialoguePipelineStage, StageMetric> stageMetrics = new EnumMap<>(DialoguePipelineStage.class);
+	private final Map<DialoguePipelineStage, StageMetric> stageMetrics = new EnumMap<>(
+		DialoguePipelineStage.class);
 	private final Map<String, Object> attributes = new ConcurrentHashMap<>();
 	private final AtomicBoolean finished = new AtomicBoolean(false);
 	private final List<String> llmOutputs = new CopyOnWriteArrayList<>();
@@ -31,7 +31,9 @@ public class DialoguePipelineTracker {
 	private final AtomicReference<Instant> lastResponseAt = new AtomicReference<>();
 	private volatile Instant finishedAt;
 
-	public DialoguePipelineTracker(String inputText, PipelineMetricsReporter reporter, Clock clock) {
+	public DialoguePipelineTracker(String inputText,
+		PipelineMetricsReporter reporter,
+		Clock clock) {
 		this.pipelineId = UUID.randomUUID().toString();
 		this.reporter = Objects.requireNonNull(reporter, "reporter must not be null");
 		this.clock = Objects.requireNonNull(clock, "clock must not be null");
@@ -46,8 +48,7 @@ public class DialoguePipelineTracker {
 			StageMetric metric = stageMetric(stage);
 			metric.start(clock.instant());
 			Mono<T> publisher = Objects.requireNonNull(supplier.get(), "supplier returned null");
-			return publisher
-				.doOnSuccess(value -> metric.complete(clock.instant()))
+			return publisher.doOnSuccess(value -> metric.complete(clock.instant()))
 				.doOnError(error -> metric.fail(clock.instant(), error))
 				.doOnCancel(() -> metric.cancel(clock.instant()));
 		});
@@ -59,16 +60,14 @@ public class DialoguePipelineTracker {
 			StageMetric metric = stageMetric(stage);
 			metric.start(clock.instant());
 			Flux<T> publisher = Objects.requireNonNull(supplier.get(), "supplier returned null");
-			return publisher
-				.doOnComplete(() -> metric.complete(clock.instant()))
+			return publisher.doOnComplete(() -> metric.complete(clock.instant()))
 				.doOnError(error -> metric.fail(clock.instant(), error))
 				.doOnCancel(() -> metric.cancel(clock.instant()));
 		});
 	}
 
 	public <T> Flux<T> attachLifecycle(Flux<T> publisher) {
-		return publisher
-			.doOnComplete(() -> finish(PipelineStatus.COMPLETED, null))
+		return publisher.doOnComplete(() -> finish(PipelineStatus.COMPLETED, null))
 			.doOnError(error -> finish(PipelineStatus.FAILED, error))
 			.doOnCancel(() -> finish(PipelineStatus.CANCELLED, null));
 	}
@@ -115,19 +114,11 @@ public class DialoguePipelineTracker {
 				recordPipelineAttribute("error", error.getMessage());
 			}
 			this.finishedAt = clock.instant();
-			PipelineSummary summary = new PipelineSummary(
-				pipelineId,
-				status,
-				startedAt,
-				finishedAt,
+			PipelineSummary summary = new PipelineSummary(pipelineId, status, startedAt, finishedAt,
 				Map.copyOf(attributes),
-				stageMetrics.values().stream()
-					.map(StageMetric::snapshot)
-					.toList(),
-				List.copyOf(llmOutputs),
-				latencyFromStart(firstResponseAt.get()),
-				latencyFromStart(lastResponseAt.get())
-			);
+				stageMetrics.values().stream().map(StageMetric::snapshot).toList(),
+				List.copyOf(llmOutputs), latencyFromStart(firstResponseAt.get()),
+				latencyFromStart(lastResponseAt.get()));
 			reporter.report(summary);
 		}
 	}
@@ -198,7 +189,7 @@ public class DialoguePipelineTracker {
 
 		private void incrementAttribute(String key, long delta) {
 			attributes.compute(key, (k, existing) -> {
-				long current = existing instanceof Number ? ((Number)existing).longValue() : 0L;
+				long current = existing instanceof Number ? ((Number) existing).longValue() : 0L;
 				return current + delta;
 			});
 		}
@@ -208,14 +199,8 @@ public class DialoguePipelineTracker {
 			if (startedAt != null && finishedAt != null) {
 				duration = Duration.between(startedAt, finishedAt).toMillis();
 			}
-			return new StageSnapshot(
-				stage,
-				status,
-				startedAt,
-				finishedAt,
-				duration,
-				Map.copyOf(attributes)
-			);
+			return new StageSnapshot(stage, status, startedAt, finishedAt, duration,
+				Map.copyOf(attributes));
 		}
 	}
 
@@ -225,8 +210,7 @@ public class DialoguePipelineTracker {
 		Instant startedAt,
 		Instant finishedAt,
 		long durationMillis,
-		Map<String, Object> attributes
-	) {
+		Map<String, Object> attributes) {
 	}
 
 	public record PipelineSummary(
@@ -238,8 +222,7 @@ public class DialoguePipelineTracker {
 		List<StageSnapshot> stages,
 		List<String> llmOutputs,
 		Long firstResponseLatencyMillis,
-		Long lastResponseLatencyMillis
-	) {
+		Long lastResponseLatencyMillis) {
 		public long durationMillis() {
 			if (startedAt == null || finishedAt == null) {
 				return -1L;

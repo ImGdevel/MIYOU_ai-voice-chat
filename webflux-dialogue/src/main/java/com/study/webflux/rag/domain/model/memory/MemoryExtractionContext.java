@@ -1,8 +1,7 @@
 package com.study.webflux.rag.domain.model.memory;
 
-import java.util.List;
-
 import com.study.webflux.rag.domain.model.conversation.ConversationTurn;
+import java.util.List;
 
 public record MemoryExtractionContext(
 	List<ConversationTurn> recentConversations,
@@ -17,10 +16,8 @@ public record MemoryExtractionContext(
 		}
 	}
 
-	public static MemoryExtractionContext of(
-		List<ConversationTurn> conversations,
-		List<Memory> memories
-	) {
+	public static MemoryExtractionContext of(List<ConversationTurn> conversations,
+		List<Memory> memories) {
 		return new MemoryExtractionContext(conversations, memories);
 	}
 }

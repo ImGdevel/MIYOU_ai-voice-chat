@@ -4,14 +4,12 @@ import java.util.Map;
 import java.util.concurrent.ConcurrentHashMap;
 import java.util.concurrent.TimeoutException;
 import java.util.concurrent.atomic.AtomicInteger;
-
 import org.springframework.http.HttpStatus;
 import org.springframework.http.MediaType;
 import org.springframework.web.reactive.function.server.RouterFunction;
 import org.springframework.web.reactive.function.server.RouterFunctions;
 import org.springframework.web.reactive.function.server.ServerRequest;
 import org.springframework.web.reactive.function.server.ServerResponse;
-
 import reactor.core.publisher.Flux;
 import reactor.core.publisher.Mono;
 
@@ -36,8 +34,7 @@ public class FakeSupertoneServer {
 	public RouterFunction<ServerResponse> routes() {
 		return RouterFunctions.route()
 			.POST("/v1/text-to-speech/{voice_id}/stream", this::handleTtsRequest)
-			.HEAD("/**", this::handleHealthCheck)
-			.build();
+			.HEAD("/**", this::handleHealthCheck).build();
 	}
 
 	private Mono<ServerResponse> handleTtsRequest(ServerRequest request) {
@@ -50,21 +47,20 @@ public class FakeSupertoneServer {
 
 		ServerBehavior behavior = endpointBehaviors.getOrDefault(apiKey, ServerBehavior.success());
 
-		return request.bodyToMono(Map.class)
-			.flatMap(body -> {
-				String text = (String) body.get("text");
-				if (text == null || text.isEmpty()) {
-					return ServerResponse.status(HttpStatus.BAD_REQUEST)
-						.bodyValue("Missing text field");
-				}
+		return request.bodyToMono(Map.class).flatMap(body -> {
+			String text = (String) body.get("text");
+			if (text == null || text.isEmpty()) {
+				return ServerResponse.status(HttpStatus.BAD_REQUEST)
+					.bodyValue("Missing text field");
+			}
 
-				if (text.length() > 300) {
-					return ServerResponse.status(HttpStatus.BAD_REQUEST)
-						.bodyValue("Text exceeds 300 characters");
-				}
+			if (text.length() > 300) {
+				return ServerResponse.status(HttpStatus.BAD_REQUEST)
+					.bodyValue("Text exceeds 300 characters");
+			}
 
-				return behavior.apply(request, text);
-			});
+			return behavior.apply(request, text);
+		});
 	}
 
 	private Mono<ServerResponse> handleHealthCheck(ServerRequest request) {
@@ -81,8 +77,7 @@ public class FakeSupertoneServer {
 				for (int i = 0; i < fakeAudio.length; i++) {
 					fakeAudio[i] = (byte) (i % 256);
 				}
-				return ServerResponse.ok()
-					.contentType(MediaType.parseMediaType("audio/wav"))
+				return ServerResponse.ok().contentType(MediaType.parseMediaType("audio/wav"))
 					.bodyValue(fakeAudio);
 			};
 		}

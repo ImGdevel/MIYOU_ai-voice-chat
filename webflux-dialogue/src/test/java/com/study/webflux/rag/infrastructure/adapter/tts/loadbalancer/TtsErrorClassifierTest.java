@@ -1,9 +1,8 @@
 package com.study.webflux.rag.infrastructure.adapter.tts.loadbalancer;
 
-import static org.assertj.core.api.Assertions.*;
+import static org.assertj.core.api.Assertions.assertThat;
 
 import java.util.concurrent.TimeoutException;
-
 import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Test;
 import org.springframework.web.reactive.function.client.WebClientResponseException;
@@ -33,7 +32,8 @@ class TtsErrorClassifierTest {
 	@Test
 	@DisplayName("402 Not Enough Credits → PERMANENT")
 	void classify_402_AsPermanent() {
-		Exception error = WebClientResponseException.create(402, "Not Enough Credits", null, null, null);
+		Exception error = WebClientResponseException
+			.create(402, "Not Enough Credits", null, null, null);
 
 		TtsEndpoint.FailureType result = TtsErrorClassifier.classifyError(error);
 
@@ -63,7 +63,8 @@ class TtsErrorClassifierTest {
 	@Test
 	@DisplayName("408 Request Timeout → TEMPORARY")
 	void classify_408_AsTemporary() {
-		Exception error = WebClientResponseException.create(408, "Request Timeout", null, null, null);
+		Exception error = WebClientResponseException
+			.create(408, "Request Timeout", null, null, null);
 
 		TtsEndpoint.FailureType result = TtsErrorClassifier.classifyError(error);
 
@@ -73,7 +74,8 @@ class TtsErrorClassifierTest {
 	@Test
 	@DisplayName("429 Too Many Requests → TEMPORARY")
 	void classify_429_AsTemporary() {
-		Exception error = WebClientResponseException.create(429, "Too Many Requests", null, null, null);
+		Exception error = WebClientResponseException
+			.create(429, "Too Many Requests", null, null, null);
 
 		TtsEndpoint.FailureType result = TtsErrorClassifier.classifyError(error);
 
@@ -83,7 +85,8 @@ class TtsErrorClassifierTest {
 	@Test
 	@DisplayName("500 Internal Server Error → TEMPORARY")
 	void classify_500_AsTemporary() {
-		Exception error = WebClientResponseException.create(500, "Internal Server Error", null, null, null);
+		Exception error = WebClientResponseException
+			.create(500, "Internal Server Error", null, null, null);
 
 		TtsEndpoint.FailureType result = TtsErrorClassifier.classifyError(error);
 
@@ -93,7 +96,8 @@ class TtsErrorClassifierTest {
 	@Test
 	@DisplayName("503 Service Unavailable → TEMPORARY")
 	void classify_503_AsTemporary() {
-		Exception error = WebClientResponseException.create(503, "Service Unavailable", null, null, null);
+		Exception error = WebClientResponseException
+			.create(503, "Service Unavailable", null, null, null);
 
 		TtsEndpoint.FailureType result = TtsErrorClassifier.classifyError(error);
 

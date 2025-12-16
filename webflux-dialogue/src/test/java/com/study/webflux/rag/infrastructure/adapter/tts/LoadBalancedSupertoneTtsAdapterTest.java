@@ -1,9 +1,15 @@
 package com.study.webflux.rag.infrastructure.adapter.tts;
 
-import static org.assertj.core.api.Assertions.*;
+import static org.assertj.core.api.Assertions.assertThat;
 
+import com.study.webflux.rag.domain.model.voice.AudioFormat;
+import com.study.webflux.rag.domain.model.voice.Voice;
+import com.study.webflux.rag.domain.model.voice.VoiceSettings;
+import com.study.webflux.rag.domain.model.voice.VoiceStyle;
+import com.study.webflux.rag.infrastructure.adapter.tts.loadbalancer.FakeSupertoneServer;
+import com.study.webflux.rag.infrastructure.adapter.tts.loadbalancer.TtsEndpoint;
+import com.study.webflux.rag.infrastructure.adapter.tts.loadbalancer.TtsLoadBalancer;
 import java.util.List;
-
 import org.junit.jupiter.api.AfterEach;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.DisplayName;
@@ -14,15 +20,6 @@ import org.springframework.http.server.reactive.HttpHandler;
 import org.springframework.http.server.reactive.ReactorHttpHandlerAdapter;
 import org.springframework.web.reactive.function.client.WebClient;
 import org.springframework.web.reactive.function.server.RouterFunctions;
-
-import com.study.webflux.rag.domain.model.voice.AudioFormat;
-import com.study.webflux.rag.domain.model.voice.Voice;
-import com.study.webflux.rag.domain.model.voice.VoiceSettings;
-import com.study.webflux.rag.domain.model.voice.VoiceStyle;
-import com.study.webflux.rag.infrastructure.adapter.tts.loadbalancer.FakeSupertoneServer;
-import com.study.webflux.rag.infrastructure.adapter.tts.loadbalancer.TtsEndpoint;
-import com.study.webflux.rag.infrastructure.adapter.tts.loadbalancer.TtsLoadBalancer;
-
 import reactor.core.publisher.Flux;
 import reactor.netty.DisposableServer;
 import reactor.netty.http.server.HttpServer;
@@ -43,26 +40,18 @@ class LoadBalancedSupertoneTtsAdapterTest {
 		fakeServer = new FakeSupertoneServer();
 		startFakeServer();
 
-		List<TtsEndpoint> endpoints = List.of(
-			new TtsEndpoint("endpoint-1", "key-1", BASE_URL),
+		List<TtsEndpoint> endpoints = List.of(new TtsEndpoint("endpoint-1", "key-1", BASE_URL),
 			new TtsEndpoint("endpoint-2", "key-2", BASE_URL),
-			new TtsEndpoint("endpoint-3", "key-3", BASE_URL)
-		);
+			new TtsEndpoint("endpoint-3", "key-3", BASE_URL));
 
 		loadBalancer = new TtsLoadBalancer(endpoints);
 
 		WebClient.Builder webClientBuilder = WebClient.builder()
 			.clientConnector(new ReactorClientHttpConnector());
 
-		Voice voice = Voice.builder()
-			.id("test-voice-id")
-			.name("Test Voice")
-			.provider("supertone")
-			.language("ko")
-			.style(VoiceStyle.NEUTRAL)
-			.outputFormat(AudioFormat.WAV)
-			.settings(new VoiceSettings(0, 1.0, 1.0))
-			.build();
+		Voice voice = Voice.builder().id("test-voice-id").name("Test Voice").provider("supertone")
+			.language("ko").style(VoiceStyle.NEUTRAL).outputFormat(AudioFormat.WAV)
+			.settings(new VoiceSettings(0, 1.0, 1.0)).build();
 
 		adapter = new LoadBalancedSupertoneTtsAdapter(webClientBuilder, loadBalancer, voice);
 	}
@@ -77,10 +66,7 @@ class LoadBalancedSupertoneTtsAdapterTest {
 	private void startFakeServer() {
 		HttpHandler httpHandler = RouterFunctions.toHttpHandler(fakeServer.routes());
 		ReactorHttpHandlerAdapter adapter = new ReactorHttpHandlerAdapter(httpHandler);
-		server = HttpServer.create()
-			.port(TEST_PORT)
-			.handle(adapter)
-			.bindNow();
+		server = HttpServer.create().port(TEST_PORT).handle(adapter).bindNow();
 	}
 
 	@Test
@@ -90,9 +76,7 @@ class LoadBalancedSupertoneTtsAdapterTest {
 
 		Flux<byte[]> result = adapter.streamSynthesize("Hello, world!");
 
-		StepVerifier.create(result)
-			.expectNextMatches(bytes -> bytes.length > 0)
-			.verifyComplete();
+		StepVerifier.create(result).expectNextMatches(bytes -> bytes.length > 0).verifyComplete();
 
 		assertThat(fakeServer.getRequestCount("key-1")).isEqualTo(1);
 	}
@@ -100,33 +84,30 @@ class LoadBalancedSupertoneTtsAdapterTest {
 	@Test
 	@DisplayName("일시적 에러 발생 시 다른 엔드포인트로 재시도")
 	void streamSynthesize_TemporaryError_Retry() {
-		fakeServer.setEndpointBehavior("key-1", FakeSupertoneServer.ServerBehavior.error(HttpStatus.TOO_MANY_REQUESTS));
+		fakeServer.setEndpointBehavior("key-1",
+			FakeSupertoneServer.ServerBehavior.error(HttpStatus.TOO_MANY_REQUESTS));
 		fakeServer.setEndpointBehavior("key-2", FakeSupertoneServer.ServerBehavior.success());
 		fakeServer.setEndpointBehavior("key-3", FakeSupertoneServer.ServerBehavior.success());
 
 		Flux<byte[]> result = adapter.streamSynthesize("Hello, world!");
 
-		StepVerifier.create(result)
-			.expectNextMatches(bytes -> bytes.length > 0)
-			.verifyComplete();
+		StepVerifier.create(result).expectNextMatches(bytes -> bytes.length > 0).verifyComplete();
 
-		int totalRequests = fakeServer.getRequestCount("key-1") +
-			fakeServer.getRequestCount("key-2") +
-			fakeServer.getRequestCount("key-3");
+		int totalRequests = fakeServer.getRequestCount("key-1")
+			+ fakeServer.getRequestCount("key-2") + fakeServer.getRequestCount("key-3");
 		assertThat(totalRequests).isEqualTo(2);
 	}
 
 	@Test
 	@DisplayName("영구 장애 발생 시 다른 엔드포인트로 재시도")
 	void streamSynthesize_PermanentError_Retry() {
-		fakeServer.setEndpointBehavior("key-1", FakeSupertoneServer.ServerBehavior.error(HttpStatus.PAYMENT_REQUIRED));
+		fakeServer.setEndpointBehavior("key-1",
+			FakeSupertoneServer.ServerBehavior.error(HttpStatus.PAYMENT_REQUIRED));
 		fakeServer.setEndpointBehavior("key-2", FakeSupertoneServer.ServerBehavior.success());
 
 		Flux<byte[]> result = adapter.streamSynthesize("Hello, world!");
 
-		StepVerifier.create(result)
-			.expectNextMatches(bytes -> bytes.length > 0)
-			.verifyComplete();
+		StepVerifier.create(result).expectNextMatches(bytes -> bytes.length > 0).verifyComplete();
 
 		TtsEndpoint endpoint1 = loadBalancer.getEndpoints().get(0);
 		assertThat(endpoint1.getHealth()).isEqualTo(TtsEndpoint.EndpointHealth.PERMANENT_FAILURE);
@@ -135,13 +116,12 @@ class LoadBalancedSupertoneTtsAdapterTest {
 	@Test
 	@DisplayName("클라이언트 에러 발생 시 즉시 실패")
 	void streamSynthesize_ClientError_ImmediateFail() {
-		fakeServer.setEndpointBehavior("key-1", FakeSupertoneServer.ServerBehavior.error(HttpStatus.BAD_REQUEST));
+		fakeServer.setEndpointBehavior("key-1",
+			FakeSupertoneServer.ServerBehavior.error(HttpStatus.BAD_REQUEST));
 
 		Flux<byte[]> result = adapter.streamSynthesize("Hello, world!");
 
-		StepVerifier.create(result)
-			.expectError()
-			.verify();
+		StepVerifier.create(result).expectError().verify();
 
 		assertThat(fakeServer.getRequestCount("key-1")).isEqualTo(1);
 		assertThat(fakeServer.getRequestCount("key-2")).isEqualTo(0);
@@ -150,21 +130,20 @@ class LoadBalancedSupertoneTtsAdapterTest {
 	@Test
 	@DisplayName("모든 엔드포인트 실패 시 최대 재시도 후 실패")
 	void streamSynthesize_AllEndpointsFail() {
-		fakeServer.setEndpointBehavior("key-1", FakeSupertoneServer.ServerBehavior.error(HttpStatus.INTERNAL_SERVER_ERROR));
-		fakeServer.setEndpointBehavior("key-2", FakeSupertoneServer.ServerBehavior.error(HttpStatus.INTERNAL_SERVER_ERROR));
-		fakeServer.setEndpointBehavior("key-3", FakeSupertoneServer.ServerBehavior.error(HttpStatus.INTERNAL_SERVER_ERROR));
+		fakeServer.setEndpointBehavior("key-1",
+			FakeSupertoneServer.ServerBehavior.error(HttpStatus.INTERNAL_SERVER_ERROR));
+		fakeServer.setEndpointBehavior("key-2",
+			FakeSupertoneServer.ServerBehavior.error(HttpStatus.INTERNAL_SERVER_ERROR));
+		fakeServer.setEndpointBehavior("key-3",
+			FakeSupertoneServer.ServerBehavior.error(HttpStatus.INTERNAL_SERVER_ERROR));
 
 		Flux<byte[]> result = adapter.streamSynthesize("Hello, world!");
 
-		StepVerifier.create(result)
-			.expectErrorMatches(error ->
-				error instanceof RuntimeException &&
-					error.getMessage().contains("모든 TTS 엔드포인트 요청 실패"))
-			.verify();
+		StepVerifier.create(result).expectErrorMatches(error -> error instanceof RuntimeException
+			&& error.getMessage().contains("모든 TTS 엔드포인트 요청 실패")).verify();
 
-		int totalRequests = fakeServer.getRequestCount("key-1") +
-			fakeServer.getRequestCount("key-2") +
-			fakeServer.getRequestCount("key-3");
+		int totalRequests = fakeServer.getRequestCount("key-1")
+			+ fakeServer.getRequestCount("key-2") + fakeServer.getRequestCount("key-3");
 		assertThat(totalRequests).isEqualTo(2);
 	}
 
@@ -180,9 +159,8 @@ class LoadBalancedSupertoneTtsAdapterTest {
 			adapter.streamSynthesize("Test " + i).blockLast();
 		}
 
-		int total = fakeServer.getRequestCount("key-1") +
-			fakeServer.getRequestCount("key-2") +
-			fakeServer.getRequestCount("key-3");
+		int total = fakeServer.getRequestCount("key-1") + fakeServer.getRequestCount("key-2")
+			+ fakeServer.getRequestCount("key-3");
 
 		assertThat(total).isEqualTo(9);
 		assertThat(fakeServer.getRequestCount("key-1")).isGreaterThan(0);
@@ -199,11 +177,10 @@ class LoadBalancedSupertoneTtsAdapterTest {
 
 		Flux<byte[]> result = adapter.streamSynthesize("Hello, world!");
 
-		StepVerifier.create(result)
-			.expectNextMatches(bytes -> bytes.length > 0)
-			.verifyComplete();
+		StepVerifier.create(result).expectNextMatches(bytes -> bytes.length > 0).verifyComplete();
 
-		int successRequests = fakeServer.getRequestCount("key-2") + fakeServer.getRequestCount("key-3");
+		int successRequests = fakeServer.getRequestCount("key-2")
+			+ fakeServer.getRequestCount("key-3");
 		assertThat(successRequests).isGreaterThan(0);
 	}
 
@@ -215,8 +192,6 @@ class LoadBalancedSupertoneTtsAdapterTest {
 		String longText = "a".repeat(301);
 		Flux<byte[]> result = adapter.streamSynthesize(longText);
 
-		StepVerifier.create(result)
-			.expectError()
-			.verify();
+		StepVerifier.create(result).expectError().verify();
 	}
 }

@@ -45,7 +45,11 @@ public class TtsEndpointFailureEvent {
 
 	@Override
 	public String toString() {
-		return String.format("TtsEndpointFailureEvent{endpointId='%s', errorType='%s', errorMessage='%s', occurredAt=%s}",
-			endpointId, errorType, errorMessage, occurredAt);
+		return String.format(
+			"TtsEndpointFailureEvent{endpointId='%s', errorType='%s', errorMessage='%s', occurredAt=%s}",
+			endpointId,
+			errorType,
+			errorMessage,
+			occurredAt);
 	}
 }

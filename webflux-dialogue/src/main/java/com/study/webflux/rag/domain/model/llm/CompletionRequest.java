@@ -22,24 +22,16 @@ public record CompletionRequest(
 	}
 
 	public static CompletionRequest fromPrompt(String prompt, String model) {
-		return new CompletionRequest(
-			List.of(Message.user(prompt)),
-			model,
-			false,
-			Map.of()
-		);
+		return new CompletionRequest(List.of(Message.user(prompt)), model, false, Map.of());
 	}
 
 	public static CompletionRequest streaming(String prompt, String model) {
-		return new CompletionRequest(
-			List.of(Message.user(prompt)),
-			model,
-			true,
-			Map.of()
-		);
+		return new CompletionRequest(List.of(Message.user(prompt)), model, true, Map.of());
 	}
 
-	public static CompletionRequest withMessages(List<Message> messages, String model, boolean stream) {
+	public static CompletionRequest withMessages(List<Message> messages,
+		String model,
+		boolean stream) {
 		return new CompletionRequest(messages, model, stream, Map.of());
 	}
 }
