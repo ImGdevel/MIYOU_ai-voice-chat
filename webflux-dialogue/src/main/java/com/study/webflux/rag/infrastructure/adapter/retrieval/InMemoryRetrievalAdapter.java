@@ -26,13 +26,16 @@ public class InMemoryRetrievalAdapter implements RetrievalPort {
 	@Override
 	public Mono<RetrievalContext> retrieve(String query, int topK) {
 		return conversationRepository.findAll().collectList().map(turns -> {
-			List<RetrievalDocument> documents = turns.stream().map(turn -> {
+			var sorted = turns.stream().map(turn -> {
 				int score = calculateSimilarity(query, turn.query());
 				return RetrievalDocument.of(turn.query(), score);
 			}).filter(doc -> doc.score().isRelevant())
-				.sorted((a, b) -> Integer.compare(b.score().value(), a.score().value())).limit(topK)
-				.collect(Collectors.toList());
+				.sorted((a, b) -> Integer.compare(b.score().value(), a.score().value()))
+				.toList();
 
+			List<RetrievalDocument> documents = sorted.size() > topK
+				? sorted.subList(0, topK)
+				: sorted;
 			return RetrievalContext.of(query, documents);
 		});
 	}

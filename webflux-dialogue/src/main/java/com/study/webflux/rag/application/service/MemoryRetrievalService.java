@@ -62,10 +62,14 @@ public class MemoryRetrievalService {
 
 			return vectorMemoryPort.search(embedding.vector(), types, importanceThreshold, topK * 2)
 				.collectList()
-				.map(memories -> memories.stream()
-					.sorted(Comparator
-						.comparing((Memory m) -> m.calculateRankedScore(recencyWeight)).reversed())
-					.limit(topK).toList())
+				.map(memories -> {
+					return memories.stream()
+						.sorted(Comparator
+							.comparing((Memory m) -> m.calculateRankedScore(recencyWeight))
+							.reversed())
+						.toList();
+				})
+				.map(sorted -> sorted.size() > topK ? sorted.subList(0, topK) : sorted)
 				.map(this::groupByType);
 		}).flatMap(this::updateAccessMetrics);
 	}

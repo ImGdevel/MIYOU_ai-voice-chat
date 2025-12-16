@@ -29,12 +29,15 @@ public class VectorMemoryRetrievalAdapter implements RetrievalPort {
 	@Override
 	public Mono<RetrievalContext> retrieve(String query, int topK) {
 		Mono<RetrievalContext> conversationContext = conversationRepository.findRecent(topK * 10)
-			.collectList().map(turns -> turns.stream().map(turn -> {
-				int score = calculateSimilarity(query, turn.query());
-				return RetrievalDocument.of(turn.query(), score);
-			}).filter(doc -> doc.score().isRelevant())
-				.sorted((a, b) -> Integer.compare(b.score().value(), a.score().value())).limit(topK)
-				.toList())
+			.collectList().map(turns -> {
+				var sorted = turns.stream().map(turn -> {
+					int score = calculateSimilarity(query, turn.query());
+					return RetrievalDocument.of(turn.query(), score);
+				}).filter(doc -> doc.score().isRelevant())
+					.sorted((a, b) -> Integer.compare(b.score().value(), a.score().value()))
+					.toList();
+				return sorted.size() > topK ? sorted.subList(0, topK) : sorted;
+			})
 			.map(docs -> RetrievalContext.of(query, docs));
 
 		return conversationContext;
