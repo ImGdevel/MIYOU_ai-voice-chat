@@ -61,6 +61,9 @@ class DialoguePipelineServiceTest {
 	@Mock
 	private RagDialogueProperties properties;
 
+	@Mock
+	private PipelineTracer pipelineTracer;
+
 	private SentenceAssembler sentenceAssembler;
 
 	private DialoguePipelineService service;
@@ -82,9 +85,32 @@ class DialoguePipelineServiceTest {
 		when(retrievalPort.retrieveMemories(anyString(), anyInt()))
 			.thenReturn(Mono.just(MemoryRetrievalResult.empty()));
 		when(systemPromptService.buildSystemPrompt(any(), any())).thenReturn("");
+		when(pipelineTracer.traceMemories(any(), any())).thenAnswer(invocation -> {
+			@SuppressWarnings("unchecked")
+			java.util.function.Supplier<Mono<MemoryRetrievalResult>> supplier = invocation
+				.getArgument(1);
+			return supplier.get();
+		});
+		when(pipelineTracer.traceRetrieval(any(), any())).thenAnswer(invocation -> {
+			@SuppressWarnings("unchecked")
+			java.util.function.Supplier<Mono<RetrievalContext>> supplier = invocation
+				.getArgument(1);
+			return supplier.get();
+		});
+		when(pipelineTracer.tracePrompt(any(), any())).thenAnswer(invocation -> {
+			@SuppressWarnings("unchecked")
+			java.util.function.Supplier<List<com.study.webflux.rag.domain.model.llm.Message>> supplier = invocation
+				.getArgument(1);
+			return Mono.just(supplier.get());
+		});
+		when(pipelineTracer.traceLlm(any(), anyString(), any())).thenAnswer(invocation -> {
+			@SuppressWarnings("unchecked")
+			java.util.function.Supplier<Flux<String>> supplier = invocation.getArgument(2);
+			return supplier.get();
+		});
 		service = new DialoguePipelineService(llmPort, ttsPort, retrievalPort,
 			conversationRepository, sentenceAssembler, pipelineMonitor, conversationCounterPort,
-			memoryExtractionService, systemPromptService, properties);
+			memoryExtractionService, systemPromptService, pipelineTracer, properties);
 	}
 
 	@Test

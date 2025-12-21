@@ -3,7 +3,6 @@ package com.study.webflux.rag.application.service;
 import java.util.ArrayList;
 import java.util.Base64;
 import java.util.List;
-import java.util.stream.Collectors;
 
 import lombok.extern.slf4j.Slf4j;
 
@@ -16,10 +15,8 @@ import com.study.webflux.rag.domain.model.conversation.ConversationContext;
 import com.study.webflux.rag.domain.model.conversation.ConversationTurn;
 import com.study.webflux.rag.domain.model.llm.CompletionRequest;
 import com.study.webflux.rag.domain.model.llm.Message;
-import com.study.webflux.rag.domain.model.llm.MessageRole;
 import com.study.webflux.rag.domain.model.memory.MemoryRetrievalResult;
 import com.study.webflux.rag.domain.model.rag.RetrievalContext;
-import com.study.webflux.rag.domain.model.rag.RetrievalDocument;
 import com.study.webflux.rag.domain.port.in.DialoguePipelineUseCase;
 import com.study.webflux.rag.domain.port.out.ConversationCounterPort;
 import com.study.webflux.rag.domain.port.out.ConversationRepository;
@@ -49,6 +46,7 @@ public class DialoguePipelineService implements DialoguePipelineUseCase {
 	private final ConversationCounterPort conversationCounterPort;
 	private final MemoryExtractionService memoryExtractionService;
 	private final SystemPromptService systemPromptService;
+	private final PipelineTracer pipelineTracer;
 	private final String llmModel;
 	private final int conversationThreshold;
 
@@ -61,6 +59,7 @@ public class DialoguePipelineService implements DialoguePipelineUseCase {
 		ConversationCounterPort conversationCounterPort,
 		MemoryExtractionService memoryExtractionService,
 		SystemPromptService systemPromptService,
+		PipelineTracer pipelineTracer,
 		RagDialogueProperties properties) {
 		this.llmPort = llmPort;
 		this.ttsPort = ttsPort;
@@ -71,6 +70,7 @@ public class DialoguePipelineService implements DialoguePipelineUseCase {
 		this.conversationCounterPort = conversationCounterPort;
 		this.memoryExtractionService = memoryExtractionService;
 		this.systemPromptService = systemPromptService;
+		this.pipelineTracer = pipelineTracer;
 		this.llmModel = properties.getOpenai().getModel();
 		this.conversationThreshold = properties.getMemory().getConversationThreshold();
 	}
@@ -226,39 +226,11 @@ public class DialoguePipelineService implements DialoguePipelineUseCase {
 		Mono<ConversationTurn> currentTurn = Mono.fromCallable(() -> ConversationTurn.create(text))
 			.cache();
 
-		Mono<MemoryRetrievalResult> memories = tracker
-			.traceMono(DialoguePipelineStage.MEMORY_RETRIEVAL,
-				() -> retrievalPort.retrieveMemories(text, 5))
-			.doOnNext(result -> {
-				tracker.recordStageAttribute(DialoguePipelineStage.MEMORY_RETRIEVAL,
-					"memoryCount",
-					result.totalCount());
-				List<String> memoryContents = new ArrayList<>();
-				result.experientialMemories()
-					.forEach(m -> memoryContents.add("[경험] " + m.content()));
-				result.factualMemories().forEach(m -> memoryContents.add("[사실] " + m.content()));
-				if (!memoryContents.isEmpty()) {
-					tracker.recordStageAttribute(DialoguePipelineStage.MEMORY_RETRIEVAL,
-						"memories",
-						memoryContents);
-				}
-			}).cache();
+		Mono<MemoryRetrievalResult> memories = pipelineTracer.traceMemories(tracker,
+			() -> retrievalPort.retrieveMemories(text, 5));
 
-		Mono<RetrievalContext> retrievalContext = tracker
-			.traceMono(DialoguePipelineStage.RETRIEVAL, () -> retrievalPort.retrieve(text, 3))
-			.doOnNext(context -> {
-				tracker.recordStageAttribute(DialoguePipelineStage.RETRIEVAL,
-					"documentCount",
-					context.documentCount());
-				if (!context.isEmpty()) {
-					List<String> docContents = context.documents().stream()
-						.map(RetrievalDocument::content)
-						.collect(Collectors.toList());
-					tracker.recordStageAttribute(DialoguePipelineStage.RETRIEVAL,
-						"documents",
-						docContents);
-				}
-			}).cache();
+		Mono<RetrievalContext> retrievalContext = pipelineTracer.traceRetrieval(tracker,
+			() -> retrievalPort.retrieve(text, 3));
 
 		Mono<ConversationContext> history = loadConversationHistory().cache();
 
@@ -272,32 +244,19 @@ public class DialoguePipelineService implements DialoguePipelineUseCase {
 	 */
 	private Flux<String> streamLlmTokens(DialoguePipelineTracker tracker,
 		Mono<PipelineInputs> inputsMono) {
-		return inputsMono.flatMapMany(inputs -> tracker.traceMono(
-			DialoguePipelineStage.PROMPT_BUILDING,
-			() -> Mono.fromCallable(() -> buildMessages(inputs.retrievalContext(),
+		return inputsMono.flatMapMany(inputs -> pipelineTracer.tracePrompt(tracker,
+			() -> buildMessages(inputs.retrievalContext(),
 				inputs.memories(),
 				inputs.conversationContext(),
-				inputs.currentTurn().query())))
-			.doOnNext(messages -> {
-				String systemPrompt = messages.stream()
-					.filter(m -> MessageRole.SYSTEM.equals(m.role()))
-					.findFirst().map(Message::content).orElse("");
-				tracker.recordStageAttribute(DialoguePipelineStage.PROMPT_BUILDING,
-					"systemPrompt",
-					systemPrompt);
-				tracker.recordStageAttribute(DialoguePipelineStage.PROMPT_BUILDING,
-					"messageCount",
-					messages.size());
-			}).flatMapMany(messages -> {
+				inputs.currentTurn().query()))
+			.flatMapMany(messages -> {
 				CompletionRequest request = new CompletionRequest(
 					messages,
 					llmModel,
 					true,
 					java.util.Map.of("correlationId", tracker.pipelineId()));
-				tracker.recordStageAttribute(DialoguePipelineStage.LLM_COMPLETION,
-					"model",
-					request.model());
-				return tracker.traceFlux(DialoguePipelineStage.LLM_COMPLETION,
+				return pipelineTracer.traceLlm(tracker,
+					request.model(),
 					() -> llmPort.streamCompletion(request));
 			}));
 	}
