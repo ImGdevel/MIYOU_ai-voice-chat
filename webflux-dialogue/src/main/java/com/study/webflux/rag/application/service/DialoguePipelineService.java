@@ -81,12 +81,12 @@ public class DialoguePipelineService implements DialoguePipelineUseCase {
 	public Flux<String> executeTextOnly(String text) {
 		DialoguePipelineTracker tracker = pipelineMonitor.create(text);
 
-		Mono<ConversationTurn> queryTurn = tracker
-			.traceMono(DialoguePipelineStage.QUERY_PERSISTENCE, () -> saveQuery(text));
+		Mono<ConversationTurn> queryTurn = Mono.fromCallable(() -> ConversationTurn.create(text))
+			.cache();
 
-		Mono<MemoryRetrievalResult> memoryResult = queryTurn
-			.flatMap(turn -> tracker.traceMono(DialoguePipelineStage.MEMORY_RETRIEVAL,
-				() -> retrievalPort.retrieveMemories(text, 5)))
+		Mono<MemoryRetrievalResult> memoryResult = tracker
+			.traceMono(DialoguePipelineStage.MEMORY_RETRIEVAL,
+				() -> retrievalPort.retrieveMemories(text, 5))
 			.doOnNext(result -> {
 				tracker.recordStageAttribute(DialoguePipelineStage.MEMORY_RETRIEVAL,
 					"memoryCount",
@@ -102,9 +102,8 @@ public class DialoguePipelineService implements DialoguePipelineUseCase {
 				}
 			});
 
-		Mono<RetrievalContext> retrievalContext = queryTurn
-			.flatMap(turn -> tracker.traceMono(DialoguePipelineStage.RETRIEVAL,
-				() -> retrievalPort.retrieve(text, 3)))
+		Mono<RetrievalContext> retrievalContext = tracker
+			.traceMono(DialoguePipelineStage.RETRIEVAL, () -> retrievalPort.retrieve(text, 3))
 			.doOnNext(context -> {
 				tracker.recordStageAttribute(DialoguePipelineStage.RETRIEVAL,
 					"documentCount",
@@ -179,8 +178,9 @@ public class DialoguePipelineService implements DialoguePipelineUseCase {
 				});
 			}
 
-			return queryTurn
-				.flatMap(turn -> conversationRepository.save(turn.withResponse(fullResponse)));
+			return queryTurn.flatMap(turn -> tracker.traceMono(
+				DialoguePipelineStage.QUERY_PERSISTENCE,
+				() -> conversationRepository.save(turn.withResponse(fullResponse))));
 		}).flatMap(turn -> conversationCounterPort.increment())
 			.filter(count -> count % conversationThreshold == 0)
 			.flatMap(count -> memoryExtractionService.checkAndExtract())
@@ -213,14 +213,14 @@ public class DialoguePipelineService implements DialoguePipelineUseCase {
 
 		ttsWarmup.subscribe();
 
-		/// 쿼리 저장
-		Mono<ConversationTurn> queryTurn = tracker
-			.traceMono(DialoguePipelineStage.QUERY_PERSISTENCE, () -> saveQuery(text));
+		/// 쿼리 준비 (저장은 응답 생성 후 수행)
+		Mono<ConversationTurn> queryTurn = Mono.fromCallable(() -> ConversationTurn.create(text))
+			.cache();
 
 		/// 메모리 검색
-		Mono<MemoryRetrievalResult> memoryResult = queryTurn
-			.flatMap(turn -> tracker.traceMono(DialoguePipelineStage.MEMORY_RETRIEVAL,
-				() -> retrievalPort.retrieveMemories(text, 5)))
+		Mono<MemoryRetrievalResult> memoryResult = tracker
+			.traceMono(DialoguePipelineStage.MEMORY_RETRIEVAL,
+				() -> retrievalPort.retrieveMemories(text, 5))
 			.doOnNext(result -> {
 				tracker.recordStageAttribute(DialoguePipelineStage.MEMORY_RETRIEVAL,
 					"memoryCount",
@@ -237,9 +237,8 @@ public class DialoguePipelineService implements DialoguePipelineUseCase {
 			});
 
 		/// 검색 컨텍스트 로드
-		Mono<RetrievalContext> retrievalContext = queryTurn
-			.flatMap(turn -> tracker.traceMono(DialoguePipelineStage.RETRIEVAL,
-				() -> retrievalPort.retrieve(text, 3)))
+		Mono<RetrievalContext> retrievalContext = tracker
+			.traceMono(DialoguePipelineStage.RETRIEVAL, () -> retrievalPort.retrieve(text, 3))
 			.doOnNext(context -> {
 				tracker.recordStageAttribute(DialoguePipelineStage.RETRIEVAL,
 					"documentCount",
@@ -306,8 +305,9 @@ public class DialoguePipelineService implements DialoguePipelineUseCase {
 
 			cachedSentences.collectList().flatMap(sentenceList -> {
 				String fullResponse = String.join(" ", sentenceList);
-				return queryTurn
-					.flatMap(turn -> conversationRepository.save(turn.withResponse(fullResponse)));
+				return queryTurn.flatMap(turn -> tracker.traceMono(
+					DialoguePipelineStage.QUERY_PERSISTENCE,
+					() -> conversationRepository.save(turn.withResponse(fullResponse))));
 			}).subscribe();
 
 			Mono<String> firstSentenceMono = cachedSentences.take(1).singleOrEmpty().cache();
@@ -345,19 +345,9 @@ public class DialoguePipelineService implements DialoguePipelineUseCase {
 	}
 
 	/**
-	 * 쿼리를 저장하고 ConversationTurn을 반환합니다.
-	 *
-	 * @param text
-	 *            쿼리
-	 * @return ConversationTurn
-	 */
-	private Mono<ConversationTurn> saveQuery(String text) {
-		ConversationTurn turn = ConversationTurn.create(text);
-		return conversationRepository.save(turn);
-	}
-
-	/**
 	 * 대화 기록을 로드하고 ConversationContext를 반환합니다.
+	 *
+	 * @return ConversationContext
 	 */
 	private Mono<ConversationContext> loadConversationHistory() {
 		return conversationRepository.findRecent(10).collectList().map(ConversationContext::of)

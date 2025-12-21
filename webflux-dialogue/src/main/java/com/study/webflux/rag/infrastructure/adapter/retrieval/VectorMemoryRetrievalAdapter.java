@@ -6,6 +6,7 @@ import java.util.Set;
 import java.util.stream.Collectors;
 
 import lombok.RequiredArgsConstructor;
+import lombok.extern.slf4j.Slf4j;
 
 import org.springframework.context.annotation.Primary;
 import org.springframework.stereotype.Component;
@@ -21,6 +22,7 @@ import reactor.core.publisher.Mono;
 @Component
 @RequiredArgsConstructor
 @Primary
+@Slf4j
 public class VectorMemoryRetrievalAdapter implements RetrievalPort {
 
 	private final MemoryRetrievalService memoryRetrievalService;
@@ -46,6 +48,10 @@ public class VectorMemoryRetrievalAdapter implements RetrievalPort {
 	@Override
 	public Mono<MemoryRetrievalResult> retrieveMemories(String query, int topK) {
 		return memoryRetrievalService.retrieveMemories(query, topK).onErrorResume(error -> {
+			log.warn("Memory retrieval failed for query '{}': {}",
+				query,
+				error.getMessage(),
+				error);
 			return Mono.just(MemoryRetrievalResult.empty());
 		});
 	}
