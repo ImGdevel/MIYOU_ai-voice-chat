@@ -3,6 +3,7 @@ package com.study.webflux.rag.infrastructure.adapter.persistence.mongodb.entity;
 import java.time.Instant;
 import java.util.List;
 import java.util.Map;
+import java.util.stream.Collectors;
 
 import org.springframework.data.annotation.Id;
 import org.springframework.data.mongodb.core.index.Indexed;
@@ -37,7 +38,7 @@ public record PerformanceMetricsEntity(
 				domain.startedAt(),
 				domain.finishedAt(),
 				domain.durationMillis(),
-				domain.attributes());
+				sanitizeMapKeys(domain.attributes()));
 		}
 
 		public PerformanceMetrics.StagePerformance toDomain() {
@@ -47,7 +48,7 @@ public record PerformanceMetricsEntity(
 				startedAt,
 				finishedAt,
 				durationMillis,
-				attributes);
+				restoreMapKeys(attributes));
 		}
 	}
 
@@ -61,7 +62,7 @@ public record PerformanceMetricsEntity(
 			domain.firstResponseLatencyMillis(),
 			domain.lastResponseLatencyMillis(),
 			domain.stages().stream().map(StagePerformanceEntity::fromDomain).toList(),
-			domain.systemAttributes());
+			sanitizeMapKeys(domain.systemAttributes()));
 	}
 
 	public PerformanceMetrics toDomain() {
@@ -74,6 +75,26 @@ public record PerformanceMetricsEntity(
 			firstResponseLatencyMillis,
 			lastResponseLatencyMillis,
 			stages.stream().map(StagePerformanceEntity::toDomain).toList(),
-			systemAttributes);
+			restoreMapKeys(systemAttributes));
+	}
+
+	private static Map<String, Object> sanitizeMapKeys(Map<String, Object> map) {
+		if (map == null) {
+			return null;
+		}
+		return map.entrySet().stream()
+			.collect(Collectors.toMap(
+				e -> e.getKey().replace(".", "_"),
+				Map.Entry::getValue));
+	}
+
+	private static Map<String, Object> restoreMapKeys(Map<String, Object> map) {
+		if (map == null) {
+			return null;
+		}
+		return map.entrySet().stream()
+			.collect(Collectors.toMap(
+				e -> e.getKey().replace("_", "."),
+				Map.Entry::getValue));
 	}
 }
