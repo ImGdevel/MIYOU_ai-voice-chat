@@ -117,8 +117,11 @@ public class MetricsController {
 				tuple.getT4()));
 	}
 
+	private static final int MAX_CREDIT_SAMPLE = 10_000;
+
 	private Mono<Long> calculateTotalCredits() {
-		return metricsQueryUseCase.getRecentUsageAnalytics(Integer.MAX_VALUE)
+		// 대량 데이터 로딩 방지: 합리적 상한선으로 계산
+		return metricsQueryUseCase.getRecentUsageAnalytics(MAX_CREDIT_SAMPLE)
 			.map(analytics -> com.study.webflux.rag.domain.service.CostCalculationService
 				.calculateCost(analytics))
 			.map(cost -> cost.totalCredits())
