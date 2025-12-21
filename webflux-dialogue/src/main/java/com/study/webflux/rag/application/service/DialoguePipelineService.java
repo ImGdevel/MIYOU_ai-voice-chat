@@ -26,6 +26,7 @@ import com.study.webflux.rag.domain.port.out.RetrievalPort;
 import com.study.webflux.rag.domain.port.out.TokenUsageProvider;
 import com.study.webflux.rag.domain.port.out.TtsPort;
 import com.study.webflux.rag.domain.service.SentenceAssembler;
+import com.study.webflux.rag.infrastructure.config.properties.RagDialogueProperties;
 import reactor.core.publisher.Flux;
 import reactor.core.publisher.Mono;
 import reactor.core.scheduler.Schedulers;
@@ -44,6 +45,7 @@ public class DialoguePipelineService implements DialoguePipelineUseCase {
 	private final MemoryExtractionService memoryExtractionService;
 
 	private final int conversationThreshold; // 대화 횟수 임계값
+	private final String configuredSystemPrompt; // 추가 시스템 프롬프트
 
 	public DialoguePipelineService(LlmPort llmPort,
 		TtsPort ttsPort,
@@ -53,7 +55,8 @@ public class DialoguePipelineService implements DialoguePipelineUseCase {
 		DialoguePipelineMonitor pipelineMonitor,
 		ConversationCounterPort conversationCounterPort,
 		MemoryExtractionService memoryExtractionService,
-		int conversationThreshold) {
+		int conversationThreshold,
+		RagDialogueProperties ragDialogueProperties) {
 		this.llmPort = llmPort;
 		this.ttsPort = ttsPort;
 		this.retrievalPort = retrievalPort;
@@ -63,6 +66,7 @@ public class DialoguePipelineService implements DialoguePipelineUseCase {
 		this.conversationCounterPort = conversationCounterPort;
 		this.memoryExtractionService = memoryExtractionService;
 		this.conversationThreshold = conversationThreshold;
+		this.configuredSystemPrompt = ragDialogueProperties.getSystemPrompt();
 	}
 
 	/**
@@ -363,8 +367,8 @@ public class DialoguePipelineService implements DialoguePipelineUseCase {
 		String currentQuery) {
 		List<Message> messages = new ArrayList<>();
 
-		String systemPrompt = buildSystemPrompt(context, memories);
-		messages.add(Message.system(systemPrompt));
+		String fullSystemPrompt = buildSystemPrompt(context, memories);
+		messages.add(Message.system(fullSystemPrompt));
 
 		conversationContext.turns().stream().filter(turn -> turn.response() != null)
 			.forEach(turn -> {
@@ -382,6 +386,10 @@ public class DialoguePipelineService implements DialoguePipelineUseCase {
 	 */
 	private String buildSystemPrompt(RetrievalContext context, MemoryRetrievalResult memories) {
 		StringBuilder prompt = new StringBuilder();
+
+		if (configuredSystemPrompt != null && !configuredSystemPrompt.isBlank()) {
+			prompt.append(configuredSystemPrompt.trim()).append("\n\n");
+		}
 
 		prompt.append("자연스럽게 대화하세요. 과도한 존댓말이나 '도와드리겠습니다' 같은 틀에 박힌 표현은 피하세요.\n\n");
 
