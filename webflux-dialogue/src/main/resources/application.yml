@@ -37,6 +37,12 @@ rag:
         - id: endpoint-3
           api-key: ${SUPERTONE_API_KEY_3:${SUPERTONE_API_KEY:}}
           base-url: ${SUPERTONE_BASE_URL:https://supertoneapi.com}
+        - id: endpoint-4
+          api-key: ${SUPERTONE_API_KEY_4:${SUPERTONE_API_KEY:}}
+          base-url: ${SUPERTONE_BASE_URL:https://supertoneapi.com}
+        - id: endpoint-5
+          api-key: ${SUPERTONE_API_KEY_5:${SUPERTONE_API_KEY:}}
+          base-url: ${SUPERTONE_BASE_URL:https://supertoneapi.com}
       voice-id: 2c5f135cb33f49a2c8882d
       language: ko
       style: neutral
