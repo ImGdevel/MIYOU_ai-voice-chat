@@ -464,7 +464,8 @@
                 refresh: 'Refresh',
                 auto_label: 'Auto',
                 range: 'Range',
-                avg_in_range: 'Avg in range',
+                range_all: 'All',
+                avg_in_range: 'Overall average',
                 request_rate: 'Requests / Bucket',
                 bucket_unit: 'Bucket',
                 total_requests: 'Total Requests',
@@ -552,7 +553,8 @@
                 refresh: '새로고침',
                 auto_label: '자동',
                 range: '범위',
-                avg_in_range: '범위 평균',
+                range_all: '전체',
+                avg_in_range: '전체 평균',
                 request_rate: '버킷당 요청',
                 bucket_unit: '버킷',
                 total_requests: '전체 요청',
@@ -662,12 +664,16 @@
             updateChartTheme();
         }
 
+        let lastTotalSummary = null;
+
         function toggleLanguage() {
             currentLang = currentLang === 'ko' ? 'en' : 'ko';
             localStorage.setItem('dashboard.lang', currentLang);
             applyI18n();
             renderPipelineDetail(lastPipelineDetail);
-            updateSummaryCards(lastRollups, getGranularity(), granularityLimit(getGranularity()));
+            if (lastTotalSummary) {
+                updateSummaryCards(lastTotalSummary, lastRollups, getGranularity(), granularityLimit(getGranularity()));
+            }
             updatePerformanceChart(lastRollups, getGranularity());
             updateStagePerformanceChart(lastStageSummary);
         }
@@ -822,7 +828,8 @@
                 const limit = granularityLimit(granularity);
                 setGranularity(granularity);
 
-                const [rollups, stageSummary, recentUsage] = await Promise.all([
+                const [totalSummary, rollups, stageSummary, recentUsage] = await Promise.all([
+                    fetchData(`/metrics/usage/summary/total`),
                     fetchData(`/metrics/rollups?granularity=${granularity}&limit=${limit}`),
                     fetchData(`/metrics/stages/summary?granularity=${granularity}&limit=${limit}`),
                     fetchData(`/metrics/usage/recent?limit=200`)
@@ -830,8 +837,9 @@
 
                 lastRollups = rollups;
                 lastStageSummary = stageSummary;
+                lastTotalSummary = totalSummary;
 
-                updateSummaryCards(rollups, granularity, limit);
+                updateSummaryCards(totalSummary, rollups, granularity, limit);
                 updatePerformanceChart(rollups, granularity);
                 updateStagePerformanceChart(stageSummary);
                 recentPipelinesCache = recentUsage;
@@ -845,29 +853,18 @@
             }
         }
 
-        function updateSummaryCards(rollups, granularity, limit) {
-            const totals = rollups.reduce((acc, r) => {
-                acc.requests += r.requestCount || 0;
-                acc.tokens += r.totalTokens || 0;
-                acc.duration += r.totalDurationMillis || 0;
-                return acc;
-            }, { requests: 0, tokens: 0, duration: 0 });
-
-            const avgResponse = totals.requests === 0
-                ? 0
-                : totals.duration / totals.requests;
+        function updateSummaryCards(totalSummary, rollups, granularity, limit) {
             const requestRate = rollups.length === 0
                 ? 0
-                : totals.requests / rollups.length;
+                : rollups.reduce((sum, r) => sum + (r.requestCount || 0), 0) / rollups.length;
 
-            document.getElementById('totalRequests').textContent = totals.requests.toLocaleString();
-            document.getElementById('totalTokens').textContent = totals.tokens.toLocaleString();
-            document.getElementById('avgResponseTime').textContent = `${Math.round(avgResponse).toLocaleString()}ms`;
+            document.getElementById('totalRequests').textContent = totalSummary.totalRequests.toLocaleString();
+            document.getElementById('totalTokens').textContent = totalSummary.totalTokens.toLocaleString();
+            document.getElementById('avgResponseTime').textContent = `${Math.round(totalSummary.avgResponseTimeMillis).toLocaleString()}ms`;
             document.getElementById('requestRate').textContent = requestRate.toFixed(1);
 
-            const rangeLabel = formatRangeLabel(granularity, limit);
-            document.getElementById('summaryRange').textContent = rangeLabel;
-            document.getElementById('summaryRangeTokens').textContent = rangeLabel;
+            document.getElementById('summaryRange').textContent = t('range_all');
+            document.getElementById('summaryRangeTokens').textContent = t('range_all');
             document.getElementById('summaryBucket').textContent = t(
                 granularity === 'DAY' ? 'unit_day' : granularity === 'HOUR' ? 'unit_hour' : 'unit_minute'
             );

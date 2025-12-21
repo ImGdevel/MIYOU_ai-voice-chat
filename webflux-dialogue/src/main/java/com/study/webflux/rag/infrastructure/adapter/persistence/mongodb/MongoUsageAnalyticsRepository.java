@@ -67,4 +67,21 @@ public class MongoUsageAnalyticsRepository implements UsageAnalyticsRepository {
 		return repository.sumTokensByTimeRange(startTime, endTime)
 			.defaultIfEmpty(0L);
 	}
+
+	@Override
+	public Mono<Long> count() {
+		return repository.count();
+	}
+
+	@Override
+	public Mono<Long> sumTokens() {
+		return repository.sumAllTokens()
+			.defaultIfEmpty(0L);
+	}
+
+	@Override
+	public Mono<Double> averageResponseTime() {
+		return repository.averageAllResponseTime()
+			.defaultIfEmpty(0.0);
+	}
 }
