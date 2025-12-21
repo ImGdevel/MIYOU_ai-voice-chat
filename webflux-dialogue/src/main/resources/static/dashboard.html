@@ -791,6 +791,12 @@
             return value;
         }
 
+        function escapeHtml(text) {
+            const div = document.createElement('div');
+            div.textContent = text ?? '';
+            return div.innerHTML;
+        }
+
         function calculateCredits(usage) {
             if (!usage) return 0;
 
@@ -1163,7 +1169,7 @@
                 : `<tr><td colspan="3">${t('empty_no_attributes')}</td></tr>`;
 
             const outputsHtml = llmSentences.length
-                ? `<ul class="llm-list">${llmSentences.map(text => `<li>${text}</li>`).join('')}</ul>`
+                ? `<ul class="llm-list">${llmSentences.map(text => `<li>${escapeHtml(text)}</li>`).join('')}</ul>`
                 : `<div class="empty-state">${t('empty_no_outputs')}</div>`;
 
             container.className = '';
@@ -1282,12 +1288,12 @@
                 row.onclick = () => fetchPipelineDetail(p.pipelineId);
                 const credits = calculateCredits(p);
                 row.innerHTML = `
-                    <td>${(p.pipelineId || '-').substring(0, 6)}</td>
-                    <td class="status-${(p.status || '-').toLowerCase()}">${p.status || '-'}</td>
-                    <td>${p.llmUsage?.model || '-'}</td>
+                    <td>${escapeHtml((p.pipelineId || '-').substring(0, 6))}</td>
+                    <td class="status-${escapeHtml((p.status || '-').toLowerCase())}">${escapeHtml(p.status || '-')}</td>
+                    <td>${escapeHtml(p.llmUsage?.model || '-')}</td>
                     <td>${formatNumber(credits)}</td>
                     <td>${formatMillis(p.responseMetrics?.totalDurationMillis)}</td>
-                    <td>${(p.userRequest?.inputPreview || '-').substring(0, 20)}</td>
+                    <td>${escapeHtml((p.userRequest?.inputPreview || '-').substring(0, 20))}</td>
                     <td>${formatTime(p.timestamp)}</td>
                 `;
             });
