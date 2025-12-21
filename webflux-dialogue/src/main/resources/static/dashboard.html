@@ -358,19 +358,19 @@
                     <div class="card-sub"><span data-i18n="range">Range</span>: <span id="summaryRange">-</span></div>
                 </div>
                 <div class="card">
-                    <div class="card-title" data-i18n="total_tokens">Total Tokens</div>
-                    <div class="card-value" id="totalTokens">-</div>
-                    <div class="card-sub"><span data-i18n="range">Range</span>: <span id="summaryRangeTokens">-</span></div>
+                    <div class="card-title" data-i18n="total_credits">Total Credits</div>
+                    <div class="card-value" id="totalCredits">-</div>
+                    <div class="card-sub"><span data-i18n="credits_info">1 credit = $0.0001</span></div>
+                </div>
+                <div class="card">
+                    <div class="card-title" data-i18n="total_cost">Total Cost</div>
+                    <div class="card-value" id="totalCost">-</div>
+                    <div class="card-sub"><span data-i18n="cost_info">Estimated in USD</span></div>
                 </div>
                 <div class="card">
                     <div class="card-title" data-i18n="avg_response">Avg Response</div>
                     <div class="card-value" id="avgResponseTime">-</div>
                     <div class="card-sub"><span data-i18n="avg_in_range">Avg in range</span></div>
-                </div>
-                <div class="card">
-                    <div class="card-title" data-i18n="request_rate">Requests / Bucket</div>
-                    <div class="card-value" id="requestRate">-</div>
-                    <div class="card-sub"><span data-i18n="bucket_unit">Bucket</span>: <span id="summaryBucket">-</span></div>
                 </div>
             </div>
 
@@ -417,7 +417,7 @@
                                 <th data-i18n="col_id">ID</th>
                                 <th data-i18n="col_status">Status</th>
                                 <th data-i18n="col_model">Model</th>
-                                <th data-i18n="col_tokens">Tokens</th>
+                                <th data-i18n="col_credits">Credits</th>
                                 <th data-i18n="col_duration">Duration</th>
                                 <th data-i18n="col_preview">Preview</th>
                                 <th data-i18n="col_time">Time</th>
@@ -470,6 +470,10 @@
                 bucket_unit: 'Bucket',
                 total_requests: 'Total Requests',
                 total_tokens: 'Total Tokens',
+                total_credits: 'Total Credits',
+                total_cost: 'Total Cost',
+                credits_info: '1 credit = $0.0001',
+                cost_info: 'Estimated in USD',
                 avg_response: 'Avg Response',
                 cost: 'Cost',
                 milliseconds: 'milliseconds',
@@ -502,6 +506,7 @@
                 col_time: 'Time',
                 col_model: 'Model',
                 col_tokens: 'Tokens',
+                col_credits: 'Credits',
                 col_preview: 'Preview',
                 series_avg_response: 'Avg Response (ms)',
                 series_requests: 'Requests',
@@ -516,6 +521,7 @@
                 detail_llm_retrieval: 'LLM & Retrieval',
                 detail_model: 'Model',
                 detail_tokens: 'Tokens',
+                detail_credits: 'Credits',
                 detail_completion: 'Completion',
                 detail_retrieved: 'Retrieved',
                 detail_retrieval_time: 'Retrieval Time',
@@ -559,6 +565,10 @@
                 bucket_unit: '버킷',
                 total_requests: '전체 요청',
                 total_tokens: '전체 토큰',
+                total_credits: '전체 크레딧',
+                total_cost: '전체 비용',
+                credits_info: '1 크레딧 = $0.0001',
+                cost_info: '예상 USD',
                 avg_response: '평균 응답',
                 cost: '비용',
                 milliseconds: '밀리초',
@@ -591,6 +601,7 @@
                 col_time: '시간',
                 col_model: '모델',
                 col_tokens: '토큰',
+                col_credits: '크레딧',
                 col_preview: '프리뷰',
                 series_avg_response: '평균 응답(ms)',
                 series_requests: '요청 수',
@@ -605,6 +616,7 @@
                 detail_llm_retrieval: 'LLM 및 검색',
                 detail_model: '모델',
                 detail_tokens: '토큰',
+                detail_credits: '크레딧',
                 detail_completion: '완료 시간',
                 detail_retrieved: '검색 건수',
                 detail_retrieval_time: '검색 시간',
@@ -779,6 +791,51 @@
             return value;
         }
 
+        function calculateCredits(usage) {
+            if (!usage) return 0;
+
+            const llmPricing = {
+                'gpt-4o-mini': { input: 0.150, output: 0.600 },
+                'gpt-4o': { input: 2.50, output: 10.00 },
+                'gpt-4-turbo': { input: 10.00, output: 30.00 },
+                'gpt-3.5-turbo': { input: 0.50, output: 1.50 }
+            };
+
+            let llmCredits = 0;
+            if (usage.llmUsage) {
+                const model = usage.llmUsage.model || 'gpt-4o-mini';
+                const pricing = llmPricing[model] || llmPricing['gpt-4o-mini'];
+
+                const inputLength = usage.userRequest?.inputLength || 0;
+                const memoryCount = usage.retrievalMetrics?.memoryCount || 0;
+                const documentCount = usage.retrievalMetrics?.documentCount || 0;
+
+                const basePromptTokens = 300;
+                const inputTokens = Math.floor(inputLength / 3);
+                const contextTokens = (memoryCount * 50) + (documentCount * 100);
+                const estimatedPromptTokens = basePromptTokens + inputTokens + contextTokens;
+
+                const completionTokens = usage.llmUsage.tokenCount || 0;
+
+                const inputCost = (estimatedPromptTokens / 1000000.0) * pricing.input;
+                const outputCost = (completionTokens / 1000000.0) * pricing.output;
+                const totalDollars = inputCost + outputCost;
+                llmCredits = Math.ceil(totalDollars * 10000);
+            }
+
+            let ttsCredits = 0;
+            if (usage.ttsMetrics) {
+                const sentenceCount = usage.ttsMetrics.sentenceCount || 0;
+                const avgSentenceDuration = 3000;
+                const estimatedAudioLength = sentenceCount * avgSentenceDuration;
+
+                const totalCost = (estimatedAudioLength / 100.0) * 0.00015;
+                ttsCredits = Math.ceil(totalCost * 10000);
+            }
+
+            return llmCredits + ttsCredits;
+        }
+
         function getGranularity() {
             const stored = localStorage.getItem('dashboard.granularity');
             const select = document.getElementById('granularitySelect');
@@ -859,15 +916,14 @@
                 : rollups.reduce((sum, r) => sum + (r.requestCount || 0), 0) / rollups.length;
 
             document.getElementById('totalRequests').textContent = totalSummary.totalRequests.toLocaleString();
-            document.getElementById('totalTokens').textContent = totalSummary.totalTokens.toLocaleString();
+            document.getElementById('totalCredits').textContent = totalSummary.totalCredits.toLocaleString();
+
+            const costInDollars = (totalSummary.totalCredits / 10000.0).toFixed(4);
+            document.getElementById('totalCost').textContent = `$${costInDollars}`;
+
             document.getElementById('avgResponseTime').textContent = `${Math.round(totalSummary.avgResponseTimeMillis).toLocaleString()}ms`;
-            document.getElementById('requestRate').textContent = requestRate.toFixed(1);
 
             document.getElementById('summaryRange').textContent = t('range_all');
-            document.getElementById('summaryRangeTokens').textContent = t('range_all');
-            document.getElementById('summaryBucket').textContent = t(
-                granularity === 'DAY' ? 'unit_day' : granularity === 'HOUR' ? 'unit_hour' : 'unit_minute'
-            );
         }
 
         function updatePerformanceChart(rollups, granularity) {
@@ -1079,6 +1135,8 @@
             const tts = usage.ttsMetrics || {};
             const responseMetrics = usage.responseMetrics || {};
 
+            const credits = calculateCredits(usage);
+
             const llmSentences = Array.isArray(llmUsage.generatedSentences)
                 ? llmUsage.generatedSentences
                 : [];
@@ -1124,6 +1182,7 @@
                         <div class="detail-section-title">${t('detail_llm_retrieval')}</div>
                         <div class="kv-row"><span>${t('detail_model')}</span><span>${llmUsage.model || '-'}</span></div>
                         <div class="kv-row"><span>${t('detail_tokens')}</span><span>${formatNumber(llmUsage.tokenCount, 0)}</span></div>
+                        <div class="kv-row"><span>${t('detail_credits')}</span><span>${formatNumber(credits)}</span></div>
                         <div class="kv-row"><span>${t('detail_completion')}</span><span>${formatMillis(llmUsage.completionTimeMillis)}</span></div>
                         <div class="kv-row"><span>${t('detail_retrieved')}</span><span>${formatNumber(retrieval.memoryCount, 0)} mem / ${formatNumber(retrieval.documentCount, 0)} docs</span></div>
                         <div class="kv-row"><span>${t('detail_retrieval_time')}</span><span>${formatMillis(retrieval.retrievalTimeMillis)}</span></div>
@@ -1221,11 +1280,12 @@
                 const row = tbody.insertRow();
                 row.classList.add('clickable-row');
                 row.onclick = () => fetchPipelineDetail(p.pipelineId);
+                const credits = calculateCredits(p);
                 row.innerHTML = `
                     <td>${(p.pipelineId || '-').substring(0, 6)}</td>
                     <td class="status-${(p.status || '-').toLowerCase()}">${p.status || '-'}</td>
                     <td>${p.llmUsage?.model || '-'}</td>
-                    <td>${formatNumber(p.llmUsage?.tokenCount || 0)}</td>
+                    <td>${formatNumber(credits)}</td>
                     <td>${formatMillis(p.responseMetrics?.totalDurationMillis)}</td>
                     <td>${(p.userRequest?.inputPreview || '-').substring(0, 20)}</td>
                     <td>${formatTime(p.timestamp)}</td>

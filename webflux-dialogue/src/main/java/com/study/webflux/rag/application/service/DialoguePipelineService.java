@@ -160,6 +160,20 @@ public class DialoguePipelineService implements DialoguePipelineUseCase {
 
 		textStream.collectList().flatMap(tokens -> {
 			String fullResponse = String.join("", tokens);
+
+			if (llmPort instanceof com.study.webflux.rag.infrastructure.adapter.llm.TokenAwareLlmAdapter tokenAwareLlm) {
+				var tokenUsage = tokenAwareLlm.getLastTokenUsage();
+				tracker.recordStageAttribute(DialoguePipelineStage.LLM_COMPLETION,
+					"promptTokens",
+					tokenUsage.promptTokens());
+				tracker.recordStageAttribute(DialoguePipelineStage.LLM_COMPLETION,
+					"completionTokens",
+					tokenUsage.completionTokens());
+				tracker.recordStageAttribute(DialoguePipelineStage.LLM_COMPLETION,
+					"totalTokens",
+					tokenUsage.totalTokens());
+			}
+
 			return queryTurn
 				.flatMap(turn -> conversationRepository.save(turn.withResponse(fullResponse)));
 		}).flatMap(turn -> conversationCounterPort.increment())
