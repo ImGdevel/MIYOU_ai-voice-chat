@@ -31,4 +31,10 @@ public interface MetricsQueryUseCase {
 	Mono<Long> getTotalRequestCount(Instant startTime, Instant endTime);
 
 	Mono<Long> getTotalTokenUsage(Instant startTime, Instant endTime);
+
+	Mono<Long> getTotalRequestCount();
+
+	Mono<Long> getTotalTokenUsage();
+
+	Mono<Double> getAverageResponseTime();
 }

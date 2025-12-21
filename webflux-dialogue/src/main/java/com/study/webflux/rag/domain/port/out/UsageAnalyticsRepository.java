@@ -22,4 +22,10 @@ public interface UsageAnalyticsRepository {
 	Mono<Long> countByTimeRange(Instant startTime, Instant endTime);
 
 	Mono<Long> sumTokensByTimeRange(Instant startTime, Instant endTime);
+
+	Mono<Long> count();
+
+	Mono<Long> sumTokens();
+
+	Mono<Double> averageResponseTime();
 }

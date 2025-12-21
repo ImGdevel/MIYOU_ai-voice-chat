@@ -33,4 +33,14 @@ public interface SpringDataUsageAnalyticsRepository
 		"{ $group: { _id: null, total: { $sum: '$llmUsage.tokenCount' } } }"
 	})
 	Mono<Long> sumTokensByTimeRange(Instant startTime, Instant endTime);
+
+	@Aggregation(pipeline = {
+		"{ $group: { _id: null, total: { $sum: '$llmUsage.tokenCount' } } }"
+	})
+	Mono<Long> sumAllTokens();
+
+	@Aggregation(pipeline = {
+		"{ $group: { _id: null, avg: { $avg: '$responseMetrics.totalDurationMillis' } } }"
+	})
+	Mono<Double> averageAllResponseTime();
 }
