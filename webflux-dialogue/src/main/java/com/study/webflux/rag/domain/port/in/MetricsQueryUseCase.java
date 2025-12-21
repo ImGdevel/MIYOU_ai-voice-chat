@@ -3,6 +3,7 @@ package com.study.webflux.rag.domain.port.in;
 import java.time.Instant;
 
 import com.study.webflux.rag.domain.model.metrics.PerformanceMetrics;
+import com.study.webflux.rag.domain.model.metrics.PipelineDetail;
 import com.study.webflux.rag.domain.model.metrics.UsageAnalytics;
 import reactor.core.publisher.Flux;
 import reactor.core.publisher.Mono;
@@ -20,6 +21,8 @@ public interface MetricsQueryUseCase {
 	Flux<UsageAnalytics> getHighTokenUsage(int tokenThreshold, int limit);
 
 	Flux<UsageAnalytics> getRecentUsageAnalytics(int limit);
+
+	Mono<PipelineDetail> getPipelineDetail(String pipelineId);
 
 	Mono<Long> getTotalRequestCount(Instant startTime, Instant endTime);
 
