@@ -108,6 +108,30 @@ class DialoguePipelineServiceTest {
 			java.util.function.Supplier<Flux<String>> supplier = invocation.getArgument(2);
 			return supplier.get();
 		});
+		when(pipelineTracer.traceTtsPreparation(any(), any())).thenAnswer(invocation -> {
+			@SuppressWarnings("unchecked")
+			java.util.function.Supplier<Mono<Void>> supplier = invocation.getArgument(1);
+			return supplier.get();
+		});
+		when(pipelineTracer.traceSentenceAssembly(any(), any(), any())).thenAnswer(invocation -> {
+			@SuppressWarnings("unchecked")
+			java.util.function.Supplier<Flux<String>> supplier = invocation.getArgument(1);
+			@SuppressWarnings("unchecked")
+			java.util.function.Consumer<String> consumer = invocation.getArgument(2);
+			return supplier.get().doOnNext(consumer);
+		});
+		when(pipelineTracer.traceTtsSynthesis(any(), any(), any())).thenAnswer(invocation -> {
+			@SuppressWarnings("unchecked")
+			java.util.function.Supplier<Flux<byte[]>> supplier = invocation.getArgument(1);
+			Runnable onNext = invocation.getArgument(2);
+			return supplier.get().doOnNext(chunk -> onNext.run());
+		});
+		when(pipelineTracer.tracePersistence(any(), any())).thenAnswer(invocation -> {
+			@SuppressWarnings("unchecked")
+			java.util.function.Supplier<Mono<ConversationTurn>> supplier = invocation
+				.getArgument(1);
+			return supplier.get();
+		});
 		service = new DialoguePipelineService(llmPort, ttsPort, retrievalPort,
 			conversationRepository, sentenceAssembler, pipelineMonitor, conversationCounterPort,
 			memoryExtractionService, systemPromptService, pipelineTracer, properties);
