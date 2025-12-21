@@ -201,7 +201,7 @@ public class DialoguePipelineService implements DialoguePipelineUseCase {
 					.incrementStageCounter(DialoguePipelineStage.TTS_SYNTHESIS, "audioChunks", 1);
 				tracker.markResponseEmission();
 			}).doOnComplete(() -> {
-				queryTurn.flatMap(turn -> conversationCounterPort.increment())
+				inputsMono.flatMap(inputs -> conversationCounterPort.increment())
 					.filter(count -> count % conversationThreshold == 0)
 					.flatMap(count -> memoryExtractionService.checkAndExtract())
 					.subscribeOn(Schedulers.boundedElastic()).onErrorResume(error -> {
