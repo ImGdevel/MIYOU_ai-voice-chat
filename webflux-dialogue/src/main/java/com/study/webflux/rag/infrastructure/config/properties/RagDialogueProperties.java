@@ -17,6 +17,7 @@ public class RagDialogueProperties {
 	private Qdrant qdrant = new Qdrant();
 	private Memory memory = new Memory();
 	private String systemPrompt = "";
+	private String systemPromptTemplate = "";
 
 	public OpenAi getOpenai() {
 		return openai;
@@ -56,6 +57,14 @@ public class RagDialogueProperties {
 
 	public void setSystemPrompt(String systemPrompt) {
 		this.systemPrompt = systemPrompt;
+	}
+
+	public String getSystemPromptTemplate() {
+		return systemPromptTemplate;
+	}
+
+	public void setSystemPromptTemplate(String systemPromptTemplate) {
+		this.systemPromptTemplate = systemPromptTemplate;
 	}
 
 	public static class OpenAi {
