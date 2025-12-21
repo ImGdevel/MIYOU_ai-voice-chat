@@ -16,6 +16,7 @@ public class RagDialogueProperties {
 	private Supertone supertone = new Supertone();
 	private Qdrant qdrant = new Qdrant();
 	private Memory memory = new Memory();
+	private String systemPrompt = "";
 
 	public OpenAi getOpenai() {
 		return openai;
@@ -47,6 +48,14 @@ public class RagDialogueProperties {
 
 	public void setMemory(Memory memory) {
 		this.memory = memory;
+	}
+
+	public String getSystemPrompt() {
+		return systemPrompt;
+	}
+
+	public void setSystemPrompt(String systemPrompt) {
+		this.systemPrompt = systemPrompt;
 	}
 
 	public static class OpenAi {
