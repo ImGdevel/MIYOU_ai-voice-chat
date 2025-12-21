@@ -7,6 +7,7 @@ import lombok.RequiredArgsConstructor;
 
 import org.springframework.format.annotation.DateTimeFormat;
 import org.springframework.http.HttpStatus;
+import org.springframework.validation.annotation.Validated;
 import org.springframework.web.bind.annotation.GetMapping;
 import org.springframework.web.bind.annotation.PathVariable;
 import org.springframework.web.bind.annotation.RequestMapping;
@@ -21,12 +22,14 @@ import com.study.webflux.rag.domain.model.metrics.PipelineDetail;
 import com.study.webflux.rag.domain.model.metrics.StagePerformanceSummary;
 import com.study.webflux.rag.domain.model.metrics.UsageAnalytics;
 import com.study.webflux.rag.domain.port.in.MetricsQueryUseCase;
+import jakarta.validation.constraints.Min;
 import reactor.core.publisher.Flux;
 import reactor.core.publisher.Mono;
 
 @RestController
 @RequestMapping("/metrics")
 @RequiredArgsConstructor
+@Validated
 public class MetricsController {
 
 	private final MetricsQueryUseCase metricsQueryUseCase;
@@ -48,7 +51,7 @@ public class MetricsController {
 
 	@GetMapping("/performance/recent")
 	public Flux<PerformanceMetrics> getRecentPerformanceMetrics(
-		@RequestParam(defaultValue = "20") int limit) {
+		@RequestParam(defaultValue = "20") @Min(1) int limit) {
 
 		return metricsQueryUseCase.getRecentPerformanceMetrics(limit);
 	}
@@ -70,7 +73,7 @@ public class MetricsController {
 
 	@GetMapping("/usage/recent")
 	public Flux<UsageAnalytics> getRecentUsageAnalytics(
-		@RequestParam(defaultValue = "20") int limit) {
+		@RequestParam(defaultValue = "20") @Min(1) int limit) {
 
 		return metricsQueryUseCase.getRecentUsageAnalytics(limit);
 	}
@@ -133,14 +136,14 @@ public class MetricsController {
 	@GetMapping("/rollups")
 	public Flux<MetricsRollup> getMetricsRollups(
 		@RequestParam(defaultValue = "MINUTE") MetricsGranularity granularity,
-		@RequestParam(defaultValue = "60") int limit) {
+		@RequestParam(defaultValue = "60") @Min(1) int limit) {
 		return metricsQueryUseCase.getMetricsRollups(granularity, limit);
 	}
 
 	@GetMapping("/stages/summary")
 	public Flux<StagePerformanceSummary> getStagePerformanceSummary(
 		@RequestParam(defaultValue = "MINUTE") MetricsGranularity granularity,
-		@RequestParam(defaultValue = "60") int limit) {
+		@RequestParam(defaultValue = "60") @Min(1) int limit) {
 		return metricsQueryUseCase.getStagePerformanceSummary(granularity, limit);
 	}
 
