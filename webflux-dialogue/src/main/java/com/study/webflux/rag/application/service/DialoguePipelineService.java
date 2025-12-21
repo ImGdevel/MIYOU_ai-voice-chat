@@ -19,6 +19,7 @@ import com.study.webflux.rag.domain.model.llm.Message;
 import com.study.webflux.rag.domain.model.llm.MessageRole;
 import com.study.webflux.rag.domain.model.memory.MemoryRetrievalResult;
 import com.study.webflux.rag.domain.model.rag.RetrievalContext;
+import com.study.webflux.rag.domain.model.rag.RetrievalDocument;
 import com.study.webflux.rag.domain.port.in.DialoguePipelineUseCase;
 import com.study.webflux.rag.domain.port.out.ConversationCounterPort;
 import com.study.webflux.rag.domain.port.out.ConversationRepository;
@@ -36,6 +37,9 @@ import reactor.core.scheduler.Schedulers;
 @Service
 public class DialoguePipelineService implements DialoguePipelineUseCase {
 
+	/**
+	 * 리액티브 대화 파이프라인을 총괄합니다. 입력 텍스트를 받아 메모리/검색 컨텍스트를 준비하고, 시스템 프롬프트를 구성한 뒤 LLM 토큰 스트리밍과 TTS 스트리밍까지 이어지는 전체 흐름을 관리합니다.
+	 */
 	private final LlmPort llmPort;
 	private final TtsPort ttsPort;
 	private final RetrievalPort retrievalPort;
@@ -72,15 +76,84 @@ public class DialoguePipelineService implements DialoguePipelineUseCase {
 	}
 
 	/**
-	 * 대화 파이프라인을 실행하고 텍스트 스트림을 반환합니다.
-	 *
-	 * @param text
-	 *            대화 텍스트
-	 * @return 텍스트 스트림
+	 * 텍스트 입력을 받아 오디오 바이트 스트림을 반환합니다. 응답 생성이 완료된 뒤에만 쿼리를 저장해 중간 실패 시 저장을 피합니다.
 	 */
 	@Override
-	public Flux<String> executeStreaming(String text) {
-		return executeAudioStreaming(text).map(bytes -> Base64.getEncoder().encodeToString(bytes));
+	public Flux<byte[]> executeAudioStreaming(String text) {
+		DialoguePipelineTracker tracker = pipelineMonitor.create(text);
+
+		// TTS 준비
+		Mono<Void> ttsWarmup = tracker.traceMono(DialoguePipelineStage.TTS_PREPARATION,
+			() -> ttsPort.prepare()
+				.doOnError(error -> log
+					.warn("파이프라인 {}의 TTS 준비 실패: {}", tracker.pipelineId(), error.getMessage()))
+				.onErrorResume(error -> Mono.empty()))
+			.cache();
+
+		ttsWarmup.subscribe();
+
+		Mono<PipelineInputs> inputsMono = prepareInputs(text, tracker).cache();
+
+		// LLM 토큰 생성
+		Flux<String> llmTokens = streamLlmTokens(tracker, inputsMono).subscribeOn(
+			Schedulers.boundedElastic()).doOnNext(
+				token -> tracker
+					.incrementStageCounter(DialoguePipelineStage.LLM_COMPLETION, "tokenCount", 1));
+
+		// 문장 어셈블
+		Flux<String> sentences = tracker.traceFlux(DialoguePipelineStage.SENTENCE_ASSEMBLY,
+			() -> sentenceAssembler.assemble(llmTokens)).doOnNext(sentence -> {
+				tracker.incrementStageCounter(DialoguePipelineStage.SENTENCE_ASSEMBLY,
+					"sentenceCount",
+					1);
+				tracker.recordLlmOutput(sentence);
+				log.debug("Sentence: [{}]", sentence);
+			}).share();
+
+		// 오디오 스트림 생성
+		Flux<byte[]> audioFlux = sentences.publish(sharedSentences -> {
+			Flux<String> cachedSentences = sharedSentences.replay().autoConnect(2);
+
+			cachedSentences.collectList().flatMap(sentenceList -> {
+				String fullResponse = String.join(" ", sentenceList);
+				return inputsMono.flatMap(inputs -> tracker.traceMono(
+					DialoguePipelineStage.QUERY_PERSISTENCE,
+					() -> conversationRepository
+						.save(inputs.currentTurn().withResponse(fullResponse))));
+			}).subscribe();
+
+			Mono<String> firstSentenceMono = cachedSentences.take(1).singleOrEmpty().cache();
+			Flux<String> remainingSentences = cachedSentences.skip(1);
+
+			Flux<byte[]> firstSentenceAudio = firstSentenceMono
+				.flatMapMany(sentence -> ttsWarmup.thenMany(ttsPort.streamSynthesize(sentence)))
+				.publishOn(Schedulers.boundedElastic());
+
+			Flux<byte[]> remainingAudio = remainingSentences.publishOn(Schedulers.boundedElastic())
+				.concatMap(sentence -> ttsWarmup.thenMany(ttsPort.streamSynthesize(sentence)));
+
+			return Flux.mergeSequential(firstSentenceAudio, remainingAudio);
+		});
+
+		// 오디오 스트림 추적
+		Flux<byte[]> audioStream = tracker
+			.traceFlux(DialoguePipelineStage.TTS_SYNTHESIS, () -> audioFlux).doOnNext(chunk -> {
+				tracker
+					.incrementStageCounter(DialoguePipelineStage.TTS_SYNTHESIS, "audioChunks", 1);
+				tracker.markResponseEmission();
+			}).doOnComplete(() -> {
+				inputsMono.flatMap(inputs -> conversationCounterPort.increment())
+					.filter(count -> count % conversationThreshold == 0)
+					.flatMap(count -> memoryExtractionService.checkAndExtract())
+					.subscribeOn(Schedulers.boundedElastic()).onErrorResume(error -> {
+						log.warn("파이프라인 {}의 메모리 추출 실패: {}",
+							tracker.pipelineId(),
+							error.getMessage());
+						return Mono.empty();
+					}).subscribe();
+			});
+
+		return tracker.attachLifecycle(audioStream);
 	}
 
 	@Override
@@ -123,97 +196,18 @@ public class DialoguePipelineService implements DialoguePipelineUseCase {
 			.filter(count -> count % conversationThreshold == 0)
 			.flatMap(count -> memoryExtractionService.checkAndExtract())
 			.subscribeOn(Schedulers.boundedElastic()).onErrorResume(error -> {
-				log.warn("파이프라인 {}의 메모리 추출 실패: {}", tracker.pipelineId(), error.getMessage());
 				return Mono.empty();
 			}).subscribe();
 
 		return tracker.attachLifecycle(textStream);
 	}
 
-	/**
-	 * 대화 파이프라인을 실행하고 오디오 스트림을 반환합니다.
-	 *
-	 * @param text
-	 *            대화 텍스트
-	 * @return 오디오 스트림
-	 */
 	@Override
-	public Flux<byte[]> executeAudioStreaming(String text) {
-		DialoguePipelineTracker tracker = pipelineMonitor.create(text);
-
-		// TTS 준비
-		Mono<Void> ttsWarmup = tracker.traceMono(DialoguePipelineStage.TTS_PREPARATION,
-			() -> ttsPort.prepare()
-				.doOnError(error -> log
-					.warn("파이프라인 {}의 TTS 준비 실패: {}", tracker.pipelineId(), error.getMessage()))
-				.onErrorResume(error -> Mono.empty()))
-			.cache();
-
-		ttsWarmup.subscribe();
-
-		Mono<PipelineInputs> inputsMono = prepareInputs(text, tracker).cache();
-
-		/// LLM 토큰 생성
-		Flux<String> llmTokens = streamLlmTokens(tracker, inputsMono).subscribeOn(
-			Schedulers.boundedElastic()).doOnNext(
-				token -> tracker
-					.incrementStageCounter(DialoguePipelineStage.LLM_COMPLETION, "tokenCount", 1));
-
-		/// 문장 어셈블
-		Flux<String> sentences = tracker.traceFlux(DialoguePipelineStage.SENTENCE_ASSEMBLY,
-			() -> sentenceAssembler.assemble(llmTokens)).doOnNext(sentence -> {
-				tracker.incrementStageCounter(DialoguePipelineStage.SENTENCE_ASSEMBLY,
-					"sentenceCount",
-					1);
-				tracker.recordLlmOutput(sentence);
-				log.debug("Sentence: [{}]", sentence);
-			}).share();
-
-		/// 오디오 스트림 생성
-		Flux<byte[]> audioFlux = sentences.publish(sharedSentences -> {
-			Flux<String> cachedSentences = sharedSentences.replay().autoConnect(2);
-
-			cachedSentences.collectList().flatMap(sentenceList -> {
-				String fullResponse = String.join(" ", sentenceList);
-				return inputsMono.flatMap(inputs -> tracker.traceMono(
-					DialoguePipelineStage.QUERY_PERSISTENCE,
-					() -> conversationRepository
-						.save(inputs.currentTurn().withResponse(fullResponse))));
-			}).subscribe();
-
-			Mono<String> firstSentenceMono = cachedSentences.take(1).singleOrEmpty().cache();
-			Flux<String> remainingSentences = cachedSentences.skip(1);
-
-			Flux<byte[]> firstSentenceAudio = firstSentenceMono
-				.flatMapMany(sentence -> ttsWarmup.thenMany(ttsPort.streamSynthesize(sentence)))
-				.publishOn(Schedulers.boundedElastic());
-
-			Flux<byte[]> remainingAudio = remainingSentences.publishOn(Schedulers.boundedElastic())
-				.concatMap(sentence -> ttsWarmup.thenMany(ttsPort.streamSynthesize(sentence)));
-
-			return Flux.mergeSequential(firstSentenceAudio, remainingAudio);
-		});
-
-		/// 오디오 스트림 추적
-		Flux<byte[]> audioStream = tracker
-			.traceFlux(DialoguePipelineStage.TTS_SYNTHESIS, () -> audioFlux).doOnNext(chunk -> {
-				tracker
-					.incrementStageCounter(DialoguePipelineStage.TTS_SYNTHESIS, "audioChunks", 1);
-				tracker.markResponseEmission();
-			}).doOnComplete(() -> {
-				inputsMono.flatMap(inputs -> conversationCounterPort.increment())
-					.filter(count -> count % conversationThreshold == 0)
-					.flatMap(count -> memoryExtractionService.checkAndExtract())
-					.subscribeOn(Schedulers.boundedElastic()).onErrorResume(error -> {
-						log.warn("파이프라인 {}의 메모리 추출 실패: {}",
-							tracker.pipelineId(),
-							error.getMessage());
-						return Mono.empty();
-					}).subscribe();
-			});
-
-		return tracker.attachLifecycle(audioStream);
+	public Flux<String> executeStreaming(String text) {
+		return executeAudioStreaming(text).map(bytes -> Base64.getEncoder().encodeToString(bytes));
 	}
+
+	// ===================================================================
 
 	/**
 	 * 대화 기록을 로드하고 ConversationContext를 반환합니다.
@@ -225,6 +219,9 @@ public class DialoguePipelineService implements DialoguePipelineUseCase {
 			.defaultIfEmpty(ConversationContext.empty());
 	}
 
+	/**
+	 * 파이프라인 공통 입력(현재 턴, 메모리 검색, 문서 검색, 대화 히스토리)을 준비해 캐싱합니다.
+	 */
 	private Mono<PipelineInputs> prepareInputs(String text, DialoguePipelineTracker tracker) {
 		Mono<ConversationTurn> currentTurn = Mono.fromCallable(() -> ConversationTurn.create(text))
 			.cache();
@@ -255,7 +252,7 @@ public class DialoguePipelineService implements DialoguePipelineUseCase {
 					context.documentCount());
 				if (!context.isEmpty()) {
 					List<String> docContents = context.documents().stream()
-						.map(doc -> doc.content())
+						.map(RetrievalDocument::content)
 						.collect(Collectors.toList());
 					tracker.recordStageAttribute(DialoguePipelineStage.RETRIEVAL,
 						"documents",
@@ -270,6 +267,9 @@ public class DialoguePipelineService implements DialoguePipelineUseCase {
 				tuple.getT4()));
 	}
 
+	/**
+	 * 준비된 입력을 사용해 메시지를 만들고 LLM 토큰을 스트리밍합니다.
+	 */
 	private Flux<String> streamLlmTokens(DialoguePipelineTracker tracker,
 		Mono<PipelineInputs> inputsMono) {
 		return inputsMono.flatMapMany(inputs -> tracker.traceMono(
@@ -281,7 +281,7 @@ public class DialoguePipelineService implements DialoguePipelineUseCase {
 			.doOnNext(messages -> {
 				String systemPrompt = messages.stream()
 					.filter(m -> MessageRole.SYSTEM.equals(m.role()))
-					.findFirst().map(m -> m.content()).orElse("");
+					.findFirst().map(Message::content).orElse("");
 				tracker.recordStageAttribute(DialoguePipelineStage.PROMPT_BUILDING,
 					"systemPrompt",
 					systemPrompt);
@@ -312,6 +312,9 @@ public class DialoguePipelineService implements DialoguePipelineUseCase {
 		List<Message> messages = new ArrayList<>();
 
 		String fullSystemPrompt = systemPromptService.buildSystemPrompt(context, memories);
+		if (fullSystemPrompt == null || fullSystemPrompt.isBlank()) {
+			fullSystemPrompt = "You are a helpful assistant.";
+		}
 		messages.add(Message.system(fullSystemPrompt));
 
 		conversationContext.turns().stream().filter(turn -> turn.response() != null)
@@ -325,6 +328,9 @@ public class DialoguePipelineService implements DialoguePipelineUseCase {
 		return messages;
 	}
 
+	/**
+	 * 파이프라인 단계 간 공유되는 입력 모음입니다.
+	 */
 	private record PipelineInputs(
 		RetrievalContext retrievalContext,
 		MemoryRetrievalResult memories,
