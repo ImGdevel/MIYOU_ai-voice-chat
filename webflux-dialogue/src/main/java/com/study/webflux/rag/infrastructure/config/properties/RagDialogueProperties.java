@@ -18,6 +18,7 @@ public class RagDialogueProperties {
 	private Memory memory = new Memory();
 	private String systemPrompt = "";
 	private String systemPromptTemplate = "system-prompt-maid";
+	private String commonSystemPromptTemplate = "system-common";
 
 	public OpenAi getOpenai() {
 		return openai;
@@ -65,6 +66,14 @@ public class RagDialogueProperties {
 
 	public void setSystemPromptTemplate(String systemPromptTemplate) {
 		this.systemPromptTemplate = systemPromptTemplate;
+	}
+
+	public String getCommonSystemPromptTemplate() {
+		return commonSystemPromptTemplate;
+	}
+
+	public void setCommonSystemPromptTemplate(String commonSystemPromptTemplate) {
+		this.commonSystemPromptTemplate = commonSystemPromptTemplate;
 	}
 
 	public static class OpenAi {

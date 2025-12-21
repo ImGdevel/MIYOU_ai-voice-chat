@@ -51,6 +51,8 @@ public class DialoguePipelineService implements DialoguePipelineUseCase {
 	private final String configuredSystemPrompt; // 추가 시스템 프롬프트
 	private final String configuredSystemPromptTemplate; // 추가 시스템 프롬프트 템플릿
 	private final String cachedSystemPromptFromTemplate; // 템플릿 내용 캐싱
+	private final String configuredCommonSystemPromptTemplate; // 공통 프롬프트 템플릿
+	private final String cachedCommonSystemPromptFromTemplate; // 공통 템플릿 캐싱
 
 	public DialoguePipelineService(LlmPort llmPort,
 		TtsPort ttsPort,
@@ -75,7 +77,12 @@ public class DialoguePipelineService implements DialoguePipelineUseCase {
 		this.conversationThreshold = conversationThreshold;
 		this.configuredSystemPrompt = ragDialogueProperties.getSystemPrompt();
 		this.configuredSystemPromptTemplate = ragDialogueProperties.getSystemPromptTemplate();
-		this.cachedSystemPromptFromTemplate = loadSystemPromptTemplate();
+		this.configuredCommonSystemPromptTemplate = ragDialogueProperties
+			.getCommonSystemPromptTemplate();
+		this.cachedSystemPromptFromTemplate = loadSystemPromptTemplate(
+			configuredSystemPromptTemplate);
+		this.cachedCommonSystemPromptFromTemplate = loadSystemPromptTemplate(
+			configuredCommonSystemPromptTemplate);
 	}
 
 	/**
@@ -396,12 +403,15 @@ public class DialoguePipelineService implements DialoguePipelineUseCase {
 	private String buildSystemPrompt(RetrievalContext context, MemoryRetrievalResult memories) {
 		StringBuilder prompt = new StringBuilder();
 
-		String staticPrompt = chooseStaticSystemPrompt();
-		if (!staticPrompt.isBlank()) {
-			prompt.append(staticPrompt).append("\n\n");
+		String personaPrompt = chooseStaticSystemPrompt();
+		if (!personaPrompt.isBlank()) {
+			prompt.append(personaPrompt).append("\n\n");
 		}
 
-		prompt.append("자연스럽게 대화하세요. 과도한 존댓말이나 '도와드리겠습니다' 같은 틀에 박힌 표현은 피하세요.\n\n");
+		String commonPrompt = chooseCommonSystemPrompt();
+		if (!commonPrompt.isBlank()) {
+			prompt.append(commonPrompt).append("\n\n");
+		}
 
 		if (!memories.isEmpty()) {
 			prompt.append("대화 상대에 대한 기억:\n");
@@ -440,16 +450,19 @@ public class DialoguePipelineService implements DialoguePipelineUseCase {
 		return "";
 	}
 
-	private String loadSystemPromptTemplate() {
-		if (configuredSystemPromptTemplate == null
-			|| configuredSystemPromptTemplate.isBlank()) {
+	private String chooseCommonSystemPrompt() {
+		return cachedCommonSystemPromptFromTemplate;
+	}
+
+	private String loadSystemPromptTemplate(String templateName) {
+		if (templateName == null || templateName.isBlank()) {
 			return "";
 		}
 		try {
-			return promptTemplate.load(configuredSystemPromptTemplate).trim();
+			return promptTemplate.load(templateName).trim();
 		} catch (RuntimeException e) {
 			log.warn("시스템 프롬프트 템플릿 '{}'을 불러오지 못했습니다: {}",
-				configuredSystemPromptTemplate,
+				templateName,
 				e.getMessage());
 			return "";
 		}
