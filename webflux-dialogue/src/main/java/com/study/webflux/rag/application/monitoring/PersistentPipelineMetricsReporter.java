@@ -102,9 +102,15 @@ public class PersistentPipelineMetricsReporter implements PipelineMetricsReporte
 		}
 
 		Map<String, Object> attrs = llmStage.get().attributes();
+
+		int totalTokens = extractInt(attrs, "totalTokens");
+		if (totalTokens == 0) {
+			totalTokens = extractInt(attrs, "tokenCount");
+		}
+
 		return new UsageAnalytics.LlmUsage(
 			extractString(attrs, "model"),
-			extractInt(attrs, "tokenCount"),
+			totalTokens,
 			summary.llmOutputs(),
 			llmStage.get().durationMillis());
 	}

@@ -9,7 +9,6 @@ import org.springframework.ai.chat.messages.SystemMessage;
 import org.springframework.ai.chat.messages.UserMessage;
 import org.springframework.ai.chat.model.ChatModel;
 import org.springframework.ai.chat.prompt.Prompt;
-import org.springframework.context.annotation.Primary;
 import org.springframework.stereotype.Component;
 
 import com.study.webflux.rag.domain.model.llm.CompletionRequest;
@@ -19,7 +18,6 @@ import reactor.core.publisher.Flux;
 import reactor.core.publisher.Mono;
 import reactor.core.scheduler.Schedulers;
 
-@Primary
 @Component
 public class SpringAiLlmAdapter implements LlmPort {
 
