@@ -80,14 +80,21 @@ public class MetricsQueryService implements MetricsQueryUseCase {
 
 	@Override
 	public Mono<PipelineDetail> getPipelineDetail(String pipelineId) {
-		Mono<PerformanceMetrics> performanceMono = performanceMetricsRepository.findById(pipelineId)
-			.defaultIfEmpty(null);
-		Mono<UsageAnalytics> usageMono = usageAnalyticsRepository.findById(pipelineId)
-			.defaultIfEmpty(null);
+		Mono<java.util.Optional<PerformanceMetrics>> performanceMono = performanceMetricsRepository
+			.findById(pipelineId)
+			.map(java.util.Optional::of)
+			.defaultIfEmpty(java.util.Optional.empty());
+		Mono<java.util.Optional<UsageAnalytics>> usageMono = usageAnalyticsRepository
+			.findById(pipelineId)
+			.map(java.util.Optional::of)
+			.defaultIfEmpty(java.util.Optional.empty());
 
 		return Mono.zip(performanceMono, usageMono)
-			.map(tuple -> new PipelineDetail(pipelineId, tuple.getT1(), tuple.getT2()))
-			.filter(detail -> detail.performance() != null || detail.usage() != null);
+			.filter(tuple -> tuple.getT1().isPresent() || tuple.getT2().isPresent())
+			.map(tuple -> new PipelineDetail(
+				pipelineId,
+				tuple.getT1().orElse(null),
+				tuple.getT2().orElse(null)));
 	}
 
 	@Override
