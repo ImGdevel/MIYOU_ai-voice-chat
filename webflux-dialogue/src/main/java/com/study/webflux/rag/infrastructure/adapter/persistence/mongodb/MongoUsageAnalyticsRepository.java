@@ -59,7 +59,7 @@ public class MongoUsageAnalyticsRepository implements UsageAnalyticsRepository {
 
 	@Override
 	public Mono<Long> countByTimeRange(Instant startTime, Instant endTime) {
-		return Mono.fromCallable(() -> repository.countByTimestampBetween(startTime, endTime));
+		return repository.countByTimestampBetween(startTime, endTime);
 	}
 
 	@Override
