@@ -14,8 +14,11 @@ import org.springframework.web.bind.annotation.RequestParam;
 import org.springframework.web.bind.annotation.RestController;
 import org.springframework.web.server.ResponseStatusException;
 
+import com.study.webflux.rag.domain.model.metrics.MetricsGranularity;
+import com.study.webflux.rag.domain.model.metrics.MetricsRollup;
 import com.study.webflux.rag.domain.model.metrics.PerformanceMetrics;
 import com.study.webflux.rag.domain.model.metrics.PipelineDetail;
+import com.study.webflux.rag.domain.model.metrics.StagePerformanceSummary;
 import com.study.webflux.rag.domain.model.metrics.UsageAnalytics;
 import com.study.webflux.rag.domain.port.in.MetricsQueryUseCase;
 import reactor.core.publisher.Flux;
@@ -43,14 +46,6 @@ public class MetricsController {
 		return metricsQueryUseCase.getPerformanceMetricsByTimeRange(startTime, endTime);
 	}
 
-	@GetMapping("/performance/slow")
-	public Flux<PerformanceMetrics> getSlowPipelines(
-		@RequestParam(defaultValue = "1000") long thresholdMillis,
-		@RequestParam(defaultValue = "20") int limit) {
-
-		return metricsQueryUseCase.getSlowPipelines(thresholdMillis, limit);
-	}
-
 	@GetMapping("/performance/recent")
 	public Flux<PerformanceMetrics> getRecentPerformanceMetrics(
 		@RequestParam(defaultValue = "20") int limit) {
@@ -71,14 +66,6 @@ public class MetricsController {
 		}
 
 		return metricsQueryUseCase.getUsageAnalyticsByTimeRange(startTime, endTime);
-	}
-
-	@GetMapping("/usage/high-tokens")
-	public Flux<UsageAnalytics> getHighTokenUsage(
-		@RequestParam(defaultValue = "1000") int tokenThreshold,
-		@RequestParam(defaultValue = "20") int limit) {
-
-		return metricsQueryUseCase.getHighTokenUsage(tokenThreshold, limit);
 	}
 
 	@GetMapping("/usage/recent")
@@ -119,6 +106,20 @@ public class MetricsController {
 			.map(PipelineDetailResponse::fromDomain)
 			.switchIfEmpty(Mono.error(new ResponseStatusException(HttpStatus.NOT_FOUND,
 				"Pipeline not found: " + pipelineId)));
+	}
+
+	@GetMapping("/rollups")
+	public Flux<MetricsRollup> getMetricsRollups(
+		@RequestParam(defaultValue = "MINUTE") MetricsGranularity granularity,
+		@RequestParam(defaultValue = "60") int limit) {
+		return metricsQueryUseCase.getMetricsRollups(granularity, limit);
+	}
+
+	@GetMapping("/stages/summary")
+	public Flux<StagePerformanceSummary> getStagePerformanceSummary(
+		@RequestParam(defaultValue = "MINUTE") MetricsGranularity granularity,
+		@RequestParam(defaultValue = "60") int limit) {
+		return metricsQueryUseCase.getStagePerformanceSummary(granularity, limit);
 	}
 
 	public record UsageSummary(
