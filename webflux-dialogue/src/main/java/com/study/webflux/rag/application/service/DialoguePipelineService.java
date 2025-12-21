@@ -27,8 +27,6 @@ import com.study.webflux.rag.domain.port.out.RetrievalPort;
 import com.study.webflux.rag.domain.port.out.TokenUsageProvider;
 import com.study.webflux.rag.domain.port.out.TtsPort;
 import com.study.webflux.rag.domain.service.SentenceAssembler;
-import com.study.webflux.rag.infrastructure.config.properties.RagDialogueProperties;
-import com.study.webflux.rag.infrastructure.template.FileBasedPromptTemplate;
 import reactor.core.publisher.Flux;
 import reactor.core.publisher.Mono;
 import reactor.core.scheduler.Schedulers;
@@ -45,14 +43,9 @@ public class DialoguePipelineService implements DialoguePipelineUseCase {
 	private final DialoguePipelineMonitor pipelineMonitor;
 	private final ConversationCounterPort conversationCounterPort;
 	private final MemoryExtractionService memoryExtractionService;
-	private final FileBasedPromptTemplate promptTemplate;
+	private final SystemPromptService systemPromptService;
 
 	private final int conversationThreshold; // 대화 횟수 임계값
-	private final String configuredSystemPrompt; // 추가 시스템 프롬프트
-	private final String configuredSystemPromptTemplate; // 추가 시스템 프롬프트 템플릿
-	private final String cachedSystemPromptFromTemplate; // 템플릿 내용 캐싱
-	private final String configuredCommonSystemPromptTemplate; // 공통 프롬프트 템플릿
-	private final String cachedCommonSystemPromptFromTemplate; // 공통 템플릿 캐싱
 
 	public DialoguePipelineService(LlmPort llmPort,
 		TtsPort ttsPort,
@@ -63,8 +56,7 @@ public class DialoguePipelineService implements DialoguePipelineUseCase {
 		ConversationCounterPort conversationCounterPort,
 		MemoryExtractionService memoryExtractionService,
 		int conversationThreshold,
-		RagDialogueProperties ragDialogueProperties,
-		FileBasedPromptTemplate promptTemplate) {
+		SystemPromptService systemPromptService) {
 		this.llmPort = llmPort;
 		this.ttsPort = ttsPort;
 		this.retrievalPort = retrievalPort;
@@ -73,16 +65,8 @@ public class DialoguePipelineService implements DialoguePipelineUseCase {
 		this.pipelineMonitor = pipelineMonitor;
 		this.conversationCounterPort = conversationCounterPort;
 		this.memoryExtractionService = memoryExtractionService;
-		this.promptTemplate = promptTemplate;
+		this.systemPromptService = systemPromptService;
 		this.conversationThreshold = conversationThreshold;
-		this.configuredSystemPrompt = ragDialogueProperties.getSystemPrompt();
-		this.configuredSystemPromptTemplate = ragDialogueProperties.getSystemPromptTemplate();
-		this.configuredCommonSystemPromptTemplate = ragDialogueProperties
-			.getCommonSystemPromptTemplate();
-		this.cachedSystemPromptFromTemplate = loadSystemPromptTemplate(
-			configuredSystemPromptTemplate);
-		this.cachedCommonSystemPromptFromTemplate = loadSystemPromptTemplate(
-			configuredCommonSystemPromptTemplate);
 	}
 
 	/**
@@ -383,7 +367,7 @@ public class DialoguePipelineService implements DialoguePipelineUseCase {
 		String currentQuery) {
 		List<Message> messages = new ArrayList<>();
 
-		String fullSystemPrompt = buildSystemPrompt(context, memories);
+		String fullSystemPrompt = systemPromptService.buildSystemPrompt(context, memories);
 		messages.add(Message.system(fullSystemPrompt));
 
 		conversationContext.turns().stream().filter(turn -> turn.response() != null)
@@ -395,76 +379,5 @@ public class DialoguePipelineService implements DialoguePipelineUseCase {
 		messages.add(Message.user(currentQuery));
 
 		return messages;
-	}
-
-	/**
-	 * 시스템 프롬프트를 생성하고 String을 반환합니다.
-	 */
-	private String buildSystemPrompt(RetrievalContext context, MemoryRetrievalResult memories) {
-		StringBuilder prompt = new StringBuilder();
-
-		String personaPrompt = chooseStaticSystemPrompt();
-		if (!personaPrompt.isBlank()) {
-			prompt.append(personaPrompt).append("\n\n");
-		}
-
-		String commonPrompt = chooseCommonSystemPrompt();
-		if (!commonPrompt.isBlank()) {
-			prompt.append(commonPrompt).append("\n\n");
-		}
-
-		if (!memories.isEmpty()) {
-			prompt.append("대화 상대에 대한 기억:\n");
-
-			if (!memories.experientialMemories().isEmpty()) {
-				prompt.append("\n경험적 기억:\n");
-				memories.experientialMemories()
-					.forEach(m -> prompt.append("- ").append(m.content()).append("\n"));
-			}
-
-			if (!memories.factualMemories().isEmpty()) {
-				prompt.append("\n사실 기반 기억:\n");
-				memories.factualMemories()
-					.forEach(m -> prompt.append("- ").append(m.content()).append("\n"));
-			}
-
-			prompt.append("\n");
-		}
-
-		if (!context.isEmpty()) {
-			String contextText = context.documents().stream().map(doc -> doc.content())
-				.collect(Collectors.joining("\n"));
-			prompt.append("참고 정보:\n").append(contextText).append("\n\n");
-		}
-
-		return prompt.toString();
-	}
-
-	private String chooseStaticSystemPrompt() {
-		if (!cachedSystemPromptFromTemplate.isBlank()) {
-			return cachedSystemPromptFromTemplate;
-		}
-		if (configuredSystemPrompt != null) {
-			return configuredSystemPrompt.trim();
-		}
-		return "";
-	}
-
-	private String chooseCommonSystemPrompt() {
-		return cachedCommonSystemPromptFromTemplate;
-	}
-
-	private String loadSystemPromptTemplate(String templateName) {
-		if (templateName == null || templateName.isBlank()) {
-			return "";
-		}
-		try {
-			return promptTemplate.load(templateName).trim();
-		} catch (RuntimeException e) {
-			log.warn("시스템 프롬프트 템플릿 '{}'을 불러오지 못했습니다: {}",
-				templateName,
-				e.getMessage());
-			return "";
-		}
 	}
 }
