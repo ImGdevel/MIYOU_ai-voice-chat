@@ -41,19 +41,22 @@ public class MongoPerformanceMetricsRepository implements PerformanceMetricsRepo
 
 	@Override
 	public Flux<PerformanceMetrics> findByStatus(String status, int limit) {
-		return repository.findByStatusOrderByStartedAtDesc(status, PageRequest.of(0, limit))
+		int pageSize = Math.max(1, limit);
+		return repository.findByStatusOrderByStartedAtDesc(status, PageRequest.of(0, pageSize))
 			.map(PerformanceMetricsEntity::toDomain);
 	}
 
 	@Override
 	public Flux<PerformanceMetrics> findSlowPipelines(long thresholdMillis, int limit) {
-		return repository.findSlowPipelines(thresholdMillis, PageRequest.of(0, limit))
+		int pageSize = Math.max(1, limit);
+		return repository.findSlowPipelines(thresholdMillis, PageRequest.of(0, pageSize))
 			.map(PerformanceMetricsEntity::toDomain);
 	}
 
 	@Override
 	public Flux<PerformanceMetrics> findRecent(int limit) {
-		return repository.findAllByOrderByStartedAtDesc(PageRequest.of(0, limit))
+		int pageSize = Math.max(1, limit);
+		return repository.findAllByOrderByStartedAtDesc(PageRequest.of(0, pageSize))
 			.map(PerformanceMetricsEntity::toDomain);
 	}
 }
