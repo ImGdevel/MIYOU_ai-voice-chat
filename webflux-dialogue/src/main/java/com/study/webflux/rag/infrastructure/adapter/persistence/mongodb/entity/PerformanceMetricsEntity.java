@@ -88,7 +88,7 @@ public record PerformanceMetricsEntity(
 		}
 		return map.entrySet().stream()
 			.collect(Collectors.toMap(
-				e -> e.getKey().replace(".", "_"),
+				e -> e.getKey().replace(".", "__DOT__"),
 				Map.Entry::getValue));
 	}
 
@@ -98,7 +98,7 @@ public record PerformanceMetricsEntity(
 		}
 		return map.entrySet().stream()
 			.collect(Collectors.toMap(
-				e -> e.getKey().replace("_", "."),
+				e -> e.getKey().replace("__DOT__", "."),
 				Map.Entry::getValue));
 	}
 }
