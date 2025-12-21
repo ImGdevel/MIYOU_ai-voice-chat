@@ -1,6 +1,7 @@
 package com.study.webflux.rag.infrastructure.adapter.llm;
 
 import java.util.List;
+import java.util.Map;
 import java.util.concurrent.atomic.AtomicReference;
 import java.util.stream.Collectors;
 
@@ -27,8 +28,7 @@ import reactor.core.publisher.Mono;
 public class TokenAwareLlmAdapter implements LlmPort, TokenUsageProvider {
 
 	private final ChatModel chatModel;
-	private final AtomicReference<TokenUsage> lastTokenUsage = new AtomicReference<>(
-		TokenUsage.zero());
+	private final Map<String, AtomicReference<TokenUsage>> usageByCorrelation = new java.util.concurrent.ConcurrentHashMap<>();
 
 	public TokenAwareLlmAdapter(ChatModel chatModel) {
 		this.chatModel = chatModel;
@@ -50,9 +50,9 @@ public class TokenAwareLlmAdapter implements LlmPort, TokenUsageProvider {
 			.doOnNext(response -> {
 				if (response.getMetadata() != null && response.getMetadata().getUsage() != null) {
 					var usage = response.getMetadata().getUsage();
-					lastTokenUsage.set(TokenUsage.of(
+					updateUsage(request,
 						usage.getPromptTokens().intValue(),
-						usage.getGenerationTokens().intValue()));
+						usage.getGenerationTokens().intValue());
 				}
 			})
 			.mapNotNull(response -> {
@@ -72,18 +72,32 @@ public class TokenAwareLlmAdapter implements LlmPort, TokenUsageProvider {
 
 			if (response.getMetadata() != null && response.getMetadata().getUsage() != null) {
 				var usage = response.getMetadata().getUsage();
-				lastTokenUsage.set(TokenUsage.of(
+				updateUsage(request,
 					usage.getPromptTokens().intValue(),
-					usage.getGenerationTokens().intValue()));
+					usage.getGenerationTokens().intValue());
 			}
 
 			return response.getResult().getOutput().getContent();
 		});
 	}
 
+	private void updateUsage(CompletionRequest request, int promptTokens, int completionTokens) {
+		String correlationId = request.additionalParams().getOrDefault("correlationId", "")
+			.toString();
+		if (!correlationId.isBlank()) {
+			usageByCorrelation.computeIfAbsent(correlationId,
+				id -> new AtomicReference<>(TokenUsage.zero()))
+				.set(TokenUsage.of(promptTokens, completionTokens));
+		}
+	}
+
 	@Override
-	public java.util.Optional<TokenUsage> getLastTokenUsage() {
-		return java.util.Optional.ofNullable(lastTokenUsage.get());
+	public java.util.Optional<TokenUsage> getTokenUsage(String correlationId) {
+		if (correlationId == null || correlationId.isBlank()) {
+			return java.util.Optional.empty();
+		}
+		AtomicReference<TokenUsage> ref = usageByCorrelation.remove(correlationId);
+		return ref == null ? java.util.Optional.empty() : java.util.Optional.ofNullable(ref.get());
 	}
 
 	private List<org.springframework.ai.chat.messages.Message> convertMessages(

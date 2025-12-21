@@ -5,5 +5,5 @@ import java.util.Optional;
 import com.study.webflux.rag.domain.model.llm.TokenUsage;
 
 public interface TokenUsageProvider {
-	Optional<TokenUsage> getLastTokenUsage();
+	Optional<TokenUsage> getTokenUsage(String correlationId);
 }

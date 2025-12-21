@@ -143,8 +143,11 @@ public class DialoguePipelineService implements DialoguePipelineUseCase {
 							"messageCount",
 							messages.size());
 					}).flatMapMany(messages -> {
-						CompletionRequest request = CompletionRequest
-							.withMessages(messages, "gpt-4o-mini", true);
+						CompletionRequest request = new CompletionRequest(
+							messages,
+							"gpt-4o-mini",
+							true,
+							java.util.Map.of("correlationId", tracker.pipelineId()));
 						tracker.recordStageAttribute(DialoguePipelineStage.LLM_COMPLETION,
 							"model",
 							request.model());
@@ -163,7 +166,7 @@ public class DialoguePipelineService implements DialoguePipelineUseCase {
 			String fullResponse = String.join("", tokens);
 
 			if (llmPort instanceof TokenUsageProvider tokenUsageProvider) {
-				tokenUsageProvider.getLastTokenUsage().ifPresent(tokenUsage -> {
+				tokenUsageProvider.getTokenUsage(tracker.pipelineId()).ifPresent(tokenUsage -> {
 					tracker.recordStageAttribute(DialoguePipelineStage.LLM_COMPLETION,
 						"promptTokens",
 						tokenUsage.promptTokens());
