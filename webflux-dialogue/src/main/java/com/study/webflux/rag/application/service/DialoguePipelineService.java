@@ -23,6 +23,7 @@ import com.study.webflux.rag.domain.port.out.ConversationCounterPort;
 import com.study.webflux.rag.domain.port.out.ConversationRepository;
 import com.study.webflux.rag.domain.port.out.LlmPort;
 import com.study.webflux.rag.domain.port.out.RetrievalPort;
+import com.study.webflux.rag.domain.port.out.TokenUsageProvider;
 import com.study.webflux.rag.domain.port.out.TtsPort;
 import com.study.webflux.rag.domain.service.SentenceAssembler;
 import reactor.core.publisher.Flux;
@@ -86,16 +87,37 @@ public class DialoguePipelineService implements DialoguePipelineUseCase {
 		Mono<MemoryRetrievalResult> memoryResult = queryTurn
 			.flatMap(turn -> tracker.traceMono(DialoguePipelineStage.MEMORY_RETRIEVAL,
 				() -> retrievalPort.retrieveMemories(text, 5)))
-			.doOnNext(result -> tracker.recordStageAttribute(DialoguePipelineStage.MEMORY_RETRIEVAL,
-				"memoryCount",
-				result.totalCount()));
+			.doOnNext(result -> {
+				tracker.recordStageAttribute(DialoguePipelineStage.MEMORY_RETRIEVAL,
+					"memoryCount",
+					result.totalCount());
+				List<String> memoryContents = new ArrayList<>();
+				result.experientialMemories()
+					.forEach(m -> memoryContents.add("[경험] " + m.content()));
+				result.factualMemories().forEach(m -> memoryContents.add("[사실] " + m.content()));
+				if (!memoryContents.isEmpty()) {
+					tracker.recordStageAttribute(DialoguePipelineStage.MEMORY_RETRIEVAL,
+						"memories",
+						memoryContents);
+				}
+			});
 
 		Mono<RetrievalContext> retrievalContext = queryTurn
 			.flatMap(turn -> tracker.traceMono(DialoguePipelineStage.RETRIEVAL,
 				() -> retrievalPort.retrieve(text, 3)))
-			.doOnNext(context -> tracker.recordStageAttribute(DialoguePipelineStage.RETRIEVAL,
-				"documentCount",
-				context.documentCount()));
+			.doOnNext(context -> {
+				tracker.recordStageAttribute(DialoguePipelineStage.RETRIEVAL,
+					"documentCount",
+					context.documentCount());
+				if (!context.isEmpty()) {
+					List<String> docContents = context.documents().stream()
+						.map(doc -> doc.content())
+						.collect(Collectors.toList());
+					tracker.recordStageAttribute(DialoguePipelineStage.RETRIEVAL,
+						"documents",
+						docContents);
+				}
+			});
 
 		Flux<String> llmTokens = Mono
 			.zip(retrievalContext, memoryResult, loadConversationHistory(), queryTurn)
@@ -110,9 +132,22 @@ public class DialoguePipelineService implements DialoguePipelineUseCase {
 						memories,
 						conversationContext,
 						currentTurn.query())))
-					.flatMapMany(messages -> {
-						CompletionRequest request = CompletionRequest
-							.withMessages(messages, "gpt-4o-mini", true);
+					.doOnNext(messages -> {
+						String systemPrompt = messages.stream()
+							.filter(m -> "system".equals(m.role()))
+							.findFirst().map(m -> m.content()).orElse("");
+						tracker.recordStageAttribute(DialoguePipelineStage.PROMPT_BUILDING,
+							"systemPrompt",
+							systemPrompt);
+						tracker.recordStageAttribute(DialoguePipelineStage.PROMPT_BUILDING,
+							"messageCount",
+							messages.size());
+					}).flatMapMany(messages -> {
+						CompletionRequest request = new CompletionRequest(
+							messages,
+							"gpt-4o-mini",
+							true,
+							java.util.Map.of("correlationId", tracker.pipelineId()));
 						tracker.recordStageAttribute(DialoguePipelineStage.LLM_COMPLETION,
 							"model",
 							request.model());
@@ -129,6 +164,21 @@ public class DialoguePipelineService implements DialoguePipelineUseCase {
 
 		textStream.collectList().flatMap(tokens -> {
 			String fullResponse = String.join("", tokens);
+
+			if (llmPort instanceof TokenUsageProvider tokenUsageProvider) {
+				tokenUsageProvider.getTokenUsage(tracker.pipelineId()).ifPresent(tokenUsage -> {
+					tracker.recordStageAttribute(DialoguePipelineStage.LLM_COMPLETION,
+						"promptTokens",
+						tokenUsage.promptTokens());
+					tracker.recordStageAttribute(DialoguePipelineStage.LLM_COMPLETION,
+						"completionTokens",
+						tokenUsage.completionTokens());
+					tracker.recordStageAttribute(DialoguePipelineStage.LLM_COMPLETION,
+						"totalTokens",
+						tokenUsage.totalTokens());
+				});
+			}
+
 			return queryTurn
 				.flatMap(turn -> conversationRepository.save(turn.withResponse(fullResponse)));
 		}).flatMap(turn -> conversationCounterPort.increment())
@@ -171,17 +221,38 @@ public class DialoguePipelineService implements DialoguePipelineUseCase {
 		Mono<MemoryRetrievalResult> memoryResult = queryTurn
 			.flatMap(turn -> tracker.traceMono(DialoguePipelineStage.MEMORY_RETRIEVAL,
 				() -> retrievalPort.retrieveMemories(text, 5)))
-			.doOnNext(result -> tracker.recordStageAttribute(DialoguePipelineStage.MEMORY_RETRIEVAL,
-				"memoryCount",
-				result.totalCount()));
+			.doOnNext(result -> {
+				tracker.recordStageAttribute(DialoguePipelineStage.MEMORY_RETRIEVAL,
+					"memoryCount",
+					result.totalCount());
+				List<String> memoryContents = new ArrayList<>();
+				result.experientialMemories()
+					.forEach(m -> memoryContents.add("[경험] " + m.content()));
+				result.factualMemories().forEach(m -> memoryContents.add("[사실] " + m.content()));
+				if (!memoryContents.isEmpty()) {
+					tracker.recordStageAttribute(DialoguePipelineStage.MEMORY_RETRIEVAL,
+						"memories",
+						memoryContents);
+				}
+			});
 
 		/// 검색 컨텍스트 로드
 		Mono<RetrievalContext> retrievalContext = queryTurn
 			.flatMap(turn -> tracker.traceMono(DialoguePipelineStage.RETRIEVAL,
 				() -> retrievalPort.retrieve(text, 3)))
-			.doOnNext(context -> tracker.recordStageAttribute(DialoguePipelineStage.RETRIEVAL,
-				"documentCount",
-				context.documentCount()));
+			.doOnNext(context -> {
+				tracker.recordStageAttribute(DialoguePipelineStage.RETRIEVAL,
+					"documentCount",
+					context.documentCount());
+				if (!context.isEmpty()) {
+					List<String> docContents = context.documents().stream()
+						.map(doc -> doc.content())
+						.collect(Collectors.toList());
+					tracker.recordStageAttribute(DialoguePipelineStage.RETRIEVAL,
+						"documents",
+						docContents);
+				}
+			});
 
 		/// LLM 토큰 생성
 		Flux<String> llmTokens = Mono
@@ -197,7 +268,17 @@ public class DialoguePipelineService implements DialoguePipelineUseCase {
 						memories,
 						conversationContext,
 						currentTurn.query())))
-					.flatMapMany(messages -> {
+					.doOnNext(messages -> {
+						String systemPrompt = messages.stream()
+							.filter(m -> "system".equals(m.role()))
+							.findFirst().map(m -> m.content()).orElse("");
+						tracker.recordStageAttribute(DialoguePipelineStage.PROMPT_BUILDING,
+							"systemPrompt",
+							systemPrompt);
+						tracker.recordStageAttribute(DialoguePipelineStage.PROMPT_BUILDING,
+							"messageCount",
+							messages.size());
+					}).flatMapMany(messages -> {
 						CompletionRequest request = CompletionRequest
 							.withMessages(messages, "gpt-4o-mini", true);
 						tracker.recordStageAttribute(DialoguePipelineStage.LLM_COMPLETION,
@@ -216,6 +297,7 @@ public class DialoguePipelineService implements DialoguePipelineUseCase {
 					"sentenceCount",
 					1);
 				tracker.recordLlmOutput(sentence);
+				log.debug("Sentence: [{}]", sentence);
 			}).share();
 
 		/// 오디오 스트림 생성

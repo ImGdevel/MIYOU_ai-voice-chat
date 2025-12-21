@@ -1,0 +1,1327 @@
+<!DOCTYPE html>
+<html lang="ko">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>RAG Dialogue Monitoring Dashboard</title>
+    <script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.0/dist/chart.umd.min.js"></script>
+    <style>
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+
+        :root {
+            --bg: #f5f5f7;
+            --panel: #ffffff;
+            --border: #e0e0e0;
+            --text: #1d1d1d;
+            --muted: #6f6f6f;
+            --accent: #2d2d2d;
+            --accent-alt: #0e639c;
+            --accent-soft: #2a9d8f;
+            --btn-bg: #212121;
+            --btn-hover: #424242;
+            --table-head: #f1f1f1;
+            --pill-bg: #f5f5f5;
+            --grid: #e9e9e9;
+        }
+
+        body.dark {
+            --bg: #1e1e1e;
+            --panel: #252526;
+            --border: #3c3c3c;
+            --text: #d4d4d4;
+            --muted: #9da0a2;
+            --accent: #c8c8c8;
+            --accent-alt: #0e639c;
+            --accent-soft: #4ec9b0;
+            --btn-bg: #0e639c;
+            --btn-hover: #1177bb;
+            --table-head: #2d2d2d;
+            --pill-bg: #3a3a3a;
+            --grid: #2a2a2a;
+        }
+
+        body {
+            font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
+            background: var(--bg);
+            padding: 16px;
+            font-size: 15px;
+            color: var(--text);
+        }
+
+        .header {
+            background: var(--panel);
+            border-bottom: 1px solid var(--border);
+            padding: 14px 18px;
+            margin-bottom: 14px;
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            gap: 12px;
+        }
+
+        .header h1 {
+            font-size: 22px;
+            font-weight: 700;
+            color: var(--text);
+        }
+
+        .header-right {
+            display: flex;
+            align-items: center;
+            gap: 10px;
+            flex-wrap: wrap;
+        }
+
+        .header-info {
+            font-size: 13px;
+            color: var(--muted);
+        }
+
+        .btn {
+            padding: 8px 14px;
+            background: var(--btn-bg);
+            color: white;
+            border: none;
+            border-radius: 4px;
+            cursor: pointer;
+            font-size: 13px;
+            transition: background 0.2s;
+        }
+
+        .btn:hover {
+            background: var(--btn-hover);
+        }
+
+        .layout {
+            display: grid;
+            grid-template-columns: 2fr 1.2fr;
+            gap: 12px;
+            align-items: start;
+        }
+
+        .left-panel {
+            display: flex;
+            flex-direction: column;
+            gap: 10px;
+        }
+
+        .right-panel {
+            position: sticky;
+            top: 12px;
+            display: flex;
+            flex-direction: column;
+            gap: 10px;
+            align-self: start;
+        }
+
+        @media (max-width: 1100px) {
+            .layout {
+                grid-template-columns: 1fr;
+            }
+            .right-panel {
+                position: static;
+            }
+        }
+
+        .dashboard-grid {
+            display: grid;
+            grid-template-columns: repeat(4, minmax(140px, 1fr));
+            gap: 10px;
+            margin-bottom: 12px;
+        }
+
+        .card {
+            background: var(--panel);
+            padding: 14px;
+            border: 1px solid var(--border);
+        }
+
+        .card-title {
+            font-size: 13px;
+            color: var(--muted);
+            margin-bottom: 6px;
+            text-transform: uppercase;
+            letter-spacing: 0.3px;
+        }
+
+        .card-value {
+            font-size: 28px;
+            font-weight: 700;
+            color: var(--text);
+        }
+
+        .card-sub {
+            font-size: 12px;
+            color: var(--muted);
+            margin-top: 4px;
+        }
+
+        .content-grid {
+            display: grid;
+            grid-template-columns: 1fr 1fr;
+            gap: 10px;
+            margin-bottom: 10px;
+        }
+
+        .chart-container {
+            background: var(--panel);
+            padding: 14px;
+            border: 1px solid var(--border);
+        }
+
+        .chart-title {
+            font-size: 14px;
+            font-weight: 700;
+            margin-bottom: 10px;
+            color: var(--text);
+        }
+
+        .chart-container canvas {
+            max-height: 220px;
+        }
+
+        .table-container {
+            overflow-x: auto;
+        }
+
+        table {
+            width: 100%;
+            border-collapse: collapse;
+        }
+
+        th, td {
+            padding: 8px 10px;
+            text-align: left;
+            border-bottom: 1px solid var(--grid);
+            font-size: 13px;
+        }
+
+        th {
+            background: var(--table-head);
+            font-weight: 700;
+            color: var(--muted);
+            text-transform: uppercase;
+        }
+
+        td {
+            color: var(--text);
+        }
+
+        .status-completed {
+            color: #2e7d32;
+        }
+
+        .status-failed {
+            color: #c62828;
+        }
+
+        .detail-header {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            gap: 8px;
+            flex-wrap: wrap;
+            margin-bottom: 8px;
+        }
+
+        .detail-actions {
+            display: flex;
+            gap: 8px;
+            align-items: center;
+        }
+
+        .detail-actions input {
+            padding: 6px 8px;
+            border: 1px solid var(--border);
+            border-radius: 3px;
+            font-size: 13px;
+            min-width: 240px;
+            background: var(--panel);
+            color: var(--text);
+        }
+
+        .detail-grid {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(230px, 1fr));
+            gap: 8px;
+        }
+
+        .full-width {
+            grid-column: 1 / -1;
+        }
+
+        .detail-card {
+            background: var(--panel);
+            border: 1px solid var(--border);
+            padding: 10px;
+        }
+
+        .detail-label {
+            font-size: 12px;
+            color: var(--muted);
+            letter-spacing: 0.3px;
+            text-transform: uppercase;
+            margin-bottom: 2px;
+        }
+
+        .detail-value {
+            font-size: 16px;
+            font-weight: 700;
+            color: var(--text);
+        }
+
+        .kv-row {
+            display: flex;
+            justify-content: space-between;
+            gap: 8px;
+            margin: 4px 0;
+            font-size: 13px;
+            color: var(--text);
+        }
+
+        .pill {
+            display: inline-block;
+            padding: 3px 8px;
+            border-radius: 10px;
+            background: var(--pill-bg);
+            color: var(--text);
+            font-size: 11px;
+        }
+
+        .detail-section-title {
+            font-size: 14px;
+            font-weight: 700;
+            margin-bottom: 6px;
+            color: var(--text);
+        }
+
+        .empty-state {
+            font-size: 13px;
+            color: var(--muted);
+            padding: 10px 0;
+        }
+
+        .llm-list {
+            list-style: none;
+            padding-left: 0;
+            margin: 0;
+            display: flex;
+            flex-direction: column;
+            gap: 4px;
+        }
+
+        .llm-list li {
+            padding: 6px 8px;
+            background: var(--table-head);
+            border: 1px solid var(--border);
+            font-size: 12px;
+            line-height: 1.4;
+        }
+
+        .clickable-row {
+            cursor: pointer;
+        }
+
+        .search-input {
+            padding: 6px 8px;
+            border: 1px solid var(--border);
+            border-radius: 3px;
+            font-size: 13px;
+            min-width: 260px;
+            background: var(--panel);
+            color: var(--text);
+        }
+    </style>
+</head>
+<body>
+    <div class="header">
+        <h1 data-i18n="title">RAG Dialogue Monitoring</h1>
+        <div class="header-right">
+            <div class="header-info"><span data-i18n="last_update">Last update</span>: <span id="lastUpdate">-</span></div>
+            <button class="btn" id="languageToggle" onclick="toggleLanguage()">KO</button>
+            <button class="btn" id="themeToggle" onclick="toggleTheme()">Dark</button>
+            <button class="btn" data-i18n="refresh" onclick="refreshDashboard()">Refresh</button>
+            <button class="btn" onclick="toggleAutoRefresh()"><span id="autoRefreshLabel">Auto</span>: <span id="autoRefreshStatus">ON</span></button>
+        </div>
+    </div>
+
+    <div class="layout">
+        <div class="left-panel">
+            <div class="dashboard-grid">
+                <div class="card">
+                    <div class="card-title" data-i18n="total_requests">Total Requests</div>
+                    <div class="card-value" id="totalRequests">-</div>
+                    <div class="card-sub"><span data-i18n="range">Range</span>: <span id="summaryRange">-</span></div>
+                </div>
+                <div class="card">
+                    <div class="card-title" data-i18n="total_credits">Total Credits</div>
+                    <div class="card-value" id="totalCredits">-</div>
+                    <div class="card-sub"><span data-i18n="credits_info">1 credit = $0.0001</span></div>
+                </div>
+                <div class="card">
+                    <div class="card-title" data-i18n="total_cost">Total Cost</div>
+                    <div class="card-value" id="totalCost">-</div>
+                    <div class="card-sub"><span data-i18n="cost_info">Estimated in USD</span></div>
+                </div>
+                <div class="card">
+                    <div class="card-title" data-i18n="avg_response">Avg Response</div>
+                    <div class="card-value" id="avgResponseTime">-</div>
+                    <div class="card-sub"><span data-i18n="avg_in_range">Avg in range</span></div>
+                </div>
+            </div>
+
+            <div class="content-grid">
+                <div class="chart-container">
+                    <div class="detail-header">
+                        <div>
+                            <div class="chart-title" data-i18n="response_time">Response Time</div>
+                            <div class="card-sub" data-i18n="response_hint">Requests, tokens, and average response per bucket.</div>
+                        </div>
+                        <div class="detail-actions">
+                            <label class="card-sub" for="granularitySelect" data-i18n="granularity">Granularity</label>
+                            <select id="granularitySelect" class="search-input" onchange="refreshDashboard()">
+                                <option value="MINUTE" data-i18n="granularity_minute">Minute</option>
+                                <option value="HOUR" data-i18n="granularity_hour">Hour</option>
+                                <option value="DAY" data-i18n="granularity_day">Day</option>
+                            </select>
+                        </div>
+                    </div>
+                    <canvas id="performanceChart"></canvas>
+                </div>
+
+                <div class="chart-container">
+                    <div class="chart-title" data-i18n="stage_performance">Stage Performance</div>
+                    <canvas id="stagePerformanceChart"></canvas>
+                </div>
+            </div>
+
+            <div class="chart-container">
+                <div class="detail-header">
+                    <div>
+                        <div class="chart-title" data-i18n="recent_pipelines">Recent Pipelines</div>
+                        <div class="card-sub" data-i18n="recent_hint">Search by request ID, model, or input preview.</div>
+                    </div>
+                    <div class="detail-actions">
+                        <input id="pipelineSearchInput" class="search-input" type="text" placeholder="Search pipelineId / model / preview" data-i18n-placeholder="search_placeholder" oninput="filterRecentPipelines()">
+                        <button class="btn" data-i18n="reload" onclick="refreshRecentPipelines()">Reload</button>
+                    </div>
+                </div>
+                <div class="table-container">
+                    <table id="recentPipelinesTable">
+                        <thead>
+                            <tr>
+                                <th data-i18n="col_id">ID</th>
+                                <th data-i18n="col_status">Status</th>
+                                <th data-i18n="col_model">Model</th>
+                                <th data-i18n="col_credits">Credits</th>
+                                <th data-i18n="col_duration">Duration</th>
+                                <th data-i18n="col_preview">Preview</th>
+                                <th data-i18n="col_time">Time</th>
+                            </tr>
+                        </thead>
+                        <tbody></tbody>
+                    </table>
+                </div>
+            </div>
+        </div>
+
+        <div class="right-panel">
+            <div class="chart-container">
+                <div class="detail-header">
+                    <div>
+                        <div class="chart-title" data-i18n="request_detail">Request Detail</div>
+                        <div class="card-sub" data-i18n="request_hint">Click a row on the left or enter an ID.</div>
+                    </div>
+                    <div class="detail-actions">
+                        <input id="pipelineIdInput" type="text" placeholder="Request ID (pipelineId)" data-i18n-placeholder="request_placeholder">
+                        <button class="btn" data-i18n="view_detail" onclick="fetchPipelineDetail()">View Detail</button>
+                    </div>
+                </div>
+                <div id="pipelineDetail" class="empty-state" data-i18n="detail_empty">Select a request to see details.</div>
+            </div>
+        </div>
+    </div>
+
+    <script>
+        let autoRefreshInterval = null;
+        let charts = {};
+        let recentPipelinesCache = [];
+        let lastPipelineDetail = null;
+        let lastRollups = [];
+        let lastStageSummary = [];
+        let currentLang = localStorage.getItem('dashboard.lang') || 'ko';
+        let currentTheme = localStorage.getItem('dashboard.theme') || 'dark';
+
+        const translations = {
+            en: {
+                title: 'RAG Dialogue Monitoring',
+                title_full: 'RAG Dialogue Monitoring Dashboard',
+                last_update: 'Last update',
+                refresh: 'Refresh',
+                auto_label: 'Auto',
+                range: 'Range',
+                range_all: 'All',
+                avg_in_range: 'Overall average',
+                request_rate: 'Requests / Bucket',
+                bucket_unit: 'Bucket',
+                total_requests: 'Total Requests',
+                total_tokens: 'Total Tokens',
+                total_credits: 'Total Credits',
+                total_cost: 'Total Cost',
+                credits_info: '1 credit = $0.0001',
+                cost_info: 'Estimated in USD',
+                avg_response: 'Avg Response',
+                cost: 'Cost',
+                milliseconds: 'milliseconds',
+                response_time: 'Response Time',
+                response_hint: 'Requests, tokens, and average response per bucket.',
+                granularity: 'Granularity',
+                granularity_minute: 'Minute',
+                granularity_hour: 'Hour',
+                granularity_day: 'Day',
+                unit_minutes: 'minutes',
+                unit_hours: 'hours',
+                unit_days: 'days',
+                unit_minute: 'minute',
+                unit_hour: 'hour',
+                unit_day: 'day',
+                stage_performance: 'Stage Performance',
+                recent_pipelines: 'Recent Pipelines',
+                recent_hint: 'Search by request ID, model, or input preview.',
+                search_placeholder: 'Search pipelineId / model / preview',
+                reload: 'Reload',
+                request_detail: 'Request Detail',
+                request_hint: 'Click a row on the left or enter an ID.',
+                request_placeholder: 'Request ID (pipelineId)',
+                view_detail: 'View Detail',
+                detail_empty: 'Select a request to see details.',
+                col_id: 'ID',
+                col_status: 'Status',
+                col_duration: 'Duration',
+                col_first: 'First',
+                col_time: 'Time',
+                col_model: 'Model',
+                col_tokens: 'Tokens',
+                col_credits: 'Credits',
+                col_preview: 'Preview',
+                series_avg_response: 'Avg Response (ms)',
+                series_requests: 'Requests',
+                series_tokens: 'Tokens',
+                series_avg_stage: 'Avg Stage (ms)',
+                detail_request_id: 'Request ID',
+                detail_status: 'Status',
+                detail_started: 'Started',
+                detail_finished: 'Finished',
+                detail_total: 'Total',
+                detail_first_last: 'First/Last',
+                detail_llm_retrieval: 'LLM & Retrieval',
+                detail_model: 'Model',
+                detail_tokens: 'Tokens',
+                detail_credits: 'Credits',
+                detail_completion: 'Completion',
+                detail_retrieved: 'Retrieved',
+                detail_retrieval_time: 'Retrieval Time',
+                detail_request_tts: 'Request & TTS',
+                detail_input_length: 'Input Length',
+                detail_input_preview: 'Input Preview',
+                detail_response_total: 'Response Total',
+                detail_first_last_long: 'First / Last',
+                detail_tts: 'TTS',
+                detail_tts_time: 'TTS Time',
+                detail_llm_output: 'LLM Output',
+                detail_stage_timeline: 'Stage Timeline',
+                detail_attributes: 'Attributes',
+                col_stage: 'Stage',
+                col_started: 'Started',
+                col_finished: 'Finished',
+                col_scope: 'Scope',
+                col_key: 'Key',
+                col_value: 'Value',
+                empty_enter_request: 'Enter a request ID to view details.',
+                empty_loading: 'Loading details...',
+                empty_not_found: 'Details not found for this request.',
+                empty_no_outputs: 'No generated content.',
+                empty_no_attributes: 'No attributes recorded.',
+                empty_no_stages: 'No stage data recorded.',
+                theme_dark: 'Dark',
+                theme_light: 'Light',
+                lang_ko: 'KO',
+                lang_en: 'EN'
+            },
+            ko: {
+                title: 'RAG 대화 모니터링',
+                title_full: 'RAG 대화 모니터링 대시보드',
+                last_update: '마지막 갱신',
+                refresh: '새로고침',
+                auto_label: '자동',
+                range: '범위',
+                range_all: '전체',
+                avg_in_range: '전체 평균',
+                request_rate: '버킷당 요청',
+                bucket_unit: '버킷',
+                total_requests: '전체 요청',
+                total_tokens: '전체 토큰',
+                total_credits: '전체 크레딧',
+                total_cost: '전체 비용',
+                credits_info: '1 크레딧 = $0.0001',
+                cost_info: '예상 USD',
+                avg_response: '평균 응답',
+                cost: '비용',
+                milliseconds: '밀리초',
+                response_time: '응답 시간',
+                response_hint: '버킷별 요청 수, 토큰, 평균 응답 시간을 표시합니다.',
+                granularity: '단위',
+                granularity_minute: '분',
+                granularity_hour: '시간',
+                granularity_day: '일',
+                unit_minutes: '분',
+                unit_hours: '시간',
+                unit_days: '일',
+                unit_minute: '분',
+                unit_hour: '시간',
+                unit_day: '일',
+                stage_performance: '단계 성능',
+                recent_pipelines: '최근 파이프라인',
+                recent_hint: '요청 ID, 모델, 입력 프리뷰로 검색하세요.',
+                search_placeholder: 'pipelineId / 모델 / 프리뷰 검색',
+                reload: '갱신',
+                request_detail: '요청 상세',
+                request_hint: '왼쪽 목록을 클릭하거나 ID를 입력하세요.',
+                request_placeholder: '요청 ID (pipelineId)',
+                view_detail: '상세 보기',
+                detail_empty: '요청을 선택하면 상세가 표시됩니다.',
+                col_id: 'ID',
+                col_status: '상태',
+                col_duration: '소요',
+                col_first: '첫 응답',
+                col_time: '시간',
+                col_model: '모델',
+                col_tokens: '토큰',
+                col_credits: '크레딧',
+                col_preview: '프리뷰',
+                series_avg_response: '평균 응답(ms)',
+                series_requests: '요청 수',
+                series_tokens: '토큰',
+                series_avg_stage: '단계 평균(ms)',
+                detail_request_id: '요청 ID',
+                detail_status: '상태',
+                detail_started: '시작',
+                detail_finished: '종료',
+                detail_total: '총 시간',
+                detail_first_last: '첫/마지막',
+                detail_llm_retrieval: 'LLM 및 검색',
+                detail_model: '모델',
+                detail_tokens: '토큰',
+                detail_credits: '크레딧',
+                detail_completion: '완료 시간',
+                detail_retrieved: '검색 건수',
+                detail_retrieval_time: '검색 시간',
+                detail_request_tts: '요청 및 TTS',
+                detail_input_length: '입력 길이',
+                detail_input_preview: '입력 프리뷰',
+                detail_response_total: '응답 총 시간',
+                detail_first_last_long: '첫 / 마지막',
+                detail_tts: 'TTS',
+                detail_tts_time: 'TTS 시간',
+                detail_llm_output: 'LLM 결과',
+                detail_stage_timeline: '단계 타임라인',
+                detail_attributes: '속성',
+                col_stage: '단계',
+                col_started: '시작',
+                col_finished: '종료',
+                col_scope: '범위',
+                col_key: '키',
+                col_value: '값',
+                empty_enter_request: '요청 ID를 입력하세요.',
+                empty_loading: '상세 정보를 불러오는 중...',
+                empty_not_found: '해당 요청의 상세를 찾을 수 없습니다.',
+                empty_no_outputs: '생성된 결과가 없습니다.',
+                empty_no_attributes: '기록된 속성이 없습니다.',
+                empty_no_stages: '단계 데이터가 없습니다.',
+                theme_dark: '다크',
+                theme_light: '라이트',
+                lang_ko: 'KO',
+                lang_en: 'EN'
+            }
+        };
+
+        function t(key) {
+            return translations[currentLang]?.[key] || translations.en[key] || key;
+        }
+
+        function applyI18n() {
+            document.title = t('title_full');
+            document.querySelectorAll('[data-i18n]').forEach(el => {
+                el.textContent = t(el.dataset.i18n);
+            });
+            document.querySelectorAll('[data-i18n-placeholder]').forEach(el => {
+                el.setAttribute('placeholder', t(el.dataset.i18nPlaceholder));
+            });
+
+            setGranularity(getGranularity());
+            document.getElementById('autoRefreshLabel').textContent = t('auto_label');
+            document.getElementById('languageToggle').textContent =
+                currentLang === 'ko' ? t('lang_ko') : t('lang_en');
+            document.getElementById('themeToggle').textContent =
+                currentTheme === 'dark' ? t('theme_light') : t('theme_dark');
+            updateAutoRefreshStatus(autoRefreshInterval != null);
+        }
+
+        function applyTheme() {
+            document.body.classList.toggle('dark', currentTheme === 'dark');
+            updateChartTheme();
+        }
+
+        let lastTotalSummary = null;
+
+        function toggleLanguage() {
+            currentLang = currentLang === 'ko' ? 'en' : 'ko';
+            localStorage.setItem('dashboard.lang', currentLang);
+            applyI18n();
+            renderPipelineDetail(lastPipelineDetail);
+            if (lastTotalSummary) {
+                updateSummaryCards(lastTotalSummary, lastRollups, getGranularity(), granularityLimit(getGranularity()));
+            }
+            updatePerformanceChart(lastRollups, getGranularity());
+            updateStagePerformanceChart(lastStageSummary);
+        }
+
+        function toggleTheme() {
+            currentTheme = currentTheme === 'dark' ? 'light' : 'dark';
+            localStorage.setItem('dashboard.theme', currentTheme);
+            applyTheme();
+            applyI18n();
+        }
+
+        function updateAutoRefreshStatus(isOn) {
+            document.getElementById('autoRefreshStatus').textContent = isOn ? 'ON' : 'OFF';
+        }
+
+        function colorVar(name) {
+            return getComputedStyle(document.body).getPropertyValue(name).trim();
+        }
+
+        function updateChartTheme() {
+            const grid = colorVar('--grid');
+            const text = colorVar('--muted');
+            const line = colorVar('--accent');
+            const requestsColor = colorVar('--accent-alt');
+            const tokensColor = colorVar('--accent-soft');
+
+            if (charts.performance) {
+                if (charts.performance.data.datasets[0]) {
+                    charts.performance.data.datasets[0].borderColor = line;
+                    charts.performance.data.datasets[0].backgroundColor = line + '30';
+                }
+                if (charts.performance.data.datasets[1]) {
+                    charts.performance.data.datasets[1].borderColor = requestsColor;
+                    charts.performance.data.datasets[1].backgroundColor = requestsColor + '80';
+                }
+                if (charts.performance.data.datasets[2]) {
+                    charts.performance.data.datasets[2].borderColor = tokensColor;
+                    charts.performance.data.datasets[2].backgroundColor = tokensColor + '30';
+                }
+                charts.performance.options.scales.y.ticks.color = text;
+                charts.performance.options.scales.y.grid.color = grid;
+                charts.performance.options.scales.y.title.color = text;
+                charts.performance.options.scales.y1.ticks.color = text;
+                charts.performance.options.scales.y1.title.color = text;
+                charts.performance.options.scales.y2.ticks.color = text;
+                charts.performance.options.scales.y2.title.color = text;
+                charts.performance.options.scales.x.ticks.color = text;
+                charts.performance.update('none');
+            }
+
+            if (charts.stages) {
+                charts.stages.data.datasets[0].backgroundColor = requestsColor;
+                charts.stages.options.scales.x.ticks.color = text;
+                charts.stages.options.scales.x.grid.color = grid;
+                charts.stages.options.scales.y.ticks.color = text;
+                charts.stages.update('none');
+            }
+        }
+
+        async function fetchData(endpoint) {
+            const response = await fetch(endpoint);
+            if (!response.ok) throw new Error(`HTTP error! status: ${response.status}`);
+            return await response.json();
+        }
+
+        function formatTime(value) {
+            if (!value) return '-';
+            const time = new Date(value);
+            return `${time.getHours().toString().padStart(2, '0')}:${time.getMinutes().toString().padStart(2, '0')}:${time.getSeconds().toString().padStart(2, '0')}`;
+        }
+
+        function formatDateTime(value) {
+            if (!value) return '-';
+            const time = new Date(value);
+            return `${time.getMonth() + 1}/${time.getDate()} ${formatTime(value)}`;
+        }
+
+        function formatMillis(value) {
+            if (value === null || value === undefined || Number.isNaN(value)) {
+                return '-';
+            }
+            return `${Math.round(value).toLocaleString()}ms`;
+        }
+
+        function formatNumber(value, fallback = '-') {
+            if (value === null || value === undefined || Number.isNaN(value)) {
+                return fallback;
+            }
+            return value.toLocaleString();
+        }
+
+        function formatAttributeValue(value) {
+            if (value === null || value === undefined) {
+                return '-';
+            }
+            if (typeof value === 'object') {
+                try {
+                    return JSON.stringify(value);
+                } catch {
+                    return '[object]';
+                }
+            }
+            return value;
+        }
+
+        function escapeHtml(text) {
+            const div = document.createElement('div');
+            div.textContent = text ?? '';
+            return div.innerHTML;
+        }
+
+        function calculateCredits(usage) {
+            if (!usage) return 0;
+
+            const llmPricing = {
+                'gpt-4o-mini': { input: 0.150, output: 0.600 },
+                'gpt-4o': { input: 2.50, output: 10.00 },
+                'gpt-4-turbo': { input: 10.00, output: 30.00 },
+                'gpt-3.5-turbo': { input: 0.50, output: 1.50 }
+            };
+
+            let llmCredits = 0;
+            if (usage.llmUsage) {
+                const model = usage.llmUsage.model || 'gpt-4o-mini';
+                const pricing = llmPricing[model] || llmPricing['gpt-4o-mini'];
+
+                let promptTokens, completionTokens;
+
+                if (usage.llmUsage.promptTokens != null && usage.llmUsage.completionTokens != null) {
+                    promptTokens = usage.llmUsage.promptTokens;
+                    completionTokens = usage.llmUsage.completionTokens;
+                } else {
+                    const inputLength = usage.userRequest?.inputLength || 0;
+                    const memoryCount = usage.retrievalMetrics?.memoryCount || 0;
+                    const documentCount = usage.retrievalMetrics?.documentCount || 0;
+
+                    const basePromptTokens = 300;
+                    const inputTokens = Math.floor(inputLength / 3);
+                    const contextTokens = (memoryCount * 50) + (documentCount * 100);
+                    promptTokens = basePromptTokens + inputTokens + contextTokens;
+                    completionTokens = usage.llmUsage.tokenCount || 0;
+                }
+
+                const inputCost = (promptTokens / 1000000.0) * pricing.input;
+                const outputCost = (completionTokens / 1000000.0) * pricing.output;
+                const totalDollars = inputCost + outputCost;
+                llmCredits = Math.ceil(totalDollars * 10000);
+            }
+
+            let ttsCredits = 0;
+            if (usage.ttsMetrics) {
+                const sentenceCount = usage.ttsMetrics.sentenceCount || 0;
+                const avgSentenceDuration = 3000;
+                const estimatedAudioLength = sentenceCount * avgSentenceDuration;
+
+                const totalCost = (estimatedAudioLength / 100.0) * 0.00015;
+                ttsCredits = Math.ceil(totalCost * 10000);
+            }
+
+            return llmCredits + ttsCredits;
+        }
+
+        function getGranularity() {
+            const stored = localStorage.getItem('dashboard.granularity');
+            const select = document.getElementById('granularitySelect');
+            if (stored) {
+                return stored;
+            }
+            return select ? select.value : 'MINUTE';
+        }
+
+        function setGranularity(value) {
+            localStorage.setItem('dashboard.granularity', value);
+            const select = document.getElementById('granularitySelect');
+            if (select) {
+                select.value = value;
+            }
+        }
+
+        function granularityLimit(granularity) {
+            if (granularity === 'DAY') return 30;
+            if (granularity === 'HOUR') return 24;
+            return 60;
+        }
+
+        function formatBucketLabel(dateValue, granularity) {
+            const date = new Date(dateValue);
+            if (granularity === 'DAY') {
+                return `${date.getMonth() + 1}/${date.getDate()}`;
+            }
+            if (granularity === 'HOUR') {
+                return `${date.getMonth() + 1}/${date.getDate()} ${date.getHours().toString().padStart(2, '0')}:00`;
+            }
+            return `${date.getHours().toString().padStart(2, '0')}:${date.getMinutes().toString().padStart(2, '0')}`;
+        }
+
+        function formatRangeLabel(granularity, limit) {
+            const unitKey = granularity === 'DAY'
+                ? 'unit_days'
+                : granularity === 'HOUR'
+                    ? 'unit_hours'
+                    : 'unit_minutes';
+            return `${limit} ${t(unitKey)}`;
+        }
+
+        async function refreshDashboard() {
+            try {
+                const granularity = getGranularity();
+                const limit = granularityLimit(granularity);
+                setGranularity(granularity);
+
+                const [totalSummary, rollups, stageSummary, recentUsage] = await Promise.all([
+                    fetchData(`/metrics/usage/summary/total`),
+                    fetchData(`/metrics/rollups?granularity=${granularity}&limit=${limit}`),
+                    fetchData(`/metrics/stages/summary?granularity=${granularity}&limit=${limit}`),
+                    fetchData(`/metrics/usage/recent?limit=200`)
+                ]);
+
+                lastRollups = rollups;
+                lastStageSummary = stageSummary;
+                lastTotalSummary = totalSummary;
+
+                updateSummaryCards(totalSummary, rollups, granularity, limit);
+                updatePerformanceChart(rollups, granularity);
+                updateStagePerformanceChart(stageSummary);
+                recentPipelinesCache = recentUsage;
+                filterRecentPipelines();
+
+                const now = new Date();
+                document.getElementById('lastUpdate').textContent =
+                    `${now.getHours().toString().padStart(2, '0')}:${now.getMinutes().toString().padStart(2, '0')}:${now.getSeconds().toString().padStart(2, '0')}`;
+            } catch (error) {
+                console.error('Dashboard refresh failed:', error);
+            }
+        }
+
+        function updateSummaryCards(totalSummary, rollups, granularity, limit) {
+            const requestRate = rollups.length === 0
+                ? 0
+                : rollups.reduce((sum, r) => sum + (r.requestCount || 0), 0) / rollups.length;
+
+            document.getElementById('totalRequests').textContent = totalSummary.totalRequests.toLocaleString();
+            document.getElementById('totalCredits').textContent = totalSummary.totalCredits.toLocaleString();
+
+            const costInDollars = (totalSummary.totalCredits / 10000.0).toFixed(4);
+            document.getElementById('totalCost').textContent = `$${costInDollars}`;
+
+            document.getElementById('avgResponseTime').textContent = `${Math.round(totalSummary.avgResponseTimeMillis).toLocaleString()}ms`;
+
+            document.getElementById('summaryRange').textContent = t('range_all');
+        }
+
+        function updatePerformanceChart(rollups, granularity) {
+            const ctx = document.getElementById('performanceChart');
+            const safeRollups = Array.isArray(rollups) ? rollups : [];
+            const sorted = safeRollups.slice().sort((a, b) => new Date(a.bucketStart) - new Date(b.bucketStart));
+            const grid = colorVar('--grid');
+            const text = colorVar('--muted');
+            const line = colorVar('--accent');
+            const requestsColor = colorVar('--accent-alt');
+            const tokensColor = colorVar('--accent-soft');
+
+            const labels = sorted.map(d => formatBucketLabel(d.bucketStart, granularity));
+            const avgResponse = sorted.map(d => d.avgResponseMillis || 0);
+            const requests = sorted.map(d => d.requestCount || 0);
+            const tokens = sorted.map(d => d.totalTokens || 0);
+
+            const datasets = [
+                {
+                    type: 'line',
+                    label: t('series_avg_response'),
+                    data: avgResponse,
+                    borderColor: line,
+                    backgroundColor: line + '30',
+                    tension: 0.2,
+                    borderWidth: 2,
+                    pointRadius: 1,
+                    yAxisID: 'y'
+                },
+                {
+                    type: 'bar',
+                    label: t('series_requests'),
+                    data: requests,
+                    backgroundColor: requestsColor + '80',
+                    borderColor: requestsColor,
+                    borderWidth: 1,
+                    yAxisID: 'y1'
+                },
+                {
+                    type: 'line',
+                    label: t('series_tokens'),
+                    data: tokens,
+                    borderColor: tokensColor,
+                    backgroundColor: tokensColor + '30',
+                    tension: 0.2,
+                    borderWidth: 2,
+                    pointRadius: 1,
+                    yAxisID: 'y2'
+                }
+            ];
+
+            if (!charts.performance) {
+                charts.performance = new Chart(ctx, {
+                    data: {
+                        labels: labels,
+                        datasets: datasets
+                    },
+                    options: {
+                        responsive: true,
+                        maintainAspectRatio: false,
+                        animation: false,
+                        plugins: {
+                            legend: {
+                                position: 'bottom',
+                                labels: { color: text, boxWidth: 12 }
+                            }
+                        },
+                        scales: {
+                            y: {
+                                beginAtZero: true,
+                                ticks: { font: { size: 10 }, color: text },
+                                grid: { color: grid },
+                                title: { display: true, text: t('series_avg_response'), color: text }
+                            },
+                            y1: {
+                                beginAtZero: true,
+                                position: 'right',
+                                ticks: { font: { size: 10 }, color: text },
+                                grid: { drawOnChartArea: false },
+                                title: { display: true, text: t('series_requests'), color: text }
+                            },
+                            y2: {
+                                beginAtZero: true,
+                                position: 'right',
+                                ticks: { font: { size: 10 }, color: text },
+                                grid: { drawOnChartArea: false },
+                                title: { display: true, text: t('series_tokens'), color: text }
+                            },
+                            x: {
+                                ticks: { font: { size: 10 }, color: text },
+                                grid: { display: false }
+                            }
+                        }
+                    }
+                });
+            } else {
+                charts.performance.data.labels = labels;
+                charts.performance.data.datasets = datasets;
+                charts.performance.options.plugins.legend.labels.color = text;
+                charts.performance.options.scales.y.ticks.color = text;
+                charts.performance.options.scales.y.grid.color = grid;
+                charts.performance.options.scales.y.title.text = t('series_avg_response');
+                charts.performance.options.scales.y.title.color = text;
+                charts.performance.options.scales.y1.ticks.color = text;
+                charts.performance.options.scales.y1.title.text = t('series_requests');
+                charts.performance.options.scales.y1.title.color = text;
+                charts.performance.options.scales.y2.ticks.color = text;
+                charts.performance.options.scales.y2.title.text = t('series_tokens');
+                charts.performance.options.scales.y2.title.color = text;
+                charts.performance.update('none');
+            }
+        }
+
+        function updateStagePerformanceChart(data) {
+            const ctx = document.getElementById('stagePerformanceChart');
+            const grid = colorVar('--grid');
+            const text = colorVar('--muted');
+            const bar = colorVar('--accent-alt');
+
+            const safeData = Array.isArray(data) ? data : [];
+            const sorted = safeData.slice().sort((a, b) => a.stageName.localeCompare(b.stageName));
+            const labels = sorted.map(item => item.stageName.replace(/_/g, ' ').toLowerCase());
+            const avgDurations = sorted.map(item => Math.round(item.avgDurationMillis || 0));
+
+            if (!charts.stages) {
+                charts.stages = new Chart(ctx, {
+                    type: 'bar',
+                    data: {
+                        labels: labels,
+                        datasets: [{
+                            label: t('series_avg_stage'),
+                            data: avgDurations,
+                            backgroundColor: bar,
+                            borderWidth: 0
+                        }]
+                    },
+                    options: {
+                        indexAxis: 'y',
+                        responsive: true,
+                        maintainAspectRatio: false,
+                        animation: false,
+                        plugins: {
+                            legend: { display: false }
+                        },
+                        scales: {
+                            x: {
+                                beginAtZero: true,
+                                ticks: { font: { size: 10 }, color: text },
+                                grid: { color: grid }
+                            },
+                            y: {
+                                ticks: { font: { size: 10 }, color: text },
+                                grid: { display: false }
+                            }
+                        }
+                    }
+                });
+            } else {
+                charts.stages.data.labels = labels;
+                charts.stages.data.datasets[0].label = t('series_avg_stage');
+                charts.stages.data.datasets[0].data = avgDurations;
+                charts.stages.update('none');
+            }
+        }
+
+        function buildAttributeRows(performance) {
+            const rows = [];
+            if (performance && performance.systemAttributes) {
+                Object.entries(performance.systemAttributes).forEach(([key, value]) => {
+                    rows.push({ scope: 'pipeline', key, value });
+                });
+            }
+
+            (performance?.stages || []).forEach(stage => {
+                if (!stage.attributes) {
+                    return;
+                }
+                Object.entries(stage.attributes).forEach(([key, value]) => {
+                    rows.push({ scope: stage.stageName, key, value });
+                });
+            });
+
+            return rows;
+        }
+
+        function renderPipelineDetail(detail, errorMessage) {
+            const container = document.getElementById('pipelineDetail');
+
+            if (errorMessage) {
+                container.className = 'empty-state';
+                container.textContent = errorMessage;
+                lastPipelineDetail = null;
+                return;
+            }
+
+            if (!detail) {
+                container.className = 'empty-state';
+                container.textContent = t('detail_empty');
+                lastPipelineDetail = null;
+                return;
+            }
+
+            lastPipelineDetail = detail;
+            const performance = detail.performance || {};
+            const usage = detail.usage || {};
+            const userRequest = usage.userRequest || {};
+            const llmUsage = usage.llmUsage || {};
+            const retrieval = usage.retrievalMetrics || {};
+            const tts = usage.ttsMetrics || {};
+            const responseMetrics = usage.responseMetrics || {};
+
+            const credits = calculateCredits(usage);
+
+            const llmSentences = Array.isArray(llmUsage.generatedSentences)
+                ? llmUsage.generatedSentences
+                : [];
+
+            const stageRows = (performance.stages || []).map(stage => `
+                <tr>
+                    <td>${stage.stageName || '-'}</td>
+                    <td class="status-${(stage.status || '-').toLowerCase()}">${stage.status || '-'}</td>
+                    <td>${formatMillis(stage.durationMillis)}</td>
+                    <td>${formatTime(stage.startedAt)}</td>
+                    <td>${formatTime(stage.finishedAt)}</td>
+                </tr>
+            `).join('');
+
+            const attributes = buildAttributeRows(performance);
+            const attributeRows = attributes.length
+                ? attributes.map(attr => `
+                    <tr>
+                        <td>${attr.scope}</td>
+                        <td>${attr.key}</td>
+                        <td>${formatAttributeValue(attr.value)}</td>
+                    </tr>
+                `).join('')
+                : `<tr><td colspan="3">${t('empty_no_attributes')}</td></tr>`;
+
+            const outputsHtml = llmSentences.length
+                ? `<ul class="llm-list">${llmSentences.map(text => `<li>${escapeHtml(text)}</li>`).join('')}</ul>`
+                : `<div class="empty-state">${t('empty_no_outputs')}</div>`;
+
+            container.className = '';
+            container.innerHTML = `
+                <div class="detail-grid">
+                    <div class="detail-card">
+                        <div class="detail-label">${t('detail_request_id')}</div>
+                        <div class="detail-value">${detail.pipelineId}</div>
+                        <div class="kv-row"><span>${t('detail_status')}</span><span class="pill">${performance.status || usage.status || '-'}</span></div>
+                        <div class="kv-row"><span>${t('detail_started')}</span><span>${formatDateTime(performance.startedAt)}</span></div>
+                        <div class="kv-row"><span>${t('detail_finished')}</span><span>${formatDateTime(performance.finishedAt)}</span></div>
+                        <div class="kv-row"><span>${t('detail_total')}</span><span>${formatMillis(performance.totalDurationMillis)}</span></div>
+                        <div class="kv-row"><span>${t('detail_first_last')}</span><span>${formatMillis(performance.firstResponseLatencyMillis)} / ${formatMillis(performance.lastResponseLatencyMillis)}</span></div>
+                    </div>
+                    <div class="detail-card">
+                        <div class="detail-section-title">${t('detail_llm_retrieval')}</div>
+                        <div class="kv-row"><span>${t('detail_model')}</span><span>${llmUsage.model || '-'}</span></div>
+                        <div class="kv-row"><span>${t('detail_tokens')}</span><span>${formatNumber(llmUsage.tokenCount, 0)}</span></div>
+                        <div class="kv-row"><span>${t('detail_credits')}</span><span>${formatNumber(credits)}</span></div>
+                        <div class="kv-row"><span>${t('detail_completion')}</span><span>${formatMillis(llmUsage.completionTimeMillis)}</span></div>
+                        <div class="kv-row"><span>${t('detail_retrieved')}</span><span>${formatNumber(retrieval.memoryCount, 0)} mem / ${formatNumber(retrieval.documentCount, 0)} docs</span></div>
+                        <div class="kv-row"><span>${t('detail_retrieval_time')}</span><span>${formatMillis(retrieval.retrievalTimeMillis)}</span></div>
+                    </div>
+                    <div class="detail-card">
+                        <div class="detail-section-title">${t('detail_request_tts')}</div>
+                        <div class="kv-row"><span>${t('detail_input_length')}</span><span>${formatNumber(userRequest.inputLength, 0)}</span></div>
+                        <div class="kv-row"><span>${t('detail_input_preview')}</span><span>${(userRequest.inputPreview || '-')}</span></div>
+                        <div class="kv-row"><span>${t('detail_response_total')}</span><span>${formatMillis(responseMetrics.totalDurationMillis)}</span></div>
+                        <div class="kv-row"><span>${t('detail_first_last_long')}</span><span>${formatMillis(responseMetrics.firstResponseLatencyMillis)} / ${formatMillis(responseMetrics.lastResponseLatencyMillis)}</span></div>
+                        <div class="kv-row"><span>${t('detail_tts')}</span><span>${formatNumber(tts.sentenceCount, 0)} sentences / ${formatNumber(tts.audioChunks, 0)} chunks</span></div>
+                        <div class="kv-row"><span>${t('detail_tts_time')}</span><span>${formatMillis(tts.synthesisTimeMillis)}</span></div>
+                    </div>
+                </div>
+                <div class="detail-card full-width">
+                    <div class="detail-section-title">${t('detail_llm_output')}</div>
+                    ${outputsHtml}
+                </div>
+                <div class="table-container full-width">
+                    <div class="chart-title">${t('detail_stage_timeline')}</div>
+                    <table>
+                        <thead>
+                            <tr>
+                                <th>${t('col_stage')}</th>
+                                <th>${t('col_status')}</th>
+                                <th>${t('col_duration')}</th>
+                                <th>${t('col_started')}</th>
+                                <th>${t('col_finished')}</th>
+                            </tr>
+                        </thead>
+                        <tbody>
+                            ${stageRows || `<tr><td colspan="5">${t('empty_no_stages')}</td></tr>`}
+                        </tbody>
+                    </table>
+                </div>
+                <div class="table-container full-width">
+                    <div class="chart-title">${t('detail_attributes')}</div>
+                    <table>
+                        <thead>
+                            <tr>
+                                <th>${t('col_scope')}</th>
+                                <th>${t('col_key')}</th>
+                                <th>${t('col_value')}</th>
+                            </tr>
+                        </thead>
+                        <tbody>
+                            ${attributeRows}
+                        </tbody>
+                    </table>
+                </div>
+            `;
+        }
+
+        async function fetchPipelineDetail(pipelineId) {
+            const input = document.getElementById('pipelineIdInput');
+            const targetId = (pipelineId || input.value || '').trim();
+
+            if (!targetId) {
+                renderPipelineDetail(null, t('empty_enter_request'));
+                return;
+            }
+
+            input.value = targetId;
+            renderPipelineDetail(null, t('empty_loading'));
+
+            try {
+                const detail = await fetchData(`/metrics/pipeline/${targetId}`);
+                renderPipelineDetail(detail);
+            } catch (error) {
+                console.error('Failed to load pipeline detail:', error);
+                renderPipelineDetail(null, t('empty_not_found'));
+            }
+        }
+
+        function refreshRecentPipelines() {
+            refreshDashboard();
+        }
+
+        function filterRecentPipelines() {
+            const term = (document.getElementById('pipelineSearchInput').value || '').toLowerCase();
+            const filtered = recentPipelinesCache.filter(p => {
+                const idMatch = p.pipelineId?.toLowerCase().includes(term);
+                const modelMatch = p.llmUsage?.model?.toLowerCase().includes(term);
+                const previewMatch = p.userRequest?.inputPreview?.toLowerCase().includes(term);
+                return !term || idMatch || modelMatch || previewMatch;
+            });
+            updateRecentPipelinesTable(filtered);
+        }
+
+        function updateRecentPipelinesTable(data) {
+            const tbody = document.querySelector('#recentPipelinesTable tbody');
+            tbody.innerHTML = '';
+
+            data.slice(0, 200).forEach(p => {
+                const row = tbody.insertRow();
+                row.classList.add('clickable-row');
+                row.onclick = () => fetchPipelineDetail(p.pipelineId);
+                const credits = calculateCredits(p);
+                row.innerHTML = `
+                    <td>${escapeHtml((p.pipelineId || '-').substring(0, 6))}</td>
+                    <td class="status-${escapeHtml((p.status || '-').toLowerCase())}">${escapeHtml(p.status || '-')}</td>
+                    <td>${escapeHtml(p.llmUsage?.model || '-')}</td>
+                    <td>${formatNumber(credits)}</td>
+                    <td>${formatMillis(p.responseMetrics?.totalDurationMillis)}</td>
+                    <td>${escapeHtml((p.userRequest?.inputPreview || '-').substring(0, 20))}</td>
+                    <td>${formatTime(p.timestamp)}</td>
+                `;
+            });
+        }
+
+        function toggleAutoRefresh() {
+            if (autoRefreshInterval) {
+                clearInterval(autoRefreshInterval);
+                autoRefreshInterval = null;
+                updateAutoRefreshStatus(false);
+            } else {
+                autoRefreshInterval = setInterval(refreshDashboard, 5000);
+                updateAutoRefreshStatus(true);
+            }
+        }
+
+        setGranularity(getGranularity());
+        applyTheme();
+        applyI18n();
+        refreshDashboard();
+        autoRefreshInterval = setInterval(refreshDashboard, 5000);
+        updateAutoRefreshStatus(true);
+    </script>
+</body>
+</html>
