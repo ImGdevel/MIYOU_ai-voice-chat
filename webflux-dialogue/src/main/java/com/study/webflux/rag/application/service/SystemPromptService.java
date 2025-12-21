@@ -118,11 +118,15 @@ public class SystemPromptService {
 		String commonPrompt,
 		String memoryBlock,
 		String contextBlock) {
-		return template.replace("{{persona}}", personaPrompt)
+		String result = template.replace("{{persona}}", personaPrompt)
 			.replace("{{common}}", commonPrompt)
 			.replace("{{memories}}", memoryBlock)
-			.replace("{{context}}", contextBlock)
-			.trim();
+			.replace("{{context}}", contextBlock);
+
+		// Collapse excessive blank lines
+		result = result.replaceAll("(?m)^[ \\t]+$", ""); // strip whitespace-only lines
+		result = result.replaceAll("\\n{3,}", "\n\n");
+		return result.trim();
 	}
 
 	private String loadTemplate(String templateName) {
