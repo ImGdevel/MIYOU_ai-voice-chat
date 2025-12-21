@@ -7,6 +7,7 @@ import lombok.RequiredArgsConstructor;
 import org.springframework.stereotype.Service;
 
 import com.study.webflux.rag.domain.model.metrics.PerformanceMetrics;
+import com.study.webflux.rag.domain.model.metrics.PipelineDetail;
 import com.study.webflux.rag.domain.model.metrics.UsageAnalytics;
 import com.study.webflux.rag.domain.port.in.MetricsQueryUseCase;
 import com.study.webflux.rag.domain.port.out.PerformanceMetricsRepository;
@@ -60,5 +61,13 @@ public class MetricsQueryService implements MetricsQueryUseCase {
 	@Override
 	public Mono<Long> getTotalTokenUsage(Instant startTime, Instant endTime) {
 		return usageAnalyticsRepository.sumTokensByTimeRange(startTime, endTime);
+	}
+
+	@Override
+	public Mono<PipelineDetail> getPipelineDetail(String pipelineId) {
+		return Mono.zip(
+			performanceMetricsRepository.findById(pipelineId),
+			usageAnalyticsRepository.findById(pipelineId))
+			.map(tuple -> new PipelineDetail(pipelineId, tuple.getT1(), tuple.getT2()));
 	}
 }

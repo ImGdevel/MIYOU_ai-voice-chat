@@ -6,12 +6,16 @@ import java.time.temporal.ChronoUnit;
 import lombok.RequiredArgsConstructor;
 
 import org.springframework.format.annotation.DateTimeFormat;
+import org.springframework.http.HttpStatus;
 import org.springframework.web.bind.annotation.GetMapping;
+import org.springframework.web.bind.annotation.PathVariable;
 import org.springframework.web.bind.annotation.RequestMapping;
 import org.springframework.web.bind.annotation.RequestParam;
 import org.springframework.web.bind.annotation.RestController;
+import org.springframework.web.server.ResponseStatusException;
 
 import com.study.webflux.rag.domain.model.metrics.PerformanceMetrics;
+import com.study.webflux.rag.domain.model.metrics.PipelineDetail;
 import com.study.webflux.rag.domain.model.metrics.UsageAnalytics;
 import com.study.webflux.rag.domain.port.in.MetricsQueryUseCase;
 import reactor.core.publisher.Flux;
@@ -109,10 +113,30 @@ public class MetricsController {
 				tuple.getT2()));
 	}
 
+	@GetMapping("/pipeline/{pipelineId}")
+	public Mono<PipelineDetailResponse> getPipelineDetail(@PathVariable String pipelineId) {
+		return metricsQueryUseCase.getPipelineDetail(pipelineId)
+			.map(PipelineDetailResponse::fromDomain)
+			.switchIfEmpty(Mono.error(new ResponseStatusException(HttpStatus.NOT_FOUND,
+				"Pipeline not found: " + pipelineId)));
+	}
+
 	public record UsageSummary(
 		Instant startTime,
 		Instant endTime,
 		long totalRequests,
 		long totalTokens) {
+	}
+
+	public record PipelineDetailResponse(
+		String pipelineId,
+		PerformanceMetrics performance,
+		UsageAnalytics usage) {
+		public static PipelineDetailResponse fromDomain(PipelineDetail detail) {
+			return new PipelineDetailResponse(
+				detail.pipelineId(),
+				detail.performance(),
+				detail.usage());
+		}
 	}
 }
