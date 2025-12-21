@@ -105,11 +105,21 @@ public class MetricsController {
 		return Mono.zip(
 			metricsQueryUseCase.getTotalRequestCount(),
 			metricsQueryUseCase.getTotalTokenUsage(),
-			metricsQueryUseCase.getAverageResponseTime())
+			metricsQueryUseCase.getAverageResponseTime(),
+			calculateTotalCredits())
 			.map(tuple -> new TotalUsageSummary(
 				tuple.getT1(),
 				tuple.getT2(),
-				tuple.getT3()));
+				tuple.getT3(),
+				tuple.getT4()));
+	}
+
+	private Mono<Long> calculateTotalCredits() {
+		return metricsQueryUseCase.getRecentUsageAnalytics(Integer.MAX_VALUE)
+			.map(analytics -> com.study.webflux.rag.domain.service.CostCalculationService
+				.calculateCost(analytics))
+			.map(cost -> cost.totalCredits())
+			.reduce(0L, Long::sum);
 	}
 
 	@GetMapping("/pipeline/{pipelineId}")
@@ -144,7 +154,8 @@ public class MetricsController {
 	public record TotalUsageSummary(
 		long totalRequests,
 		long totalTokens,
-		double avgResponseTimeMillis) {
+		double avgResponseTimeMillis,
+		long totalCredits) {
 	}
 
 	public record PipelineDetailResponse(
