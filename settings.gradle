@@ -1,7 +1,3 @@
 rootProject.name = 'webflux'
 
-include 'webflux-core'
 include 'webflux-dialogue'
-include 'webflux-voice-legacy'
-
-include 'pipeline'
