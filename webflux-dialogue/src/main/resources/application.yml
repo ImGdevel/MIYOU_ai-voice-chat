@@ -62,3 +62,7 @@ rag:
       conversation-threshold: 5
       importance-boost: 0.05
       importance-threshold: 0.3
+
+monitoring:
+  persistent:
+    enabled: ${MONITORING_PERSISTENT_ENABLED:true}

@@ -2,11 +2,16 @@ package com.study.webflux.rag.application.dto;
 
 import java.time.Instant;
 
+import io.swagger.v3.oas.annotations.media.Schema;
 import jakarta.validation.constraints.NotBlank;
 import jakarta.validation.constraints.NotNull;
 
+@Schema(description = "대화 Request")
 public record RagDialogueRequest(
+	@Schema(description = "유저 프롬포트", example = "안녕하세요")
 	@NotBlank String text,
+
+	@Schema(description = "요청시각", example = "2024-12-21T12:00:00Z")
 	@NotNull Instant requestedAt
 ) {
 }
