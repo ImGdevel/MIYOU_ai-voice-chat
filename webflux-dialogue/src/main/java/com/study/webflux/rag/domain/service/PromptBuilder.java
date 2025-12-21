@@ -13,7 +13,7 @@ import com.study.webflux.rag.infrastructure.template.FileBasedPromptTemplate;
 @Component
 public class PromptBuilder implements PromptTemplatePort {
 
-	private static final String CONVERSATION_TEMPLATE = "rag-conversation-prompt";
+	private static final String CONVERSATION_TEMPLATE = "dialogue/conversation";
 	private final FileBasedPromptTemplate templateLoader;
 
 	public PromptBuilder(FileBasedPromptTemplate templateLoader) {
