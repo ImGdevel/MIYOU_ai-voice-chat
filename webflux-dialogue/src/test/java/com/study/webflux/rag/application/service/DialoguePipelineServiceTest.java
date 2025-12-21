@@ -61,9 +61,6 @@ class DialoguePipelineServiceTest {
 	@Mock
 	private RagDialogueProperties properties;
 
-	@Mock
-	private PipelineTracer pipelineTracer;
-
 	private SentenceAssembler sentenceAssembler;
 
 	private DialoguePipelineService service;
@@ -85,53 +82,7 @@ class DialoguePipelineServiceTest {
 		when(retrievalPort.retrieveMemories(anyString(), anyInt()))
 			.thenReturn(Mono.just(MemoryRetrievalResult.empty()));
 		when(systemPromptService.buildSystemPrompt(any(), any())).thenReturn("");
-		when(pipelineTracer.traceMemories(any(), any())).thenAnswer(invocation -> {
-			@SuppressWarnings("unchecked")
-			java.util.function.Supplier<Mono<MemoryRetrievalResult>> supplier = invocation
-				.getArgument(1);
-			return supplier.get();
-		});
-		when(pipelineTracer.traceRetrieval(any(), any())).thenAnswer(invocation -> {
-			@SuppressWarnings("unchecked")
-			java.util.function.Supplier<Mono<RetrievalContext>> supplier = invocation
-				.getArgument(1);
-			return supplier.get();
-		});
-		when(pipelineTracer.tracePrompt(any(), any())).thenAnswer(invocation -> {
-			@SuppressWarnings("unchecked")
-			java.util.function.Supplier<List<com.study.webflux.rag.domain.model.llm.Message>> supplier = invocation
-				.getArgument(1);
-			return Mono.just(supplier.get());
-		});
-		when(pipelineTracer.traceLlm(any(), anyString(), any())).thenAnswer(invocation -> {
-			@SuppressWarnings("unchecked")
-			java.util.function.Supplier<Flux<String>> supplier = invocation.getArgument(2);
-			return supplier.get();
-		});
-		when(pipelineTracer.traceTtsPreparation(any(), any())).thenAnswer(invocation -> {
-			@SuppressWarnings("unchecked")
-			java.util.function.Supplier<Mono<Void>> supplier = invocation.getArgument(1);
-			return supplier.get();
-		});
-		when(pipelineTracer.traceSentenceAssembly(any(), any(), any())).thenAnswer(invocation -> {
-			@SuppressWarnings("unchecked")
-			java.util.function.Supplier<Flux<String>> supplier = invocation.getArgument(1);
-			@SuppressWarnings("unchecked")
-			java.util.function.Consumer<String> consumer = invocation.getArgument(2);
-			return supplier.get().doOnNext(consumer);
-		});
-		when(pipelineTracer.traceTtsSynthesis(any(), any(), any())).thenAnswer(invocation -> {
-			@SuppressWarnings("unchecked")
-			java.util.function.Supplier<Flux<byte[]>> supplier = invocation.getArgument(1);
-			Runnable onNext = invocation.getArgument(2);
-			return supplier.get().doOnNext(chunk -> onNext.run());
-		});
-		when(pipelineTracer.tracePersistence(any(), any())).thenAnswer(invocation -> {
-			@SuppressWarnings("unchecked")
-			java.util.function.Supplier<Mono<ConversationTurn>> supplier = invocation
-				.getArgument(1);
-			return supplier.get();
-		});
+		PipelineTracer pipelineTracer = new PipelineTracer();
 		service = new DialoguePipelineService(llmPort, ttsPort, retrievalPort,
 			conversationRepository, sentenceAssembler, pipelineMonitor, conversationCounterPort,
 			memoryExtractionService, systemPromptService, pipelineTracer, properties);
