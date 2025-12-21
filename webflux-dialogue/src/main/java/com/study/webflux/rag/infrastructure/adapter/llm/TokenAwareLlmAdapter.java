@@ -22,6 +22,7 @@ import com.study.webflux.rag.domain.port.out.LlmPort;
 import com.study.webflux.rag.domain.port.out.TokenUsageProvider;
 import reactor.core.publisher.Flux;
 import reactor.core.publisher.Mono;
+import reactor.core.scheduler.Schedulers;
 
 @Primary
 @Component
@@ -50,14 +51,20 @@ public class TokenAwareLlmAdapter implements LlmPort, TokenUsageProvider {
 			.doOnNext(response -> {
 				if (response.getMetadata() != null && response.getMetadata().getUsage() != null) {
 					var usage = response.getMetadata().getUsage();
-					updateUsage(request,
-						usage.getPromptTokens().intValue(),
-						usage.getGenerationTokens().intValue());
+					Long promptTokens = usage.getPromptTokens();
+					Long generationTokens = usage.getGenerationTokens();
+					if (promptTokens != null && generationTokens != null
+						&& promptTokens <= Integer.MAX_VALUE
+						&& generationTokens <= Integer.MAX_VALUE) {
+						updateUsage(request, promptTokens.intValue(), generationTokens.intValue());
+					}
 				}
 			})
 			.mapNotNull(response -> {
 				var generation = response.getResult();
-				return generation != null ? generation.getOutput().getContent() : null;
+				return generation != null && generation.getOutput() != null
+					? generation.getOutput().getContent()
+					: null;
 			});
 	}
 
@@ -72,13 +79,21 @@ public class TokenAwareLlmAdapter implements LlmPort, TokenUsageProvider {
 
 			if (response.getMetadata() != null && response.getMetadata().getUsage() != null) {
 				var usage = response.getMetadata().getUsage();
-				updateUsage(request,
-					usage.getPromptTokens().intValue(),
-					usage.getGenerationTokens().intValue());
+				Long promptTokens = usage.getPromptTokens();
+				Long generationTokens = usage.getGenerationTokens();
+				if (promptTokens != null && generationTokens != null
+					&& promptTokens <= Integer.MAX_VALUE
+					&& generationTokens <= Integer.MAX_VALUE) {
+					updateUsage(request, promptTokens.intValue(), generationTokens.intValue());
+				}
 			}
 
-			return response.getResult().getOutput().getContent();
-		});
+			var result = response.getResult();
+			if (result == null || result.getOutput() == null) {
+				throw new IllegalStateException("Invalid response from LLM");
+			}
+			return result.getOutput().getContent();
+		}).subscribeOn(Schedulers.boundedElastic());
 	}
 
 	private void updateUsage(CompletionRequest request, int promptTokens, int completionTokens) {
