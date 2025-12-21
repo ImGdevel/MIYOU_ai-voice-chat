@@ -17,7 +17,7 @@ public class RagDialogueProperties {
 	private Qdrant qdrant = new Qdrant();
 	private Memory memory = new Memory();
 	private String systemPrompt = "";
-	private String systemPromptTemplate = "";
+	private String systemPromptTemplate = "system-prompt-maid";
 
 	public OpenAi getOpenai() {
 		return openai;
