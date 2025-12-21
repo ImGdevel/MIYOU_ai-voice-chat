@@ -46,8 +46,7 @@ public class DialoguePipelineService implements DialoguePipelineUseCase {
 	private final MemoryExtractionService memoryExtractionService;
 	private final SystemPromptService systemPromptService;
 	private final String llmModel;
-
-	private final int conversationThreshold; // 대화 횟수 임계값
+	private final int conversationThreshold;
 
 	public DialoguePipelineService(LlmPort llmPort,
 		TtsPort ttsPort,
@@ -57,7 +56,6 @@ public class DialoguePipelineService implements DialoguePipelineUseCase {
 		DialoguePipelineMonitor pipelineMonitor,
 		ConversationCounterPort conversationCounterPort,
 		MemoryExtractionService memoryExtractionService,
-		int conversationThreshold,
 		SystemPromptService systemPromptService,
 		RagDialogueProperties properties) {
 		this.llmPort = llmPort;
@@ -69,8 +67,8 @@ public class DialoguePipelineService implements DialoguePipelineUseCase {
 		this.conversationCounterPort = conversationCounterPort;
 		this.memoryExtractionService = memoryExtractionService;
 		this.systemPromptService = systemPromptService;
-		this.conversationThreshold = conversationThreshold;
 		this.llmModel = properties.getOpenai().getModel();
+		this.conversationThreshold = properties.getMemory().getConversationThreshold();
 	}
 
 	/**
