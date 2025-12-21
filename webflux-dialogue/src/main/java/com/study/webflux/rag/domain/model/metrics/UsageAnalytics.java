@@ -22,6 +22,8 @@ public record UsageAnalytics(
 	public record LlmUsage(
 		String model,
 		int tokenCount,
+		Integer promptTokens,
+		Integer completionTokens,
 		List<String> generatedSentences,
 		long completionTimeMillis) {
 	}

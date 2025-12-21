@@ -23,12 +23,18 @@ public class CostCalculationService {
 		}
 
 		String model = analytics.llmUsage().model();
-		int tokenCount = analytics.llmUsage().tokenCount();
 
-		int estimatedPromptTokens = estimatePromptTokens(analytics);
-		int completionTokens = tokenCount;
+		Integer actualPromptTokens = analytics.llmUsage().promptTokens();
+		Integer actualCompletionTokens = analytics.llmUsage().completionTokens();
 
-		return ModelPricing.calculateLlmCredits(model, estimatedPromptTokens, completionTokens);
+		int promptTokens = actualPromptTokens != null
+			? actualPromptTokens
+			: estimatePromptTokens(analytics);
+		int completionTokens = actualCompletionTokens != null
+			? actualCompletionTokens
+			: analytics.llmUsage().tokenCount();
+
+		return ModelPricing.calculateLlmCredits(model, promptTokens, completionTokens);
 	}
 
 	private static int estimatePromptTokens(UsageAnalytics analytics) {
