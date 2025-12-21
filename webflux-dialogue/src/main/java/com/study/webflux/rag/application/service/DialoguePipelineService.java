@@ -23,6 +23,7 @@ import com.study.webflux.rag.domain.port.out.ConversationCounterPort;
 import com.study.webflux.rag.domain.port.out.ConversationRepository;
 import com.study.webflux.rag.domain.port.out.LlmPort;
 import com.study.webflux.rag.domain.port.out.RetrievalPort;
+import com.study.webflux.rag.domain.port.out.TokenUsageProvider;
 import com.study.webflux.rag.domain.port.out.TtsPort;
 import com.study.webflux.rag.domain.service.SentenceAssembler;
 import reactor.core.publisher.Flux;
@@ -161,17 +162,18 @@ public class DialoguePipelineService implements DialoguePipelineUseCase {
 		textStream.collectList().flatMap(tokens -> {
 			String fullResponse = String.join("", tokens);
 
-			if (llmPort instanceof com.study.webflux.rag.infrastructure.adapter.llm.TokenAwareLlmAdapter tokenAwareLlm) {
-				var tokenUsage = tokenAwareLlm.getLastTokenUsage();
-				tracker.recordStageAttribute(DialoguePipelineStage.LLM_COMPLETION,
-					"promptTokens",
-					tokenUsage.promptTokens());
-				tracker.recordStageAttribute(DialoguePipelineStage.LLM_COMPLETION,
-					"completionTokens",
-					tokenUsage.completionTokens());
-				tracker.recordStageAttribute(DialoguePipelineStage.LLM_COMPLETION,
-					"totalTokens",
-					tokenUsage.totalTokens());
+			if (llmPort instanceof TokenUsageProvider tokenUsageProvider) {
+				tokenUsageProvider.getLastTokenUsage().ifPresent(tokenUsage -> {
+					tracker.recordStageAttribute(DialoguePipelineStage.LLM_COMPLETION,
+						"promptTokens",
+						tokenUsage.promptTokens());
+					tracker.recordStageAttribute(DialoguePipelineStage.LLM_COMPLETION,
+						"completionTokens",
+						tokenUsage.completionTokens());
+					tracker.recordStageAttribute(DialoguePipelineStage.LLM_COMPLETION,
+						"totalTokens",
+						tokenUsage.totalTokens());
+				});
 			}
 
 			return queryTurn

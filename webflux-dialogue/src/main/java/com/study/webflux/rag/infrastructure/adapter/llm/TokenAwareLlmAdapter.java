@@ -18,12 +18,13 @@ import com.study.webflux.rag.domain.model.llm.CompletionRequest;
 import com.study.webflux.rag.domain.model.llm.Message;
 import com.study.webflux.rag.domain.model.llm.TokenUsage;
 import com.study.webflux.rag.domain.port.out.LlmPort;
+import com.study.webflux.rag.domain.port.out.TokenUsageProvider;
 import reactor.core.publisher.Flux;
 import reactor.core.publisher.Mono;
 
 @Primary
 @Component
-public class TokenAwareLlmAdapter implements LlmPort {
+public class TokenAwareLlmAdapter implements LlmPort, TokenUsageProvider {
 
 	private final ChatModel chatModel;
 	private final AtomicReference<TokenUsage> lastTokenUsage = new AtomicReference<>(
@@ -80,8 +81,9 @@ public class TokenAwareLlmAdapter implements LlmPort {
 		});
 	}
 
-	public TokenUsage getLastTokenUsage() {
-		return lastTokenUsage.get();
+	@Override
+	public java.util.Optional<TokenUsage> getLastTokenUsage() {
+		return java.util.Optional.ofNullable(lastTokenUsage.get());
 	}
 
 	private List<org.springframework.ai.chat.messages.Message> convertMessages(
