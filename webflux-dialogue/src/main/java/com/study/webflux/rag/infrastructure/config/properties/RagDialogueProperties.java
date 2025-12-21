@@ -243,7 +243,7 @@ public class RagDialogueProperties {
 
 	public static class Memory {
 		private String embeddingModel = "text-embedding-3-small";
-		private String extractionModel = "gpt-4o-mini";
+		private String extractionModel = "gpt-5-mini";
 		private int conversationThreshold = 5;
 		private float importanceBoost = 0.05f;
 		private float importanceThreshold = 0.3f;

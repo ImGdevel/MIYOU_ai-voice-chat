@@ -148,7 +148,7 @@ public class DialoguePipelineService implements DialoguePipelineUseCase {
 					}).flatMapMany(messages -> {
 						CompletionRequest request = new CompletionRequest(
 							messages,
-							"gpt-4o-mini",
+							"gpt-5-mini",
 							true,
 							java.util.Map.of("correlationId", tracker.pipelineId()));
 						tracker.recordStageAttribute(DialoguePipelineStage.LLM_COMPLETION,
@@ -283,7 +283,7 @@ public class DialoguePipelineService implements DialoguePipelineUseCase {
 							messages.size());
 					}).flatMapMany(messages -> {
 						CompletionRequest request = CompletionRequest
-							.withMessages(messages, "gpt-4o-mini", true);
+							.withMessages(messages, "gpt-5-mini", true);
 						tracker.recordStageAttribute(DialoguePipelineStage.LLM_COMPLETION,
 							"model",
 							request.model());
