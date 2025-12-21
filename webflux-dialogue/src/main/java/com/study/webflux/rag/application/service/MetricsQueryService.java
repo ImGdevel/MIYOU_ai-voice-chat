@@ -64,6 +64,21 @@ public class MetricsQueryService implements MetricsQueryUseCase {
 	}
 
 	@Override
+	public Mono<Long> getTotalRequestCount() {
+		return usageAnalyticsRepository.count();
+	}
+
+	@Override
+	public Mono<Long> getTotalTokenUsage() {
+		return usageAnalyticsRepository.sumTokens();
+	}
+
+	@Override
+	public Mono<Double> getAverageResponseTime() {
+		return usageAnalyticsRepository.averageResponseTime();
+	}
+
+	@Override
 	public Mono<PipelineDetail> getPipelineDetail(String pipelineId) {
 		return Mono.zip(
 			performanceMetricsRepository.findById(pipelineId),

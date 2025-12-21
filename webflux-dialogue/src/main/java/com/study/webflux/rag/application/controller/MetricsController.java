@@ -100,6 +100,18 @@ public class MetricsController {
 				tuple.getT2()));
 	}
 
+	@GetMapping("/usage/summary/total")
+	public Mono<TotalUsageSummary> getTotalUsageSummary() {
+		return Mono.zip(
+			metricsQueryUseCase.getTotalRequestCount(),
+			metricsQueryUseCase.getTotalTokenUsage(),
+			metricsQueryUseCase.getAverageResponseTime())
+			.map(tuple -> new TotalUsageSummary(
+				tuple.getT1(),
+				tuple.getT2(),
+				tuple.getT3()));
+	}
+
 	@GetMapping("/pipeline/{pipelineId}")
 	public Mono<PipelineDetailResponse> getPipelineDetail(@PathVariable String pipelineId) {
 		return metricsQueryUseCase.getPipelineDetail(pipelineId)
@@ -127,6 +139,12 @@ public class MetricsController {
 		Instant endTime,
 		long totalRequests,
 		long totalTokens) {
+	}
+
+	public record TotalUsageSummary(
+		long totalRequests,
+		long totalTokens,
+		double avgResponseTimeMillis) {
 	}
 
 	public record PipelineDetailResponse(
