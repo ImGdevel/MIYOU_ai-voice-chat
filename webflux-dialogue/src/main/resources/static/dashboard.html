@@ -812,18 +812,24 @@
                 const model = usage.llmUsage.model || 'gpt-4o-mini';
                 const pricing = llmPricing[model] || llmPricing['gpt-4o-mini'];
 
-                const inputLength = usage.userRequest?.inputLength || 0;
-                const memoryCount = usage.retrievalMetrics?.memoryCount || 0;
-                const documentCount = usage.retrievalMetrics?.documentCount || 0;
+                let promptTokens, completionTokens;
 
-                const basePromptTokens = 300;
-                const inputTokens = Math.floor(inputLength / 3);
-                const contextTokens = (memoryCount * 50) + (documentCount * 100);
-                const estimatedPromptTokens = basePromptTokens + inputTokens + contextTokens;
+                if (usage.llmUsage.promptTokens != null && usage.llmUsage.completionTokens != null) {
+                    promptTokens = usage.llmUsage.promptTokens;
+                    completionTokens = usage.llmUsage.completionTokens;
+                } else {
+                    const inputLength = usage.userRequest?.inputLength || 0;
+                    const memoryCount = usage.retrievalMetrics?.memoryCount || 0;
+                    const documentCount = usage.retrievalMetrics?.documentCount || 0;
 
-                const completionTokens = usage.llmUsage.tokenCount || 0;
+                    const basePromptTokens = 300;
+                    const inputTokens = Math.floor(inputLength / 3);
+                    const contextTokens = (memoryCount * 50) + (documentCount * 100);
+                    promptTokens = basePromptTokens + inputTokens + contextTokens;
+                    completionTokens = usage.llmUsage.tokenCount || 0;
+                }
 
-                const inputCost = (estimatedPromptTokens / 1000000.0) * pricing.input;
+                const inputCost = (promptTokens / 1000000.0) * pricing.input;
                 const outputCost = (completionTokens / 1000000.0) * pricing.output;
                 const totalDollars = inputCost + outputCost;
                 llmCredits = Math.ceil(totalDollars * 10000);
