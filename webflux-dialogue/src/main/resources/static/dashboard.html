@@ -13,162 +13,114 @@
         }
 
         body {
-            font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Oxygen, Ubuntu, Cantarell, sans-serif;
-            background: #f5f7fa;
-            padding: 20px;
+            font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
+            background: #fafafa;
+            padding: 12px;
+            font-size: 13px;
+            color: #333;
         }
 
         .header {
-            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
-            color: white;
-            padding: 30px;
-            border-radius: 12px;
-            margin-bottom: 30px;
-            box-shadow: 0 4px 6px rgba(0,0,0,0.1);
-        }
-
-        .header h1 {
-            font-size: 32px;
-            margin-bottom: 10px;
-        }
-
-        .header p {
-            opacity: 0.9;
-            font-size: 14px;
-        }
-
-        .dashboard-grid {
-            display: grid;
-            grid-template-columns: repeat(auto-fit, minmax(300px, 1fr));
-            gap: 20px;
-            margin-bottom: 30px;
-        }
-
-        .card {
-            background: white;
-            padding: 25px;
-            border-radius: 12px;
-            box-shadow: 0 2px 4px rgba(0,0,0,0.08);
-            transition: transform 0.2s, box-shadow 0.2s;
-        }
-
-        .card:hover {
-            transform: translateY(-2px);
-            box-shadow: 0 4px 12px rgba(0,0,0,0.12);
-        }
-
-        .card-title {
-            font-size: 14px;
-            color: #666;
-            text-transform: uppercase;
-            letter-spacing: 0.5px;
-            margin-bottom: 10px;
-        }
-
-        .card-value {
-            font-size: 36px;
-            font-weight: bold;
-            color: #333;
-        }
-
-        .card-sub {
-            font-size: 12px;
-            color: #999;
-            margin-top: 5px;
-        }
-
-        .chart-container {
-            background: white;
-            padding: 25px;
-            border-radius: 12px;
-            box-shadow: 0 2px 4px rgba(0,0,0,0.08);
-            margin-bottom: 30px;
-        }
-
-        .chart-title {
-            font-size: 18px;
-            font-weight: 600;
-            margin-bottom: 20px;
-            color: #333;
-        }
-
-        .chart-container canvas {
-            max-height: 400px;
-        }
-
-        .controls {
-            background: white;
-            padding: 20px;
-            border-radius: 12px;
-            box-shadow: 0 2px 4px rgba(0,0,0,0.08);
-            margin-bottom: 30px;
+            background: #fff;
+            border-bottom: 1px solid #e0e0e0;
+            padding: 12px 16px;
+            margin-bottom: 12px;
             display: flex;
-            gap: 15px;
+            justify-content: space-between;
             align-items: center;
         }
 
-        .controls label {
-            font-size: 14px;
-            color: #666;
-            font-weight: 500;
+        .header h1 {
+            font-size: 18px;
+            font-weight: 600;
+            color: #212121;
         }
 
-        .controls select, .controls input {
-            padding: 8px 12px;
-            border: 1px solid #ddd;
-            border-radius: 6px;
-            font-size: 14px;
+        .header-info {
+            font-size: 11px;
+            color: #757575;
+        }
+
+        .controls {
+            background: #fff;
+            padding: 8px 16px;
+            border-bottom: 1px solid #e0e0e0;
+            margin-bottom: 12px;
+            display: flex;
+            gap: 12px;
+            align-items: center;
         }
 
         .controls button {
-            padding: 8px 20px;
-            background: #667eea;
+            padding: 6px 12px;
+            background: #212121;
             color: white;
             border: none;
-            border-radius: 6px;
+            border-radius: 3px;
             cursor: pointer;
-            font-size: 14px;
-            font-weight: 500;
+            font-size: 12px;
             transition: background 0.2s;
         }
 
         .controls button:hover {
-            background: #5568d3;
+            background: #424242;
         }
 
-        .loading {
-            text-align: center;
-            padding: 40px;
-            color: #999;
+        .dashboard-grid {
+            display: grid;
+            grid-template-columns: repeat(4, 1fr);
+            gap: 8px;
+            margin-bottom: 12px;
         }
 
-        .error {
-            background: #fee;
-            color: #c33;
-            padding: 15px;
-            border-radius: 8px;
-            margin: 20px 0;
+        .card {
+            background: white;
+            padding: 12px;
+            border: 1px solid #e0e0e0;
         }
 
-        .metric-badge {
-            display: inline-block;
-            padding: 4px 12px;
-            background: #e3f2fd;
-            color: #1976d2;
-            border-radius: 12px;
+        .card-title {
+            font-size: 11px;
+            color: #757575;
+            margin-bottom: 4px;
+            text-transform: uppercase;
+            letter-spacing: 0.3px;
+        }
+
+        .card-value {
+            font-size: 24px;
+            font-weight: 600;
+            color: #212121;
+        }
+
+        .card-sub {
+            font-size: 10px;
+            color: #9e9e9e;
+            margin-top: 2px;
+        }
+
+        .content-grid {
+            display: grid;
+            grid-template-columns: 1fr 1fr;
+            gap: 8px;
+            margin-bottom: 8px;
+        }
+
+        .chart-container {
+            background: white;
+            padding: 12px;
+            border: 1px solid #e0e0e0;
+        }
+
+        .chart-title {
             font-size: 12px;
             font-weight: 600;
-            margin-left: 10px;
+            margin-bottom: 8px;
+            color: #212121;
         }
 
-        .metric-badge.high {
-            background: #ffebee;
-            color: #c62828;
-        }
-
-        .metric-badge.medium {
-            background: #fff3e0;
-            color: #ef6c00;
+        .chart-container canvas {
+            max-height: 200px;
         }
 
         .table-container {
@@ -181,123 +133,117 @@
         }
 
         th, td {
-            padding: 12px;
+            padding: 6px 8px;
             text-align: left;
-            border-bottom: 1px solid #eee;
+            border-bottom: 1px solid #f5f5f5;
+            font-size: 11px;
         }
 
         th {
-            background: #f8f9fa;
+            background: #fafafa;
             font-weight: 600;
-            font-size: 12px;
-            color: #666;
+            color: #616161;
             text-transform: uppercase;
         }
 
         td {
-            font-size: 14px;
+            color: #424242;
         }
 
         .status-completed {
             color: #2e7d32;
-            font-weight: 600;
         }
 
         .status-failed {
             color: #c62828;
-            font-weight: 600;
+        }
+
+        .full-width {
+            grid-column: 1 / -1;
         }
     </style>
 </head>
 <body>
     <div class="header">
-        <h1>🤖 RAG Dialogue Monitoring Dashboard</h1>
-        <p>실시간 성능 지표 및 사용량 분석 | 마지막 업데이트: <span id="lastUpdate">-</span></p>
+        <h1>RAG Dialogue Monitoring</h1>
+        <div class="header-info">Last update: <span id="lastUpdate">-</span></div>
     </div>
 
     <div class="controls">
-        <label>시간 범위:</label>
-        <select id="timeRange">
-            <option value="1">최근 1시간</option>
-            <option value="6">최근 6시간</option>
-            <option value="24" selected>최근 24시간</option>
-            <option value="168">최근 7일</option>
-        </select>
-        <button onclick="refreshDashboard()">새로고침</button>
-        <button onclick="toggleAutoRefresh()">자동 새로고침: <span id="autoRefreshStatus">ON</span></button>
+        <button onclick="refreshDashboard()">Refresh</button>
+        <button onclick="toggleAutoRefresh()">Auto: <span id="autoRefreshStatus">ON</span></button>
     </div>
 
     <div class="dashboard-grid">
         <div class="card">
-            <div class="card-title">총 요청 수</div>
+            <div class="card-title">Total Requests</div>
             <div class="card-value" id="totalRequests">-</div>
-            <div class="card-sub">최근 24시간</div>
+            <div class="card-sub">Last 1min</div>
         </div>
         <div class="card">
-            <div class="card-title">총 토큰 사용량</div>
+            <div class="card-title">Total Tokens</div>
             <div class="card-value" id="totalTokens">-</div>
-            <div class="card-sub">비용 추정: <span id="estimatedCost">$0.00</span></div>
+            <div class="card-sub">Cost: <span id="estimatedCost">$0.00</span></div>
         </div>
         <div class="card">
-            <div class="card-title">평균 응답 시간</div>
+            <div class="card-title">Avg Response</div>
             <div class="card-value" id="avgResponseTime">-</div>
-            <div class="card-sub">밀리초</div>
+            <div class="card-sub">milliseconds</div>
         </div>
         <div class="card">
-            <div class="card-title">느린 요청</div>
+            <div class="card-title">Slow Requests</div>
             <div class="card-value" id="slowRequests">-</div>
-            <div class="card-sub">&gt; 2초 소요</div>
+            <div class="card-sub">&gt; 2s</div>
         </div>
     </div>
 
-    <div class="chart-container">
-        <div class="chart-title">⏱️ 성능 지표 - 시간대별 응답 시간</div>
-        <canvas id="performanceChart"></canvas>
-    </div>
+    <div class="content-grid">
+        <div class="chart-container">
+            <div class="chart-title">Response Time</div>
+            <canvas id="performanceChart"></canvas>
+        </div>
 
-    <div class="chart-container">
-        <div class="chart-title">💰 사용량 분석 - 시간대별 토큰 사용량</div>
-        <canvas id="tokenUsageChart"></canvas>
-    </div>
-
-    <div class="chart-container">
-        <div class="chart-title">📊 파이프라인 스테이지별 평균 소요 시간</div>
-        <canvas id="stagePerformanceChart"></canvas>
-    </div>
-
-    <div class="chart-container">
-        <div class="chart-title">🐢 최근 느린 파이프라인 (상위 10개)</div>
-        <div class="table-container">
-            <table id="slowPipelinesTable">
-                <thead>
-                    <tr>
-                        <th>Pipeline ID</th>
-                        <th>상태</th>
-                        <th>소요시간</th>
-                        <th>첫 응답</th>
-                        <th>시작 시간</th>
-                    </tr>
-                </thead>
-                <tbody></tbody>
-            </table>
+        <div class="chart-container">
+            <div class="chart-title">Stage Performance</div>
+            <canvas id="stagePerformanceChart"></canvas>
         </div>
     </div>
 
-    <div class="chart-container">
-        <div class="chart-title">🔥 높은 토큰 사용 요청 (상위 10개)</div>
-        <div class="table-container">
-            <table id="highTokenUsageTable">
-                <thead>
-                    <tr>
-                        <th>Pipeline ID</th>
-                        <th>모델</th>
-                        <th>토큰 수</th>
-                        <th>입력 미리보기</th>
-                        <th>시간</th>
-                    </tr>
-                </thead>
-                <tbody></tbody>
-            </table>
+    <div class="content-grid">
+        <div class="chart-container">
+            <div class="chart-title">Slow Pipelines</div>
+            <div class="table-container">
+                <table id="slowPipelinesTable">
+                    <thead>
+                        <tr>
+                            <th>ID</th>
+                            <th>Status</th>
+                            <th>Duration</th>
+                            <th>First</th>
+                            <th>Time</th>
+                        </tr>
+                    </thead>
+                    <tbody></tbody>
+                </table>
+            </div>
+        </div>
+
+        <div class="chart-container">
+            <div class="chart-title">High Token Usage</div>
+            <div class="table-container">
+                <table id="highTokenUsageTable">
+                    <thead>
+                        <tr>
+                            <th>ID</th>
+                            <th>Model</th>
+                            <th>Tokens</th>
+                            <th>Preview</th>
+                            <th>Time</th>
+                        </tr>
+                    </thead>
+                    <tbody></tbody>
+                </table>
+            </div>
         </div>
     </div>
 
@@ -313,29 +259,27 @@
 
         async function refreshDashboard() {
             try {
-                const hours = document.getElementById('timeRange').value;
                 const endTime = new Date();
-                const startTime = new Date(endTime - hours * 60 * 60 * 1000);
+                const startTime = new Date(endTime - 60 * 1000);
 
-                const [summary, performance, usage, slowPipelines, highTokens] = await Promise.all([
+                const [summary, performance, slowPipelines, highTokens] = await Promise.all([
                     fetchData(`/metrics/usage/summary?startTime=${startTime.toISOString()}&endTime=${endTime.toISOString()}`),
                     fetchData(`/metrics/performance/recent?limit=50`),
-                    fetchData(`/metrics/usage/recent?limit=50`),
                     fetchData(`/metrics/performance/slow?thresholdMillis=2000&limit=10`),
                     fetchData(`/metrics/usage/high-tokens?tokenThreshold=100&limit=10`)
                 ]);
 
                 updateSummaryCards(summary, performance);
                 updatePerformanceChart(performance);
-                updateTokenUsageChart(usage);
                 updateStagePerformanceChart(performance);
                 updateSlowPipelinesTable(slowPipelines);
                 updateHighTokenUsageTable(highTokens);
 
-                document.getElementById('lastUpdate').textContent = new Date().toLocaleString('ko-KR');
+                const now = new Date();
+                document.getElementById('lastUpdate').textContent =
+                    `${now.getHours().toString().padStart(2, '0')}:${now.getMinutes().toString().padStart(2, '0')}:${now.getSeconds().toString().padStart(2, '0')}`;
             } catch (error) {
                 console.error('Dashboard refresh failed:', error);
-                showError('데이터를 불러오는 중 오류가 발생했습니다: ' + error.message);
             }
         }
 
@@ -358,75 +302,57 @@
 
         function updatePerformanceChart(data) {
             const ctx = document.getElementById('performanceChart');
-            if (charts.performance) charts.performance.destroy();
-
             const sortedData = data.slice().sort((a, b) => new Date(a.startedAt) - new Date(b.startedAt));
 
-            charts.performance = new Chart(ctx, {
-                type: 'line',
-                data: {
-                    labels: sortedData.map(d => new Date(d.startedAt).toLocaleTimeString('ko-KR')),
-                    datasets: [{
-                        label: '응답 시간 (ms)',
-                        data: sortedData.map(d => d.totalDurationMillis),
-                        borderColor: '#667eea',
-                        backgroundColor: 'rgba(102, 126, 234, 0.1)',
-                        tension: 0.4
-                    }]
-                },
-                options: {
-                    responsive: true,
-                    maintainAspectRatio: false,
-                    plugins: {
-                        legend: { display: false }
+            const labels = sortedData.map(d => {
+                const time = new Date(d.startedAt);
+                return `${time.getHours().toString().padStart(2, '0')}:${time.getMinutes().toString().padStart(2, '0')}`;
+            });
+            const values = sortedData.map(d => d.totalDurationMillis);
+
+            if (!charts.performance) {
+                charts.performance = new Chart(ctx, {
+                    type: 'line',
+                    data: {
+                        labels: labels,
+                        datasets: [{
+                            data: values,
+                            borderColor: '#424242',
+                            backgroundColor: 'rgba(66, 66, 66, 0.05)',
+                            tension: 0.1,
+                            borderWidth: 1,
+                            pointRadius: 2
+                        }]
                     },
-                    scales: {
-                        y: {
-                            beginAtZero: true,
-                            title: { display: true, text: '시간 (ms)' }
+                    options: {
+                        responsive: true,
+                        maintainAspectRatio: false,
+                        animation: false,
+                        plugins: {
+                            legend: { display: false }
+                        },
+                        scales: {
+                            y: {
+                                beginAtZero: true,
+                                ticks: { font: { size: 10 }, color: '#757575' },
+                                grid: { color: '#f5f5f5' }
+                            },
+                            x: {
+                                ticks: { font: { size: 10 }, color: '#757575' },
+                                grid: { display: false }
+                            }
                         }
                     }
-                }
-            });
-        }
-
-        function updateTokenUsageChart(data) {
-            const ctx = document.getElementById('tokenUsageChart');
-            if (charts.tokens) charts.tokens.destroy();
-
-            const sortedData = data.slice().sort((a, b) => new Date(a.timestamp) - new Date(b.timestamp));
-
-            charts.tokens = new Chart(ctx, {
-                type: 'bar',
-                data: {
-                    labels: sortedData.map(d => new Date(d.timestamp).toLocaleTimeString('ko-KR')),
-                    datasets: [{
-                        label: '토큰 수',
-                        data: sortedData.map(d => d.llmUsage?.tokenCount || 0),
-                        backgroundColor: 'rgba(118, 75, 162, 0.7)',
-                        borderColor: '#764ba2',
-                        borderWidth: 1
-                    }]
-                },
-                options: {
-                    responsive: true,
-                    maintainAspectRatio: false,
-                    plugins: {
-                        legend: { display: false }
-                    },
-                    scales: {
-                        y: {
-                            beginAtZero: true,
-                            title: { display: true, text: '토큰 수' }
-                        }
-                    }
-                }
-            });
+                });
+            } else {
+                charts.performance.data.labels = labels;
+                charts.performance.data.datasets[0].data = values;
+                charts.performance.update('none');
+            }
         }
 
         function updateStagePerformanceChart(data) {
             const ctx = document.getElementById('stagePerformanceChart');
-            if (charts.stages) charts.stages.destroy();
 
             const stageStats = {};
             data.forEach(pipeline => {
@@ -439,52 +365,63 @@
                 });
             });
 
-            const labels = Object.keys(stageStats);
-            const avgDurations = labels.map(label =>
+            const labels = Object.keys(stageStats).map(l => l.replace(/_/g, ' ').toLowerCase());
+            const avgDurations = Object.keys(stageStats).map(label =>
                 Math.round(stageStats[label].total / stageStats[label].count)
             );
 
-            charts.stages = new Chart(ctx, {
-                type: 'bar',
-                data: {
-                    labels: labels.map(l => l.replace('_', ' ')),
-                    datasets: [{
-                        label: '평균 소요 시간 (ms)',
-                        data: avgDurations,
-                        backgroundColor: 'rgba(255, 99, 132, 0.7)',
-                        borderColor: 'rgb(255, 99, 132)',
-                        borderWidth: 1
-                    }]
-                },
-                options: {
-                    indexAxis: 'y',
-                    responsive: true,
-                    maintainAspectRatio: false,
-                    plugins: {
-                        legend: { display: false }
+            if (!charts.stages) {
+                charts.stages = new Chart(ctx, {
+                    type: 'bar',
+                    data: {
+                        labels: labels,
+                        datasets: [{
+                            data: avgDurations,
+                            backgroundColor: '#616161',
+                            borderWidth: 0
+                        }]
                     },
-                    scales: {
-                        x: {
-                            beginAtZero: true,
-                            title: { display: true, text: '시간 (ms)' }
+                    options: {
+                        indexAxis: 'y',
+                        responsive: true,
+                        maintainAspectRatio: false,
+                        animation: false,
+                        plugins: {
+                            legend: { display: false }
+                        },
+                        scales: {
+                            x: {
+                                beginAtZero: true,
+                                ticks: { font: { size: 10 }, color: '#757575' },
+                                grid: { color: '#f5f5f5' }
+                            },
+                            y: {
+                                ticks: { font: { size: 10 }, color: '#757575' },
+                                grid: { display: false }
+                            }
                         }
                     }
-                }
-            });
+                });
+            } else {
+                charts.stages.data.labels = labels;
+                charts.stages.data.datasets[0].data = avgDurations;
+                charts.stages.update('none');
+            }
         }
 
         function updateSlowPipelinesTable(data) {
             const tbody = document.querySelector('#slowPipelinesTable tbody');
             tbody.innerHTML = '';
 
-            data.forEach(p => {
+            data.slice(0, 10).forEach(p => {
+                const time = new Date(p.startedAt);
                 const row = tbody.insertRow();
                 row.innerHTML = `
-                    <td>${p.pipelineId.substring(0, 8)}...</td>
+                    <td>${p.pipelineId.substring(0, 6)}</td>
                     <td class="status-${p.status.toLowerCase()}">${p.status}</td>
-                    <td><strong>${p.totalDurationMillis}ms</strong></td>
+                    <td>${p.totalDurationMillis}ms</td>
                     <td>${p.firstResponseLatencyMillis || '-'}ms</td>
-                    <td>${new Date(p.startedAt).toLocaleString('ko-KR')}</td>
+                    <td>${time.getHours().toString().padStart(2, '0')}:${time.getMinutes().toString().padStart(2, '0')}</td>
                 `;
             });
         }
@@ -493,14 +430,15 @@
             const tbody = document.querySelector('#highTokenUsageTable tbody');
             tbody.innerHTML = '';
 
-            data.forEach(u => {
+            data.slice(0, 10).forEach(u => {
+                const time = new Date(u.timestamp);
                 const row = tbody.insertRow();
                 row.innerHTML = `
-                    <td>${u.pipelineId.substring(0, 8)}...</td>
+                    <td>${u.pipelineId.substring(0, 6)}</td>
                     <td>${u.llmUsage?.model || '-'}</td>
-                    <td><strong>${u.llmUsage?.tokenCount || 0}</strong></td>
-                    <td>${u.userRequest?.inputPreview || '-'}</td>
-                    <td>${new Date(u.timestamp).toLocaleString('ko-KR')}</td>
+                    <td>${u.llmUsage?.tokenCount || 0}</td>
+                    <td>${(u.userRequest?.inputPreview || '-').substring(0, 20)}</td>
+                    <td>${time.getHours().toString().padStart(2, '0')}:${time.getMinutes().toString().padStart(2, '0')}</td>
                 `;
             });
         }
@@ -511,23 +449,13 @@
                 autoRefreshInterval = null;
                 document.getElementById('autoRefreshStatus').textContent = 'OFF';
             } else {
-                autoRefreshInterval = setInterval(refreshDashboard, 30000);
+                autoRefreshInterval = setInterval(refreshDashboard, 5000);
                 document.getElementById('autoRefreshStatus').textContent = 'ON';
             }
         }
 
-        function showError(message) {
-            const errorDiv = document.createElement('div');
-            errorDiv.className = 'error';
-            errorDiv.textContent = message;
-            document.body.insertBefore(errorDiv, document.body.firstChild);
-            setTimeout(() => errorDiv.remove(), 5000);
-        }
-
-        document.getElementById('timeRange').addEventListener('change', refreshDashboard);
-
         refreshDashboard();
-        autoRefreshInterval = setInterval(refreshDashboard, 30000);
+        autoRefreshInterval = setInterval(refreshDashboard, 5000);
     </script>
 </body>
 </html>
