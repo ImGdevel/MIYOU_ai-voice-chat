@@ -161,6 +161,115 @@
         .full-width {
             grid-column: 1 / -1;
         }
+
+        .detail-header {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            gap: 8px;
+            flex-wrap: wrap;
+            margin-bottom: 8px;
+        }
+
+        .detail-actions {
+            display: flex;
+            gap: 8px;
+            align-items: center;
+        }
+
+        .detail-actions input {
+            padding: 6px 8px;
+            border: 1px solid #d0d0d0;
+            border-radius: 3px;
+            font-size: 12px;
+            min-width: 240px;
+        }
+
+        .detail-grid {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(230px, 1fr));
+            gap: 8px;
+        }
+
+        .detail-card {
+            background: white;
+            border: 1px solid #e0e0e0;
+            padding: 10px;
+        }
+
+        .detail-label {
+            font-size: 10px;
+            color: #757575;
+            letter-spacing: 0.3px;
+            text-transform: uppercase;
+            margin-bottom: 2px;
+        }
+
+        .detail-value {
+            font-size: 14px;
+            font-weight: 600;
+            color: #212121;
+        }
+
+        .kv-row {
+            display: flex;
+            justify-content: space-between;
+            gap: 8px;
+            margin: 3px 0;
+            font-size: 11px;
+            color: #424242;
+        }
+
+        .pill {
+            display: inline-block;
+            padding: 2px 6px;
+            border-radius: 10px;
+            background: #f5f5f5;
+            color: #424242;
+            font-size: 10px;
+        }
+
+        .detail-section-title {
+            font-size: 12px;
+            font-weight: 600;
+            margin-bottom: 6px;
+            color: #212121;
+        }
+
+        .empty-state {
+            font-size: 12px;
+            color: #757575;
+            padding: 8px 0;
+        }
+
+        .llm-list {
+            list-style: none;
+            padding-left: 0;
+            margin: 0;
+            display: flex;
+            flex-direction: column;
+            gap: 4px;
+        }
+
+        .llm-list li {
+            padding: 6px 8px;
+            background: #fafafa;
+            border: 1px solid #f0f0f0;
+            font-size: 12px;
+            line-height: 1.4;
+        }
+
+        .clickable-row {
+            cursor: pointer;
+        }
+
+        .search-input {
+            padding: 6px 8px;
+            border: 1px solid #d0d0d0;
+            border-radius: 3px;
+            font-size: 12px;
+            min-width: 260px;
+        }
     </style>
 </head>
 <body>
@@ -247,9 +356,53 @@
         </div>
     </div>
 
+    <div class="chart-container full-width">
+        <div class="detail-header">
+            <div>
+                <div class="chart-title">Recent Pipelines</div>
+                <div class="card-sub">Search by request ID, model, or input preview.</div>
+            </div>
+            <div class="detail-actions">
+                <input id="pipelineSearchInput" class="search-input" type="text" placeholder="Search pipelineId / model / preview" oninput="filterRecentPipelines()">
+                <button onclick="refreshRecentPipelines()">Reload</button>
+            </div>
+        </div>
+        <div class="table-container">
+            <table id="recentPipelinesTable">
+                <thead>
+                    <tr>
+                        <th>ID</th>
+                        <th>Status</th>
+                        <th>Model</th>
+                        <th>Tokens</th>
+                        <th>Duration</th>
+                        <th>Preview</th>
+                        <th>Time</th>
+                    </tr>
+                </thead>
+                <tbody></tbody>
+            </table>
+        </div>
+    </div>
+
+    <div class="chart-container full-width">
+        <div class="detail-header">
+            <div>
+                <div class="chart-title">Request Detail</div>
+                <div class="card-sub">Enter a request ID or click a row above to load the full trace.</div>
+            </div>
+            <div class="detail-actions">
+                <input id="pipelineIdInput" type="text" placeholder="Request ID (pipelineId)">
+                <button onclick="fetchPipelineDetail()">View Detail</button>
+            </div>
+        </div>
+        <div id="pipelineDetail" class="empty-state">Waiting for a request ID...</div>
+    </div>
+
     <script>
         let autoRefreshInterval = null;
         let charts = {};
+        let recentPipelinesCache = [];
 
         async function fetchData(endpoint) {
             const response = await fetch(endpoint);
@@ -257,16 +410,57 @@
             return await response.json();
         }
 
+        function formatTime(value) {
+            if (!value) return '-';
+            const time = new Date(value);
+            return `${time.getHours().toString().padStart(2, '0')}:${time.getMinutes().toString().padStart(2, '0')}:${time.getSeconds().toString().padStart(2, '0')}`;
+        }
+
+        function formatDateTime(value) {
+            if (!value) return '-';
+            const time = new Date(value);
+            return `${time.getMonth() + 1}/${time.getDate()} ${formatTime(value)}`;
+        }
+
+        function formatMillis(value) {
+            if (value === null || value === undefined || Number.isNaN(value)) {
+                return '-';
+            }
+            return `${Math.round(value).toLocaleString()}ms`;
+        }
+
+        function formatNumber(value, fallback = '-') {
+            if (value === null || value === undefined || Number.isNaN(value)) {
+                return fallback;
+            }
+            return value.toLocaleString();
+        }
+
+        function formatAttributeValue(value) {
+            if (value === null || value === undefined) {
+                return '-';
+            }
+            if (typeof value === 'object') {
+                try {
+                    return JSON.stringify(value);
+                } catch {
+                    return '[object]';
+                }
+            }
+            return value;
+        }
+
         async function refreshDashboard() {
             try {
                 const endTime = new Date();
                 const startTime = new Date(endTime - 60 * 1000);
 
-                const [summary, performance, slowPipelines, highTokens] = await Promise.all([
+                const [summary, performance, slowPipelines, highTokens, recentUsage] = await Promise.all([
                     fetchData(`/metrics/usage/summary?startTime=${startTime.toISOString()}&endTime=${endTime.toISOString()}`),
                     fetchData(`/metrics/performance/recent?limit=50`),
                     fetchData(`/metrics/performance/slow?thresholdMillis=2000&limit=10`),
-                    fetchData(`/metrics/usage/high-tokens?tokenThreshold=100&limit=10`)
+                    fetchData(`/metrics/usage/high-tokens?tokenThreshold=100&limit=10`),
+                    fetchData(`/metrics/usage/recent?limit=200`)
                 ]);
 
                 updateSummaryCards(summary, performance);
@@ -274,6 +468,8 @@
                 updateStagePerformanceChart(performance);
                 updateSlowPipelinesTable(slowPipelines);
                 updateHighTokenUsageTable(highTokens);
+                recentPipelinesCache = recentUsage;
+                filterRecentPipelines();
 
                 const now = new Date();
                 document.getElementById('lastUpdate').textContent =
@@ -414,14 +610,15 @@
             tbody.innerHTML = '';
 
             data.slice(0, 10).forEach(p => {
-                const time = new Date(p.startedAt);
                 const row = tbody.insertRow();
+                row.classList.add('clickable-row');
+                row.onclick = () => fetchPipelineDetail(p.pipelineId);
                 row.innerHTML = `
                     <td>${p.pipelineId.substring(0, 6)}</td>
                     <td class="status-${p.status.toLowerCase()}">${p.status}</td>
-                    <td>${p.totalDurationMillis}ms</td>
-                    <td>${p.firstResponseLatencyMillis || '-'}ms</td>
-                    <td>${time.getHours().toString().padStart(2, '0')}:${time.getMinutes().toString().padStart(2, '0')}</td>
+                    <td>${formatMillis(p.totalDurationMillis)}</td>
+                    <td>${formatMillis(p.firstResponseLatencyMillis)}</td>
+                    <td>${formatTime(p.startedAt)}</td>
                 `;
             });
         }
@@ -431,14 +628,212 @@
             tbody.innerHTML = '';
 
             data.slice(0, 10).forEach(u => {
-                const time = new Date(u.timestamp);
                 const row = tbody.insertRow();
+                row.classList.add('clickable-row');
+                row.onclick = () => fetchPipelineDetail(u.pipelineId);
                 row.innerHTML = `
                     <td>${u.pipelineId.substring(0, 6)}</td>
                     <td>${u.llmUsage?.model || '-'}</td>
-                    <td>${u.llmUsage?.tokenCount || 0}</td>
+                    <td>${formatNumber(u.llmUsage?.tokenCount || 0)}</td>
                     <td>${(u.userRequest?.inputPreview || '-').substring(0, 20)}</td>
-                    <td>${time.getHours().toString().padStart(2, '0')}:${time.getMinutes().toString().padStart(2, '0')}</td>
+                    <td>${formatTime(u.timestamp)}</td>
+                `;
+            });
+        }
+
+        function buildAttributeRows(performance) {
+            const rows = [];
+            if (performance && performance.systemAttributes) {
+                Object.entries(performance.systemAttributes).forEach(([key, value]) => {
+                    rows.push({ scope: 'pipeline', key, value });
+                });
+            }
+
+            (performance?.stages || []).forEach(stage => {
+                if (!stage.attributes) {
+                    return;
+                }
+                Object.entries(stage.attributes).forEach(([key, value]) => {
+                    rows.push({ scope: stage.stageName, key, value });
+                });
+            });
+
+            return rows;
+        }
+
+        function renderPipelineDetail(detail, errorMessage) {
+            const container = document.getElementById('pipelineDetail');
+
+            if (errorMessage) {
+                container.className = 'empty-state';
+                container.textContent = errorMessage;
+                return;
+            }
+
+            if (!detail) {
+                container.className = 'empty-state';
+                container.textContent = 'Enter a request ID to view details.';
+                return;
+            }
+
+            const performance = detail.performance || {};
+            const usage = detail.usage || {};
+            const userRequest = usage.userRequest || {};
+            const llmUsage = usage.llmUsage || {};
+            const retrieval = usage.retrievalMetrics || {};
+            const tts = usage.ttsMetrics || {};
+            const responseMetrics = usage.responseMetrics || {};
+
+            const llmSentences = Array.isArray(llmUsage.generatedSentences)
+                ? llmUsage.generatedSentences
+                : [];
+
+            const stageRows = (performance.stages || []).map(stage => `
+                <tr>
+                    <td>${stage.stageName || '-'}</td>
+                    <td class="status-${(stage.status || '-').toLowerCase()}">${stage.status || '-'}</td>
+                    <td>${formatMillis(stage.durationMillis)}</td>
+                    <td>${formatTime(stage.startedAt)}</td>
+                    <td>${formatTime(stage.finishedAt)}</td>
+                </tr>
+            `).join('');
+
+            const attributes = buildAttributeRows(performance);
+            const attributeRows = attributes.length
+                ? attributes.map(attr => `
+                    <tr>
+                        <td>${attr.scope}</td>
+                        <td>${attr.key}</td>
+                        <td>${formatAttributeValue(attr.value)}</td>
+                    </tr>
+                `).join('')
+                : '<tr><td colspan="3">No attributes recorded.</td></tr>';
+
+            const outputsHtml = llmSentences.length
+                ? `<ul class="llm-list">${llmSentences.map(text => `<li>${text}</li>`).join('')}</ul>`
+                : '<div class="empty-state">No generated content.</div>';
+
+            container.className = '';
+            container.innerHTML = `
+                <div class="detail-grid">
+                    <div class="detail-card">
+                        <div class="detail-label">Request ID</div>
+                        <div class="detail-value">${detail.pipelineId}</div>
+                        <div class="kv-row"><span>Status</span><span class="pill">${performance.status || usage.status || '-'}</span></div>
+                        <div class="kv-row"><span>Started</span><span>${formatDateTime(performance.startedAt)}</span></div>
+                        <div class="kv-row"><span>Finished</span><span>${formatDateTime(performance.finishedAt)}</span></div>
+                        <div class="kv-row"><span>Total</span><span>${formatMillis(performance.totalDurationMillis)}</span></div>
+                        <div class="kv-row"><span>First/Last</span><span>${formatMillis(performance.firstResponseLatencyMillis)} / ${formatMillis(performance.lastResponseLatencyMillis)}</span></div>
+                    </div>
+                    <div class="detail-card">
+                        <div class="detail-section-title">LLM & Retrieval</div>
+                        <div class="kv-row"><span>Model</span><span>${llmUsage.model || '-'}</span></div>
+                        <div class="kv-row"><span>Tokens</span><span>${formatNumber(llmUsage.tokenCount, 0)}</span></div>
+                        <div class="kv-row"><span>Completion</span><span>${formatMillis(llmUsage.completionTimeMillis)}</span></div>
+                        <div class="kv-row"><span>Retrieved</span><span>${formatNumber(retrieval.memoryCount, 0)} mem / ${formatNumber(retrieval.documentCount, 0)} docs</span></div>
+                        <div class="kv-row"><span>Retrieval Time</span><span>${formatMillis(retrieval.retrievalTimeMillis)}</span></div>
+                    </div>
+                    <div class="detail-card">
+                        <div class="detail-section-title">Request & TTS</div>
+                        <div class="kv-row"><span>Input Length</span><span>${formatNumber(userRequest.inputLength, 0)}</span></div>
+                        <div class="kv-row"><span>Input Preview</span><span>${(userRequest.inputPreview || '-')}</span></div>
+                        <div class="kv-row"><span>Response Total</span><span>${formatMillis(responseMetrics.totalDurationMillis)}</span></div>
+                        <div class="kv-row"><span>First / Last</span><span>${formatMillis(responseMetrics.firstResponseLatencyMillis)} / ${formatMillis(responseMetrics.lastResponseLatencyMillis)}</span></div>
+                        <div class="kv-row"><span>TTS</span><span>${formatNumber(tts.sentenceCount, 0)} sentences / ${formatNumber(tts.audioChunks, 0)} chunks</span></div>
+                        <div class="kv-row"><span>TTS Time</span><span>${formatMillis(tts.synthesisTimeMillis)}</span></div>
+                    </div>
+                </div>
+                <div class="detail-card full-width">
+                    <div class="detail-section-title">LLM Output</div>
+                    ${outputsHtml}
+                </div>
+                <div class="table-container full-width">
+                    <div class="chart-title">Stage Timeline</div>
+                    <table>
+                        <thead>
+                            <tr>
+                                <th>Stage</th>
+                                <th>Status</th>
+                                <th>Duration</th>
+                                <th>Started</th>
+                                <th>Finished</th>
+                            </tr>
+                        </thead>
+                        <tbody>
+                            ${stageRows || '<tr><td colspan="5">No stage data recorded.</td></tr>'}
+                        </tbody>
+                    </table>
+                </div>
+                <div class="table-container full-width">
+                    <div class="chart-title">Attributes</div>
+                    <table>
+                        <thead>
+                            <tr>
+                                <th>Scope</th>
+                                <th>Key</th>
+                                <th>Value</th>
+                            </tr>
+                        </thead>
+                        <tbody>
+                            ${attributeRows}
+                        </tbody>
+                    </table>
+                </div>
+            `;
+        }
+
+        async function fetchPipelineDetail(pipelineId) {
+            const input = document.getElementById('pipelineIdInput');
+            const targetId = (pipelineId || input.value || '').trim();
+
+            if (!targetId) {
+                renderPipelineDetail(null, 'Enter a request ID to view details.');
+                return;
+            }
+
+            input.value = targetId;
+            renderPipelineDetail(null, 'Loading details...');
+
+            try {
+                const detail = await fetchData(`/metrics/pipeline/${targetId}`);
+                renderPipelineDetail(detail);
+            } catch (error) {
+                console.error('Failed to load pipeline detail:', error);
+                renderPipelineDetail(null, 'Details not found for this request.');
+            }
+        }
+
+        function refreshRecentPipelines() {
+            refreshDashboard();
+        }
+
+        function filterRecentPipelines() {
+            const term = (document.getElementById('pipelineSearchInput').value || '').toLowerCase();
+            const filtered = recentPipelinesCache.filter(p => {
+                const idMatch = p.pipelineId?.toLowerCase().includes(term);
+                const modelMatch = p.llmUsage?.model?.toLowerCase().includes(term);
+                const previewMatch = p.userRequest?.inputPreview?.toLowerCase().includes(term);
+                return !term || idMatch || modelMatch || previewMatch;
+            });
+            updateRecentPipelinesTable(filtered);
+        }
+
+        function updateRecentPipelinesTable(data) {
+            const tbody = document.querySelector('#recentPipelinesTable tbody');
+            tbody.innerHTML = '';
+
+            data.slice(0, 200).forEach(p => {
+                const row = tbody.insertRow();
+                row.classList.add('clickable-row');
+                row.onclick = () => fetchPipelineDetail(p.pipelineId);
+                row.innerHTML = `
+                    <td>${(p.pipelineId || '-').substring(0, 6)}</td>
+                    <td class="status-${(p.status || '-').toLowerCase()}">${p.status || '-'}</td>
+                    <td>${p.llmUsage?.model || '-'}</td>
+                    <td>${formatNumber(p.llmUsage?.tokenCount || 0)}</td>
+                    <td>${formatMillis(p.responseMetrics?.totalDurationMillis)}</td>
+                    <td>${(p.userRequest?.inputPreview || '-').substring(0, 20)}</td>
+                    <td>${formatTime(p.timestamp)}</td>
                 `;
             });
         }
