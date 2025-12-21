@@ -4,7 +4,6 @@ import java.time.Clock;
 import java.time.Instant;
 import java.time.temporal.ChronoUnit;
 
-import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 
 import org.springframework.scheduling.annotation.Scheduled;
@@ -23,7 +22,6 @@ import reactor.core.publisher.Flux;
 import reactor.core.publisher.Mono;
 
 @Service
-@RequiredArgsConstructor
 @Slf4j
 public class MetricsRollupScheduler {
 
@@ -31,7 +29,19 @@ public class MetricsRollupScheduler {
 	private final PerformanceMetricsRepository performanceMetricsRepository;
 	private final MetricsRollupRepository metricsRollupRepository;
 	private final StagePerformanceRollupRepository stagePerformanceRollupRepository;
-	private final Clock clock = Clock.systemUTC();
+	private final Clock clock;
+
+	public MetricsRollupScheduler(UsageAnalyticsRepository usageAnalyticsRepository,
+		PerformanceMetricsRepository performanceMetricsRepository,
+		MetricsRollupRepository metricsRollupRepository,
+		StagePerformanceRollupRepository stagePerformanceRollupRepository,
+		Clock clock) {
+		this.usageAnalyticsRepository = usageAnalyticsRepository;
+		this.performanceMetricsRepository = performanceMetricsRepository;
+		this.metricsRollupRepository = metricsRollupRepository;
+		this.stagePerformanceRollupRepository = stagePerformanceRollupRepository;
+		this.clock = clock;
+	}
 
 	@Scheduled(cron = "0 * * * * *")
 	public void rollupMinuteMetrics() {
