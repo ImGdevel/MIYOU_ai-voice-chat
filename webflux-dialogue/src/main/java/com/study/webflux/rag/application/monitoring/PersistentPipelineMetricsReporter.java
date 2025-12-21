@@ -114,9 +114,14 @@ public class PersistentPipelineMetricsReporter implements PipelineMetricsReporte
 			totalTokens = extractInt(attrs, "tokenCount");
 		}
 
+		Integer promptTokens = extractIntOrNull(attrs, "promptTokens");
+		Integer completionTokens = extractIntOrNull(attrs, "completionTokens");
+
 		return new UsageAnalytics.LlmUsage(
 			extractString(attrs, "model"),
 			totalTokens,
+			promptTokens,
+			completionTokens,
 			summary.llmOutputs(),
 			llmStage.get().durationMillis());
 	}
@@ -169,5 +174,13 @@ public class PersistentPipelineMetricsReporter implements PipelineMetricsReporte
 			return ((Number) value).intValue();
 		}
 		return 0;
+	}
+
+	private Integer extractIntOrNull(Map<String, Object> map, String key) {
+		Object value = map.get(key);
+		if (value instanceof Number) {
+			return ((Number) value).intValue();
+		}
+		return null;
 	}
 }

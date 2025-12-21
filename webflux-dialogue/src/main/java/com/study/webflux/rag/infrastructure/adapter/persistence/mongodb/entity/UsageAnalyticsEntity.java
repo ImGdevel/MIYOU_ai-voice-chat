@@ -41,18 +41,27 @@ public record UsageAnalyticsEntity(
 	public record LlmUsageEntity(
 		@Indexed String model,
 		@Indexed int tokenCount,
+		Integer promptTokens,
+		Integer completionTokens,
 		List<String> generatedSentences,
 		long completionTimeMillis) {
 		public static LlmUsageEntity fromDomain(UsageAnalytics.LlmUsage domain) {
 			return new LlmUsageEntity(
 				domain.model(),
 				domain.tokenCount(),
+				domain.promptTokens(),
+				domain.completionTokens(),
 				domain.generatedSentences(),
 				domain.completionTimeMillis());
 		}
 
 		public UsageAnalytics.LlmUsage toDomain() {
-			return new UsageAnalytics.LlmUsage(model, tokenCount, generatedSentences,
+			return new UsageAnalytics.LlmUsage(
+				model,
+				tokenCount,
+				promptTokens,
+				completionTokens,
+				generatedSentences,
 				completionTimeMillis);
 		}
 	}
