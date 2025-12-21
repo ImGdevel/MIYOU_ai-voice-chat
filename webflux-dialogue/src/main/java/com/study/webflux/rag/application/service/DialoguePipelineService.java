@@ -83,10 +83,9 @@ public class DialoguePipelineService implements DialoguePipelineUseCase {
 		DialoguePipelineTracker tracker = pipelineMonitor.create(text);
 
 		// TTS 준비
-		Mono<Void> ttsWarmup = tracker.traceMono(DialoguePipelineStage.TTS_PREPARATION,
-			() -> ttsPort.prepare()
-				.doOnError(error -> log
-					.warn("파이프라인 {}의 TTS 준비 실패: {}", tracker.pipelineId(), error.getMessage()))
+		Mono<Void> ttsWarmup = pipelineTracer.traceTtsPreparation(tracker,
+			() -> ttsPort.prepare().doOnError(error -> log
+				.warn("파이프라인 {}의 TTS 준비 실패: {}", tracker.pipelineId(), error.getMessage()))
 				.onErrorResume(error -> Mono.empty()))
 			.cache();
 
@@ -97,15 +96,15 @@ public class DialoguePipelineService implements DialoguePipelineUseCase {
 		// LLM 토큰 생성
 		Flux<String> llmTokens = streamLlmTokens(tracker, inputsMono).subscribeOn(
 			Schedulers.boundedElastic()).doOnNext(
-				token -> tracker
-					.incrementStageCounter(DialoguePipelineStage.LLM_COMPLETION, "tokenCount", 1));
+				token -> pipelineTracer.increment(tracker,
+					DialoguePipelineStage.LLM_COMPLETION,
+					"tokenCount",
+					1));
 
 		// 문장 어셈블
-		Flux<String> sentences = tracker.traceFlux(DialoguePipelineStage.SENTENCE_ASSEMBLY,
-			() -> sentenceAssembler.assemble(llmTokens)).doOnNext(sentence -> {
-				tracker.incrementStageCounter(DialoguePipelineStage.SENTENCE_ASSEMBLY,
-					"sentenceCount",
-					1);
+		Flux<String> sentences = pipelineTracer.traceSentenceAssembly(tracker,
+			() -> sentenceAssembler.assemble(llmTokens),
+			sentence -> {
 				tracker.recordLlmOutput(sentence);
 				log.debug("Sentence: [{}]", sentence);
 			}).share();
@@ -116,8 +115,7 @@ public class DialoguePipelineService implements DialoguePipelineUseCase {
 
 			cachedSentences.collectList().flatMap(sentenceList -> {
 				String fullResponse = String.join(" ", sentenceList);
-				return inputsMono.flatMap(inputs -> tracker.traceMono(
-					DialoguePipelineStage.QUERY_PERSISTENCE,
+				return inputsMono.flatMap(inputs -> pipelineTracer.tracePersistence(tracker,
 					() -> conversationRepository
 						.save(inputs.currentTurn().withResponse(fullResponse))));
 			}).subscribe();
@@ -136,8 +134,8 @@ public class DialoguePipelineService implements DialoguePipelineUseCase {
 		});
 
 		// 오디오 스트림 추적
-		Flux<byte[]> audioStream = tracker
-			.traceFlux(DialoguePipelineStage.TTS_SYNTHESIS, () -> audioFlux).doOnNext(chunk -> {
+		Flux<byte[]> audioStream = pipelineTracer
+			.traceTtsSynthesis(tracker, () -> audioFlux, () -> {
 				tracker
 					.incrementStageCounter(DialoguePipelineStage.TTS_SYNTHESIS, "audioChunks", 1);
 				tracker.markResponseEmission();

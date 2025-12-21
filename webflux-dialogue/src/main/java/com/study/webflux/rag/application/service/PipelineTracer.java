@@ -1,6 +1,7 @@
 package com.study.webflux.rag.application.service;
 
 import java.util.List;
+import java.util.function.Consumer;
 import java.util.function.Supplier;
 import java.util.stream.Collectors;
 
@@ -74,5 +75,41 @@ public class PipelineTracer {
 		Supplier<Flux<T>> supplier) {
 		tracker.recordStageAttribute(DialoguePipelineStage.LLM_COMPLETION, "model", model);
 		return tracker.traceFlux(DialoguePipelineStage.LLM_COMPLETION, supplier);
+	}
+
+	public Mono<Void> traceTtsPreparation(DialoguePipelineTracker tracker,
+		Supplier<Mono<Void>> supplier) {
+		return tracker.traceMono(DialoguePipelineStage.TTS_PREPARATION, supplier);
+	}
+
+	public <T> Flux<T> traceSentenceAssembly(DialoguePipelineTracker tracker,
+		Supplier<Flux<T>> supplier,
+		Consumer<T> recorder) {
+		return tracker.traceFlux(DialoguePipelineStage.SENTENCE_ASSEMBLY, supplier)
+			.doOnNext(item -> {
+				tracker.incrementStageCounter(DialoguePipelineStage.SENTENCE_ASSEMBLY,
+					"sentenceCount",
+					1);
+				recorder.accept(item);
+			});
+	}
+
+	public <T> Flux<T> traceTtsSynthesis(DialoguePipelineTracker tracker,
+		Supplier<Flux<T>> supplier,
+		Runnable onNext) {
+		return tracker.traceFlux(DialoguePipelineStage.TTS_SYNTHESIS, supplier)
+			.doOnNext(chunk -> onNext.run());
+	}
+
+	public <T> Mono<T> tracePersistence(DialoguePipelineTracker tracker,
+		Supplier<Mono<T>> supplier) {
+		return tracker.traceMono(DialoguePipelineStage.QUERY_PERSISTENCE, supplier);
+	}
+
+	public void increment(DialoguePipelineTracker tracker,
+		DialoguePipelineStage stage,
+		String key,
+		int delta) {
+		tracker.incrementStageCounter(stage, key, delta);
 	}
 }
