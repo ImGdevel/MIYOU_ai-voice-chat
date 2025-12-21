@@ -61,7 +61,9 @@ public record PerformanceMetricsEntity(
 			domain.totalDurationMillis(),
 			domain.firstResponseLatencyMillis(),
 			domain.lastResponseLatencyMillis(),
-			domain.stages().stream().map(StagePerformanceEntity::fromDomain).toList(),
+			domain.stages() == null
+				? java.util.List.of()
+				: domain.stages().stream().map(StagePerformanceEntity::fromDomain).toList(),
 			sanitizeMapKeys(domain.systemAttributes()));
 	}
 
@@ -74,7 +76,9 @@ public record PerformanceMetricsEntity(
 			totalDurationMillis,
 			firstResponseLatencyMillis,
 			lastResponseLatencyMillis,
-			stages.stream().map(StagePerformanceEntity::toDomain).toList(),
+			stages == null
+				? java.util.List.of()
+				: stages.stream().map(StagePerformanceEntity::toDomain).toList(),
 			restoreMapKeys(systemAttributes));
 	}
 
