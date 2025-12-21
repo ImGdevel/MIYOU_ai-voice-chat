@@ -19,6 +19,8 @@
             --text: #1d1d1d;
             --muted: #6f6f6f;
             --accent: #2d2d2d;
+            --accent-alt: #0e639c;
+            --accent-soft: #2a9d8f;
             --btn-bg: #212121;
             --btn-hover: #424242;
             --table-head: #f1f1f1;
@@ -33,6 +35,8 @@
             --text: #d4d4d4;
             --muted: #9da0a2;
             --accent: #c8c8c8;
+            --accent-alt: #0e639c;
+            --accent-soft: #4ec9b0;
             --btn-bg: #0e639c;
             --btn-hover: #1177bb;
             --table-head: #2d2d2d;
@@ -351,72 +355,47 @@
                 <div class="card">
                     <div class="card-title" data-i18n="total_requests">Total Requests</div>
                     <div class="card-value" id="totalRequests">-</div>
-                    <div class="card-sub" data-i18n="last_1min">Last 1min</div>
+                    <div class="card-sub"><span data-i18n="range">Range</span>: <span id="summaryRange">-</span></div>
                 </div>
                 <div class="card">
                     <div class="card-title" data-i18n="total_tokens">Total Tokens</div>
                     <div class="card-value" id="totalTokens">-</div>
-                    <div class="card-sub"><span data-i18n="cost">Cost</span>: <span id="estimatedCost">$0.00</span></div>
+                    <div class="card-sub"><span data-i18n="range">Range</span>: <span id="summaryRangeTokens">-</span></div>
                 </div>
                 <div class="card">
                     <div class="card-title" data-i18n="avg_response">Avg Response</div>
                     <div class="card-value" id="avgResponseTime">-</div>
-                    <div class="card-sub" data-i18n="milliseconds">milliseconds</div>
+                    <div class="card-sub"><span data-i18n="avg_in_range">Avg in range</span></div>
                 </div>
                 <div class="card">
-                    <div class="card-title" data-i18n="slow_requests">Slow Requests</div>
-                    <div class="card-value" id="slowRequests">-</div>
-                    <div class="card-sub" data-i18n="over_2s">&gt; 2s</div>
+                    <div class="card-title" data-i18n="request_rate">Requests / Bucket</div>
+                    <div class="card-value" id="requestRate">-</div>
+                    <div class="card-sub"><span data-i18n="bucket_unit">Bucket</span>: <span id="summaryBucket">-</span></div>
                 </div>
             </div>
 
             <div class="content-grid">
                 <div class="chart-container">
-                    <div class="chart-title" data-i18n="response_time">Response Time</div>
+                    <div class="detail-header">
+                        <div>
+                            <div class="chart-title" data-i18n="response_time">Response Time</div>
+                            <div class="card-sub" data-i18n="response_hint">Requests, tokens, and average response per bucket.</div>
+                        </div>
+                        <div class="detail-actions">
+                            <label class="card-sub" for="granularitySelect" data-i18n="granularity">Granularity</label>
+                            <select id="granularitySelect" class="search-input" onchange="refreshDashboard()">
+                                <option value="MINUTE" data-i18n="granularity_minute">Minute</option>
+                                <option value="HOUR" data-i18n="granularity_hour">Hour</option>
+                                <option value="DAY" data-i18n="granularity_day">Day</option>
+                            </select>
+                        </div>
+                    </div>
                     <canvas id="performanceChart"></canvas>
                 </div>
 
                 <div class="chart-container">
                     <div class="chart-title" data-i18n="stage_performance">Stage Performance</div>
                     <canvas id="stagePerformanceChart"></canvas>
-                </div>
-            </div>
-
-            <div class="content-grid">
-                <div class="chart-container">
-                    <div class="chart-title" data-i18n="slow_pipelines">Slow Pipelines</div>
-                    <div class="table-container">
-                        <table id="slowPipelinesTable">
-                            <thead>
-                                <tr>
-                            <th data-i18n="col_id">ID</th>
-                            <th data-i18n="col_status">Status</th>
-                            <th data-i18n="col_duration">Duration</th>
-                            <th data-i18n="col_first">First</th>
-                            <th data-i18n="col_time">Time</th>
-                                </tr>
-                            </thead>
-                            <tbody></tbody>
-                        </table>
-                    </div>
-                </div>
-
-                <div class="chart-container">
-                    <div class="chart-title" data-i18n="high_token_usage">High Token Usage</div>
-                    <div class="table-container">
-                        <table id="highTokenUsageTable">
-                            <thead>
-                                <tr>
-                            <th data-i18n="col_id">ID</th>
-                            <th data-i18n="col_model">Model</th>
-                            <th data-i18n="col_tokens">Tokens</th>
-                            <th data-i18n="col_preview">Preview</th>
-                            <th data-i18n="col_time">Time</th>
-                                </tr>
-                            </thead>
-                            <tbody></tbody>
-                        </table>
-                    </div>
                 </div>
             </div>
 
@@ -472,6 +451,8 @@
         let charts = {};
         let recentPipelinesCache = [];
         let lastPipelineDetail = null;
+        let lastRollups = [];
+        let lastStageSummary = [];
         let currentLang = localStorage.getItem('dashboard.lang') || 'ko';
         let currentTheme = localStorage.getItem('dashboard.theme') || 'dark';
 
@@ -482,18 +463,28 @@
                 last_update: 'Last update',
                 refresh: 'Refresh',
                 auto_label: 'Auto',
+                range: 'Range',
+                avg_in_range: 'Avg in range',
+                request_rate: 'Requests / Bucket',
+                bucket_unit: 'Bucket',
                 total_requests: 'Total Requests',
                 total_tokens: 'Total Tokens',
                 avg_response: 'Avg Response',
-                slow_requests: 'Slow Requests',
-                last_1min: 'Last 1min',
                 cost: 'Cost',
                 milliseconds: 'milliseconds',
-                over_2s: '> 2s',
                 response_time: 'Response Time',
+                response_hint: 'Requests, tokens, and average response per bucket.',
+                granularity: 'Granularity',
+                granularity_minute: 'Minute',
+                granularity_hour: 'Hour',
+                granularity_day: 'Day',
+                unit_minutes: 'minutes',
+                unit_hours: 'hours',
+                unit_days: 'days',
+                unit_minute: 'minute',
+                unit_hour: 'hour',
+                unit_day: 'day',
                 stage_performance: 'Stage Performance',
-                slow_pipelines: 'Slow Pipelines',
-                high_token_usage: 'High Token Usage',
                 recent_pipelines: 'Recent Pipelines',
                 recent_hint: 'Search by request ID, model, or input preview.',
                 search_placeholder: 'Search pipelineId / model / preview',
@@ -511,6 +502,10 @@
                 col_model: 'Model',
                 col_tokens: 'Tokens',
                 col_preview: 'Preview',
+                series_avg_response: 'Avg Response (ms)',
+                series_requests: 'Requests',
+                series_tokens: 'Tokens',
+                series_avg_stage: 'Avg Stage (ms)',
                 detail_request_id: 'Request ID',
                 detail_status: 'Status',
                 detail_started: 'Started',
@@ -556,18 +551,28 @@
                 last_update: '마지막 갱신',
                 refresh: '새로고침',
                 auto_label: '자동',
+                range: '범위',
+                avg_in_range: '범위 평균',
+                request_rate: '버킷당 요청',
+                bucket_unit: '버킷',
                 total_requests: '전체 요청',
                 total_tokens: '전체 토큰',
                 avg_response: '평균 응답',
-                slow_requests: '느린 요청',
-                last_1min: '최근 1분',
                 cost: '비용',
                 milliseconds: '밀리초',
-                over_2s: '> 2초',
                 response_time: '응답 시간',
+                response_hint: '버킷별 요청 수, 토큰, 평균 응답 시간을 표시합니다.',
+                granularity: '단위',
+                granularity_minute: '분',
+                granularity_hour: '시간',
+                granularity_day: '일',
+                unit_minutes: '분',
+                unit_hours: '시간',
+                unit_days: '일',
+                unit_minute: '분',
+                unit_hour: '시간',
+                unit_day: '일',
                 stage_performance: '단계 성능',
-                slow_pipelines: '느린 파이프라인',
-                high_token_usage: '토큰 사용량 상위',
                 recent_pipelines: '최근 파이프라인',
                 recent_hint: '요청 ID, 모델, 입력 프리뷰로 검색하세요.',
                 search_placeholder: 'pipelineId / 모델 / 프리뷰 검색',
@@ -585,6 +590,10 @@
                 col_model: '모델',
                 col_tokens: '토큰',
                 col_preview: '프리뷰',
+                series_avg_response: '평균 응답(ms)',
+                series_requests: '요청 수',
+                series_tokens: '토큰',
+                series_avg_stage: '단계 평균(ms)',
                 detail_request_id: '요청 ID',
                 detail_status: '상태',
                 detail_started: '시작',
@@ -639,6 +648,7 @@
                 el.setAttribute('placeholder', t(el.dataset.i18nPlaceholder));
             });
 
+            setGranularity(getGranularity());
             document.getElementById('autoRefreshLabel').textContent = t('auto_label');
             document.getElementById('languageToggle').textContent =
                 currentLang === 'ko' ? t('lang_ko') : t('lang_en');
@@ -657,6 +667,9 @@
             localStorage.setItem('dashboard.lang', currentLang);
             applyI18n();
             renderPipelineDetail(lastPipelineDetail);
+            updateSummaryCards(lastRollups, getGranularity(), granularityLimit(getGranularity()));
+            updatePerformanceChart(lastRollups, getGranularity());
+            updateStagePerformanceChart(lastStageSummary);
         }
 
         function toggleTheme() {
@@ -678,18 +691,35 @@
             const grid = colorVar('--grid');
             const text = colorVar('--muted');
             const line = colorVar('--accent');
+            const requestsColor = colorVar('--accent-alt');
+            const tokensColor = colorVar('--accent-soft');
 
             if (charts.performance) {
-                charts.performance.data.datasets[0].borderColor = line;
-                charts.performance.data.datasets[0].backgroundColor = line + '20';
+                if (charts.performance.data.datasets[0]) {
+                    charts.performance.data.datasets[0].borderColor = line;
+                    charts.performance.data.datasets[0].backgroundColor = line + '30';
+                }
+                if (charts.performance.data.datasets[1]) {
+                    charts.performance.data.datasets[1].borderColor = requestsColor;
+                    charts.performance.data.datasets[1].backgroundColor = requestsColor + '80';
+                }
+                if (charts.performance.data.datasets[2]) {
+                    charts.performance.data.datasets[2].borderColor = tokensColor;
+                    charts.performance.data.datasets[2].backgroundColor = tokensColor + '30';
+                }
                 charts.performance.options.scales.y.ticks.color = text;
                 charts.performance.options.scales.y.grid.color = grid;
+                charts.performance.options.scales.y.title.color = text;
+                charts.performance.options.scales.y1.ticks.color = text;
+                charts.performance.options.scales.y1.title.color = text;
+                charts.performance.options.scales.y2.ticks.color = text;
+                charts.performance.options.scales.y2.title.color = text;
                 charts.performance.options.scales.x.ticks.color = text;
                 charts.performance.update('none');
             }
 
             if (charts.stages) {
-                charts.stages.data.datasets[0].backgroundColor = line;
+                charts.stages.data.datasets[0].backgroundColor = requestsColor;
                 charts.stages.options.scales.x.ticks.color = text;
                 charts.stages.options.scales.x.grid.color = grid;
                 charts.stages.options.scales.y.ticks.color = text;
@@ -743,24 +773,67 @@
             return value;
         }
 
+        function getGranularity() {
+            const stored = localStorage.getItem('dashboard.granularity');
+            const select = document.getElementById('granularitySelect');
+            if (stored) {
+                return stored;
+            }
+            return select ? select.value : 'MINUTE';
+        }
+
+        function setGranularity(value) {
+            localStorage.setItem('dashboard.granularity', value);
+            const select = document.getElementById('granularitySelect');
+            if (select) {
+                select.value = value;
+            }
+        }
+
+        function granularityLimit(granularity) {
+            if (granularity === 'DAY') return 30;
+            if (granularity === 'HOUR') return 24;
+            return 60;
+        }
+
+        function formatBucketLabel(dateValue, granularity) {
+            const date = new Date(dateValue);
+            if (granularity === 'DAY') {
+                return `${date.getMonth() + 1}/${date.getDate()}`;
+            }
+            if (granularity === 'HOUR') {
+                return `${date.getMonth() + 1}/${date.getDate()} ${date.getHours().toString().padStart(2, '0')}:00`;
+            }
+            return `${date.getHours().toString().padStart(2, '0')}:${date.getMinutes().toString().padStart(2, '0')}`;
+        }
+
+        function formatRangeLabel(granularity, limit) {
+            const unitKey = granularity === 'DAY'
+                ? 'unit_days'
+                : granularity === 'HOUR'
+                    ? 'unit_hours'
+                    : 'unit_minutes';
+            return `${limit} ${t(unitKey)}`;
+        }
+
         async function refreshDashboard() {
             try {
-                const endTime = new Date();
-                const startTime = new Date(endTime - 60 * 1000);
+                const granularity = getGranularity();
+                const limit = granularityLimit(granularity);
+                setGranularity(granularity);
 
-                const [summary, performance, slowPipelines, highTokens, recentUsage] = await Promise.all([
-                    fetchData(`/metrics/usage/summary?startTime=${startTime.toISOString()}&endTime=${endTime.toISOString()}`),
-                    fetchData(`/metrics/performance/recent?limit=50`),
-                    fetchData(`/metrics/performance/slow?thresholdMillis=2000&limit=10`),
-                    fetchData(`/metrics/usage/high-tokens?tokenThreshold=100&limit=10`),
+                const [rollups, stageSummary, recentUsage] = await Promise.all([
+                    fetchData(`/metrics/rollups?granularity=${granularity}&limit=${limit}`),
+                    fetchData(`/metrics/stages/summary?granularity=${granularity}&limit=${limit}`),
                     fetchData(`/metrics/usage/recent?limit=200`)
                 ]);
 
-                updateSummaryCards(summary, performance);
-                updatePerformanceChart(performance);
-                updateStagePerformanceChart(performance);
-                updateSlowPipelinesTable(slowPipelines);
-                updateHighTokenUsageTable(highTokens);
+                lastRollups = rollups;
+                lastStageSummary = stageSummary;
+
+                updateSummaryCards(rollups, granularity, limit);
+                updatePerformanceChart(rollups, granularity);
+                updateStagePerformanceChart(stageSummary);
                 recentPipelinesCache = recentUsage;
                 filterRecentPipelines();
 
@@ -772,62 +845,119 @@
             }
         }
 
-        function updateSummaryCards(summary, performance) {
-            document.getElementById('totalRequests').textContent = summary.totalRequests.toLocaleString();
-            document.getElementById('totalTokens').textContent = summary.totalTokens.toLocaleString();
+        function updateSummaryCards(rollups, granularity, limit) {
+            const totals = rollups.reduce((acc, r) => {
+                acc.requests += r.requestCount || 0;
+                acc.tokens += r.totalTokens || 0;
+                acc.duration += r.totalDurationMillis || 0;
+                return acc;
+            }, { requests: 0, tokens: 0, duration: 0 });
 
-            const costPerToken = 0.00000015;
-            const estimatedCost = (summary.totalTokens * costPerToken).toFixed(4);
-            document.getElementById('estimatedCost').textContent = `$${estimatedCost}`;
+            const avgResponse = totals.requests === 0
+                ? 0
+                : totals.duration / totals.requests;
+            const requestRate = rollups.length === 0
+                ? 0
+                : totals.requests / rollups.length;
 
-            if (performance.length > 0) {
-                const avgTime = performance.reduce((sum, p) => sum + p.totalDurationMillis, 0) / performance.length;
-                document.getElementById('avgResponseTime').textContent = Math.round(avgTime).toLocaleString() + 'ms';
+            document.getElementById('totalRequests').textContent = totals.requests.toLocaleString();
+            document.getElementById('totalTokens').textContent = totals.tokens.toLocaleString();
+            document.getElementById('avgResponseTime').textContent = `${Math.round(avgResponse).toLocaleString()}ms`;
+            document.getElementById('requestRate').textContent = requestRate.toFixed(1);
 
-                const slow = performance.filter(p => p.totalDurationMillis > 2000).length;
-                document.getElementById('slowRequests').textContent = slow.toLocaleString();
-            }
+            const rangeLabel = formatRangeLabel(granularity, limit);
+            document.getElementById('summaryRange').textContent = rangeLabel;
+            document.getElementById('summaryRangeTokens').textContent = rangeLabel;
+            document.getElementById('summaryBucket').textContent = t(
+                granularity === 'DAY' ? 'unit_day' : granularity === 'HOUR' ? 'unit_hour' : 'unit_minute'
+            );
         }
 
-        function updatePerformanceChart(data) {
+        function updatePerformanceChart(rollups, granularity) {
             const ctx = document.getElementById('performanceChart');
-            const sortedData = data.slice().sort((a, b) => new Date(a.startedAt) - new Date(b.startedAt));
+            const safeRollups = Array.isArray(rollups) ? rollups : [];
+            const sorted = safeRollups.slice().sort((a, b) => new Date(a.bucketStart) - new Date(b.bucketStart));
             const grid = colorVar('--grid');
             const text = colorVar('--muted');
             const line = colorVar('--accent');
+            const requestsColor = colorVar('--accent-alt');
+            const tokensColor = colorVar('--accent-soft');
 
-            const labels = sortedData.map(d => {
-                const time = new Date(d.startedAt);
-                return `${time.getHours().toString().padStart(2, '0')}:${time.getMinutes().toString().padStart(2, '0')}`;
-            });
-            const values = sortedData.map(d => d.totalDurationMillis);
+            const labels = sorted.map(d => formatBucketLabel(d.bucketStart, granularity));
+            const avgResponse = sorted.map(d => d.avgResponseMillis || 0);
+            const requests = sorted.map(d => d.requestCount || 0);
+            const tokens = sorted.map(d => d.totalTokens || 0);
+
+            const datasets = [
+                {
+                    type: 'line',
+                    label: t('series_avg_response'),
+                    data: avgResponse,
+                    borderColor: line,
+                    backgroundColor: line + '30',
+                    tension: 0.2,
+                    borderWidth: 2,
+                    pointRadius: 1,
+                    yAxisID: 'y'
+                },
+                {
+                    type: 'bar',
+                    label: t('series_requests'),
+                    data: requests,
+                    backgroundColor: requestsColor + '80',
+                    borderColor: requestsColor,
+                    borderWidth: 1,
+                    yAxisID: 'y1'
+                },
+                {
+                    type: 'line',
+                    label: t('series_tokens'),
+                    data: tokens,
+                    borderColor: tokensColor,
+                    backgroundColor: tokensColor + '30',
+                    tension: 0.2,
+                    borderWidth: 2,
+                    pointRadius: 1,
+                    yAxisID: 'y2'
+                }
+            ];
 
             if (!charts.performance) {
                 charts.performance = new Chart(ctx, {
-                    type: 'line',
                     data: {
                         labels: labels,
-                        datasets: [{
-                            data: values,
-                            borderColor: line,
-                            backgroundColor: line + '20',
-                            tension: 0.1,
-                            borderWidth: 1,
-                            pointRadius: 2
-                        }]
+                        datasets: datasets
                     },
                     options: {
                         responsive: true,
                         maintainAspectRatio: false,
                         animation: false,
                         plugins: {
-                            legend: { display: false }
+                            legend: {
+                                position: 'bottom',
+                                labels: { color: text, boxWidth: 12 }
+                            }
                         },
                         scales: {
                             y: {
                                 beginAtZero: true,
                                 ticks: { font: { size: 10 }, color: text },
-                                grid: { color: grid }
+                                grid: { color: grid },
+                                title: { display: true, text: t('series_avg_response'), color: text }
+                            },
+                            y1: {
+                                beginAtZero: true,
+                                position: 'right',
+                                ticks: { font: { size: 10 }, color: text },
+                                grid: { drawOnChartArea: false },
+                                title: { display: true, text: t('series_requests'), color: text }
+                            },
+                            y2: {
+                                beginAtZero: true,
+                                position: 'right',
+                                ticks: { font: { size: 10 }, color: text },
+                                grid: { drawOnChartArea: false },
+                                title: { display: true, text: t('series_tokens'), color: text }
                             },
                             x: {
                                 ticks: { font: { size: 10 }, color: text },
@@ -838,7 +968,18 @@
                 });
             } else {
                 charts.performance.data.labels = labels;
-                charts.performance.data.datasets[0].data = values;
+                charts.performance.data.datasets = datasets;
+                charts.performance.options.plugins.legend.labels.color = text;
+                charts.performance.options.scales.y.ticks.color = text;
+                charts.performance.options.scales.y.grid.color = grid;
+                charts.performance.options.scales.y.title.text = t('series_avg_response');
+                charts.performance.options.scales.y.title.color = text;
+                charts.performance.options.scales.y1.ticks.color = text;
+                charts.performance.options.scales.y1.title.text = t('series_requests');
+                charts.performance.options.scales.y1.title.color = text;
+                charts.performance.options.scales.y2.ticks.color = text;
+                charts.performance.options.scales.y2.title.text = t('series_tokens');
+                charts.performance.options.scales.y2.title.color = text;
                 charts.performance.update('none');
             }
         }
@@ -847,23 +988,12 @@
             const ctx = document.getElementById('stagePerformanceChart');
             const grid = colorVar('--grid');
             const text = colorVar('--muted');
-            const bar = colorVar('--accent');
+            const bar = colorVar('--accent-alt');
 
-            const stageStats = {};
-            data.forEach(pipeline => {
-                pipeline.stages.forEach(stage => {
-                    if (!stageStats[stage.stageName]) {
-                        stageStats[stage.stageName] = { total: 0, count: 0 };
-                    }
-                    stageStats[stage.stageName].total += stage.durationMillis;
-                    stageStats[stage.stageName].count++;
-                });
-            });
-
-            const labels = Object.keys(stageStats).map(l => l.replace(/_/g, ' ').toLowerCase());
-            const avgDurations = Object.keys(stageStats).map(label =>
-                Math.round(stageStats[label].total / stageStats[label].count)
-            );
+            const safeData = Array.isArray(data) ? data : [];
+            const sorted = safeData.slice().sort((a, b) => a.stageName.localeCompare(b.stageName));
+            const labels = sorted.map(item => item.stageName.replace(/_/g, ' ').toLowerCase());
+            const avgDurations = sorted.map(item => Math.round(item.avgDurationMillis || 0));
 
             if (!charts.stages) {
                 charts.stages = new Chart(ctx, {
@@ -871,6 +1001,7 @@
                     data: {
                         labels: labels,
                         datasets: [{
+                            label: t('series_avg_stage'),
                             data: avgDurations,
                             backgroundColor: bar,
                             borderWidth: 0
@@ -899,45 +1030,10 @@
                 });
             } else {
                 charts.stages.data.labels = labels;
+                charts.stages.data.datasets[0].label = t('series_avg_stage');
                 charts.stages.data.datasets[0].data = avgDurations;
                 charts.stages.update('none');
             }
-        }
-
-        function updateSlowPipelinesTable(data) {
-            const tbody = document.querySelector('#slowPipelinesTable tbody');
-            tbody.innerHTML = '';
-
-            data.slice(0, 10).forEach(p => {
-                const row = tbody.insertRow();
-                row.classList.add('clickable-row');
-                row.onclick = () => fetchPipelineDetail(p.pipelineId);
-                row.innerHTML = `
-                    <td>${p.pipelineId.substring(0, 6)}</td>
-                    <td class="status-${p.status.toLowerCase()}">${p.status}</td>
-                    <td>${formatMillis(p.totalDurationMillis)}</td>
-                    <td>${formatMillis(p.firstResponseLatencyMillis)}</td>
-                    <td>${formatTime(p.startedAt)}</td>
-                `;
-            });
-        }
-
-        function updateHighTokenUsageTable(data) {
-            const tbody = document.querySelector('#highTokenUsageTable tbody');
-            tbody.innerHTML = '';
-
-            data.slice(0, 10).forEach(u => {
-                const row = tbody.insertRow();
-                row.classList.add('clickable-row');
-                row.onclick = () => fetchPipelineDetail(u.pipelineId);
-                row.innerHTML = `
-                    <td>${u.pipelineId.substring(0, 6)}</td>
-                    <td>${u.llmUsage?.model || '-'}</td>
-                    <td>${formatNumber(u.llmUsage?.tokenCount || 0)}</td>
-                    <td>${(u.userRequest?.inputPreview || '-').substring(0, 20)}</td>
-                    <td>${formatTime(u.timestamp)}</td>
-                `;
-            });
         }
 
         function buildAttributeRows(performance) {
@@ -1151,6 +1247,7 @@
             }
         }
 
+        setGranularity(getGranularity());
         applyTheme();
         applyI18n();
         refreshDashboard();
