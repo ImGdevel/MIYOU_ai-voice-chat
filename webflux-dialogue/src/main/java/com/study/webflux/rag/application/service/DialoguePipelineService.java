@@ -27,6 +27,7 @@ import com.study.webflux.rag.domain.port.out.RetrievalPort;
 import com.study.webflux.rag.domain.port.out.TokenUsageProvider;
 import com.study.webflux.rag.domain.port.out.TtsPort;
 import com.study.webflux.rag.domain.service.SentenceAssembler;
+import com.study.webflux.rag.infrastructure.config.properties.RagDialogueProperties;
 import reactor.core.publisher.Flux;
 import reactor.core.publisher.Mono;
 import reactor.core.scheduler.Schedulers;
@@ -44,6 +45,7 @@ public class DialoguePipelineService implements DialoguePipelineUseCase {
 	private final ConversationCounterPort conversationCounterPort;
 	private final MemoryExtractionService memoryExtractionService;
 	private final SystemPromptService systemPromptService;
+	private final String llmModel;
 
 	private final int conversationThreshold; // 대화 횟수 임계값
 
@@ -56,7 +58,8 @@ public class DialoguePipelineService implements DialoguePipelineUseCase {
 		ConversationCounterPort conversationCounterPort,
 		MemoryExtractionService memoryExtractionService,
 		int conversationThreshold,
-		SystemPromptService systemPromptService) {
+		SystemPromptService systemPromptService,
+		RagDialogueProperties properties) {
 		this.llmPort = llmPort;
 		this.ttsPort = ttsPort;
 		this.retrievalPort = retrievalPort;
@@ -67,6 +70,7 @@ public class DialoguePipelineService implements DialoguePipelineUseCase {
 		this.memoryExtractionService = memoryExtractionService;
 		this.systemPromptService = systemPromptService;
 		this.conversationThreshold = conversationThreshold;
+		this.llmModel = properties.getOpenai().getModel();
 	}
 
 	/**
@@ -148,7 +152,7 @@ public class DialoguePipelineService implements DialoguePipelineUseCase {
 					}).flatMapMany(messages -> {
 						CompletionRequest request = new CompletionRequest(
 							messages,
-							"gpt-5-mini",
+							llmModel,
 							true,
 							java.util.Map.of("correlationId", tracker.pipelineId()));
 						tracker.recordStageAttribute(DialoguePipelineStage.LLM_COMPLETION,
@@ -283,7 +287,7 @@ public class DialoguePipelineService implements DialoguePipelineUseCase {
 							messages.size());
 					}).flatMapMany(messages -> {
 						CompletionRequest request = CompletionRequest
-							.withMessages(messages, "gpt-5-mini", true);
+							.withMessages(messages, llmModel, true);
 						tracker.recordStageAttribute(DialoguePipelineStage.LLM_COMPLETION,
 							"model",
 							request.model());
