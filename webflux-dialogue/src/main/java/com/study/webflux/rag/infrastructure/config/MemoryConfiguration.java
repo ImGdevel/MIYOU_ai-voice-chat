@@ -23,11 +23,6 @@ public class MemoryConfiguration {
 	}
 
 	@Bean
-	public int conversationThreshold(RagDialogueProperties properties) {
-		return properties.getMemory().getConversationThreshold();
-	}
-
-	@Bean
 	public ReactiveRedisTemplate<String, Long> reactiveRedisLongTemplate(
 		ReactiveRedisConnectionFactory connectionFactory) {
 		RedisSerializationContext<String, Long> context = RedisSerializationContext
