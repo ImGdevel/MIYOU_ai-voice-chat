@@ -16,6 +16,7 @@ import com.study.webflux.rag.domain.model.conversation.ConversationContext;
 import com.study.webflux.rag.domain.model.conversation.ConversationTurn;
 import com.study.webflux.rag.domain.model.llm.CompletionRequest;
 import com.study.webflux.rag.domain.model.llm.Message;
+import com.study.webflux.rag.domain.model.llm.MessageRole;
 import com.study.webflux.rag.domain.model.memory.MemoryRetrievalResult;
 import com.study.webflux.rag.domain.model.rag.RetrievalContext;
 import com.study.webflux.rag.domain.port.in.DialoguePipelineUseCase;
@@ -145,7 +146,7 @@ public class DialoguePipelineService implements DialoguePipelineUseCase {
 						currentTurn.query())))
 					.doOnNext(messages -> {
 						String systemPrompt = messages.stream()
-							.filter(m -> "system".equals(m.role()))
+							.filter(m -> MessageRole.SYSTEM.equals(m.role()))
 							.findFirst().map(m -> m.content()).orElse("");
 						tracker.recordStageAttribute(DialoguePipelineStage.PROMPT_BUILDING,
 							"systemPrompt",
@@ -281,7 +282,7 @@ public class DialoguePipelineService implements DialoguePipelineUseCase {
 						currentTurn.query())))
 					.doOnNext(messages -> {
 						String systemPrompt = messages.stream()
-							.filter(m -> "system".equals(m.role()))
+							.filter(m -> MessageRole.SYSTEM.equals(m.role()))
 							.findFirst().map(m -> m.content()).orElse("");
 						tracker.recordStageAttribute(DialoguePipelineStage.PROMPT_BUILDING,
 							"systemPrompt",
