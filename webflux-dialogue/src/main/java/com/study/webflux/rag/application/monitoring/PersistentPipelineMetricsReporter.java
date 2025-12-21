@@ -63,10 +63,16 @@ public class PersistentPipelineMetricsReporter implements PipelineMetricsReporte
 		DialoguePipelineTracker.PipelineSummary summary) {
 		Map<String, Object> attrs = summary.attributes();
 
+		String inputPreview = extractString(attrs, "input.preview");
+		String inputText = extractString(attrs, "input.text");
+		if (inputText == null || inputText.isBlank()) {
+			inputText = inputPreview;
+		}
+
 		UsageAnalytics.UserRequest userRequest = new UsageAnalytics.UserRequest(
-			extractString(attrs, "input.preview"),
+			inputText,
 			extractInt(attrs, "input.length"),
-			extractString(attrs, "input.preview"));
+			inputPreview);
 
 		UsageAnalytics.LlmUsage llmUsage = extractLlmUsage(summary);
 		UsageAnalytics.RetrievalMetrics retrievalMetrics = extractRetrievalMetrics(summary);

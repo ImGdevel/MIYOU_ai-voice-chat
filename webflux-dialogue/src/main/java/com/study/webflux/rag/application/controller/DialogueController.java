@@ -25,6 +25,7 @@ import reactor.core.publisher.Flux;
 public class DialogueController implements DialogueApi {
 
 	private final DialoguePipelineUseCase dialoguePipelineUseCase;
+	private final DataBufferFactory bufferFactory = new DefaultDataBufferFactory();
 
 	@PostMapping(path = "/sse", produces = MediaType.TEXT_EVENT_STREAM_VALUE)
 	public Flux<String> ragDialogueStream(
@@ -35,7 +36,6 @@ public class DialogueController implements DialogueApi {
 	@PostMapping(path = "/audio/wav", produces = "audio/wav")
 	public Flux<DataBuffer> ragDialogueAudioWav(
 		@Valid @RequestBody RagDialogueRequest request) {
-		DataBufferFactory bufferFactory = new DefaultDataBufferFactory();
 		return dialoguePipelineUseCase.executeAudioStreaming(request.text())
 			.map(bufferFactory::wrap);
 	}
@@ -43,7 +43,6 @@ public class DialogueController implements DialogueApi {
 	@PostMapping(path = "/audio/mp3", produces = "audio/mpeg")
 	public Flux<DataBuffer> ragDialogueAudioMp3(
 		@Valid @RequestBody RagDialogueRequest request) {
-		DataBufferFactory bufferFactory = new DefaultDataBufferFactory();
 		return dialoguePipelineUseCase.executeAudioStreaming(request.text())
 			.map(bufferFactory::wrap);
 	}
