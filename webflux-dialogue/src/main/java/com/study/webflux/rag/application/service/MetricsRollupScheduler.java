@@ -58,7 +58,12 @@ public class MetricsRollupScheduler {
 		Mono<Void> stageRollupSave = stagePerformanceRollupRepository.saveAll(stageRollups).then();
 
 		Mono.when(usageRollup, stageRollupSave)
-			.doOnError(error -> log.warn("Failed to rollup metrics: {}", error.getMessage()))
+			.doOnSuccess(v -> log.debug("분 단위 롤업 완료: bucketStart={}", bucketStart))
+			.doOnError(error -> log.error("분 단위 롤업 실패 bucketStart={}, 이유={}",
+				bucketStart,
+				error.getMessage(),
+				error))
+			.onErrorResume(error -> Mono.empty())
 			.subscribe();
 	}
 
