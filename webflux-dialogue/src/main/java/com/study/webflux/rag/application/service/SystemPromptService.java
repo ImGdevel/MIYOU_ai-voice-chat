@@ -19,6 +19,8 @@ public class SystemPromptService {
 	private final String configuredSystemPrompt;
 	private final String configuredSystemPromptTemplate;
 	private final String configuredCommonSystemPromptTemplate;
+	private final String configuredBasePromptTemplate;
+	private final String cachedBaseTemplate;
 	private final String cachedSystemPromptFromTemplate;
 	private final String cachedCommonSystemPromptFromTemplate;
 
@@ -28,49 +30,42 @@ public class SystemPromptService {
 		this.configuredSystemPrompt = properties.getSystemPrompt();
 		this.configuredSystemPromptTemplate = properties.getSystemPromptTemplate();
 		this.configuredCommonSystemPromptTemplate = properties.getCommonSystemPromptTemplate();
+		this.configuredBasePromptTemplate = properties.getSystemBasePromptTemplate();
+		this.cachedBaseTemplate = loadTemplate(configuredBasePromptTemplate);
 		this.cachedSystemPromptFromTemplate = loadTemplate(configuredSystemPromptTemplate);
 		this.cachedCommonSystemPromptFromTemplate = loadTemplate(
 			configuredCommonSystemPromptTemplate);
 	}
 
 	public String buildSystemPrompt(RetrievalContext context, MemoryRetrievalResult memories) {
-		StringBuilder prompt = new StringBuilder();
-
 		String personaPrompt = choosePersonaPrompt();
-		if (!personaPrompt.isBlank()) {
-			prompt.append(personaPrompt).append("\n\n");
-		}
-
 		String commonPrompt = chooseCommonPrompt();
+		String memoryBlock = buildMemoryBlock(memories);
+		String contextBlock = buildContextBlock(context);
+
+		if (!cachedBaseTemplate.isBlank()) {
+			return applyTemplate(cachedBaseTemplate,
+				personaPrompt,
+				commonPrompt,
+				memoryBlock,
+				contextBlock);
+		}
+
+		// Fallback: concatenate blocks if base template is missing
+		StringBuilder fallback = new StringBuilder();
+		if (!personaPrompt.isBlank()) {
+			fallback.append(personaPrompt).append("\n\n");
+		}
 		if (!commonPrompt.isBlank()) {
-			prompt.append(commonPrompt).append("\n\n");
+			fallback.append(commonPrompt).append("\n\n");
 		}
-
-		if (!memories.isEmpty()) {
-			prompt.append("대화 상대에 대한 기억:\n");
-
-			if (!memories.experientialMemories().isEmpty()) {
-				prompt.append("\n경험적 기억:\n");
-				memories.experientialMemories()
-					.forEach(m -> prompt.append("- ").append(m.content()).append("\n"));
-			}
-
-			if (!memories.factualMemories().isEmpty()) {
-				prompt.append("\n사실 기반 기억:\n");
-				memories.factualMemories()
-					.forEach(m -> prompt.append("- ").append(m.content()).append("\n"));
-			}
-
-			prompt.append("\n");
+		if (!memoryBlock.isBlank()) {
+			fallback.append(memoryBlock).append("\n\n");
 		}
-
-		if (!context.isEmpty()) {
-			String contextText = context.documents().stream().map(doc -> doc.content())
-				.collect(Collectors.joining("\n"));
-			prompt.append("참고 정보:\n").append(contextText).append("\n\n");
+		if (!contextBlock.isBlank()) {
+			fallback.append(contextBlock).append("\n\n");
 		}
-
-		return prompt.toString().trim();
+		return fallback.toString().trim();
 	}
 
 	private String choosePersonaPrompt() {
@@ -85,6 +80,49 @@ public class SystemPromptService {
 
 	private String chooseCommonPrompt() {
 		return cachedCommonSystemPromptFromTemplate;
+	}
+
+	private String buildMemoryBlock(MemoryRetrievalResult memories) {
+		if (memories == null || memories.isEmpty()) {
+			return "";
+		}
+
+		StringBuilder builder = new StringBuilder("대화 상대에 대한 기억:\n");
+
+		if (!memories.experientialMemories().isEmpty()) {
+			builder.append("\n경험적 기억:\n");
+			memories.experientialMemories()
+				.forEach(m -> builder.append("- ").append(m.content()).append("\n"));
+		}
+
+		if (!memories.factualMemories().isEmpty()) {
+			builder.append("\n사실 기반 기억:\n");
+			memories.factualMemories()
+				.forEach(m -> builder.append("- ").append(m.content()).append("\n"));
+		}
+
+		return builder.toString().trim();
+	}
+
+	private String buildContextBlock(RetrievalContext context) {
+		if (context == null || context.isEmpty()) {
+			return "";
+		}
+		String contextText = context.documents().stream().map(doc -> doc.content())
+			.collect(Collectors.joining("\n"));
+		return "참고 정보:\n" + contextText;
+	}
+
+	private String applyTemplate(String template,
+		String personaPrompt,
+		String commonPrompt,
+		String memoryBlock,
+		String contextBlock) {
+		return template.replace("{{persona}}", personaPrompt)
+			.replace("{{common}}", commonPrompt)
+			.replace("{{memories}}", memoryBlock)
+			.replace("{{context}}", contextBlock)
+			.trim();
 	}
 
 	private String loadTemplate(String templateName) {
