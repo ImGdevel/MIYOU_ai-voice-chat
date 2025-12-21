@@ -26,7 +26,7 @@ public interface SpringDataUsageAnalyticsRepository
 
 	Flux<UsageAnalyticsEntity> findAllByOrderByTimestampDesc(Pageable pageable);
 
-	Long countByTimestampBetween(Instant startTime, Instant endTime);
+	Mono<Long> countByTimestampBetween(Instant startTime, Instant endTime);
 
 	@Aggregation(pipeline = {
 		"{ $match: { timestamp: { $gte: ?0, $lte: ?1 } } }",
