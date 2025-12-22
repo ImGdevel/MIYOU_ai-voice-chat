@@ -13,6 +13,7 @@ import com.study.webflux.rag.infrastructure.template.FileBasedPromptTemplate;
 @Component
 public class PromptBuilder implements PromptTemplatePort {
 
+	private static final String CONVERSATION_TEMPLATE = "dialogue/conversation";
 	private final FileBasedPromptTemplate templateLoader;
 
 	public PromptBuilder(FileBasedPromptTemplate templateLoader) {
@@ -21,14 +22,13 @@ public class PromptBuilder implements PromptTemplatePort {
 
 	@Override
 	public String buildPrompt(RetrievalContext context) {
-		if (context.isEmpty()) {
-			return buildDefaultPrompt();
-		}
+		String contextText = context.isEmpty()
+			? ""
+			: context.documents().stream().map(doc -> doc.content())
+				.collect(Collectors.joining("\n"));
 
-		String contextText = context.documents().stream().map(doc -> doc.content())
-			.collect(Collectors.joining("\n"));
-
-		return templateLoader.load("rag-augmented-prompt", Map.of("context", contextText));
+		return templateLoader.load(CONVERSATION_TEMPLATE,
+			Map.of("context", contextText, "conversation", ""));
 	}
 
 	@Override
@@ -41,13 +41,14 @@ public class PromptBuilder implements PromptTemplatePort {
 
 		String conversationHistory = buildConversationHistory(conversationContext);
 
-		return templateLoader.load("rag-conversation-prompt",
+		return templateLoader.load(CONVERSATION_TEMPLATE,
 			Map.of("context", contextText, "conversation", conversationHistory));
 	}
 
 	@Override
 	public String buildDefaultPrompt() {
-		return templateLoader.load("default-prompt");
+		return templateLoader.load(CONVERSATION_TEMPLATE,
+			Map.of("context", "", "conversation", ""));
 	}
 
 	private String buildConversationHistory(ConversationContext conversationContext) {
