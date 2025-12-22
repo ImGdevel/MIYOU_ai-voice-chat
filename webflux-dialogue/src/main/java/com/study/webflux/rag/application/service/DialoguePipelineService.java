@@ -3,7 +3,6 @@ package com.study.webflux.rag.application.service;
 import java.util.ArrayList;
 import java.util.Base64;
 import java.util.List;
-import java.util.stream.Collectors;
 
 import lombok.extern.slf4j.Slf4j;
 
@@ -26,6 +25,7 @@ import com.study.webflux.rag.domain.port.out.RetrievalPort;
 import com.study.webflux.rag.domain.port.out.TokenUsageProvider;
 import com.study.webflux.rag.domain.port.out.TtsPort;
 import com.study.webflux.rag.domain.service.SentenceAssembler;
+import com.study.webflux.rag.infrastructure.config.properties.RagDialogueProperties;
 import reactor.core.publisher.Flux;
 import reactor.core.publisher.Mono;
 import reactor.core.scheduler.Schedulers;
@@ -34,6 +34,9 @@ import reactor.core.scheduler.Schedulers;
 @Service
 public class DialoguePipelineService implements DialoguePipelineUseCase {
 
+	/**
+	 * 리액티브 대화 파이프라인을 총괄합니다. 입력 텍스트를 받아 메모리/검색 컨텍스트를 준비하고, 시스템 프롬프트를 구성한 뒤 LLM 토큰 스트리밍과 TTS 스트리밍까지 이어지는 전체 흐름을 관리합니다.
+	 */
 	private final LlmPort llmPort;
 	private final TtsPort ttsPort;
 	private final RetrievalPort retrievalPort;
@@ -42,8 +45,10 @@ public class DialoguePipelineService implements DialoguePipelineUseCase {
 	private final DialoguePipelineMonitor pipelineMonitor;
 	private final ConversationCounterPort conversationCounterPort;
 	private final MemoryExtractionService memoryExtractionService;
-
-	private final int conversationThreshold; // 대화 횟수 임계값
+	private final SystemPromptService systemPromptService;
+	private final PipelineTracer pipelineTracer;
+	private final String llmModel;
+	private final int conversationThreshold;
 
 	public DialoguePipelineService(LlmPort llmPort,
 		TtsPort ttsPort,
@@ -53,7 +58,9 @@ public class DialoguePipelineService implements DialoguePipelineUseCase {
 		DialoguePipelineMonitor pipelineMonitor,
 		ConversationCounterPort conversationCounterPort,
 		MemoryExtractionService memoryExtractionService,
-		int conversationThreshold) {
+		SystemPromptService systemPromptService,
+		PipelineTracer pipelineTracer,
+		RagDialogueProperties properties) {
 		this.llmPort = llmPort;
 		this.ttsPort = ttsPort;
 		this.retrievalPort = retrievalPort;
@@ -62,99 +69,99 @@ public class DialoguePipelineService implements DialoguePipelineUseCase {
 		this.pipelineMonitor = pipelineMonitor;
 		this.conversationCounterPort = conversationCounterPort;
 		this.memoryExtractionService = memoryExtractionService;
-		this.conversationThreshold = conversationThreshold;
+		this.systemPromptService = systemPromptService;
+		this.pipelineTracer = pipelineTracer;
+		this.llmModel = properties.getOpenai().getModel();
+		this.conversationThreshold = properties.getMemory().getConversationThreshold();
 	}
 
 	/**
-	 * 대화 파이프라인을 실행하고 텍스트 스트림을 반환합니다.
-	 *
-	 * @param text
-	 *            대화 텍스트
-	 * @return 텍스트 스트림
+	 * 텍스트 입력을 받아 오디오 바이트 스트림을 반환합니다. 응답 생성이 완료된 뒤에만 쿼리를 저장해 중간 실패 시 저장을 피합니다.
 	 */
 	@Override
-	public Flux<String> executeStreaming(String text) {
-		return executeAudioStreaming(text).map(bytes -> Base64.getEncoder().encodeToString(bytes));
+	public Flux<byte[]> executeAudioStreaming(String text) {
+		DialoguePipelineTracker tracker = pipelineMonitor.create(text);
+
+		// TTS 준비
+		Mono<Void> ttsWarmup = pipelineTracer.traceTtsPreparation(tracker,
+			() -> ttsPort.prepare().doOnError(error -> log
+				.warn("파이프라인 {}의 TTS 준비 실패: {}", tracker.pipelineId(), error.getMessage()))
+				.onErrorResume(error -> Mono.empty()))
+			.cache();
+
+		ttsWarmup.subscribe();
+
+		Mono<PipelineInputs> inputsMono = prepareInputs(text, tracker).cache();
+
+		// LLM 토큰 생성
+		Flux<String> llmTokens = streamLlmTokens(tracker, inputsMono).subscribeOn(
+			Schedulers.boundedElastic()).doOnNext(
+				token -> pipelineTracer.increment(tracker,
+					DialoguePipelineStage.LLM_COMPLETION,
+					"tokenCount",
+					1));
+
+		// 문장 어셈블
+		Flux<String> sentences = pipelineTracer.traceSentenceAssembly(tracker,
+			() -> sentenceAssembler.assemble(llmTokens),
+			sentence -> {
+				tracker.recordLlmOutput(sentence);
+				log.debug("Sentence: [{}]", sentence);
+			}).share();
+
+		// 오디오 스트림 생성
+		Flux<byte[]> audioFlux = sentences.publish(sharedSentences -> {
+			Flux<String> cachedSentences = sharedSentences.replay().autoConnect(2);
+
+			cachedSentences.collectList().flatMap(sentenceList -> {
+				String fullResponse = String.join(" ", sentenceList);
+				return inputsMono.flatMap(inputs -> pipelineTracer.tracePersistence(tracker,
+					() -> conversationRepository
+						.save(inputs.currentTurn().withResponse(fullResponse))));
+			}).subscribe();
+
+			Mono<String> firstSentenceMono = cachedSentences.take(1).singleOrEmpty().cache();
+			Flux<String> remainingSentences = cachedSentences.skip(1);
+
+			Flux<byte[]> firstSentenceAudio = firstSentenceMono
+				.flatMapMany(sentence -> ttsWarmup.thenMany(ttsPort.streamSynthesize(sentence)))
+				.publishOn(Schedulers.boundedElastic());
+
+			Flux<byte[]> remainingAudio = remainingSentences.publishOn(Schedulers.boundedElastic())
+				.concatMap(sentence -> ttsWarmup.thenMany(ttsPort.streamSynthesize(sentence)));
+
+			return Flux.mergeSequential(firstSentenceAudio, remainingAudio);
+		});
+
+		// 오디오 스트림 추적
+		Flux<byte[]> audioStream = pipelineTracer
+			.traceTtsSynthesis(tracker, () -> audioFlux, () -> {
+				tracker
+					.incrementStageCounter(DialoguePipelineStage.TTS_SYNTHESIS, "audioChunks", 1);
+				tracker.markResponseEmission();
+			}).doOnComplete(() -> {
+				inputsMono.flatMap(inputs -> conversationCounterPort.increment())
+					.filter(count -> count % conversationThreshold == 0)
+					.flatMap(count -> memoryExtractionService.checkAndExtract())
+					.subscribeOn(Schedulers.boundedElastic()).onErrorResume(error -> {
+						log.warn("파이프라인 {}의 메모리 추출 실패: {}",
+							tracker.pipelineId(),
+							error.getMessage());
+						return Mono.empty();
+					}).subscribe();
+			});
+
+		return tracker.attachLifecycle(audioStream);
 	}
 
 	@Override
 	public Flux<String> executeTextOnly(String text) {
 		DialoguePipelineTracker tracker = pipelineMonitor.create(text);
 
-		Mono<ConversationTurn> queryTurn = tracker
-			.traceMono(DialoguePipelineStage.QUERY_PERSISTENCE, () -> saveQuery(text));
+		Mono<PipelineInputs> inputsMono = prepareInputs(text, tracker).cache();
 
-		Mono<MemoryRetrievalResult> memoryResult = queryTurn
-			.flatMap(turn -> tracker.traceMono(DialoguePipelineStage.MEMORY_RETRIEVAL,
-				() -> retrievalPort.retrieveMemories(text, 5)))
-			.doOnNext(result -> {
-				tracker.recordStageAttribute(DialoguePipelineStage.MEMORY_RETRIEVAL,
-					"memoryCount",
-					result.totalCount());
-				List<String> memoryContents = new ArrayList<>();
-				result.experientialMemories()
-					.forEach(m -> memoryContents.add("[경험] " + m.content()));
-				result.factualMemories().forEach(m -> memoryContents.add("[사실] " + m.content()));
-				if (!memoryContents.isEmpty()) {
-					tracker.recordStageAttribute(DialoguePipelineStage.MEMORY_RETRIEVAL,
-						"memories",
-						memoryContents);
-				}
-			});
-
-		Mono<RetrievalContext> retrievalContext = queryTurn
-			.flatMap(turn -> tracker.traceMono(DialoguePipelineStage.RETRIEVAL,
-				() -> retrievalPort.retrieve(text, 3)))
-			.doOnNext(context -> {
-				tracker.recordStageAttribute(DialoguePipelineStage.RETRIEVAL,
-					"documentCount",
-					context.documentCount());
-				if (!context.isEmpty()) {
-					List<String> docContents = context.documents().stream()
-						.map(doc -> doc.content())
-						.collect(Collectors.toList());
-					tracker.recordStageAttribute(DialoguePipelineStage.RETRIEVAL,
-						"documents",
-						docContents);
-				}
-			});
-
-		Flux<String> llmTokens = Mono
-			.zip(retrievalContext, memoryResult, loadConversationHistory(), queryTurn)
-			.flatMapMany(tuple -> {
-				RetrievalContext context = tuple.getT1();
-				MemoryRetrievalResult memories = tuple.getT2();
-				ConversationContext conversationContext = tuple.getT3();
-				ConversationTurn currentTurn = tuple.getT4();
-
-				return tracker.traceMono(DialoguePipelineStage.PROMPT_BUILDING,
-					() -> Mono.fromCallable(() -> buildMessages(context,
-						memories,
-						conversationContext,
-						currentTurn.query())))
-					.doOnNext(messages -> {
-						String systemPrompt = messages.stream()
-							.filter(m -> "system".equals(m.role()))
-							.findFirst().map(m -> m.content()).orElse("");
-						tracker.recordStageAttribute(DialoguePipelineStage.PROMPT_BUILDING,
-							"systemPrompt",
-							systemPrompt);
-						tracker.recordStageAttribute(DialoguePipelineStage.PROMPT_BUILDING,
-							"messageCount",
-							messages.size());
-					}).flatMapMany(messages -> {
-						CompletionRequest request = new CompletionRequest(
-							messages,
-							"gpt-4o-mini",
-							true,
-							java.util.Map.of("correlationId", tracker.pipelineId()));
-						tracker.recordStageAttribute(DialoguePipelineStage.LLM_COMPLETION,
-							"model",
-							request.model());
-						return tracker.traceFlux(DialoguePipelineStage.LLM_COMPLETION,
-							() -> llmPort.streamCompletion(request));
-					});
-			}).subscribeOn(Schedulers.boundedElastic()).doOnNext(token -> {
+		Flux<String> llmTokens = streamLlmTokens(tracker, inputsMono).subscribeOn(
+			Schedulers.boundedElastic()).doOnNext(token -> {
 				tracker
 					.incrementStageCounter(DialoguePipelineStage.LLM_COMPLETION, "tokenCount", 1);
 				log.debug("LLM Token: [{}]", token);
@@ -179,189 +186,76 @@ public class DialoguePipelineService implements DialoguePipelineUseCase {
 				});
 			}
 
-			return queryTurn
-				.flatMap(turn -> conversationRepository.save(turn.withResponse(fullResponse)));
+			return inputsMono.flatMap(inputs -> pipelineTracer.tracePersistence(tracker,
+				() -> conversationRepository
+					.save(inputs.currentTurn().withResponse(fullResponse))));
 		}).flatMap(turn -> conversationCounterPort.increment())
 			.filter(count -> count % conversationThreshold == 0)
 			.flatMap(count -> memoryExtractionService.checkAndExtract())
 			.subscribeOn(Schedulers.boundedElastic()).onErrorResume(error -> {
-				log.warn("파이프라인 {}의 메모리 추출 실패: {}", tracker.pipelineId(), error.getMessage());
 				return Mono.empty();
 			}).subscribe();
 
 		return tracker.attachLifecycle(textStream);
 	}
 
-	/**
-	 * 대화 파이프라인을 실행하고 오디오 스트림을 반환합니다.
-	 *
-	 * @param text
-	 *            대화 텍스트
-	 * @return 오디오 스트림
-	 */
 	@Override
-	public Flux<byte[]> executeAudioStreaming(String text) {
-		DialoguePipelineTracker tracker = pipelineMonitor.create(text);
-
-		// TTS 준비
-		Mono<Void> ttsWarmup = tracker.traceMono(DialoguePipelineStage.TTS_PREPARATION,
-			() -> ttsPort.prepare()
-				.doOnError(error -> log
-					.warn("파이프라인 {}의 TTS 준비 실패: {}", tracker.pipelineId(), error.getMessage()))
-				.onErrorResume(error -> Mono.empty()))
-			.cache();
-
-		ttsWarmup.subscribe();
-
-		/// 쿼리 저장
-		Mono<ConversationTurn> queryTurn = tracker
-			.traceMono(DialoguePipelineStage.QUERY_PERSISTENCE, () -> saveQuery(text));
-
-		/// 메모리 검색
-		Mono<MemoryRetrievalResult> memoryResult = queryTurn
-			.flatMap(turn -> tracker.traceMono(DialoguePipelineStage.MEMORY_RETRIEVAL,
-				() -> retrievalPort.retrieveMemories(text, 5)))
-			.doOnNext(result -> {
-				tracker.recordStageAttribute(DialoguePipelineStage.MEMORY_RETRIEVAL,
-					"memoryCount",
-					result.totalCount());
-				List<String> memoryContents = new ArrayList<>();
-				result.experientialMemories()
-					.forEach(m -> memoryContents.add("[경험] " + m.content()));
-				result.factualMemories().forEach(m -> memoryContents.add("[사실] " + m.content()));
-				if (!memoryContents.isEmpty()) {
-					tracker.recordStageAttribute(DialoguePipelineStage.MEMORY_RETRIEVAL,
-						"memories",
-						memoryContents);
-				}
-			});
-
-		/// 검색 컨텍스트 로드
-		Mono<RetrievalContext> retrievalContext = queryTurn
-			.flatMap(turn -> tracker.traceMono(DialoguePipelineStage.RETRIEVAL,
-				() -> retrievalPort.retrieve(text, 3)))
-			.doOnNext(context -> {
-				tracker.recordStageAttribute(DialoguePipelineStage.RETRIEVAL,
-					"documentCount",
-					context.documentCount());
-				if (!context.isEmpty()) {
-					List<String> docContents = context.documents().stream()
-						.map(doc -> doc.content())
-						.collect(Collectors.toList());
-					tracker.recordStageAttribute(DialoguePipelineStage.RETRIEVAL,
-						"documents",
-						docContents);
-				}
-			});
-
-		/// LLM 토큰 생성
-		Flux<String> llmTokens = Mono
-			.zip(retrievalContext, memoryResult, loadConversationHistory(), queryTurn)
-			.flatMapMany(tuple -> {
-				RetrievalContext context = tuple.getT1();
-				MemoryRetrievalResult memories = tuple.getT2();
-				ConversationContext conversationContext = tuple.getT3();
-				ConversationTurn currentTurn = tuple.getT4();
-
-				return tracker.traceMono(DialoguePipelineStage.PROMPT_BUILDING,
-					() -> Mono.fromCallable(() -> buildMessages(context,
-						memories,
-						conversationContext,
-						currentTurn.query())))
-					.doOnNext(messages -> {
-						String systemPrompt = messages.stream()
-							.filter(m -> "system".equals(m.role()))
-							.findFirst().map(m -> m.content()).orElse("");
-						tracker.recordStageAttribute(DialoguePipelineStage.PROMPT_BUILDING,
-							"systemPrompt",
-							systemPrompt);
-						tracker.recordStageAttribute(DialoguePipelineStage.PROMPT_BUILDING,
-							"messageCount",
-							messages.size());
-					}).flatMapMany(messages -> {
-						CompletionRequest request = CompletionRequest
-							.withMessages(messages, "gpt-4o-mini", true);
-						tracker.recordStageAttribute(DialoguePipelineStage.LLM_COMPLETION,
-							"model",
-							request.model());
-						return tracker.traceFlux(DialoguePipelineStage.LLM_COMPLETION,
-							() -> llmPort.streamCompletion(request));
-					});
-			}).subscribeOn(Schedulers.boundedElastic()).doOnNext(token -> tracker
-				.incrementStageCounter(DialoguePipelineStage.LLM_COMPLETION, "tokenCount", 1));
-
-		/// 문장 어셈블
-		Flux<String> sentences = tracker.traceFlux(DialoguePipelineStage.SENTENCE_ASSEMBLY,
-			() -> sentenceAssembler.assemble(llmTokens)).doOnNext(sentence -> {
-				tracker.incrementStageCounter(DialoguePipelineStage.SENTENCE_ASSEMBLY,
-					"sentenceCount",
-					1);
-				tracker.recordLlmOutput(sentence);
-				log.debug("Sentence: [{}]", sentence);
-			}).share();
-
-		/// 오디오 스트림 생성
-		Flux<byte[]> audioFlux = sentences.publish(sharedSentences -> {
-			Flux<String> cachedSentences = sharedSentences.replay().autoConnect(2);
-
-			cachedSentences.collectList().flatMap(sentenceList -> {
-				String fullResponse = String.join(" ", sentenceList);
-				return queryTurn
-					.flatMap(turn -> conversationRepository.save(turn.withResponse(fullResponse)));
-			}).subscribe();
-
-			Mono<String> firstSentenceMono = cachedSentences.take(1).singleOrEmpty().cache();
-			Flux<String> remainingSentences = cachedSentences.skip(1);
-
-			Flux<byte[]> firstSentenceAudio = firstSentenceMono
-				.flatMapMany(sentence -> ttsWarmup.thenMany(ttsPort.streamSynthesize(sentence)))
-				.publishOn(Schedulers.boundedElastic());
-
-			Flux<byte[]> remainingAudio = remainingSentences.publishOn(Schedulers.boundedElastic())
-				.concatMap(sentence -> ttsWarmup.thenMany(ttsPort.streamSynthesize(sentence)));
-
-			return Flux.mergeSequential(firstSentenceAudio, remainingAudio);
-		});
-
-		/// 오디오 스트림 추적
-		Flux<byte[]> audioStream = tracker
-			.traceFlux(DialoguePipelineStage.TTS_SYNTHESIS, () -> audioFlux).doOnNext(chunk -> {
-				tracker
-					.incrementStageCounter(DialoguePipelineStage.TTS_SYNTHESIS, "audioChunks", 1);
-				tracker.markResponseEmission();
-			}).doOnComplete(() -> {
-				queryTurn.flatMap(turn -> conversationCounterPort.increment())
-					.filter(count -> count % conversationThreshold == 0)
-					.flatMap(count -> memoryExtractionService.checkAndExtract())
-					.subscribeOn(Schedulers.boundedElastic()).onErrorResume(error -> {
-						log.warn("파이프라인 {}의 메모리 추출 실패: {}",
-							tracker.pipelineId(),
-							error.getMessage());
-						return Mono.empty();
-					}).subscribe();
-			});
-
-		return tracker.attachLifecycle(audioStream);
+	public Flux<String> executeStreaming(String text) {
+		return executeAudioStreaming(text).map(bytes -> Base64.getEncoder().encodeToString(bytes));
 	}
 
-	/**
-	 * 쿼리를 저장하고 ConversationTurn을 반환합니다.
-	 *
-	 * @param text
-	 *            쿼리
-	 * @return ConversationTurn
-	 */
-	private Mono<ConversationTurn> saveQuery(String text) {
-		ConversationTurn turn = ConversationTurn.create(text);
-		return conversationRepository.save(turn);
-	}
+	// ===================================================================
 
 	/**
 	 * 대화 기록을 로드하고 ConversationContext를 반환합니다.
+	 *
+	 * @return ConversationContext
 	 */
 	private Mono<ConversationContext> loadConversationHistory() {
 		return conversationRepository.findRecent(10).collectList().map(ConversationContext::of)
 			.defaultIfEmpty(ConversationContext.empty());
+	}
+
+	/**
+	 * 파이프라인 공통 입력(현재 턴, 메모리 검색, 문서 검색, 대화 히스토리)을 준비해 캐싱합니다.
+	 */
+	private Mono<PipelineInputs> prepareInputs(String text, DialoguePipelineTracker tracker) {
+		Mono<ConversationTurn> currentTurn = Mono.fromCallable(() -> ConversationTurn.create(text))
+			.cache();
+
+		Mono<MemoryRetrievalResult> memories = pipelineTracer.traceMemories(tracker,
+			() -> retrievalPort.retrieveMemories(text, 5));
+
+		Mono<RetrievalContext> retrievalContext = pipelineTracer.traceRetrieval(tracker,
+			() -> retrievalPort.retrieve(text, 3));
+
+		Mono<ConversationContext> history = loadConversationHistory().cache();
+
+		return Mono.zip(retrievalContext, memories, history, currentTurn)
+			.map(tuple -> new PipelineInputs(tuple.getT1(), tuple.getT2(), tuple.getT3(),
+				tuple.getT4()));
+	}
+
+	/**
+	 * 준비된 입력을 사용해 메시지를 만들고 LLM 토큰을 스트리밍합니다.
+	 */
+	private Flux<String> streamLlmTokens(DialoguePipelineTracker tracker,
+		Mono<PipelineInputs> inputsMono) {
+		return inputsMono.flatMapMany(inputs -> pipelineTracer.tracePrompt(tracker,
+			() -> buildMessages(inputs.retrievalContext(),
+				inputs.memories(),
+				inputs.conversationContext(),
+				inputs.currentTurn().query()))
+			.flatMapMany(messages -> {
+				CompletionRequest request = new CompletionRequest(
+					messages,
+					llmModel,
+					true,
+					java.util.Map.of("correlationId", tracker.pipelineId()));
+				return pipelineTracer.traceLlm(tracker,
+					request.model(),
+					() -> llmPort.streamCompletion(request));
+			}));
 	}
 
 	/**
@@ -373,8 +267,11 @@ public class DialoguePipelineService implements DialoguePipelineUseCase {
 		String currentQuery) {
 		List<Message> messages = new ArrayList<>();
 
-		String systemPrompt = buildSystemPrompt(context, memories);
-		messages.add(Message.system(systemPrompt));
+		String fullSystemPrompt = systemPromptService.buildSystemPrompt(context, memories);
+		if (fullSystemPrompt == null || fullSystemPrompt.isBlank()) {
+			fullSystemPrompt = "You are a helpful assistant.";
+		}
+		messages.add(Message.system(fullSystemPrompt));
 
 		conversationContext.turns().stream().filter(turn -> turn.response() != null)
 			.forEach(turn -> {
@@ -388,37 +285,12 @@ public class DialoguePipelineService implements DialoguePipelineUseCase {
 	}
 
 	/**
-	 * 시스템 프롬프트를 생성하고 String을 반환합니다.
+	 * 파이프라인 단계 간 공유되는 입력 모음입니다.
 	 */
-	private String buildSystemPrompt(RetrievalContext context, MemoryRetrievalResult memories) {
-		StringBuilder prompt = new StringBuilder();
-
-		prompt.append("자연스럽게 대화하세요. 과도한 존댓말이나 '도와드리겠습니다' 같은 틀에 박힌 표현은 피하세요.\n\n");
-
-		if (!memories.isEmpty()) {
-			prompt.append("대화 상대에 대한 기억:\n");
-
-			if (!memories.experientialMemories().isEmpty()) {
-				prompt.append("\n경험적 기억:\n");
-				memories.experientialMemories()
-					.forEach(m -> prompt.append("- ").append(m.content()).append("\n"));
-			}
-
-			if (!memories.factualMemories().isEmpty()) {
-				prompt.append("\n사실 기반 기억:\n");
-				memories.factualMemories()
-					.forEach(m -> prompt.append("- ").append(m.content()).append("\n"));
-			}
-
-			prompt.append("\n");
-		}
-
-		if (!context.isEmpty()) {
-			String contextText = context.documents().stream().map(doc -> doc.content())
-				.collect(Collectors.joining("\n"));
-			prompt.append("참고 정보:\n").append(contextText).append("\n\n");
-		}
-
-		return prompt.toString();
+	private record PipelineInputs(
+		RetrievalContext retrievalContext,
+		MemoryRetrievalResult memories,
+		ConversationContext conversationContext,
+		ConversationTurn currentTurn) {
 	}
 }

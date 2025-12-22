@@ -15,6 +15,7 @@ import com.study.webflux.rag.domain.port.out.LlmPort;
 import com.study.webflux.rag.domain.port.out.RetrievalPort;
 import com.study.webflux.rag.domain.port.out.TtsPort;
 import com.study.webflux.rag.domain.service.SentenceAssembler;
+import com.study.webflux.rag.infrastructure.config.properties.RagDialogueProperties;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.extension.ExtendWith;
@@ -54,6 +55,12 @@ class DialoguePipelineServiceTest {
 	@Mock
 	private MemoryExtractionService memoryExtractionService;
 
+	@Mock
+	private SystemPromptService systemPromptService;
+
+	@Mock
+	private RagDialogueProperties properties;
+
 	private SentenceAssembler sentenceAssembler;
 
 	private DialoguePipelineService service;
@@ -64,13 +71,21 @@ class DialoguePipelineServiceTest {
 		sentenceAssembler = new SentenceAssembler();
 		pipelineMonitor = new DialoguePipelineMonitor(summary -> {
 		});
+		var openAi = new RagDialogueProperties.OpenAi();
+		openAi.setModel("test-model");
+		when(properties.getOpenai()).thenReturn(openAi);
+		var memory = new RagDialogueProperties.Memory();
+		memory.setConversationThreshold(5);
+		when(properties.getMemory()).thenReturn(memory);
 		when(ttsPort.prepare()).thenReturn(Mono.empty());
 		when(conversationRepository.findRecent(anyInt())).thenReturn(Flux.empty());
 		when(retrievalPort.retrieveMemories(anyString(), anyInt()))
 			.thenReturn(Mono.just(MemoryRetrievalResult.empty()));
+		when(systemPromptService.buildSystemPrompt(any(), any())).thenReturn("");
+		PipelineTracer pipelineTracer = new PipelineTracer();
 		service = new DialoguePipelineService(llmPort, ttsPort, retrievalPort,
 			conversationRepository, sentenceAssembler, pipelineMonitor, conversationCounterPort,
-			memoryExtractionService, 5);
+			memoryExtractionService, systemPromptService, pipelineTracer, properties);
 	}
 
 	@Test
