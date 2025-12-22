@@ -186,8 +186,7 @@ public class DialoguePipelineService implements DialoguePipelineUseCase {
 				});
 			}
 
-			return inputsMono.flatMap(inputs -> tracker.traceMono(
-				DialoguePipelineStage.QUERY_PERSISTENCE,
+			return inputsMono.flatMap(inputs -> pipelineTracer.tracePersistence(tracker,
 				() -> conversationRepository
 					.save(inputs.currentTurn().withResponse(fullResponse))));
 		}).flatMap(turn -> conversationCounterPort.increment())
