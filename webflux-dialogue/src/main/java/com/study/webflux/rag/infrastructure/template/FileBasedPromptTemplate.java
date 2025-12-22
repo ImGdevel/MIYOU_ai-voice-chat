@@ -2,6 +2,7 @@ package com.study.webflux.rag.infrastructure.template;
 
 import java.io.IOException;
 import java.nio.charset.StandardCharsets;
+import java.util.List;
 import java.util.Map;
 
 import org.springframework.core.io.ClassPathResource;
@@ -11,14 +12,15 @@ import org.springframework.util.StreamUtils;
 @Component
 public class FileBasedPromptTemplate {
 
+	private static final List<String> TEMPLATE_EXTENSIONS = List.of(".md", ".txt");
+
 	public String load(String templateName) {
 		return load(templateName, Map.of());
 	}
 
 	public String load(String templateName, Map<String, String> variables) {
 		try {
-			String path = "templates/" + templateName + ".txt";
-			ClassPathResource resource = new ClassPathResource(path);
+			ClassPathResource resource = resolveResource(templateName);
 			String template = StreamUtils.copyToString(resource.getInputStream(),
 				StandardCharsets.UTF_8);
 
@@ -30,5 +32,15 @@ public class FileBasedPromptTemplate {
 		} catch (IOException e) {
 			throw new RuntimeException("Failed to load template: " + templateName, e);
 		}
+	}
+
+	private ClassPathResource resolveResource(String templateName) throws IOException {
+		for (String ext : TEMPLATE_EXTENSIONS) {
+			ClassPathResource resource = new ClassPathResource("templates/" + templateName + ext);
+			if (resource.exists()) {
+				return resource;
+			}
+		}
+		throw new IOException("Template not found for name: " + templateName);
 	}
 }

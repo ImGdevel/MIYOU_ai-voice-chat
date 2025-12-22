@@ -16,6 +16,10 @@ public class RagDialogueProperties {
 	private Supertone supertone = new Supertone();
 	private Qdrant qdrant = new Qdrant();
 	private Memory memory = new Memory();
+	private String systemPrompt = "";
+	private String systemPromptTemplate = "system/persona/maid";
+	private String commonSystemPromptTemplate = "system/common";
+	private String systemBasePromptTemplate = "system/base";
 
 	public OpenAi getOpenai() {
 		return openai;
@@ -47,6 +51,38 @@ public class RagDialogueProperties {
 
 	public void setMemory(Memory memory) {
 		this.memory = memory;
+	}
+
+	public String getSystemPrompt() {
+		return systemPrompt;
+	}
+
+	public void setSystemPrompt(String systemPrompt) {
+		this.systemPrompt = systemPrompt;
+	}
+
+	public String getSystemPromptTemplate() {
+		return systemPromptTemplate;
+	}
+
+	public void setSystemPromptTemplate(String systemPromptTemplate) {
+		this.systemPromptTemplate = systemPromptTemplate;
+	}
+
+	public String getCommonSystemPromptTemplate() {
+		return commonSystemPromptTemplate;
+	}
+
+	public void setCommonSystemPromptTemplate(String commonSystemPromptTemplate) {
+		this.commonSystemPromptTemplate = commonSystemPromptTemplate;
+	}
+
+	public String getSystemBasePromptTemplate() {
+		return systemBasePromptTemplate;
+	}
+
+	public void setSystemBasePromptTemplate(String systemBasePromptTemplate) {
+		this.systemBasePromptTemplate = systemBasePromptTemplate;
 	}
 
 	public static class OpenAi {

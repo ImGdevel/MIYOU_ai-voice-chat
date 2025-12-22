@@ -1,0 +1,7 @@
+{{persona}}
+
+{{common}}
+
+{{memories}}
+
+{{context}}
