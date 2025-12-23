@@ -1,0 +1,28 @@
+package com.study.webflux.rag.domain.dialogue.model;
+
+public record Message(
+	com.study.webflux.rag.domain.dialogue.model.MessageRole role,
+	String content
+) {
+	public Message {
+		if (role == null) {
+			throw new IllegalArgumentException("role cannot be null");
+		}
+		if (content == null || content.isBlank()) {
+			throw new IllegalArgumentException("content cannot be null or blank");
+		}
+	}
+
+	public static Message user(String content) {
+		return new Message(com.study.webflux.rag.domain.dialogue.model.MessageRole.USER, content);
+	}
+
+	public static Message system(String content) {
+		return new Message(com.study.webflux.rag.domain.dialogue.model.MessageRole.SYSTEM, content);
+	}
+
+	public static Message assistant(String content) {
+		return new Message(com.study.webflux.rag.domain.dialogue.model.MessageRole.ASSISTANT,
+			content);
+	}
+}
