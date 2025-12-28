@@ -11,6 +11,7 @@ import org.springframework.stereotype.Component;
 import org.springframework.web.reactive.function.client.WebClient;
 
 import com.study.webflux.rag.domain.dialogue.port.TtsPort;
+import com.study.webflux.rag.domain.voice.model.AudioFormat;
 import com.study.webflux.rag.domain.voice.model.Voice;
 import reactor.core.publisher.Flux;
 import reactor.core.publisher.Mono;
@@ -34,7 +35,8 @@ public class SupertoneTtsAdapter implements TtsPort {
 	}
 
 	@Override
-	public Flux<byte[]> streamSynthesize(String text) {
+	public Flux<byte[]> streamSynthesize(String text, AudioFormat format) {
+		AudioFormat outputFormat = format != null ? format : voice.getOutputFormat();
 		var settings = voice.getSettings();
 		var voiceSettings = Map.of("pitch_shift",
 			settings.pitchShift(),
@@ -47,13 +49,13 @@ public class SupertoneTtsAdapter implements TtsPort {
 		payload.put("text", text);
 		payload.put("language", voice.getLanguage());
 		payload.put("style", voice.getStyle().getValue());
-		payload.put("output_format", voice.getOutputFormat().name().toLowerCase());
+		payload.put("output_format", outputFormat.name().toLowerCase());
 		payload.put("voice_settings", voiceSettings);
 		payload.put("include_phonemes", false);
 
 		return webClient.post().uri("/v1/text-to-speech/{voice_id}/stream", voice.getId())
 			.contentType(MediaType.APPLICATION_JSON).bodyValue(payload)
-			.accept(MediaType.parseMediaType(voice.getOutputFormat().getMediaType())).retrieve()
+			.accept(MediaType.parseMediaType(outputFormat.getMediaType())).retrieve()
 			.bodyToFlux(DataBuffer.class).map(dataBuffer -> {
 				byte[] bytes = new byte[dataBuffer.readableByteCount()];
 				dataBuffer.read(bytes);
@@ -63,8 +65,8 @@ public class SupertoneTtsAdapter implements TtsPort {
 	}
 
 	@Override
-	public Mono<byte[]> synthesize(String text) {
-		return streamSynthesize(text).collectList().map(byteArrays -> {
+	public Mono<byte[]> synthesize(String text, AudioFormat format) {
+		return streamSynthesize(text, format).collectList().map(byteArrays -> {
 			int totalSize = byteArrays.stream().mapToInt(arr -> arr.length).sum();
 			byte[] result = new byte[totalSize];
 			int offset = 0;
