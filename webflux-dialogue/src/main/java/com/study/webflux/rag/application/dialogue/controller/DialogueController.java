@@ -15,6 +15,7 @@ import org.springframework.web.bind.annotation.RestController;
 import com.study.webflux.rag.application.dialogue.controller.docs.DialogueApi;
 import com.study.webflux.rag.application.dialogue.dto.RagDialogueRequest;
 import com.study.webflux.rag.domain.dialogue.port.DialoguePipelineUseCase;
+import com.study.webflux.rag.domain.voice.model.AudioFormat;
 import jakarta.validation.Valid;
 import reactor.core.publisher.Flux;
 
@@ -30,27 +31,28 @@ public class DialogueController implements DialogueApi {
 	@PostMapping(path = "/sse", produces = MediaType.TEXT_EVENT_STREAM_VALUE)
 	public Flux<String> ragDialogueStream(
 		@Valid @RequestBody RagDialogueRequest request) {
-		return dialoguePipelineUseCase.executeStreaming(request.text());
+		return dialoguePipelineUseCase.executeStreaming(request.text(), AudioFormat.WAV);
 	}
 
 	@PostMapping(path = "/audio/wav", produces = "audio/wav")
 	public Flux<DataBuffer> ragDialogueAudioWav(
 		@Valid @RequestBody RagDialogueRequest request) {
-		return dialoguePipelineUseCase.executeAudioStreaming(request.text())
+		return dialoguePipelineUseCase.executeAudioStreaming(request.text(), AudioFormat.WAV)
 			.map(bufferFactory::wrap);
 	}
 
 	@PostMapping(path = "/audio/mp3", produces = "audio/mpeg")
 	public Flux<DataBuffer> ragDialogueAudioMp3(
 		@Valid @RequestBody RagDialogueRequest request) {
-		return dialoguePipelineUseCase.executeAudioStreaming(request.text())
+		return dialoguePipelineUseCase.executeAudioStreaming(request.text(), AudioFormat.MP3)
 			.map(bufferFactory::wrap);
 	}
 
 	@PostMapping(path = "/audio", produces = "audio/wav")
 	public Flux<DataBuffer> ragDialogueAudio(
 		@Valid @RequestBody RagDialogueRequest request) {
-		return ragDialogueAudioWav(request);
+		return dialoguePipelineUseCase.executeAudioStreaming(request.text(), AudioFormat.WAV)
+			.map(bufferFactory::wrap);
 	}
 
 	@PostMapping(path = "/text", produces = MediaType.TEXT_EVENT_STREAM_VALUE)

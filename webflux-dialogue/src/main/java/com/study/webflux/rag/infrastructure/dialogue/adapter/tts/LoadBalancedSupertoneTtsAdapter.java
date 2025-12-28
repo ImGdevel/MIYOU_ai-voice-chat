@@ -14,6 +14,7 @@ import org.springframework.stereotype.Component;
 import org.springframework.web.reactive.function.client.WebClient;
 
 import com.study.webflux.rag.domain.dialogue.port.TtsPort;
+import com.study.webflux.rag.domain.voice.model.AudioFormat;
 import com.study.webflux.rag.domain.voice.model.Voice;
 import com.study.webflux.rag.infrastructure.dialogue.adapter.tts.loadbalancer.TtsEndpoint;
 import com.study.webflux.rag.infrastructure.dialogue.adapter.tts.loadbalancer.TtsErrorClassifier;
@@ -35,11 +36,13 @@ public class LoadBalancedSupertoneTtsAdapter implements TtsPort {
 	private final Map<String, WebClient> webClientCache = new ConcurrentHashMap<>();
 
 	@Override
-	public Flux<byte[]> streamSynthesize(String text) {
-		return streamSynthesizeWithRetry(text, 0);
+	public Flux<byte[]> streamSynthesize(String text, AudioFormat format) {
+		return streamSynthesizeWithRetry(text, format, 0);
 	}
 
-	private Flux<byte[]> streamSynthesizeWithRetry(String text, int attemptCount) {
+	private Flux<byte[]> streamSynthesizeWithRetry(String text,
+		AudioFormat format,
+		int attemptCount) {
 		if (attemptCount >= 2) {
 			return Flux.error(new RuntimeException("모든 TTS 엔드포인트 요청 실패: 최대 재시도 횟수 초과"));
 		}
@@ -52,7 +55,7 @@ public class LoadBalancedSupertoneTtsAdapter implements TtsPort {
 			endpoint.getActiveRequests(),
 			attemptCount + 1);
 
-		return synthesizeWithEndpoint(endpoint, text).doOnComplete(() -> {
+		return synthesizeWithEndpoint(endpoint, text, format).doOnComplete(() -> {
 			endpoint.decrementActiveRequests();
 			loadBalancer.reportSuccess(endpoint);
 		}).onErrorResume(error -> {
@@ -67,11 +70,14 @@ public class LoadBalancedSupertoneTtsAdapter implements TtsPort {
 			}
 
 			log.warn("엔드포인트 {} 장애로 다른 엔드포인트로 재시도 ({}회차)", endpoint.getId(), attemptCount + 2);
-			return streamSynthesizeWithRetry(text, attemptCount + 1);
+			return streamSynthesizeWithRetry(text, format, attemptCount + 1);
 		});
 	}
 
-	private Flux<byte[]> synthesizeWithEndpoint(TtsEndpoint endpoint, String text) {
+	private Flux<byte[]> synthesizeWithEndpoint(TtsEndpoint endpoint,
+		String text,
+		AudioFormat format) {
+		AudioFormat outputFormat = format != null ? format : voice.getOutputFormat();
 		var settings = voice.getSettings();
 		var voiceSettings = Map.of("pitch_shift",
 			settings.pitchShift(),
@@ -84,7 +90,7 @@ public class LoadBalancedSupertoneTtsAdapter implements TtsPort {
 		payload.put("text", text);
 		payload.put("language", voice.getLanguage());
 		payload.put("style", voice.getStyle().getValue());
-		payload.put("output_format", voice.getOutputFormat().name().toLowerCase());
+		payload.put("output_format", outputFormat.name().toLowerCase());
 		payload.put("voice_settings", voiceSettings);
 		payload.put("include_phonemes", false);
 
@@ -92,7 +98,7 @@ public class LoadBalancedSupertoneTtsAdapter implements TtsPort {
 
 		return webClient.post().uri("/v1/text-to-speech/{voice_id}/stream", voice.getId())
 			.contentType(MediaType.APPLICATION_JSON).bodyValue(payload)
-			.accept(MediaType.parseMediaType(voice.getOutputFormat().getMediaType())).retrieve()
+			.accept(MediaType.parseMediaType(outputFormat.getMediaType())).retrieve()
 			.bodyToFlux(DataBuffer.class).timeout(Duration.ofSeconds(10)).map(dataBuffer -> {
 				byte[] bytes = new byte[dataBuffer.readableByteCount()];
 				dataBuffer.read(bytes);
@@ -108,8 +114,8 @@ public class LoadBalancedSupertoneTtsAdapter implements TtsPort {
 	}
 
 	@Override
-	public Mono<byte[]> synthesize(String text) {
-		return streamSynthesize(text).collectList().map(byteArrays -> {
+	public Mono<byte[]> synthesize(String text, AudioFormat format) {
+		return streamSynthesize(text, format).collectList().map(byteArrays -> {
 			int totalSize = byteArrays.stream().mapToInt(arr -> arr.length).sum();
 			byte[] result = new byte[totalSize];
 			int offset = 0;

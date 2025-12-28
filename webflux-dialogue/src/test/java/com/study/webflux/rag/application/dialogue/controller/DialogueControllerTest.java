@@ -11,6 +11,7 @@ import org.springframework.test.web.reactive.server.WebTestClient;
 
 import com.study.webflux.rag.application.dialogue.dto.RagDialogueRequest;
 import com.study.webflux.rag.domain.dialogue.port.DialoguePipelineUseCase;
+import com.study.webflux.rag.domain.voice.model.AudioFormat;
 import org.junit.jupiter.api.Test;
 import reactor.core.publisher.Flux;
 
@@ -34,13 +35,13 @@ class DialogueControllerTest {
 
 		String base64Audio = Base64.getEncoder().encodeToString("audio-data".getBytes());
 
-		when(dialoguePipelineUseCase.executeStreaming(eq(testText)))
+		when(dialoguePipelineUseCase.executeStreaming(eq(testText), eq(AudioFormat.WAV)))
 			.thenReturn(Flux.just(base64Audio));
 
 		webTestClient.post().uri("/rag/dialogue/sse").contentType(MediaType.APPLICATION_JSON)
 			.bodyValue(request).exchange().expectStatus().isOk();
 
-		verify(dialoguePipelineUseCase).executeStreaming(testText);
+		verify(dialoguePipelineUseCase).executeStreaming(testText, AudioFormat.WAV);
 	}
 
 	@Test
@@ -50,14 +51,14 @@ class DialogueControllerTest {
 
 		byte[] audioBytes = "wav-audio-data".getBytes();
 
-		when(dialoguePipelineUseCase.executeAudioStreaming(eq(testText)))
+		when(dialoguePipelineUseCase.executeAudioStreaming(eq(testText), eq(AudioFormat.WAV)))
 			.thenReturn(Flux.just(audioBytes));
 
 		webTestClient.post().uri("/rag/dialogue/audio/wav").contentType(MediaType.APPLICATION_JSON)
 			.bodyValue(request).exchange().expectStatus().isOk().expectHeader()
 			.contentType("audio/wav");
 
-		verify(dialoguePipelineUseCase).executeAudioStreaming(testText);
+		verify(dialoguePipelineUseCase).executeAudioStreaming(testText, AudioFormat.WAV);
 	}
 
 	@Test
@@ -67,14 +68,14 @@ class DialogueControllerTest {
 
 		byte[] audioBytes = "mp3-audio-data".getBytes();
 
-		when(dialoguePipelineUseCase.executeAudioStreaming(eq(testText)))
+		when(dialoguePipelineUseCase.executeAudioStreaming(eq(testText), eq(AudioFormat.MP3)))
 			.thenReturn(Flux.just(audioBytes));
 
 		webTestClient.post().uri("/rag/dialogue/audio/mp3").contentType(MediaType.APPLICATION_JSON)
 			.bodyValue(request).exchange().expectStatus().isOk().expectHeader()
 			.contentType("audio/mpeg");
 
-		verify(dialoguePipelineUseCase).executeAudioStreaming(testText);
+		verify(dialoguePipelineUseCase).executeAudioStreaming(testText, AudioFormat.MP3);
 	}
 
 	@Test
@@ -84,14 +85,14 @@ class DialogueControllerTest {
 
 		byte[] audioBytes = "default-audio".getBytes();
 
-		when(dialoguePipelineUseCase.executeAudioStreaming(eq(testText)))
+		when(dialoguePipelineUseCase.executeAudioStreaming(eq(testText), eq(AudioFormat.WAV)))
 			.thenReturn(Flux.just(audioBytes));
 
 		webTestClient.post().uri("/rag/dialogue/audio").contentType(MediaType.APPLICATION_JSON)
 			.bodyValue(request).exchange().expectStatus().isOk().expectHeader()
 			.contentType("audio/wav");
 
-		verify(dialoguePipelineUseCase).executeAudioStreaming(testText);
+		verify(dialoguePipelineUseCase).executeAudioStreaming(testText, AudioFormat.WAV);
 	}
 
 	@Test
