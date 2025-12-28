@@ -17,6 +17,7 @@ import com.study.webflux.rag.domain.memory.port.ConversationCounterPort;
 import com.study.webflux.rag.domain.retrieval.model.RetrievalContext;
 import com.study.webflux.rag.domain.retrieval.model.RetrievalDocument;
 import com.study.webflux.rag.domain.retrieval.port.RetrievalPort;
+import com.study.webflux.rag.domain.voice.model.AudioFormat;
 import com.study.webflux.rag.infrastructure.dialogue.config.properties.RagDialogueProperties;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
@@ -79,6 +80,9 @@ class DialoguePipelineServiceTest {
 		var memory = new RagDialogueProperties.Memory();
 		memory.setConversationThreshold(5);
 		when(properties.getMemory()).thenReturn(memory);
+		var supertone = new RagDialogueProperties.Supertone();
+		supertone.setOutputFormat("wav");
+		when(properties.getSupertone()).thenReturn(supertone);
 		when(ttsPort.prepare()).thenReturn(Mono.empty());
 		when(conversationRepository.findRecent(anyInt())).thenReturn(Flux.empty());
 		when(retrievalPort.retrieveMemories(anyString(), anyInt()))
@@ -103,7 +107,8 @@ class DialoguePipelineServiceTest {
 		when(retrievalPort.retrieve(eq(testText), eq(3))).thenReturn(Mono.just(emptyContext));
 		when(llmPort.streamCompletion(any(CompletionRequest.class)))
 			.thenReturn(Flux.just("Hello", " world", "."));
-		when(ttsPort.streamSynthesize(anyString())).thenReturn(Flux.just(audioBytes));
+		when(ttsPort.streamSynthesize(anyString(), any(AudioFormat.class)))
+			.thenReturn(Flux.just(audioBytes));
 		lenient().when(conversationCounterPort.increment()).thenReturn(Mono.just(1L));
 		lenient().when(memoryExtractionService.checkAndExtract()).thenReturn(Mono.empty());
 
@@ -113,7 +118,7 @@ class DialoguePipelineServiceTest {
 		verify(conversationRepository, atLeastOnce()).save(any(ConversationTurn.class));
 		verify(retrievalPort).retrieve(testText, 3);
 		verify(llmPort).streamCompletion(any(CompletionRequest.class));
-		verify(ttsPort).streamSynthesize("Hello world.");
+		verify(ttsPort).streamSynthesize("Hello world.", AudioFormat.WAV);
 	}
 
 	@Test
@@ -130,16 +135,18 @@ class DialoguePipelineServiceTest {
 		when(retrievalPort.retrieve(eq(testText), eq(3))).thenReturn(Mono.just(context));
 		when(llmPort.streamCompletion(any(CompletionRequest.class)))
 			.thenReturn(Flux.just("First", " sentence", ".", " Second", " sentence", "."));
-		when(ttsPort.streamSynthesize("First sentence.")).thenReturn(Flux.just(audioBytes1));
-		when(ttsPort.streamSynthesize("Second sentence.")).thenReturn(Flux.just(audioBytes2));
+		when(ttsPort.streamSynthesize("First sentence.", AudioFormat.WAV))
+			.thenReturn(Flux.just(audioBytes1));
+		when(ttsPort.streamSynthesize("Second sentence.", AudioFormat.WAV))
+			.thenReturn(Flux.just(audioBytes2));
 		lenient().when(conversationCounterPort.increment()).thenReturn(Mono.just(1L));
 		lenient().when(memoryExtractionService.checkAndExtract()).thenReturn(Mono.empty());
 
 		StepVerifier.create(service.executeAudioStreaming(testText)).expectNext(audioBytes1)
 			.expectNext(audioBytes2).verifyComplete();
 
-		verify(ttsPort).streamSynthesize("First sentence.");
-		verify(ttsPort).streamSynthesize("Second sentence.");
+		verify(ttsPort).streamSynthesize("First sentence.", AudioFormat.WAV);
+		verify(ttsPort).streamSynthesize("Second sentence.", AudioFormat.WAV);
 	}
 
 	@Test
@@ -154,7 +161,8 @@ class DialoguePipelineServiceTest {
 		when(retrievalPort.retrieve(eq(testText), eq(3))).thenReturn(Mono.just(emptyContext));
 		when(llmPort.streamCompletion(any(CompletionRequest.class)))
 			.thenReturn(Flux.just("Response", "."));
-		when(ttsPort.streamSynthesize(anyString())).thenReturn(Flux.just(audioBytes));
+		when(ttsPort.streamSynthesize(anyString(), any(AudioFormat.class)))
+			.thenReturn(Flux.just(audioBytes));
 		lenient().when(conversationCounterPort.increment()).thenReturn(Mono.just(1L));
 		lenient().when(memoryExtractionService.checkAndExtract()).thenReturn(Mono.empty());
 
@@ -177,9 +185,9 @@ class DialoguePipelineServiceTest {
 		when(retrievalPort.retrieve(eq(testText), eq(3))).thenReturn(Mono.just(emptyContext));
 		when(llmPort.streamCompletion(any(CompletionRequest.class)))
 			.thenReturn(Flux.just("첫", "번째", ".", " 두", "번째", "!", " 세", "번째", "?"));
-		when(ttsPort.streamSynthesize("첫번째.")).thenReturn(Flux.just(audio1));
-		when(ttsPort.streamSynthesize("두번째!")).thenReturn(Flux.just(audio2));
-		when(ttsPort.streamSynthesize("세번째?")).thenReturn(Flux.just(audio3));
+		when(ttsPort.streamSynthesize("첫번째.", AudioFormat.WAV)).thenReturn(Flux.just(audio1));
+		when(ttsPort.streamSynthesize("두번째!", AudioFormat.WAV)).thenReturn(Flux.just(audio2));
+		when(ttsPort.streamSynthesize("세번째?", AudioFormat.WAV)).thenReturn(Flux.just(audio3));
 		lenient().when(conversationCounterPort.increment()).thenReturn(Mono.just(1L));
 		lenient().when(memoryExtractionService.checkAndExtract()).thenReturn(Mono.empty());
 

@@ -27,6 +27,7 @@ import com.study.webflux.rag.domain.memory.port.ConversationCounterPort;
 import com.study.webflux.rag.domain.monitoring.model.DialoguePipelineStage;
 import com.study.webflux.rag.domain.retrieval.model.RetrievalContext;
 import com.study.webflux.rag.domain.retrieval.port.RetrievalPort;
+import com.study.webflux.rag.domain.voice.model.AudioFormat;
 import com.study.webflux.rag.infrastructure.dialogue.config.properties.RagDialogueProperties;
 import reactor.core.publisher.Flux;
 import reactor.core.publisher.Mono;
@@ -51,6 +52,7 @@ public class DialoguePipelineService implements DialoguePipelineUseCase {
 	private final PipelineTracer pipelineTracer;
 	private final String llmModel;
 	private final int conversationThreshold;
+	private final AudioFormat defaultAudioFormat;
 
 	public DialoguePipelineService(LlmPort llmPort,
 		TtsPort ttsPort,
@@ -75,13 +77,16 @@ public class DialoguePipelineService implements DialoguePipelineUseCase {
 		this.pipelineTracer = pipelineTracer;
 		this.llmModel = properties.getOpenai().getModel();
 		this.conversationThreshold = properties.getMemory().getConversationThreshold();
+		this.defaultAudioFormat = AudioFormat
+			.fromString(properties.getSupertone().getOutputFormat());
 	}
 
 	/**
 	 * 텍스트 입력을 받아 오디오 바이트 스트림을 반환합니다. 응답 생성이 완료된 뒤에만 쿼리를 저장해 중간 실패 시 저장을 피합니다.
 	 */
 	@Override
-	public Flux<byte[]> executeAudioStreaming(String text) {
+	public Flux<byte[]> executeAudioStreaming(String text, AudioFormat format) {
+		AudioFormat targetFormat = format != null ? format : defaultAudioFormat;
 		DialoguePipelineTracker tracker = pipelineMonitor.create(text);
 
 		// TTS 준비
@@ -126,11 +131,13 @@ public class DialoguePipelineService implements DialoguePipelineUseCase {
 			Flux<String> remainingSentences = cachedSentences.skip(1);
 
 			Flux<byte[]> firstSentenceAudio = firstSentenceMono
-				.flatMapMany(sentence -> ttsWarmup.thenMany(ttsPort.streamSynthesize(sentence)))
+				.flatMapMany(sentence -> ttsWarmup
+					.thenMany(ttsPort.streamSynthesize(sentence, targetFormat)))
 				.publishOn(Schedulers.boundedElastic());
 
 			Flux<byte[]> remainingAudio = remainingSentences.publishOn(Schedulers.boundedElastic())
-				.concatMap(sentence -> ttsWarmup.thenMany(ttsPort.streamSynthesize(sentence)));
+				.concatMap(sentence -> ttsWarmup
+					.thenMany(ttsPort.streamSynthesize(sentence, targetFormat)));
 
 			return Flux.mergeSequential(firstSentenceAudio, remainingAudio);
 		});
@@ -202,8 +209,10 @@ public class DialoguePipelineService implements DialoguePipelineUseCase {
 	}
 
 	@Override
-	public Flux<String> executeStreaming(String text) {
-		return executeAudioStreaming(text).map(bytes -> Base64.getEncoder().encodeToString(bytes));
+	public Flux<String> executeStreaming(String text, AudioFormat format) {
+		AudioFormat targetFormat = format != null ? format : defaultAudioFormat;
+		return executeAudioStreaming(text, targetFormat).map(bytes -> Base64.getEncoder()
+			.encodeToString(bytes));
 	}
 
 	// ===================================================================
