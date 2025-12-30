@@ -1,5 +1,6 @@
 package com.study.webflux.rag.infrastructure.dialogue.adapter.persistence;
 
+import org.springframework.data.domain.PageRequest;
 import org.springframework.stereotype.Component;
 
 import com.study.webflux.rag.domain.dialogue.entity.ConversationEntity;
@@ -28,7 +29,7 @@ public class ConversationMongoAdapter implements ConversationRepository {
 
 	@Override
 	public Flux<ConversationTurn> findRecent(int limit) {
-		return mongoRepository.findTop10ByOrderByCreatedAtDesc()
+		return mongoRepository.findAllByOrderByCreatedAtDesc(PageRequest.of(0, limit))
 			.map(entity -> ConversationTurn
 				.withId(entity.id(), entity.query(), entity.response(), entity.createdAt()))
 			.collectList().flatMapMany(list -> {

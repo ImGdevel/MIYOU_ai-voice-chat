@@ -2,6 +2,8 @@ package com.study.webflux.rag.infrastructure.dialogue.adapter.persistence;
 
 import java.time.Instant;
 
+import org.springframework.data.domain.PageRequest;
+
 import com.study.webflux.rag.domain.dialogue.entity.ConversationEntity;
 import com.study.webflux.rag.domain.dialogue.model.ConversationTurn;
 import com.study.webflux.rag.infrastructure.dialogue.repository.ConversationMongoRepository;
@@ -80,7 +82,7 @@ class ConversationMongoAdapterTest {
 		ConversationEntity entity2 = new ConversationEntity("id-2", "두 번째", "응답2", time2);
 		ConversationEntity entity3 = new ConversationEntity("id-3", "세 번째", "응답3", time3);
 
-		when(mongoRepository.findTop10ByOrderByCreatedAtDesc()).thenReturn(
+		when(mongoRepository.findAllByOrderByCreatedAtDesc(PageRequest.of(0, 10))).thenReturn(
 			Flux.just(entity3, entity2, entity1));
 
 		StepVerifier.create(adapter.findRecent(10)).assertNext(result -> {
@@ -98,7 +100,8 @@ class ConversationMongoAdapterTest {
 	@Test
 	@DisplayName("최근 대화 조회 시 결과가 없으면 빈 Flux 반환")
 	void findRecent_empty() {
-		when(mongoRepository.findTop10ByOrderByCreatedAtDesc()).thenReturn(Flux.empty());
+		when(mongoRepository.findAllByOrderByCreatedAtDesc(PageRequest.of(0, 10))).thenReturn(
+			Flux.empty());
 
 		StepVerifier.create(adapter.findRecent(10)).verifyComplete();
 	}
@@ -109,7 +112,8 @@ class ConversationMongoAdapterTest {
 		Instant now = Instant.now();
 		ConversationEntity entity = new ConversationEntity("id-1", "질문", "답변", now);
 
-		when(mongoRepository.findTop10ByOrderByCreatedAtDesc()).thenReturn(Flux.just(entity));
+		when(mongoRepository.findAllByOrderByCreatedAtDesc(PageRequest.of(0, 10))).thenReturn(
+			Flux.just(entity));
 
 		StepVerifier.create(adapter.findRecent(10)).assertNext(result -> {
 			assertThat(result.id()).isEqualTo("id-1");
@@ -163,7 +167,7 @@ class ConversationMongoAdapterTest {
 	@Test
 	@DisplayName("조회 실패 시 에러 전파")
 	void findRecent_error_propagates() {
-		when(mongoRepository.findTop10ByOrderByCreatedAtDesc()).thenReturn(
+		when(mongoRepository.findAllByOrderByCreatedAtDesc(PageRequest.of(0, 10))).thenReturn(
 			Flux.error(new RuntimeException("Query timeout")));
 
 		StepVerifier.create(adapter.findRecent(10))
