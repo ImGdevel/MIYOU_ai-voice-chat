@@ -15,6 +15,7 @@ import org.springframework.web.bind.annotation.RequestParam;
 import org.springframework.web.bind.annotation.RestController;
 import org.springframework.web.server.ResponseStatusException;
 
+import com.study.webflux.rag.domain.cost.service.CostCalculationService;
 import com.study.webflux.rag.domain.monitoring.model.MetricsGranularity;
 import com.study.webflux.rag.domain.monitoring.model.MetricsRollup;
 import com.study.webflux.rag.domain.monitoring.model.PerformanceMetrics;
@@ -122,8 +123,7 @@ public class MetricsController {
 	private Mono<Long> calculateTotalCredits() {
 		// 대량 데이터 로딩 방지: 합리적 상한선으로 계산
 		return metricsQueryUseCase.getRecentUsageAnalytics(MAX_CREDIT_SAMPLE)
-			.map(analytics -> com.study.webflux.rag.domain.cost.service.CostCalculationService
-				.calculateCost(analytics))
+			.map(analytics -> CostCalculationService.calculateCost(analytics))
 			.map(cost -> cost.totalCredits())
 			.reduce(0L, Long::sum);
 	}

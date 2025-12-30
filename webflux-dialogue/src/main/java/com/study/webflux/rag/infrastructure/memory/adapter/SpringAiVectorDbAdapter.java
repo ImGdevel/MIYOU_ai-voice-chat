@@ -17,6 +17,7 @@ import org.springframework.stereotype.Component;
 import com.study.webflux.rag.domain.memory.model.Memory;
 import com.study.webflux.rag.domain.memory.model.MemoryType;
 import com.study.webflux.rag.domain.memory.port.VectorMemoryPort;
+import com.study.webflux.rag.infrastructure.dialogue.config.properties.RagDialogueProperties;
 import io.qdrant.client.QdrantClient;
 import io.qdrant.client.grpc.Points.Condition;
 import io.qdrant.client.grpc.Points.FieldCondition;
@@ -40,7 +41,7 @@ public class SpringAiVectorDbAdapter implements VectorMemoryPort {
 
 	public SpringAiVectorDbAdapter(VectorStore vectorStore,
 		QdrantClient qdrantClient,
-		com.study.webflux.rag.infrastructure.dialogue.config.properties.RagDialogueProperties properties) {
+		RagDialogueProperties properties) {
 		this.vectorStore = vectorStore;
 		this.qdrantClient = qdrantClient;
 		this.collectionName = properties.getQdrant().getCollectionName();
