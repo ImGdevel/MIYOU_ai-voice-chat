@@ -77,8 +77,7 @@ public class DialoguePipelineService implements DialoguePipelineUseCase {
 		this.pipelineTracer = pipelineTracer;
 		this.llmModel = properties.getOpenai().getModel();
 		this.conversationThreshold = properties.getMemory().getConversationThreshold();
-		this.defaultAudioFormat = AudioFormat
-			.fromString(properties.getSupertone().getOutputFormat());
+		this.defaultAudioFormat = parseAudioFormat(properties.getSupertone().getOutputFormat());
 	}
 
 	/**
@@ -215,6 +214,17 @@ public class DialoguePipelineService implements DialoguePipelineUseCase {
 		messages.add(Message.user(currentQuery));
 
 		return messages;
+	}
+
+	private static AudioFormat parseAudioFormat(String configuredFormat) {
+		try {
+			return AudioFormat.fromString(configuredFormat);
+		} catch (IllegalArgumentException e) {
+			throw new IllegalArgumentException(
+				"Invalid audio format configured for 'supertone.output-format': "
+					+ configuredFormat,
+				e);
+		}
 	}
 
 	/**
