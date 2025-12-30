@@ -1,7 +1,7 @@
 package com.study.webflux.rag.domain.dialogue.model;
 
 public record Message(
-	com.study.webflux.rag.domain.dialogue.model.MessageRole role,
+	MessageRole role,
 	String content
 ) {
 	public Message {
@@ -14,15 +14,14 @@ public record Message(
 	}
 
 	public static Message user(String content) {
-		return new Message(com.study.webflux.rag.domain.dialogue.model.MessageRole.USER, content);
+		return new Message(MessageRole.USER, content);
 	}
 
 	public static Message system(String content) {
-		return new Message(com.study.webflux.rag.domain.dialogue.model.MessageRole.SYSTEM, content);
+		return new Message(MessageRole.SYSTEM, content);
 	}
 
 	public static Message assistant(String content) {
-		return new Message(com.study.webflux.rag.domain.dialogue.model.MessageRole.ASSISTANT,
-			content);
+		return new Message(MessageRole.ASSISTANT, content);
 	}
 }
