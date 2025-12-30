@@ -11,23 +11,16 @@ import org.springframework.web.reactive.function.client.WebClient;
 import com.study.webflux.rag.domain.dialogue.port.TtsPort;
 import com.study.webflux.rag.domain.voice.model.Voice;
 import com.study.webflux.rag.infrastructure.dialogue.adapter.tts.LoadBalancedSupertoneTtsAdapter;
-import com.study.webflux.rag.infrastructure.dialogue.adapter.tts.SupertoneConfig;
 import com.study.webflux.rag.infrastructure.dialogue.adapter.tts.loadbalancer.TtsEndpoint;
 import com.study.webflux.rag.infrastructure.dialogue.adapter.tts.loadbalancer.TtsLoadBalancer;
 import com.study.webflux.rag.infrastructure.dialogue.config.properties.RagDialogueProperties;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 
 @Configuration
 public class TtsConfiguration {
 
-	@Bean
-	public SupertoneConfig supertoneConfig(RagDialogueProperties properties) {
-		var supertone = properties.getSupertone();
-		if (supertone.getEndpoints().isEmpty()) {
-			throw new IllegalStateException("최소 하나 이상의 TTS 엔드포인트를 설정해야 합니다");
-		}
-		var firstEndpoint = supertone.getEndpoints().get(0);
-		return new SupertoneConfig(firstEndpoint.getApiKey(), firstEndpoint.getBaseUrl());
-	}
+	private static final Logger log = LoggerFactory.getLogger(TtsConfiguration.class);
 
 	@Bean
 	public TtsLoadBalancer ttsLoadBalancer(RagDialogueProperties properties) {
@@ -38,7 +31,7 @@ public class TtsConfiguration {
 
 		TtsLoadBalancer loadBalancer = new TtsLoadBalancer(endpoints);
 		loadBalancer.setFailureEventPublisher(event -> {
-			System.err.println("TTS 엔드포인트 영구 장애 발생: " + event);
+			log.error("TTS 엔드포인트 영구 장애 발생: {}", event);
 		});
 
 		return loadBalancer;
