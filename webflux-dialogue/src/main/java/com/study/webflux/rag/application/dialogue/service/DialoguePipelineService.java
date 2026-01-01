@@ -88,17 +88,12 @@ public class DialoguePipelineService implements DialoguePipelineUseCase {
 		AudioFormat targetFormat = format != null ? format : defaultAudioFormat;
 		DialoguePipelineTracker tracker = pipelineMonitor.create(text);
 
+		Mono<PipelineInputs> inputsMono = prepareInputs(text, tracker).cache();
 		Mono<Void> ttsWarmup = prepareTtsWarmup(tracker);
 
-		Mono<PipelineInputs> inputsMono = prepareInputs(text, tracker).cache();
-
-		Flux<String> llmTokens = trackLlmTokens(tracker,
-			streamLlmTokens(tracker, inputsMono).subscribeOn(Schedulers.boundedElastic()));
-
-		Flux<String> sentences = assembleSentences(tracker, llmTokens).cache();
-
+		Flux<String> llmTokens = buildLlmTokenStream(tracker, inputsMono);
+		Flux<String> sentences = buildSentenceStream(tracker, llmTokens);
 		Flux<byte[]> audioFlux = buildAudioStream(sentences, ttsWarmup, targetFormat);
-
 		Mono<Void> postProcessing = persistAndExtract(inputsMono, sentences, tracker);
 
 		Flux<byte[]> audioStream = pipelineTracer
@@ -118,11 +113,8 @@ public class DialoguePipelineService implements DialoguePipelineUseCase {
 
 		Mono<PipelineInputs> inputsMono = prepareInputs(text, tracker).cache();
 
-		Flux<String> llmTokens = trackLlmTokens(tracker,
-			streamLlmTokens(tracker, inputsMono).subscribeOn(Schedulers.boundedElastic()));
-
-		Flux<String> textStream = llmTokens.cache();
-
+		Flux<String> llmTokens = buildLlmTokenStream(tracker, inputsMono);
+		Flux<String> textStream = buildTextStream(llmTokens);
 		Mono<Void> postProcessing = persistAndExtractText(inputsMono, textStream, tracker);
 
 		return tracker
@@ -188,6 +180,22 @@ public class DialoguePipelineService implements DialoguePipelineUseCase {
 					request.model(),
 					() -> llmPort.streamCompletion(request));
 			}));
+	}
+
+	private Flux<String> buildLlmTokenStream(DialoguePipelineTracker tracker,
+		Mono<PipelineInputs> inputsMono) {
+		return streamLlmTokens(tracker, inputsMono)
+			.subscribeOn(Schedulers.boundedElastic())
+			.transform(tokens -> trackLlmTokens(tracker, tokens));
+	}
+
+	private Flux<String> buildSentenceStream(DialoguePipelineTracker tracker,
+		Flux<String> llmTokens) {
+		return assembleSentences(tracker, llmTokens).cache();
+	}
+
+	private Flux<String> buildTextStream(Flux<String> llmTokens) {
+		return llmTokens.cache();
 	}
 
 	/**
