@@ -1,6 +1,6 @@
 package com.study.webflux.rag.application.dialogue.pipeline.stage;
 
-import java.util.stream.Collectors;
+import java.util.StringJoiner;
 
 import lombok.extern.slf4j.Slf4j;
 
@@ -20,9 +20,10 @@ public class SystemPromptService {
 	private final String configuredSystemPromptTemplate;
 	private final String configuredCommonSystemPromptTemplate;
 	private final String configuredBasePromptTemplate;
+
 	private final String cachedBaseTemplate;
-	private final String cachedSystemPromptFromTemplate;
-	private final String cachedCommonSystemPromptFromTemplate;
+	private final String cachedPersonaFromTemplate;
+	private final String cachedCommonFromTemplate;
 
 	public SystemPromptService(FileBasedPromptTemplate promptTemplate,
 		RagDialogueProperties properties) {
@@ -32,11 +33,13 @@ public class SystemPromptService {
 		this.configuredCommonSystemPromptTemplate = properties.getCommonSystemPromptTemplate();
 		this.configuredBasePromptTemplate = properties.getSystemBasePromptTemplate();
 		this.cachedBaseTemplate = loadTemplate(configuredBasePromptTemplate);
-		this.cachedSystemPromptFromTemplate = loadTemplate(configuredSystemPromptTemplate);
-		this.cachedCommonSystemPromptFromTemplate = loadTemplate(
-			configuredCommonSystemPromptTemplate);
+		this.cachedPersonaFromTemplate = loadTemplate(configuredSystemPromptTemplate);
+		this.cachedCommonFromTemplate = loadTemplate(configuredCommonSystemPromptTemplate);
 	}
 
+	/**
+	 * 메모리·검색 컨텍스트를 반영한 시스템 프롬프트를 생성합니다.
+	 */
 	public String buildSystemPrompt(RetrievalContext context, MemoryRetrievalResult memories) {
 		String personaPrompt = choosePersonaPrompt();
 		String commonPrompt = chooseCommonPrompt();
@@ -51,26 +54,13 @@ public class SystemPromptService {
 				contextBlock);
 		}
 
-		// Fallback: concatenate blocks if base template is missing
-		StringBuilder fallback = new StringBuilder();
-		if (!personaPrompt.isBlank()) {
-			fallback.append(personaPrompt).append("\n\n");
-		}
-		if (!commonPrompt.isBlank()) {
-			fallback.append(commonPrompt).append("\n\n");
-		}
-		if (!memoryBlock.isBlank()) {
-			fallback.append(memoryBlock).append("\n\n");
-		}
-		if (!contextBlock.isBlank()) {
-			fallback.append(contextBlock).append("\n\n");
-		}
-		return fallback.toString().trim();
+		// 템플릿이 없으면 블록을 순서대로 이어붙인다.
+		return joinNonBlankBlocks(personaPrompt, commonPrompt, memoryBlock, contextBlock);
 	}
 
 	private String choosePersonaPrompt() {
-		if (!cachedSystemPromptFromTemplate.isBlank()) {
-			return cachedSystemPromptFromTemplate;
+		if (!cachedPersonaFromTemplate.isBlank()) {
+			return cachedPersonaFromTemplate;
 		}
 		if (configuredSystemPrompt != null) {
 			return configuredSystemPrompt.trim();
@@ -79,7 +69,7 @@ public class SystemPromptService {
 	}
 
 	private String chooseCommonPrompt() {
-		return cachedCommonSystemPromptFromTemplate;
+		return cachedCommonFromTemplate;
 	}
 
 	private String buildMemoryBlock(MemoryRetrievalResult memories) {
@@ -108,9 +98,9 @@ public class SystemPromptService {
 		if (context == null || context.isEmpty()) {
 			return "";
 		}
-		String contextText = context.documents().stream().map(doc -> doc.content())
-			.collect(Collectors.joining("\n"));
-		return "참고 정보:\n" + contextText;
+		StringJoiner joiner = new StringJoiner("\n");
+		context.documents().forEach(doc -> joiner.add(doc.content()));
+		return "참고 정보:\n" + joiner.toString();
 	}
 
 	private String applyTemplate(String template,
@@ -127,6 +117,16 @@ public class SystemPromptService {
 		result = result.replaceAll("(?m)^[ \\t]+$", ""); // strip whitespace-only lines
 		result = result.replaceAll("\\n{3,}", "\n\n");
 		return result.trim();
+	}
+
+	private String joinNonBlankBlocks(String... blocks) {
+		StringJoiner joiner = new StringJoiner("\n\n");
+		for (String block : blocks) {
+			if (block != null && !block.isBlank()) {
+				joiner.add(block.trim());
+			}
+		}
+		return joiner.toString();
 	}
 
 	private String loadTemplate(String templateName) {
