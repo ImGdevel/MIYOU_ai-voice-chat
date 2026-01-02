@@ -253,7 +253,7 @@ async function streamWithVoice(queryText, sendBtn) {
                 chunks = [];
                 chunkCount = 0;
 
-                const response = await fetch('http://localhost:8081/rag/dialogue/audio/mp3', {
+                const response = await fetch('http://localhost:8081/rag/dialogue/audio?format=mp3', {
                     method: 'POST',
                     headers: {
                         'Content-Type': 'application/json',

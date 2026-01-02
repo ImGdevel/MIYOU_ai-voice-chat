@@ -126,9 +126,7 @@ BUILD SUCCESSFUL
 
 **API 엔드포인트 (변경 없음):**
 - `POST /rag/dialogue/sse` - SSE 스트리밍 (Base64 인코딩 오디오)
-- `POST /rag/dialogue/audio` - 오디오 바이너리 (WAV)
-- `POST /rag/dialogue/audio/wav` - 오디오 바이너리 (WAV)
-- `POST /rag/dialogue/audio/mp3` - 오디오 바이너리 (MP3)
+- `POST /rag/dialogue/audio` - 오디오 바이너리 (기본 WAV, `?format=mp3`로 MP3 선택 가능)
 
 **요청/응답 형식 (변경 없음):**
 - Request: `RagDialogueRequest` (text, requestedAt)

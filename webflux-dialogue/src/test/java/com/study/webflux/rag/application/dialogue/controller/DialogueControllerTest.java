@@ -45,40 +45,6 @@ class DialogueControllerTest {
 	}
 
 	@Test
-	void ragDialogueAudioWav_shouldReturnWavAudio() {
-		String testText = "Test audio";
-		RagDialogueRequest request = new RagDialogueRequest(testText, Instant.now());
-
-		byte[] audioBytes = "wav-audio-data".getBytes();
-
-		when(dialoguePipelineUseCase.executeAudioStreaming(eq(testText), eq(AudioFormat.WAV)))
-			.thenReturn(Flux.just(audioBytes));
-
-		webTestClient.post().uri("/rag/dialogue/audio/wav").contentType(MediaType.APPLICATION_JSON)
-			.bodyValue(request).exchange().expectStatus().isOk().expectHeader()
-			.contentType("audio/wav");
-
-		verify(dialoguePipelineUseCase).executeAudioStreaming(testText, AudioFormat.WAV);
-	}
-
-	@Test
-	void ragDialogueAudioMp3_shouldReturnMp3Audio() {
-		String testText = "Test MP3";
-		RagDialogueRequest request = new RagDialogueRequest(testText, Instant.now());
-
-		byte[] audioBytes = "mp3-audio-data".getBytes();
-
-		when(dialoguePipelineUseCase.executeAudioStreaming(eq(testText), eq(AudioFormat.MP3)))
-			.thenReturn(Flux.just(audioBytes));
-
-		webTestClient.post().uri("/rag/dialogue/audio/mp3").contentType(MediaType.APPLICATION_JSON)
-			.bodyValue(request).exchange().expectStatus().isOk().expectHeader()
-			.contentType("audio/mpeg");
-
-		verify(dialoguePipelineUseCase).executeAudioStreaming(testText, AudioFormat.MP3);
-	}
-
-	@Test
 	void ragDialogueAudio_shouldDelegateToWav() {
 		String testText = "Default audio";
 		RagDialogueRequest request = new RagDialogueRequest(testText, Instant.now());
@@ -93,6 +59,24 @@ class DialogueControllerTest {
 			.contentType("audio/wav");
 
 		verify(dialoguePipelineUseCase).executeAudioStreaming(testText, AudioFormat.WAV);
+	}
+
+	@Test
+	void ragDialogueAudio_withMp3Format_shouldReturnMp3() {
+		String testText = "MP3 request";
+		RagDialogueRequest request = new RagDialogueRequest(testText, Instant.now());
+
+		byte[] audioBytes = "mp3-audio-data".getBytes();
+
+		when(dialoguePipelineUseCase.executeAudioStreaming(eq(testText), eq(AudioFormat.MP3)))
+			.thenReturn(Flux.just(audioBytes));
+
+		webTestClient.post().uri(uriBuilder -> uriBuilder.path("/rag/dialogue/audio")
+			.queryParam("format", "mp3").build())
+			.contentType(MediaType.APPLICATION_JSON).bodyValue(request).exchange()
+			.expectStatus().isOk().expectHeader().contentType("audio/mpeg");
+
+		verify(dialoguePipelineUseCase).executeAudioStreaming(testText, AudioFormat.MP3);
 	}
 
 	@Test
