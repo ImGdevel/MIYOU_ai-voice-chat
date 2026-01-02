@@ -1,4 +1,4 @@
-package com.study.webflux.rag.application.dialogue.service;
+package com.study.webflux.rag.application.dialogue.pipeline.stage;
 
 import java.util.ArrayList;
 import java.util.List;

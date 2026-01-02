@@ -1,4 +1,4 @@
-package com.study.webflux.rag.application.dialogue.service;
+package com.study.webflux.rag.application.dialogue.pipeline.stage;
 
 import org.springframework.stereotype.Service;
 
@@ -11,6 +11,7 @@ import com.study.webflux.rag.domain.dialogue.port.TokenUsageProvider;
 import com.study.webflux.rag.domain.memory.port.ConversationCounterPort;
 import com.study.webflux.rag.domain.monitoring.model.DialoguePipelineStage;
 import com.study.webflux.rag.infrastructure.dialogue.config.properties.RagDialogueProperties;
+import com.study.webflux.rag.application.dialogue.pipeline.PipelineInputs;
 import reactor.core.publisher.Flux;
 import reactor.core.publisher.Mono;
 import reactor.core.scheduler.Schedulers;
