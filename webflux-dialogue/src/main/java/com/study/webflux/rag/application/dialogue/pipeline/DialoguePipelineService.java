@@ -4,11 +4,11 @@ import lombok.RequiredArgsConstructor;
 
 import org.springframework.stereotype.Service;
 
-import com.study.webflux.rag.application.monitoring.aop.MonitoredPipeline;
 import com.study.webflux.rag.application.dialogue.pipeline.stage.DialogueInputService;
 import com.study.webflux.rag.application.dialogue.pipeline.stage.DialogueLlmStreamService;
 import com.study.webflux.rag.application.dialogue.pipeline.stage.DialoguePostProcessingService;
 import com.study.webflux.rag.application.dialogue.pipeline.stage.DialogueTtsStreamService;
+import com.study.webflux.rag.application.monitoring.aop.MonitoredPipeline;
 import com.study.webflux.rag.domain.dialogue.port.DialoguePipelineUseCase;
 import com.study.webflux.rag.domain.voice.model.AudioFormat;
 import reactor.core.publisher.Flux;
@@ -40,9 +40,8 @@ public class DialoguePipelineService implements DialoguePipelineUseCase {
 
 		Flux<String> llmTokens = llmStreamService.buildLlmTokenStream(inputsMono);
 		Flux<String> sentences = ttsStreamService.assembleSentences(llmTokens).cache();
-		Flux<byte[]> audioFlux = ttsStreamService.buildAudioStream(sentences,
-			ttsWarmup,
-			targetFormat);
+		Flux<byte[]> audioFlux = ttsStreamService
+			.buildAudioStream(sentences, ttsWarmup, targetFormat);
 		Mono<Void> postProcessing = postProcessingService.persistAndExtract(inputsMono, sentences);
 		Flux<byte[]> audioStream = ttsStreamService.traceTtsSynthesis(audioFlux);
 
