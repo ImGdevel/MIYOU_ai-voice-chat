@@ -1,6 +1,5 @@
 package com.study.webflux.rag.application.dialogue.service;
 
-import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 
 import org.springframework.stereotype.Service;
@@ -17,7 +16,6 @@ import reactor.core.scheduler.Schedulers;
 
 @Slf4j
 @Service
-@RequiredArgsConstructor
 public class DialogueLlmStreamService {
 
 	private final LlmPort llmPort;
