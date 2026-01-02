@@ -8,19 +8,19 @@ Text Query → RAG Retrieval → LLM (with context) → Sentence Assembly → TT
 
 ## Flow
 
-1. **Request**: Client sends text query via POST /rag/dialogue/sse
+1. **Request**: Client sends text query via POST /rag/dialogue/audio (or `/rag/dialogue/text` for tokens)
 2. **Save**: Store query in conversation history
 3. **Retrieve**: Find top 3 similar past conversations (keyword matching)
 4. **Augment**: Build prompt with retrieved context
 5. **LLM**: Stream response tokens
 6. **Assembly**: Buffer tokens into sentences
 7. **TTS**: Convert sentences to audio chunks
-8. **Response**: Stream Base64-encoded audio via SSE
+8. **Response**: Stream raw audio chunks (WAV or MP3) over HTTP chunked transfer
 
 ## Components
 
 ### Controller
-- **DialogueController**: POST /rag/dialogue/sse → SSE audio stream
+- **DialogueController**: POST /rag/dialogue/audio (`?format=mp3`) → streaming audio
 
 ### Services
 - **DialoguePipelineService**: Orchestrates save → retrieve → LLM → TTS
@@ -48,4 +48,4 @@ Input: "WebFlux란 무엇인가?"
 1. Save to history
 2. Retrieve: ["WebFlux는 리액티브 프레임워크", "Flux 사용법", ...]
 3. Augmented prompt: "Context: [retrieved]\nQuestion: WebFlux란 무엇인가?"
-4. LLM → Sentences → TTS → Base64 audio stream
+4. LLM → Sentences → TTS → streaming audio response (WAV/MP3)

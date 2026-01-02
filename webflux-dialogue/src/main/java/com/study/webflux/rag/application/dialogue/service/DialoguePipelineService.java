@@ -1,7 +1,5 @@
 package com.study.webflux.rag.application.dialogue.service;
 
-import java.util.Base64;
-
 import lombok.RequiredArgsConstructor;
 
 import org.springframework.stereotype.Service;
@@ -60,11 +58,4 @@ public class DialoguePipelineService implements DialoguePipelineUseCase {
 		return textStream.concatWith(postProcessing.thenMany(Flux.empty()));
 	}
 
-	@Override
-	@MonitoredPipeline
-	public Flux<String> executeStreaming(String text, AudioFormat format) {
-		AudioFormat targetFormat = format != null ? format : defaultAudioFormat;
-		return executeAudioStreaming(text, targetFormat).map(bytes -> Base64.getEncoder()
-			.encodeToString(bytes));
-	}
 }

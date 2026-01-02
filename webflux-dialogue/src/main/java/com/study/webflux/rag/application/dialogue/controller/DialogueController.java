@@ -29,12 +29,6 @@ public class DialogueController implements DialogueApi {
 	private final DialoguePipelineUseCase dialoguePipelineUseCase;
 	private final DataBufferFactory bufferFactory = new DefaultDataBufferFactory();
 
-	@PostMapping(path = "/sse", produces = MediaType.TEXT_EVENT_STREAM_VALUE)
-	public Flux<String> ragDialogueStream(
-		@Valid @RequestBody RagDialogueRequest request) {
-		return dialoguePipelineUseCase.executeStreaming(request.text(), AudioFormat.WAV);
-	}
-
 	@PostMapping(path = "/audio", produces = {"audio/wav", "audio/mpeg"})
 	public Flux<DataBuffer> ragDialogueAudio(
 		@Valid @RequestBody RagDialogueRequest request,

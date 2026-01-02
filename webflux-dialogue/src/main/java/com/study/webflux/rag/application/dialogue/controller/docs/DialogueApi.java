@@ -20,19 +20,6 @@ import reactor.core.publisher.Flux;
 public interface DialogueApi {
 
 	@Operation(
-		summary = "RAG 대화 스트리밍 응답",
-		description = "RAG 검색, 메모리 컨텍스트 및 LLM 생성을 포함한 스트리밍 텍스트 응답을 반환합니다"
-	)
-	@ApiResponse(
-		responseCode = "200",
-		description = "스트리밍 응답",
-		content = @Content(mediaType = MediaType.TEXT_EVENT_STREAM_VALUE)
-	)
-	Flux<String> ragDialogueStream(
-		@Valid RagDialogueRequest request
-	);
-
-	@Operation(
 		summary = "오디오 스트리밍 응답",
 		description = "RAG 대화 응답을 TTS로 변환한 오디오를 스트리밍 방식으로 반환합니다 (기본 WAV, ?format=mp3)"
 	)
