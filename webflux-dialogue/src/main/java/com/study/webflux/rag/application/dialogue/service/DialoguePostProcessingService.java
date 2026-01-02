@@ -3,7 +3,7 @@ package com.study.webflux.rag.application.dialogue.service;
 import org.springframework.stereotype.Service;
 
 import com.study.webflux.rag.application.memory.service.MemoryExtractionService;
-import com.study.webflux.rag.application.monitoring.monitor.DialoguePipelineTracker;
+import com.study.webflux.rag.application.monitoring.context.PipelineContext;
 import com.study.webflux.rag.application.monitoring.service.PipelineTracer;
 import com.study.webflux.rag.domain.dialogue.port.ConversationRepository;
 import com.study.webflux.rag.domain.dialogue.port.LlmPort;
@@ -39,12 +39,10 @@ public class DialoguePostProcessingService {
 		this.conversationThreshold = properties.getMemory().getConversationThreshold();
 	}
 
-	public Mono<Void> persistAndExtract(Mono<PipelineInputs> inputsMono,
-		Flux<String> sentences,
-		DialoguePipelineTracker tracker) {
+	public Mono<Void> persistAndExtract(Mono<PipelineInputs> inputsMono, Flux<String> sentences) {
 		return sentences.collectList().flatMap(sentenceList -> {
 			String fullResponse = String.join(" ", sentenceList);
-			return inputsMono.flatMap(inputs -> pipelineTracer.tracePersistence(tracker,
+			return inputsMono.flatMap(inputs -> pipelineTracer.tracePersistence(
 				() -> conversationRepository
 					.save(inputs.currentTurn().withResponse(fullResponse))));
 		}).flatMap(turn -> conversationCounterPort.increment())
@@ -54,29 +52,31 @@ public class DialoguePostProcessingService {
 	}
 
 	public Mono<Void> persistAndExtractText(Mono<PipelineInputs> inputsMono,
-		Flux<String> textStream,
-		DialoguePipelineTracker tracker) {
-		return textStream.collectList().flatMap(tokens -> {
+		Flux<String> textStream) {
+		return textStream.collectList().flatMap(tokens -> Mono.deferContextual(contextView -> {
 			String fullResponse = String.join("", tokens);
-
 			if (llmPort instanceof TokenUsageProvider tokenUsageProvider) {
-				tokenUsageProvider.getTokenUsage(tracker.pipelineId()).ifPresent(tokenUsage -> {
-					tracker.recordStageAttribute(DialoguePipelineStage.LLM_COMPLETION,
-						"promptTokens",
-						tokenUsage.promptTokens());
-					tracker.recordStageAttribute(DialoguePipelineStage.LLM_COMPLETION,
-						"completionTokens",
-						tokenUsage.completionTokens());
-					tracker.recordStageAttribute(DialoguePipelineStage.LLM_COMPLETION,
-						"totalTokens",
-						tokenUsage.totalTokens());
-				});
+				var tracker = PipelineContext.findTracker(contextView);
+				if (tracker != null) {
+					tokenUsageProvider.getTokenUsage(tracker.pipelineId())
+						.ifPresent(tokenUsage -> {
+							tracker.recordStageAttribute(DialoguePipelineStage.LLM_COMPLETION,
+								"promptTokens",
+								tokenUsage.promptTokens());
+							tracker.recordStageAttribute(DialoguePipelineStage.LLM_COMPLETION,
+								"completionTokens",
+								tokenUsage.completionTokens());
+							tracker.recordStageAttribute(DialoguePipelineStage.LLM_COMPLETION,
+								"totalTokens",
+								tokenUsage.totalTokens());
+						});
+				}
 			}
 
-			return inputsMono.flatMap(inputs -> pipelineTracer.tracePersistence(tracker,
+			return inputsMono.flatMap(inputs -> pipelineTracer.tracePersistence(
 				() -> conversationRepository
 					.save(inputs.currentTurn().withResponse(fullResponse))));
-		}).flatMap(turn -> conversationCounterPort.increment())
+		})).flatMap(turn -> conversationCounterPort.increment())
 			.filter(count -> count % conversationThreshold == 0)
 			.flatMap(count -> memoryExtractionService.checkAndExtract())
 			.subscribeOn(Schedulers.boundedElastic()).then();

@@ -2,7 +2,6 @@ package com.study.webflux.rag.application.dialogue.service;
 
 import org.springframework.stereotype.Service;
 
-import com.study.webflux.rag.application.monitoring.monitor.DialoguePipelineTracker;
 import com.study.webflux.rag.application.monitoring.service.PipelineTracer;
 import com.study.webflux.rag.domain.dialogue.model.ConversationContext;
 import com.study.webflux.rag.domain.dialogue.model.ConversationTurn;
@@ -27,14 +26,14 @@ public class DialogueInputService {
 		this.pipelineTracer = pipelineTracer;
 	}
 
-	public Mono<PipelineInputs> prepareInputs(String text, DialoguePipelineTracker tracker) {
+	public Mono<PipelineInputs> prepareInputs(String text) {
 		Mono<ConversationTurn> currentTurn = Mono.fromCallable(() -> ConversationTurn.create(text))
 			.cache();
 
-		Mono<MemoryRetrievalResult> memories = pipelineTracer.traceMemories(tracker,
+		Mono<MemoryRetrievalResult> memories = pipelineTracer.traceMemories(
 			() -> retrievalPort.retrieveMemories(text, 5));
 
-		Mono<RetrievalContext> retrievalContext = pipelineTracer.traceRetrieval(tracker,
+		Mono<RetrievalContext> retrievalContext = pipelineTracer.traceRetrieval(
 			() -> retrievalPort.retrieve(text, 3));
 
 		Mono<ConversationContext> history = loadConversationHistory().cache();
