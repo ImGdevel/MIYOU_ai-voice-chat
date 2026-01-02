@@ -1,6 +1,5 @@
 package com.study.webflux.rag.application.dialogue.service;
 
-import java.util.Base64;
 import java.util.List;
 
 import com.study.webflux.rag.application.memory.service.MemoryExtractionService;
@@ -32,7 +31,6 @@ import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.ArgumentMatchers.anyInt;
 import static org.mockito.ArgumentMatchers.anyString;
 import static org.mockito.ArgumentMatchers.eq;
-import static org.mockito.Mockito.atLeastOnce;
 import static org.mockito.Mockito.lenient;
 import static org.mockito.Mockito.verify;
 import static org.mockito.Mockito.when;
@@ -92,33 +90,6 @@ class DialoguePipelineServiceTest {
 		service = new DialoguePipelineService(llmPort, ttsPort, retrievalPort,
 			conversationRepository, sentenceAssembler, pipelineMonitor, conversationCounterPort,
 			memoryExtractionService, systemPromptService, pipelineTracer, properties);
-	}
-
-	@Test
-	void executeStreaming_shouldReturnBase64EncodedAudio() {
-		String testText = "Hello";
-		byte[] audioBytes = "audio-data".getBytes();
-		String expectedBase64 = Base64.getEncoder().encodeToString(audioBytes);
-
-		ConversationTurn turn = ConversationTurn.create(testText);
-		RetrievalContext emptyContext = RetrievalContext.empty(testText);
-
-		when(conversationRepository.save(any(ConversationTurn.class))).thenReturn(Mono.just(turn));
-		when(retrievalPort.retrieve(eq(testText), eq(3))).thenReturn(Mono.just(emptyContext));
-		when(llmPort.streamCompletion(any(CompletionRequest.class)))
-			.thenReturn(Flux.just("Hello", " world", "."));
-		when(ttsPort.streamSynthesize(anyString(), any(AudioFormat.class)))
-			.thenReturn(Flux.just(audioBytes));
-		lenient().when(conversationCounterPort.increment()).thenReturn(Mono.just(1L));
-		lenient().when(memoryExtractionService.checkAndExtract()).thenReturn(Mono.empty());
-
-		StepVerifier.create(service.executeStreaming(testText)).expectNext(expectedBase64)
-			.verifyComplete();
-
-		verify(conversationRepository, atLeastOnce()).save(any(ConversationTurn.class));
-		verify(retrievalPort).retrieve(testText, 3);
-		verify(llmPort).streamCompletion(any(CompletionRequest.class));
-		verify(ttsPort).streamSynthesize("Hello world.", AudioFormat.WAV);
 	}
 
 	@Test

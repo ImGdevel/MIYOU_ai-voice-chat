@@ -1,7 +1,6 @@
 package com.study.webflux.rag.application.dialogue.controller;
 
 import java.time.Instant;
-import java.util.Base64;
 
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.boot.test.autoconfigure.web.reactive.WebFluxTest;
@@ -29,19 +28,17 @@ class DialogueControllerTest {
 	private DialoguePipelineUseCase dialoguePipelineUseCase;
 
 	@Test
-	void ragDialogueStream_shouldReturnSSEStream() {
+	void ragDialogueText_shouldReturnStream() {
 		String testText = "Hello world";
 		RagDialogueRequest request = new RagDialogueRequest(testText, Instant.now());
 
-		String base64Audio = Base64.getEncoder().encodeToString("audio-data".getBytes());
+		when(dialoguePipelineUseCase.executeTextOnly(eq(testText)))
+			.thenReturn(Flux.just("token1", "token2"));
 
-		when(dialoguePipelineUseCase.executeStreaming(eq(testText), eq(AudioFormat.WAV)))
-			.thenReturn(Flux.just(base64Audio));
-
-		webTestClient.post().uri("/rag/dialogue/sse").contentType(MediaType.APPLICATION_JSON)
+		webTestClient.post().uri("/rag/dialogue/text").contentType(MediaType.APPLICATION_JSON)
 			.bodyValue(request).exchange().expectStatus().isOk();
 
-		verify(dialoguePipelineUseCase).executeStreaming(testText, AudioFormat.WAV);
+		verify(dialoguePipelineUseCase).executeTextOnly(testText);
 	}
 
 	@Test
@@ -80,18 +77,18 @@ class DialogueControllerTest {
 	}
 
 	@Test
-	void ragDialogueStream_withBlankText_shouldReturnBadRequest() {
+	void ragDialogueText_withBlankText_shouldReturnBadRequest() {
 		RagDialogueRequest request = new RagDialogueRequest("", Instant.now());
 
-		webTestClient.post().uri("/rag/dialogue/sse").contentType(MediaType.APPLICATION_JSON)
+		webTestClient.post().uri("/rag/dialogue/text").contentType(MediaType.APPLICATION_JSON)
 			.bodyValue(request).exchange().expectStatus().isBadRequest();
 	}
 
 	@Test
-	void ragDialogueStream_withNullTimestamp_shouldReturnBadRequest() {
+	void ragDialogueText_withNullTimestamp_shouldReturnBadRequest() {
 		RagDialogueRequest request = new RagDialogueRequest("test", null);
 
-		webTestClient.post().uri("/rag/dialogue/sse").contentType(MediaType.APPLICATION_JSON)
+		webTestClient.post().uri("/rag/dialogue/text").contentType(MediaType.APPLICATION_JSON)
 			.bodyValue(request).exchange().expectStatus().isBadRequest();
 	}
 }
