@@ -1,13 +1,16 @@
 package com.study.webflux.rag.application.dialogue.controller.docs;
 
 import com.study.webflux.rag.application.dialogue.dto.RagDialogueRequest;
+import com.study.webflux.rag.domain.voice.model.AudioFormat;
 import io.swagger.v3.oas.annotations.Operation;
+import io.swagger.v3.oas.annotations.Parameter;
 import io.swagger.v3.oas.annotations.media.Content;
 import io.swagger.v3.oas.annotations.responses.ApiResponse;
 import io.swagger.v3.oas.annotations.tags.Tag;
 import jakarta.validation.Valid;
 import org.springframework.core.io.buffer.DataBuffer;
 import org.springframework.http.MediaType;
+import org.springframework.web.bind.annotation.RequestParam;
 import reactor.core.publisher.Flux;
 
 @Tag(
@@ -30,42 +33,20 @@ public interface DialogueApi {
 	);
 
 	@Operation(
-		summary = "오디오 스트리밍 응답 (WAV)",
-		description = "RAG 대화 응답을 TTS로 변환한 WAV 오디오를 스트리밍 방식으로 반환합니다"
+		summary = "오디오 스트리밍 응답",
+		description = "RAG 대화 응답을 TTS로 변환한 오디오를 스트리밍 방식으로 반환합니다 (기본 WAV, ?format=mp3)"
 	)
 	@ApiResponse(
 		responseCode = "200",
 		description = "스트리밍 오디오",
-		content = @Content(mediaType = "audio/wav")
-	)
-	Flux<DataBuffer> ragDialogueAudioWav(
-		@Valid RagDialogueRequest request
-	);
-
-	@Operation(
-		summary = "오디오 스트리밍 응답 (MP3)",
-		description = "RAG 대화 응답을 TTS로 변환한 MP3 오디오를 스트리밍 방식으로 반환합니다"
-	)
-	@ApiResponse(
-		responseCode = "200",
-		description = "스트리밍 오디오",
-		content = @Content(mediaType = "audio/mpeg")
-	)
-	Flux<DataBuffer> ragDialogueAudioMp3(
-		@Valid RagDialogueRequest request
-	);
-
-	@Operation(
-		summary = "오디오 스트리밍 응답 (기본)",
-		description = "RAG 대화 응답을 WAV 포맷으로 스트리밍 방식으로 반환합니다"
-	)
-	@ApiResponse(
-		responseCode = "200",
-		description = "스트리밍 오디오",
-		content = @Content(mediaType = "audio/wav")
+		content = {
+			@Content(mediaType = "audio/wav"),
+			@Content(mediaType = "audio/mpeg")
+		}
 	)
 	Flux<DataBuffer> ragDialogueAudio(
-		@Valid RagDialogueRequest request
+		@Valid RagDialogueRequest request,
+		@Parameter(description = "오디오 포맷 (wav 또는 mp3)", example = "mp3") @RequestParam(defaultValue = "wav") AudioFormat format
 	);
 
 	@Operation(
