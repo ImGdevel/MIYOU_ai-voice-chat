@@ -1,5 +1,7 @@
 package com.study.webflux.rag.application.dialogue.service;
 
+import lombok.RequiredArgsConstructor;
+
 import org.springframework.stereotype.Service;
 
 import com.study.webflux.rag.application.memory.service.MemoryExtractionService;
@@ -16,6 +18,7 @@ import reactor.core.publisher.Mono;
 import reactor.core.scheduler.Schedulers;
 
 @Service
+@RequiredArgsConstructor
 public class DialoguePostProcessingService {
 
 	private final ConversationRepository conversationRepository;
@@ -39,18 +42,27 @@ public class DialoguePostProcessingService {
 		this.conversationThreshold = properties.getMemory().getConversationThreshold();
 	}
 
+	/**
+	 * 오디오 응답을 저장하고, 설정된 회차마다 메모리 추출을 실행합니다.
+	 */
 	public Mono<Void> persistAndExtract(Mono<PipelineInputs> inputsMono, Flux<String> sentences) {
-		return sentences.collectList().flatMap(sentenceList -> {
-			String fullResponse = String.join(" ", sentenceList);
-			return inputsMono.flatMap(inputs -> pipelineTracer.tracePersistence(
-				() -> conversationRepository
-					.save(inputs.currentTurn().withResponse(fullResponse))));
-		}).flatMap(turn -> conversationCounterPort.increment())
+		return sentences.collectList()
+			.flatMap(sentenceList -> {
+				String fullResponse = String.join(" ", sentenceList);
+				return inputsMono.flatMap(inputs -> pipelineTracer.tracePersistence(
+					() -> conversationRepository
+						.save(inputs.currentTurn().withResponse(fullResponse))));
+			})
+			.flatMap(turn -> conversationCounterPort.increment())
 			.filter(count -> count % conversationThreshold == 0)
 			.flatMap(count -> memoryExtractionService.checkAndExtract())
-			.subscribeOn(Schedulers.boundedElastic()).then();
+			.subscribeOn(Schedulers.boundedElastic())
+			.then();
 	}
 
+	/**
+	 * 텍스트-only 응답을 저장하고, 토큰 사용량을 기록한 뒤 메모리 추출을 실행합니다.
+	 */
 	public Mono<Void> persistAndExtractText(Mono<PipelineInputs> inputsMono,
 		Flux<String> textStream) {
 		return textStream.collectList().flatMap(tokens -> Mono.deferContextual(contextView -> {

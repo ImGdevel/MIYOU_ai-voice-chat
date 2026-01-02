@@ -1,5 +1,6 @@
 package com.study.webflux.rag.application.dialogue.service;
 
+import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 
 import org.springframework.stereotype.Service;
@@ -16,20 +17,16 @@ import reactor.core.scheduler.Schedulers;
 
 @Slf4j
 @Service
+@RequiredArgsConstructor
 public class DialogueTtsStreamService {
 
 	private final TtsPort ttsPort;
 	private final SentenceAssembler sentenceAssembler;
 	private final PipelineTracer pipelineTracer;
 
-	public DialogueTtsStreamService(TtsPort ttsPort,
-		SentenceAssembler sentenceAssembler,
-		PipelineTracer pipelineTracer) {
-		this.ttsPort = ttsPort;
-		this.sentenceAssembler = sentenceAssembler;
-		this.pipelineTracer = pipelineTracer;
-	}
-
+	/**
+	 * TTS 준비 작업을 사전에 실행해 첫 응답 지연을 줄입니다.
+	 */
 	public Mono<Void> prepareTtsWarmup() {
 		return Mono.deferContextual(contextView -> {
 			var tracker = PipelineContext.findTracker(contextView);
@@ -42,6 +39,9 @@ public class DialogueTtsStreamService {
 		});
 	}
 
+	/**
+	 * LLM 토큰 스트림을 문장 단위 스트림으로 조립합니다.
+	 */
 	public Flux<String> assembleSentences(Flux<String> llmTokens) {
 		return pipelineTracer.traceSentenceAssembly(
 			() -> sentenceAssembler.assemble(llmTokens),
@@ -51,6 +51,9 @@ public class DialogueTtsStreamService {
 			});
 	}
 
+	/**
+	 * 문장 스트림을 받아 TTS 오디오 스트림을 생성합니다.
+	 */
 	public Flux<byte[]> buildAudioStream(Flux<String> sentences,
 		Mono<Void> ttsWarmup,
 		AudioFormat targetFormat) {
@@ -59,6 +62,9 @@ public class DialogueTtsStreamService {
 				targetFormat)));
 	}
 
+	/**
+	 * TTS 합성 단계를 모니터링하며 스트림을 래핑합니다.
+	 */
 	public Flux<byte[]> traceTtsSynthesis(Flux<byte[]> audioFlux) {
 		return pipelineTracer
 			.traceTtsSynthesis(() -> audioFlux, (tracker, chunk) -> {

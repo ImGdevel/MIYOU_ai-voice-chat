@@ -1,5 +1,6 @@
 package com.study.webflux.rag.application.dialogue.service;
 
+import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 
 import org.springframework.stereotype.Service;
@@ -16,6 +17,7 @@ import reactor.core.scheduler.Schedulers;
 
 @Slf4j
 @Service
+@RequiredArgsConstructor
 public class DialogueLlmStreamService {
 
 	private final LlmPort llmPort;
@@ -33,6 +35,9 @@ public class DialogueLlmStreamService {
 		this.llmModel = properties.getOpenai().getModel();
 	}
 
+	/**
+	 * 준비된 입력을 사용해 LLM 토큰 스트림을 생성합니다.
+	 */
 	public Flux<String> buildLlmTokenStream(Mono<PipelineInputs> inputsMono) {
 		return streamLlmTokens(inputsMono)
 			.subscribeOn(Schedulers.boundedElastic())
