@@ -10,6 +10,7 @@ import org.springframework.validation.annotation.Validated;
 import org.springframework.web.bind.annotation.PostMapping;
 import org.springframework.web.bind.annotation.RequestBody;
 import org.springframework.web.bind.annotation.RequestMapping;
+import org.springframework.web.bind.annotation.RequestParam;
 import org.springframework.web.bind.annotation.RestController;
 
 import com.study.webflux.rag.application.dialogue.controller.docs.DialogueApi;
@@ -34,24 +35,11 @@ public class DialogueController implements DialogueApi {
 		return dialoguePipelineUseCase.executeStreaming(request.text(), AudioFormat.WAV);
 	}
 
-	@PostMapping(path = "/audio/wav", produces = "audio/wav")
-	public Flux<DataBuffer> ragDialogueAudioWav(
-		@Valid @RequestBody RagDialogueRequest request) {
-		return dialoguePipelineUseCase.executeAudioStreaming(request.text(), AudioFormat.WAV)
-			.map(bufferFactory::wrap);
-	}
-
-	@PostMapping(path = "/audio/mp3", produces = "audio/mpeg")
-	public Flux<DataBuffer> ragDialogueAudioMp3(
-		@Valid @RequestBody RagDialogueRequest request) {
-		return dialoguePipelineUseCase.executeAudioStreaming(request.text(), AudioFormat.MP3)
-			.map(bufferFactory::wrap);
-	}
-
-	@PostMapping(path = "/audio", produces = "audio/wav")
+	@PostMapping(path = "/audio", produces = {"audio/wav", "audio/mpeg"})
 	public Flux<DataBuffer> ragDialogueAudio(
-		@Valid @RequestBody RagDialogueRequest request) {
-		return dialoguePipelineUseCase.executeAudioStreaming(request.text(), AudioFormat.WAV)
+		@Valid @RequestBody RagDialogueRequest request,
+		@RequestParam(defaultValue = "wav") AudioFormat format) {
+		return dialoguePipelineUseCase.executeAudioStreaming(request.text(), format)
 			.map(bufferFactory::wrap);
 	}
 
