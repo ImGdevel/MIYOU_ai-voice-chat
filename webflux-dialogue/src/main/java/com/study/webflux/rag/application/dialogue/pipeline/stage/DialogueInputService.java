@@ -1,9 +1,10 @@
-package com.study.webflux.rag.application.dialogue.service;
+package com.study.webflux.rag.application.dialogue.pipeline.stage;
 
 import lombok.RequiredArgsConstructor;
 
 import org.springframework.stereotype.Service;
 
+import com.study.webflux.rag.application.dialogue.pipeline.PipelineInputs;
 import com.study.webflux.rag.application.monitoring.service.PipelineTracer;
 import com.study.webflux.rag.domain.dialogue.model.ConversationContext;
 import com.study.webflux.rag.domain.dialogue.model.ConversationTurn;

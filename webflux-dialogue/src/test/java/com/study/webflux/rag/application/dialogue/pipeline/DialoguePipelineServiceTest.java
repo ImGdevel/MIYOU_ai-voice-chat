@@ -1,4 +1,4 @@
-package com.study.webflux.rag.application.dialogue.service;
+package com.study.webflux.rag.application.dialogue.pipeline;
 
 import java.util.Arrays;
 
@@ -10,6 +10,11 @@ import org.mockito.junit.jupiter.MockitoExtension;
 import reactor.core.publisher.Flux;
 import reactor.core.publisher.Mono;
 import reactor.test.StepVerifier;
+
+import com.study.webflux.rag.application.dialogue.pipeline.stage.DialogueInputService;
+import com.study.webflux.rag.application.dialogue.pipeline.stage.DialogueLlmStreamService;
+import com.study.webflux.rag.application.dialogue.pipeline.stage.DialoguePostProcessingService;
+import com.study.webflux.rag.application.dialogue.pipeline.stage.DialogueTtsStreamService;
 
 import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.ArgumentMatchers.eq;

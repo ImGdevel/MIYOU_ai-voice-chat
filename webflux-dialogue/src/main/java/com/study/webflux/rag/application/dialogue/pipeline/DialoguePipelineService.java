@@ -1,10 +1,14 @@
-package com.study.webflux.rag.application.dialogue.service;
+package com.study.webflux.rag.application.dialogue.pipeline;
 
 import lombok.RequiredArgsConstructor;
 
 import org.springframework.stereotype.Service;
 
 import com.study.webflux.rag.application.monitoring.aop.MonitoredPipeline;
+import com.study.webflux.rag.application.dialogue.pipeline.stage.DialogueInputService;
+import com.study.webflux.rag.application.dialogue.pipeline.stage.DialogueLlmStreamService;
+import com.study.webflux.rag.application.dialogue.pipeline.stage.DialoguePostProcessingService;
+import com.study.webflux.rag.application.dialogue.pipeline.stage.DialogueTtsStreamService;
 import com.study.webflux.rag.domain.dialogue.port.DialoguePipelineUseCase;
 import com.study.webflux.rag.domain.voice.model.AudioFormat;
 import reactor.core.publisher.Flux;
