@@ -77,6 +77,12 @@ public class DialoguePipelineTracker {
 			.doOnCancel(() -> finish(PipelineStatus.CANCELLED, null));
 	}
 
+	public <T> Mono<T> attachLifecycle(Mono<T> publisher) {
+		return publisher.doOnSuccess(value -> finish(PipelineStatus.COMPLETED, null))
+			.doOnError(error -> finish(PipelineStatus.FAILED, error))
+			.doOnCancel(() -> finish(PipelineStatus.CANCELLED, null));
+	}
+
 	public void recordPipelineAttribute(String key, Object value) {
 		if (key != null && value != null) {
 			attributes.put(key, value);
