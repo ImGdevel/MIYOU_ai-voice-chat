@@ -36,7 +36,6 @@ public class DialogueController implements DialogueApi {
 		@Valid @RequestBody RagDialogueRequest request,
 		@RequestParam(defaultValue = "wav") String format) {
 		AudioFormat targetFormat = AudioFormat.fromString(format);
-		log.info("오디오 스트리밍 요청: format={}", targetFormat);
 		return dialoguePipelineUseCase.executeAudioStreaming(request.text(), targetFormat)
 			.map(bufferFactory::wrap);
 	}

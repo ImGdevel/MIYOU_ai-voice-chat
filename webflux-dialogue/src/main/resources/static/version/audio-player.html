@@ -177,7 +177,7 @@
             showStatus('RAG 파이프라인 실행 중...', 'info');
 
             try {
-                const response = await fetch('http://localhost:8081/rag/dialogue/audio', {
+                const response = await fetch('/rag/dialogue/audio', {
                     method: 'POST',
                     headers: {
                         'Content-Type': 'application/json',

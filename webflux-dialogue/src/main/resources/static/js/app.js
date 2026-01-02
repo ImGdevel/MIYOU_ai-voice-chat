@@ -185,7 +185,7 @@ async function streamAudio() {
 
 async function streamTextOnly(queryText, sendBtn) {
     try {
-        const response = await fetch('http://localhost:8081/rag/dialogue/text', {
+        const response = await fetch('/rag/dialogue/text', {
             method: 'POST',
             headers: {
                 'Content-Type': 'application/json',
@@ -253,7 +253,7 @@ async function streamWithVoice(queryText, sendBtn) {
                 chunks = [];
                 chunkCount = 0;
 
-                const response = await fetch('http://localhost:8081/rag/dialogue/audio?format=mp3', {
+                const response = await fetch('/rag/dialogue/audio?format=mp3', {
                     method: 'POST',
                     headers: {
                         'Content-Type': 'application/json',
