@@ -1,7 +1,5 @@
 package com.study.webflux.rag.application.dialogue.service;
 
-import lombok.RequiredArgsConstructor;
-
 import org.springframework.stereotype.Service;
 
 import com.study.webflux.rag.application.memory.service.MemoryExtractionService;
@@ -18,7 +16,6 @@ import reactor.core.publisher.Mono;
 import reactor.core.scheduler.Schedulers;
 
 @Service
-@RequiredArgsConstructor
 public class DialoguePostProcessingService {
 
 	private final ConversationRepository conversationRepository;

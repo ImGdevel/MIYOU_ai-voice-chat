@@ -11,6 +11,7 @@ import jakarta.validation.Valid;
 import org.springframework.core.io.buffer.DataBuffer;
 import org.springframework.http.MediaType;
 import org.springframework.web.bind.annotation.RequestParam;
+import org.springframework.web.server.ServerWebExchange;
 import reactor.core.publisher.Flux;
 
 @Tag(
@@ -33,7 +34,7 @@ public interface DialogueApi {
 	)
 	Flux<DataBuffer> ragDialogueAudio(
 		@Valid RagDialogueRequest request,
-		@Parameter(description = "오디오 포맷 (wav 또는 mp3)", example = "mp3") @RequestParam(defaultValue = "wav") AudioFormat format
+		@Parameter(description = "오디오 포맷 (wav 또는 mp3)", example = "mp3") @RequestParam(defaultValue = "wav") String format
 	);
 
 	@Operation(
