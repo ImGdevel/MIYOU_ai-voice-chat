@@ -52,6 +52,7 @@ class DialogueControllerTest {
 			.thenReturn(Flux.just(audioBytes));
 
 		webTestClient.post().uri("/rag/dialogue/audio").contentType(MediaType.APPLICATION_JSON)
+			.accept(MediaType.parseMediaType("audio/wav"))
 			.bodyValue(request).exchange().expectStatus().isOk().expectHeader()
 			.contentType("audio/wav");
 
@@ -70,8 +71,11 @@ class DialogueControllerTest {
 
 		webTestClient.post().uri(uriBuilder -> uriBuilder.path("/rag/dialogue/audio")
 			.queryParam("format", "mp3").build())
-			.contentType(MediaType.APPLICATION_JSON).bodyValue(request).exchange()
-			.expectStatus().isOk().expectHeader().contentType("audio/mpeg");
+			.contentType(MediaType.APPLICATION_JSON)
+			.accept(MediaType.parseMediaType("audio/mpeg"))
+			.bodyValue(request).exchange()
+			.expectStatus().isOk()
+			.expectHeader().contentType("audio/mpeg");
 
 		verify(dialoguePipelineUseCase).executeAudioStreaming(testText, AudioFormat.MP3);
 	}

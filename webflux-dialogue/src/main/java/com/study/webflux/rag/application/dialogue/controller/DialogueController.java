@@ -1,6 +1,7 @@
 package com.study.webflux.rag.application.dialogue.controller;
 
 import lombok.RequiredArgsConstructor;
+import lombok.extern.slf4j.Slf4j;
 
 import org.springframework.core.io.buffer.DataBuffer;
 import org.springframework.core.io.buffer.DataBufferFactory;
@@ -21,6 +22,7 @@ import jakarta.validation.Valid;
 import reactor.core.publisher.Flux;
 
 @Validated
+@Slf4j
 @RestController
 @RequiredArgsConstructor
 @RequestMapping("/rag/dialogue")
@@ -32,8 +34,10 @@ public class DialogueController implements DialogueApi {
 	@PostMapping(path = "/audio", produces = {"audio/wav", "audio/mpeg"})
 	public Flux<DataBuffer> ragDialogueAudio(
 		@Valid @RequestBody RagDialogueRequest request,
-		@RequestParam(defaultValue = "wav") AudioFormat format) {
-		return dialoguePipelineUseCase.executeAudioStreaming(request.text(), format)
+		@RequestParam(defaultValue = "wav") String format) {
+		AudioFormat targetFormat = AudioFormat.fromString(format);
+		log.info("오디오 스트리밍 요청: format={}", targetFormat);
+		return dialoguePipelineUseCase.executeAudioStreaming(request.text(), targetFormat)
 			.map(bufferFactory::wrap);
 	}
 
