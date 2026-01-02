@@ -24,7 +24,7 @@ public class DialoguePipelineService implements DialoguePipelineUseCase {
 	private final AudioFormat defaultAudioFormat = AudioFormat.MP3;
 
 	/**
-	 * 텍스트 입력을 받아 오디오 바이트 스트림을 반환합니다. 응답 생성이 완료된 뒤에만 쿼리를 저장해 중간 실패 시 저장을 피합니다.
+	 * 텍스트 입력을 오디오 스트림으로 변환합니다. LLM → 문장 조립 → TTS → 저장/메모리 추출까지 한 번에 실행합니다.
 	 */
 	@Override
 	@MonitoredPipeline
@@ -45,6 +45,9 @@ public class DialoguePipelineService implements DialoguePipelineUseCase {
 		return audioStream.concatWith(postProcessing.thenMany(Flux.empty()));
 	}
 
+	/**
+	 * 텍스트 입력을 받아 오디오 변환 없이 LLM 텍스트 스트림을 반환합니다.
+	 */
 	@Override
 	@MonitoredPipeline
 	public Flux<String> executeTextOnly(String text) {
