@@ -1,7 +1,6 @@
 package com.study.webflux.rag.application.dialogue.controller.docs;
 
 import com.study.webflux.rag.application.dialogue.dto.RagDialogueRequest;
-import com.study.webflux.rag.domain.voice.model.AudioFormat;
 import io.swagger.v3.oas.annotations.Operation;
 import io.swagger.v3.oas.annotations.Parameter;
 import io.swagger.v3.oas.annotations.media.Content;
@@ -11,7 +10,6 @@ import jakarta.validation.Valid;
 import org.springframework.core.io.buffer.DataBuffer;
 import org.springframework.http.MediaType;
 import org.springframework.web.bind.annotation.RequestParam;
-import org.springframework.web.server.ServerWebExchange;
 import reactor.core.publisher.Flux;
 
 @Tag(
