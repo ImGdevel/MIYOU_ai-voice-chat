@@ -240,7 +240,7 @@
             showStatus(`${format.toUpperCase()} 포맷으로 RAG 파이프라인 실행 중...`, 'info');
 
             try {
-                const endpoint = `http://localhost:8081/rag/dialogue/audio/${format}`;
+                const endpoint = `/rag/dialogue/audio?format=${format}`;
 
                 const response = await fetch(endpoint, {
                     method: 'POST',

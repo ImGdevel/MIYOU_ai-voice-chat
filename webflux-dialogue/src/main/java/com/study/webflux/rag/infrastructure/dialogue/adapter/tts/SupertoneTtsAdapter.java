@@ -1,0 +1,85 @@
+package com.study.webflux.rag.infrastructure.dialogue.adapter.tts;
+
+import java.time.Duration;
+import java.util.HashMap;
+import java.util.Map;
+
+import org.springframework.core.io.buffer.DataBuffer;
+import org.springframework.http.HttpMethod;
+import org.springframework.http.MediaType;
+import org.springframework.stereotype.Component;
+import org.springframework.web.reactive.function.client.WebClient;
+
+import com.study.webflux.rag.domain.dialogue.port.TtsPort;
+import com.study.webflux.rag.domain.voice.model.AudioFormat;
+import com.study.webflux.rag.domain.voice.model.Voice;
+import reactor.core.publisher.Flux;
+import reactor.core.publisher.Mono;
+
+@Component
+public class SupertoneTtsAdapter implements TtsPort {
+
+	private final WebClient webClient;
+	private final Voice voice;
+	private final Mono<Void> warmupMono;
+
+	public SupertoneTtsAdapter(WebClient.Builder webClientBuilder,
+		SupertoneConfig config,
+		Voice voice) {
+		this.voice = voice;
+		this.webClient = webClientBuilder.baseUrl(config.baseUrl())
+			.defaultHeader("x-sup-api-key", config.apiKey()).build();
+		this.warmupMono = this.webClient.method(HttpMethod.HEAD).uri("/").retrieve()
+			.toBodilessEntity().timeout(Duration.ofSeconds(2)).onErrorResume(ex -> Mono.empty())
+			.then().cache();
+	}
+
+	@Override
+	public Flux<byte[]> streamSynthesize(String text, AudioFormat format) {
+		AudioFormat outputFormat = format != null ? format : voice.getOutputFormat();
+		var settings = voice.getSettings();
+		var voiceSettings = Map.of("pitch_shift",
+			settings.pitchShift(),
+			"pitch_variance",
+			settings.pitchVariance(),
+			"speed",
+			settings.speed());
+
+		var payload = new HashMap<String, Object>();
+		payload.put("text", text);
+		payload.put("language", voice.getLanguage());
+		payload.put("style", voice.getStyle().getValue());
+		payload.put("output_format", outputFormat.name().toLowerCase());
+		payload.put("voice_settings", voiceSettings);
+		payload.put("include_phonemes", false);
+
+		return webClient.post().uri("/v1/text-to-speech/{voice_id}/stream", voice.getId())
+			.contentType(MediaType.APPLICATION_JSON).bodyValue(payload)
+			.accept(MediaType.parseMediaType(outputFormat.getMediaType())).retrieve()
+			.bodyToFlux(DataBuffer.class).map(dataBuffer -> {
+				byte[] bytes = new byte[dataBuffer.readableByteCount()];
+				dataBuffer.read(bytes);
+				org.springframework.core.io.buffer.DataBufferUtils.release(dataBuffer);
+				return bytes;
+			});
+	}
+
+	@Override
+	public Mono<byte[]> synthesize(String text, AudioFormat format) {
+		return streamSynthesize(text, format).collectList().map(byteArrays -> {
+			int totalSize = byteArrays.stream().mapToInt(arr -> arr.length).sum();
+			byte[] result = new byte[totalSize];
+			int offset = 0;
+			for (byte[] arr : byteArrays) {
+				System.arraycopy(arr, 0, result, offset, arr.length);
+				offset += arr.length;
+			}
+			return result;
+		});
+	}
+
+	@Override
+	public Mono<Void> prepare() {
+		return warmupMono;
+	}
+}

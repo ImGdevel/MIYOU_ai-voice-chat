@@ -29,11 +29,11 @@ http://localhost:8081/
 1. **질문 입력창**: 테스트할 텍스트 쿼리 입력
 2. **전송 버튼**: 파이프라인 실행
 3. **상태 표시**: 현재 처리 상태
-4. **오디오 청크**: 수신된 Base64 오디오 데이터
+4. **오디오 청크**: 수신된 WAV/MP3 오디오 바이너리
 
 ### 기능
-- ✅ SSE(Server-Sent Events) 스트리밍 실시간 표시
-- ✅ Base64 오디오 청크 개수 카운팅
+- ✅ 실시간 오디오 스트리밍 표시
+- ✅ 오디오 청크 개수/형식 추적
 - ✅ 응답 시간 측정
 - ✅ 에러 핸들링 및 표시
 - ✅ Ctrl/Cmd + Enter로 빠른 전송
@@ -62,9 +62,9 @@ http://localhost:8081/
 ## API 직접 호출 (curl)
 
 ```bash
-curl -X POST http://localhost:8081/rag/dialogue/sse \
+curl -X POST http://localhost:8081/rag/dialogue/audio \
   -H "Content-Type: application/json" \
-  -H "Accept: text/event-stream" \
+  -H "Accept: audio/wav" \
   -d '{
     "text": "WebFlux란 무엇인가요?",
     "requestedAt": "2025-12-08T12:00:00Z"
@@ -86,7 +86,7 @@ curl -X POST http://localhost:8081/rag/dialogue/sse \
    ↓
 6. TTS: Supertone API로 각 문장을 음성으로 변환
    ↓
-7. SSE: Base64 인코딩된 오디오 청크 스트리밍
+7. 스트리밍 오디오: WAV/MP3 청크를 HTTP로 스트리밍
 ```
 
 ## 문제 해결

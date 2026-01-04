@@ -104,7 +104,7 @@ BUILD SUCCESSFUL
   - LlmPort, TtsPort, RetrievalPort, ConversationRepository 등 모든 포트 활용
   - Reactive 파이프라인 오케스트레이션 (flatMap, flatMapMany, transform, concatMap)
   - Scheduler 전환 (boundedElastic)
-  - Base64 인코딩 스트림 & 원본 바이트 스트림 지원
+  - 오디오 스트리밍 및 원본 바이트 스트림 지원
   - 순수 오케스트레이션 로직 (비즈니스 로직은 도메인 계층에 위임)
 
 **설계 결정:**
@@ -120,15 +120,11 @@ BUILD SUCCESSFUL
 - ✅ `application/controller/DialogueController.java` - Clean Architecture로 리팩토링 완료
   - `DialoguePipelineService` → `DialoguePipelineUseCase` 인터페이스 사용
   - 도메인 Port에 의존 (Infrastructure 의존성 제거)
-  - 메서드 호출: `runPipeline()` → `executeStreaming()`
-  - 메서드 호출: `runPipelineAudio()` → `executeAudioStreaming()`
+  - 메서드 호출: `runPipeline()` → `executeAudioStreaming()` / `executeTextOnly()`
   - Request DTO에서 `text` 추출하여 Use Case 호출
 
-**API 엔드포인트 (변경 없음):**
-- `POST /rag/dialogue/sse` - SSE 스트리밍 (Base64 인코딩 오디오)
-- `POST /rag/dialogue/audio` - 오디오 바이너리 (WAV)
-- `POST /rag/dialogue/audio/wav` - 오디오 바이너리 (WAV)
-- `POST /rag/dialogue/audio/mp3` - 오디오 바이너리 (MP3)
+- `POST /rag/dialogue/audio` - 오디오 스트리밍 (기본 WAV, `?format=mp3`로 MP3)
+- `POST /rag/dialogue/text` - 텍스트 토큰 스트리밍 (SSE)
 
 **요청/응답 형식 (변경 없음):**
 - Request: `RagDialogueRequest` (text, requestedAt)
@@ -299,14 +295,13 @@ void testOpenAiLlmAdapter() {
 ## 🧪 테스트 완료
 
 **생성된 테스트 파일 (3개):**
-1. `DialoguePipelineServiceTest.java` - Application Layer (5 tests)
-   - Base64 인코딩 스트림 테스트
-   - 원본 오디오 바이트 스트림 테스트
+1. `DialoguePipelineServiceTest.java` - Application Layer (4 tests)
+   - 오디오 바이트 스트림 테스트
    - RAG 컨텍스트 처리 테스트
    - 다중 문장 처리 테스트
 
-2. `DialogueControllerTest.java` - API Layer (6 tests)
-   - SSE 엔드포인트 테스트
+2. `DialogueControllerTest.java` - API Layer (5 tests)
+   - 텍스트 스트리밍 엔드포인트 테스트
    - WAV/MP3 오디오 엔드포인트 테스트
    - 입력 검증 테스트
 
