@@ -9,6 +9,7 @@ import io.swagger.v3.oas.annotations.tags.Tag;
 import jakarta.validation.Valid;
 import org.springframework.core.io.buffer.DataBuffer;
 import org.springframework.http.MediaType;
+import org.springframework.http.server.reactive.ServerHttpResponse;
 import org.springframework.web.bind.annotation.RequestParam;
 import reactor.core.publisher.Flux;
 
@@ -32,7 +33,8 @@ public interface DialogueApi {
 	)
 	Flux<DataBuffer> ragDialogueAudio(
 		@Valid RagDialogueRequest request,
-		@Parameter(description = "오디오 포맷 (wav 또는 mp3)", example = "mp3") @RequestParam(defaultValue = "wav") String format
+		@Parameter(description = "오디오 포맷 (wav 또는 mp3)", example = "mp3") @RequestParam(defaultValue = "wav") String format,
+		ServerHttpResponse response
 	);
 
 	@Operation(

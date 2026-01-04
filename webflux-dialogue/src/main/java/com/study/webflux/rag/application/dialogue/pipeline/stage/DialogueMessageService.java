@@ -25,6 +25,10 @@ public class DialogueMessageService {
 		MemoryRetrievalResult memories,
 		ConversationContext conversationContext,
 		String currentQuery) {
+		if (currentQuery == null || currentQuery.isBlank()) {
+			throw new IllegalArgumentException("현재 사용자 쿼리는 null이거나 비어 있을 수 없습니다.");
+		}
+
 		List<Message> messages = new ArrayList<>();
 
 		String fullSystemPrompt = systemPromptService.buildSystemPrompt(context, memories);
