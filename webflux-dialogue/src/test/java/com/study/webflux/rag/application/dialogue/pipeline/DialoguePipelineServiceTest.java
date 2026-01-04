@@ -6,6 +6,7 @@ import com.study.webflux.rag.application.dialogue.pipeline.stage.DialogueInputSe
 import com.study.webflux.rag.application.dialogue.pipeline.stage.DialogueLlmStreamService;
 import com.study.webflux.rag.application.dialogue.pipeline.stage.DialoguePostProcessingService;
 import com.study.webflux.rag.application.dialogue.pipeline.stage.DialogueTtsStreamService;
+import com.study.webflux.rag.domain.voice.model.AudioFormat;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.extension.ExtendWith;
@@ -62,7 +63,7 @@ class DialoguePipelineServiceTest {
 			.thenReturn(Flux.just("audio".getBytes()));
 		when(postProcessingService.persistAndExtract(any(), any())).thenReturn(Mono.empty());
 
-		StepVerifier.create(service.executeAudioStreaming(testText))
+		StepVerifier.create(service.executeAudioStreaming(testText, AudioFormat.MP3))
 			.expectNextMatches(bytes -> Arrays.equals(bytes, "audio".getBytes()))
 			.verifyComplete();
 
