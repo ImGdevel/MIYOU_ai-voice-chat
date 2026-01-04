@@ -38,6 +38,9 @@ public class DialoguePostProcessingService {
 		this.llmPort = llmPort;
 		this.pipelineTracer = pipelineTracer;
 		this.conversationThreshold = properties.getMemory().getConversationThreshold();
+		if (this.conversationThreshold <= 0) {
+			throw new IllegalArgumentException("conversationThreshold 설정값은 0 이하일 수 없습니다.");
+		}
 	}
 
 	/**
