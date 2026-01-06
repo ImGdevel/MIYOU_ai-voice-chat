@@ -19,7 +19,7 @@ import com.study.webflux.rag.domain.memory.port.VectorMemoryPort;
 import reactor.core.publisher.Mono;
 
 /**
- * MemoryExtractionService는 메모리 추출 작업을 수행하는 서비스를 정의합니다.
+ * 대화 이력과 기존 메모리를 바탕으로 신규 메모리를 추출/저장합니다.
  */
 @Slf4j
 @Service
@@ -35,34 +35,26 @@ public class MemoryExtractionService {
 	private final int conversationThreshold;
 
 	/**
-	 * 메모리 추출 작업을 트리거합니다.
-	 *
-	 * @return Mono<Void> 메모리 추출 작업 결과
+	 * 누적 대화 수가 임계값 배수인 경우에만 메모리 추출 파이프라인을 실행합니다.
 	 */
 	public Mono<Void> checkAndExtract() {
-		return counterPort.get().filter(count -> count > 0 && count % conversationThreshold == 0)
+		return counterPort.get()
+			.filter(this::isExtractionTurn)
 			.flatMap(count -> {
 				log.info("메모리 추출 트리거: 대화 횟수={}", count);
 				return performExtraction();
-			}).then();
+			})
+			.then();
 	}
 
 	/**
-	 * 메모리 추출 작업을 수행합니다.
-	 *
-	 * @return Mono<Void> 메모리 추출 작업 결과
+	 * 최근 대화를 기준으로 메모리 추출 컨텍스트를 구성하고 추출 결과를 저장합니다.
 	 */
 	private Mono<Void> performExtraction() {
-		Mono<List<ConversationTurn>> recentConversations = conversationRepository
-			.findRecent(conversationThreshold).collectList();
-
-		return recentConversations.flatMap(conversations -> {
-			String combinedQuery = conversations.stream().map(ConversationTurn::query)
-				.reduce((a, b) -> a + " " + b).orElse("");
-
-			return retrievalService.retrieveMemories(combinedQuery, 10)
-				.map(result -> MemoryExtractionContext.of(conversations, result.allMemories()));
-		}).flatMapMany(extractionPort::extractMemories).flatMap(this::saveExtractedMemory)
+		return loadRecentConversations()
+			.flatMap(this::buildExtractionContext)
+			.flatMapMany(extractionPort::extractMemories)
+			.flatMap(this::saveExtractedMemory)
 			.doOnNext(memory -> log.info("추출 및 저장된 메모리: type={}, importance={}, content={}",
 				memory.type(),
 				memory.importance(),
@@ -71,16 +63,38 @@ public class MemoryExtractionService {
 	}
 
 	/**
-	 * 추출된 메모리를 저장합니다.
-	 *
-	 * @param extracted
-	 *            추출된 메모리
-	 * @return Mono<Memory> 저장된 메모리
+	 * 추출된 메모리를 임베딩한 뒤 벡터 저장소에 저장합니다.
 	 */
 	private Mono<Memory> saveExtractedMemory(ExtractedMemory extracted) {
 		Memory memory = extracted.toMemory();
 
 		return embeddingPort.embed(memory.content())
 			.flatMap(embedding -> vectorMemoryPort.upsert(memory, embedding.vector()));
+	}
+
+	private boolean isExtractionTurn(long count) {
+		return count > 0 && count % conversationThreshold == 0;
+	}
+
+	/**
+	 * 임계 대화 수만큼 최근 대화 이력을 불러옵니다.
+	 */
+	private Mono<List<ConversationTurn>> loadRecentConversations() {
+		return conversationRepository.findRecent(conversationThreshold).collectList();
+	}
+
+	/**
+	 * 대화 이력과 관련 메모리를 결합해 추출 컨텍스트를 구성합니다.
+	 */
+	private Mono<MemoryExtractionContext> buildExtractionContext(
+		List<ConversationTurn> conversations) {
+		String combinedQuery = mergeQueries(conversations);
+		return retrievalService.retrieveMemories(combinedQuery, 10)
+			.map(result -> MemoryExtractionContext.of(conversations, result.allMemories()));
+	}
+
+	private String mergeQueries(List<ConversationTurn> conversations) {
+		return conversations.stream().map(ConversationTurn::query).reduce((a, b) -> a + " " + b)
+			.orElse("");
 	}
 }
