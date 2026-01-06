@@ -3,8 +3,6 @@ package com.study.webflux.rag.application.memory.service;
 import java.util.Comparator;
 import java.util.List;
 
-import lombok.extern.slf4j.Slf4j;
-
 import org.springframework.stereotype.Service;
 
 import com.study.webflux.rag.domain.memory.model.Memory;
@@ -16,28 +14,19 @@ import com.study.webflux.rag.infrastructure.memory.adapter.MemoryExtractionConfi
 import reactor.core.publisher.Mono;
 
 /**
- * MemoryRetrievalService는 메모리 검색 작업을 수행하는 서비스를 정의합니다.
+ * 사용자 질의에 대해 벡터 메모리를 조회하고, 중요도/최신성 기준으로 정렬된 결과를 제공합니다.
  */
-@Slf4j
 @Service
 public class MemoryRetrievalService {
 
+	private static final float RECENCY_WEIGHT = 0.1f;
+	private static final int CANDIDATE_MULTIPLIER = 2;
+
 	private final EmbeddingPort embeddingPort;
 	private final VectorMemoryPort vectorMemoryPort;
-	private final float importanceBoost; // 중요도 부스트
-	private final float importanceThreshold; // 중요도 임계값
-	private final float recencyWeight = 0.1f; // 레전시 가중치
+	private final float importanceBoost;
+	private final float importanceThreshold;
 
-	/**
-	 * MemoryRetrievalService를 생성합니다.
-	 *
-	 * @param embeddingPort
-	 *            임베딩 포트
-	 * @param vectorMemoryPort
-	 *            벡터 메모리 포트
-	 * @param config
-	 *            메모리 추출 설정
-	 */
 	public MemoryRetrievalService(EmbeddingPort embeddingPort,
 		VectorMemoryPort vectorMemoryPort,
 		MemoryExtractionConfig config) {
@@ -48,38 +37,46 @@ public class MemoryRetrievalService {
 	}
 
 	/**
-	 * 메모리를 검색합니다.
+	 * 질의를 임베딩한 뒤 후보 메모리를 조회하고, 랭킹/그룹핑 후 접근 메트릭을 갱신합니다.
 	 *
 	 * @param query
-	 *            검색 쿼리
+	 *            검색 질의
 	 * @param topK
-	 *            검색할 상위 메모리 개수
-	 * @return Mono<MemoryRetrievalResult> 메모리 검색 결과
+	 *            반환할 상위 메모리 수
+	 * @return 유형별(경험/사실)로 그룹화된 메모리 결과
 	 */
 	public Mono<MemoryRetrievalResult> retrieveMemories(String query, int topK) {
-		return embeddingPort.embed(query).flatMap(embedding -> {
-			List<MemoryType> types = List.of(MemoryType.EXPERIENTIAL, MemoryType.FACTUAL);
-
-			return vectorMemoryPort.search(embedding.vector(), types, importanceThreshold, topK * 2)
-				.collectList()
-				.map(memories -> {
-					return memories.stream()
-						.sorted(Comparator
-							.comparing((Memory m) -> m.calculateRankedScore(recencyWeight))
-							.reversed())
-						.toList();
-				})
-				.map(sorted -> sorted.size() > topK ? sorted.subList(0, topK) : sorted)
-				.map(this::groupByType);
-		}).flatMap(this::updateAccessMetrics);
+		return embeddingPort.embed(query)
+			.flatMap(embedding -> searchCandidateMemories(embedding.vector(), topK))
+			.map(memories -> rankAndLimit(memories, topK))
+			.map(this::groupByType)
+			.flatMap(this::updateAccessMetrics);
 	}
 
 	/**
-	 * 메모리를 타입별로 그룹화합니다.
-	 *
-	 * @param memories
-	 *            검색된 메모리 목록
-	 * @return MemoryRetrievalResult 메모리 검색 결과
+	 * 벡터 저장소에서 중요도 임계값을 만족하는 후보 메모리를 조회합니다.
+	 */
+	private Mono<List<Memory>> searchCandidateMemories(List<Float> queryEmbedding, int topK) {
+		List<MemoryType> types = List.of(MemoryType.EXPERIENTIAL, MemoryType.FACTUAL);
+		return vectorMemoryPort.search(queryEmbedding,
+			types,
+			importanceThreshold,
+			topK * CANDIDATE_MULTIPLIER).collectList();
+	}
+
+	/**
+	 * 최신성과 중요도를 반영한 랭킹 점수로 정렬한 뒤 상위 K개만 반환합니다.
+	 */
+	private List<Memory> rankAndLimit(List<Memory> memories, int topK) {
+		List<Memory> sorted = memories.stream()
+			.sorted(Comparator.comparing((Memory memory) -> memory.calculateRankedScore(
+				RECENCY_WEIGHT)).reversed())
+			.toList();
+		return sorted.size() > topK ? sorted.subList(0, topK) : sorted;
+	}
+
+	/**
+	 * 메모리를 유형(경험적/사실 기반)별로 분류합니다.
 	 */
 	private MemoryRetrievalResult groupByType(List<Memory> memories) {
 		List<Memory> experiential = memories.stream()
@@ -92,27 +89,22 @@ public class MemoryRetrievalService {
 	}
 
 	/**
-	 * 메모리 접근 메트릭을 업데이트합니다.
-	 *
-	 * @param result
-	 *            메모리 검색 결과
-	 * @return Mono<MemoryRetrievalResult> 업데이트된 메모리 검색 결과
+	 * 반환 대상 메모리의 중요도/접근시각/접근횟수를 갱신하고 결과를 동일한 형태로 재구성합니다.
 	 */
 	private Mono<MemoryRetrievalResult> updateAccessMetrics(MemoryRetrievalResult result) {
-		return Mono.just(result.allMemories())
-			.flatMapMany(memories -> reactor.core.publisher.Flux.fromIterable(memories))
+		List<Memory> memories = result.allMemories();
+		if (memories.isEmpty()) {
+			return Mono.just(result);
+		}
+		return reactor.core.publisher.Flux.fromIterable(memories)
 			.flatMap(memory -> {
 				Memory updated = memory.withAccess(importanceBoost);
 				return vectorMemoryPort.updateImportance(updated.id(),
 					updated.importance(),
 					updated.lastAccessedAt(),
 					updated.accessCount()).thenReturn(updated);
-			}).collectList().map(updatedMemories -> {
-				List<Memory> experiential = updatedMemories.stream()
-					.filter(m -> m.type() == MemoryType.EXPERIENTIAL).toList();
-				List<Memory> factual = updatedMemories.stream()
-					.filter(m -> m.type() == MemoryType.FACTUAL).toList();
-				return MemoryRetrievalResult.of(experiential, factual);
-			});
+			})
+			.collectList()
+			.map(this::groupByType);
 	}
 }

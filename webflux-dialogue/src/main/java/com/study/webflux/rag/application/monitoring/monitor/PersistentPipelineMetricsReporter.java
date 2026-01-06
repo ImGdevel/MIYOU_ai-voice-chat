@@ -1,6 +1,7 @@
 package com.study.webflux.rag.application.monitoring.monitor;
 
 import java.util.Map;
+import java.util.Optional;
 
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
@@ -10,6 +11,7 @@ import com.study.webflux.rag.domain.monitoring.model.PerformanceMetrics;
 import com.study.webflux.rag.domain.monitoring.model.UsageAnalytics;
 import com.study.webflux.rag.domain.monitoring.port.PerformanceMetricsRepository;
 import com.study.webflux.rag.domain.monitoring.port.UsageAnalyticsRepository;
+import reactor.core.publisher.Mono;
 
 @Slf4j
 @RequiredArgsConstructor
@@ -23,20 +25,20 @@ public class PersistentPipelineMetricsReporter implements PipelineMetricsReporte
 	public void report(DialoguePipelineTracker.PipelineSummary summary) {
 		loggingReporter.report(summary);
 
-		savePerformanceMetrics(summary).subscribe(
-			metrics -> log.debug("Performance metrics saved: {}", metrics.pipelineId()),
-			error -> log.error("Failed to save performance metrics for {}: {}",
-				summary.pipelineId(),
-				error.getMessage()));
-
-		saveUsageAnalytics(summary).subscribe(
-			analytics -> log.debug("Usage analytics saved: {}", analytics.pipelineId()),
-			error -> log.error("Failed to save usage analytics for {}: {}",
-				summary.pipelineId(),
-				error.getMessage()));
+		subscribeWithLogging(savePerformanceMetrics(summary),
+			"performance metrics",
+			summary.pipelineId(),
+			PerformanceMetrics::pipelineId);
+		subscribeWithLogging(saveUsageAnalytics(summary),
+			"usage analytics",
+			summary.pipelineId(),
+			UsageAnalytics::pipelineId);
 	}
 
-	private reactor.core.publisher.Mono<PerformanceMetrics> savePerformanceMetrics(
+	/**
+	 * 파이프라인 요약 정보를 성능 메트릭으로 변환해 저장합니다.
+	 */
+	private Mono<PerformanceMetrics> savePerformanceMetrics(
 		DialoguePipelineTracker.PipelineSummary summary) {
 		PerformanceMetrics metrics = PerformanceMetrics.fromPipelineSummary(
 			summary.pipelineId(),
@@ -60,7 +62,10 @@ public class PersistentPipelineMetricsReporter implements PipelineMetricsReporte
 		return performanceMetricsRepository.save(metrics);
 	}
 
-	private reactor.core.publisher.Mono<UsageAnalytics> saveUsageAnalytics(
+	/**
+	 * 파이프라인 요약 정보를 사용량 분석 모델로 변환해 저장합니다.
+	 */
+	private Mono<UsageAnalytics> saveUsageAnalytics(
 		DialoguePipelineTracker.PipelineSummary summary) {
 		Map<String, Object> attrs = summary.attributes();
 
@@ -98,12 +103,13 @@ public class PersistentPipelineMetricsReporter implements PipelineMetricsReporte
 		return usageAnalyticsRepository.save(analytics);
 	}
 
+	/**
+	 * LLM 단계 속성에서 토큰/모델 정보를 추출해 사용량 모델로 변환합니다.
+	 */
 	private UsageAnalytics.LlmUsage extractLlmUsage(
 		DialoguePipelineTracker.PipelineSummary summary) {
-		var llmStage = summary.stages().stream()
-			.filter(s -> s.stage() == DialoguePipelineStage.LLM_COMPLETION)
-			.findFirst();
-
+		Optional<DialoguePipelineTracker.StageSnapshot> llmStage = findStage(summary,
+			DialoguePipelineStage.LLM_COMPLETION);
 		if (llmStage.isEmpty()) {
 			return null;
 		}
@@ -127,6 +133,9 @@ public class PersistentPipelineMetricsReporter implements PipelineMetricsReporte
 			llmStage.get().durationMillis());
 	}
 
+	/**
+	 * 메모리 조회/문서 검색 단계의 건수와 수행시간을 합산합니다.
+	 */
 	private UsageAnalytics.RetrievalMetrics extractRetrievalMetrics(
 		DialoguePipelineTracker.PipelineSummary summary) {
 		int memoryCount = 0;
@@ -146,6 +155,9 @@ public class PersistentPipelineMetricsReporter implements PipelineMetricsReporte
 		return new UsageAnalytics.RetrievalMetrics(memoryCount, documentCount, retrievalTime);
 	}
 
+	/**
+	 * 문장 조립/TTS 단계의 집계값을 사용해 음성 합성 메트릭을 구성합니다.
+	 */
 	private UsageAnalytics.TtsMetrics extractTtsMetrics(
 		DialoguePipelineTracker.PipelineSummary summary) {
 		int sentenceCount = 0;
@@ -162,6 +174,24 @@ public class PersistentPipelineMetricsReporter implements PipelineMetricsReporte
 		}
 
 		return new UsageAnalytics.TtsMetrics(sentenceCount, audioChunks, synthesisTime);
+	}
+
+	private Optional<DialoguePipelineTracker.StageSnapshot> findStage(
+		DialoguePipelineTracker.PipelineSummary summary,
+		DialoguePipelineStage stage) {
+		return summary.stages().stream().filter(snapshot -> snapshot.stage() == stage).findFirst();
+	}
+
+	private <T> void subscribeWithLogging(Mono<T> source,
+		String label,
+		String pipelineId,
+		java.util.function.Function<T, String> idExtractor) {
+		source.subscribe(
+			result -> log.debug("{} saved: {}", label, idExtractor.apply(result)),
+			error -> log.error("Failed to save {} for {}: {}",
+				label,
+				pipelineId,
+				error.getMessage()));
 	}
 
 	private String extractString(Map<String, Object> map, String key) {
