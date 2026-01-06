@@ -16,6 +16,8 @@ import com.study.webflux.rag.domain.retrieval.model.RetrievalContext;
 @RequiredArgsConstructor
 public class DialogueMessageService {
 
+	private static final String DEFAULT_SYSTEM_PROMPT = "You are a helpful assistant.";
+
 	private final SystemPromptService systemPromptService;
 
 	/**
@@ -33,7 +35,7 @@ public class DialogueMessageService {
 
 		String fullSystemPrompt = systemPromptService.buildSystemPrompt(context, memories);
 		if (fullSystemPrompt == null || fullSystemPrompt.isBlank()) {
-			fullSystemPrompt = "You are a helpful assistant.";
+			fullSystemPrompt = DEFAULT_SYSTEM_PROMPT;
 		}
 		messages.add(Message.system(fullSystemPrompt));
 
