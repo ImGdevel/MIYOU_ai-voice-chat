@@ -18,6 +18,7 @@ import reactor.core.publisher.Flux;
 import reactor.core.publisher.Mono;
 import reactor.core.scheduler.Schedulers;
 
+/** Spring AI 기반 OpenAI LLM 어댑터입니다. */
 @Component
 public class SpringAiLlmAdapter implements LlmPort {
 
@@ -27,6 +28,7 @@ public class SpringAiLlmAdapter implements LlmPort {
 		this.chatClient = ChatClient.builder(chatModel).build();
 	}
 
+	/** 토큰 스트리밍 응답을 반환합니다. */
 	@Override
 	public Flux<String> streamCompletion(CompletionRequest request) {
 		List<org.springframework.ai.chat.messages.Message> springAiMessages = convertMessages(
@@ -36,6 +38,7 @@ public class SpringAiLlmAdapter implements LlmPort {
 		return chatClient.prompt(prompt).stream().content();
 	}
 
+	/** 전체 응답 문자열을 반환합니다. */
 	@Override
 	public Mono<String> complete(CompletionRequest request) {
 		List<org.springframework.ai.chat.messages.Message> springAiMessages = convertMessages(

@@ -18,11 +18,13 @@ import com.study.webflux.rag.infrastructure.dialogue.config.properties.RagDialog
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
+/** Supertone 다중 엔드포인트 TTS 구성을 제공합니다. */
 @Configuration
 public class TtsConfiguration {
 
 	private static final Logger log = LoggerFactory.getLogger(TtsConfiguration.class);
 
+	/** 첫 번째 엔드포인트 기반 Supertone 설정을 만듭니다. */
 	@Bean
 	public SupertoneConfig supertoneConfig(RagDialogueProperties properties) {
 		var supertone = properties.getSupertone();
@@ -33,6 +35,7 @@ public class TtsConfiguration {
 		return new SupertoneConfig(firstEndpoint.getApiKey(), firstEndpoint.getBaseUrl());
 	}
 
+	/** 모든 엔드포인트를 활용하는 TTS 로드 밸런서를 생성합니다. */
 	@Bean
 	public TtsLoadBalancer ttsLoadBalancer(RagDialogueProperties properties) {
 		var supertone = properties.getSupertone();
@@ -48,6 +51,7 @@ public class TtsConfiguration {
 		return loadBalancer;
 	}
 
+	/** 로드 밸런서 기반 TTS 포트를 생성합니다. */
 	@Bean
 	@Primary
 	public TtsPort ttsPort(WebClient.Builder webClientBuilder,

@@ -1,5 +1,6 @@
 package com.study.webflux.rag.domain.cost.model;
 
+/** LLM/TTS와 전체 크레딧 비용을 포함한 대화 비용 정보입니다. */
 public record CostInfo(
 	long llmCredits,
 	long ttsCredits,

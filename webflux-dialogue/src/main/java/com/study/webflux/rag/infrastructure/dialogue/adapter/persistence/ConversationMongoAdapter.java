@@ -10,6 +10,7 @@ import com.study.webflux.rag.infrastructure.dialogue.repository.ConversationMong
 import reactor.core.publisher.Flux;
 import reactor.core.publisher.Mono;
 
+/** MongoDB 기반 대화 저장소 어댑터입니다. */
 @Component
 public class ConversationMongoAdapter implements ConversationRepository {
 
@@ -19,6 +20,7 @@ public class ConversationMongoAdapter implements ConversationRepository {
 		this.mongoRepository = mongoRepository;
 	}
 
+	/** 대화 기록을 MongoDB에 저장합니다. */
 	@Override
 	public Mono<ConversationTurn> save(ConversationTurn turn) {
 		ConversationEntity entity = new ConversationEntity(turn.id(), turn.query(), turn.response(),
@@ -27,6 +29,7 @@ public class ConversationMongoAdapter implements ConversationRepository {
 			.withId(saved.id(), saved.query(), saved.response(), saved.createdAt()));
 	}
 
+	/** 최근 대화들을 생성 순서대로 조회합니다. */
 	@Override
 	public Flux<ConversationTurn> findRecent(int limit) {
 		return mongoRepository.findAllByOrderByCreatedAtDesc(PageRequest.of(0, limit))
@@ -38,6 +41,7 @@ public class ConversationMongoAdapter implements ConversationRepository {
 			});
 	}
 
+	/** 전체 대화 기록을 스트리밍으로 조회합니다. */
 	@Override
 	public Flux<ConversationTurn> findAll() {
 		return mongoRepository.findAll().map(entity -> ConversationTurn

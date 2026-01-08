@@ -8,6 +8,7 @@ import org.springframework.data.mongodb.core.index.CompoundIndex;
 import org.springframework.data.mongodb.core.index.Indexed;
 import org.springframework.data.mongodb.core.mapping.Document;
 
+import com.study.webflux.rag.domain.cost.model.CostInfo;
 import com.study.webflux.rag.domain.monitoring.model.UsageAnalytics;
 
 @Document(collection = "usage_analytics")
@@ -20,7 +21,8 @@ public record UsageAnalyticsEntity(
 	LlmUsageEntity llmUsage,
 	RetrievalMetricsEntity retrievalMetrics,
 	TtsMetricsEntity ttsMetrics,
-	ResponseMetricsEntity responseMetrics
+	ResponseMetricsEntity responseMetrics,
+	CostInfoEntity costInfo
 ) {
 	public record UserRequestEntity(
 		String inputText,
@@ -40,17 +42,17 @@ public record UsageAnalyticsEntity(
 
 	public record LlmUsageEntity(
 		@Indexed String model,
-		@Indexed int tokenCount,
-		Integer promptTokens,
-		Integer completionTokens,
+		int promptTokens,
+		int completionTokens,
+		@Indexed int totalTokens,
 		List<String> generatedSentences,
 		long completionTimeMillis) {
 		public static LlmUsageEntity fromDomain(UsageAnalytics.LlmUsage domain) {
 			return new LlmUsageEntity(
 				domain.model(),
-				domain.tokenCount(),
 				domain.promptTokens(),
 				domain.completionTokens(),
+				domain.totalTokens(),
 				domain.generatedSentences(),
 				domain.completionTimeMillis());
 		}
@@ -58,9 +60,9 @@ public record UsageAnalyticsEntity(
 		public UsageAnalytics.LlmUsage toDomain() {
 			return new UsageAnalytics.LlmUsage(
 				model,
-				tokenCount,
 				promptTokens,
 				completionTokens,
+				totalTokens,
 				generatedSentences,
 				completionTimeMillis);
 		}
@@ -86,16 +88,19 @@ public record UsageAnalyticsEntity(
 	public record TtsMetricsEntity(
 		int sentenceCount,
 		int audioChunks,
-		long synthesisTimeMillis) {
+		long synthesisTimeMillis,
+		long audioLengthMillis) {
 		public static TtsMetricsEntity fromDomain(UsageAnalytics.TtsMetrics domain) {
 			return new TtsMetricsEntity(
 				domain.sentenceCount(),
 				domain.audioChunks(),
-				domain.synthesisTimeMillis());
+				domain.synthesisTimeMillis(),
+				domain.audioLengthMillis());
 		}
 
 		public UsageAnalytics.TtsMetrics toDomain() {
-			return new UsageAnalytics.TtsMetrics(sentenceCount, audioChunks, synthesisTimeMillis);
+			return new UsageAnalytics.TtsMetrics(sentenceCount, audioChunks, synthesisTimeMillis,
+				audioLengthMillis);
 		}
 	}
 
@@ -118,6 +123,22 @@ public record UsageAnalyticsEntity(
 		}
 	}
 
+	public record CostInfoEntity(
+		long llmCredits,
+		long ttsCredits,
+		long totalCredits) {
+		public static CostInfoEntity fromDomain(CostInfo domain) {
+			return new CostInfoEntity(
+				domain.llmCredits(),
+				domain.ttsCredits(),
+				domain.totalCredits());
+		}
+
+		public CostInfo toDomain() {
+			return new CostInfo(llmCredits, ttsCredits, totalCredits);
+		}
+	}
+
 	public static UsageAnalyticsEntity fromDomain(UsageAnalytics domain) {
 		return new UsageAnalyticsEntity(
 			domain.pipelineId(),
@@ -133,7 +154,8 @@ public record UsageAnalyticsEntity(
 			domain.ttsMetrics() != null ? TtsMetricsEntity.fromDomain(domain.ttsMetrics()) : null,
 			domain.responseMetrics() != null
 				? ResponseMetricsEntity.fromDomain(domain.responseMetrics())
-				: null);
+				: null,
+			domain.costInfo() != null ? CostInfoEntity.fromDomain(domain.costInfo()) : null);
 	}
 
 	public UsageAnalytics toDomain() {
@@ -145,6 +167,7 @@ public record UsageAnalyticsEntity(
 			llmUsage != null ? llmUsage.toDomain() : null,
 			retrievalMetrics != null ? retrievalMetrics.toDomain() : null,
 			ttsMetrics != null ? ttsMetrics.toDomain() : null,
-			responseMetrics != null ? responseMetrics.toDomain() : null);
+			responseMetrics != null ? responseMetrics.toDomain() : null,
+			costInfo != null ? costInfo.toDomain() : null);
 	}
 }

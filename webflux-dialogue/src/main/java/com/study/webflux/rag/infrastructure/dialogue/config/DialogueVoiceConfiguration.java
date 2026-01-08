@@ -9,9 +9,11 @@ import com.study.webflux.rag.domain.voice.model.VoiceSettings;
 import com.study.webflux.rag.domain.voice.model.VoiceStyle;
 import com.study.webflux.rag.infrastructure.dialogue.config.properties.RagDialogueProperties;
 
+/** TTS 음성 설정용 Voice 빈을 구성합니다. */
 @Configuration
 public class DialogueVoiceConfiguration {
 
+	/** 프로퍼티 기반 기본 TTS Voice를 생성합니다. */
 	@Bean
 	public Voice defaultVoice(RagDialogueProperties properties) {
 		var supertone = properties.getSupertone();

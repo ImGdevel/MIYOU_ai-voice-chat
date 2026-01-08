@@ -27,6 +27,7 @@ import jakarta.validation.constraints.Min;
 import reactor.core.publisher.Flux;
 import reactor.core.publisher.Mono;
 
+/** 파이프라인 성능과 사용량 지표 조회용 REST 컨트롤러입니다. */
 @RestController
 @RequestMapping("/metrics")
 @RequiredArgsConstructor
@@ -35,6 +36,7 @@ public class MetricsController {
 
 	private final MetricsQueryUseCase metricsQueryUseCase;
 
+	/** 지정된 시간 범위의 성능 지표를 조회합니다. */
 	@GetMapping("/performance")
 	public Flux<PerformanceMetrics> getPerformanceMetrics(
 		@RequestParam(required = false) @DateTimeFormat(iso = DateTimeFormat.ISO.DATE_TIME) Instant startTime,
@@ -50,6 +52,7 @@ public class MetricsController {
 		return metricsQueryUseCase.getPerformanceMetricsByTimeRange(startTime, endTime);
 	}
 
+	/** 최신 성능 지표를 지정한 개수만큼 반환합니다. */
 	@GetMapping("/performance/recent")
 	public Flux<PerformanceMetrics> getRecentPerformanceMetrics(
 		@RequestParam(defaultValue = "20") @Min(1) int limit) {
@@ -57,6 +60,7 @@ public class MetricsController {
 		return metricsQueryUseCase.getRecentPerformanceMetrics(limit);
 	}
 
+	/** 지정된 시간 범위의 사용량 분석을 반환합니다. */
 	@GetMapping("/usage")
 	public Flux<UsageAnalytics> getUsageAnalytics(
 		@RequestParam(required = false) @DateTimeFormat(iso = DateTimeFormat.ISO.DATE_TIME) Instant startTime,
@@ -72,6 +76,7 @@ public class MetricsController {
 		return metricsQueryUseCase.getUsageAnalyticsByTimeRange(startTime, endTime);
 	}
 
+	/** 최신 사용량 분석을 지정한 개수만큼 반환합니다. */
 	@GetMapping("/usage/recent")
 	public Flux<UsageAnalytics> getRecentUsageAnalytics(
 		@RequestParam(defaultValue = "20") @Min(1) int limit) {
@@ -79,6 +84,7 @@ public class MetricsController {
 		return metricsQueryUseCase.getRecentUsageAnalytics(limit);
 	}
 
+	/** 지정된 시간 범위의 통합 사용량 요약을 조회합니다. */
 	@GetMapping("/usage/summary")
 	public Mono<UsageSummary> getUsageSummary(
 		@RequestParam(required = false) @DateTimeFormat(iso = DateTimeFormat.ISO.DATE_TIME) Instant startTime,
@@ -104,6 +110,7 @@ public class MetricsController {
 				tuple.getT2()));
 	}
 
+	/** 전체 기간에 대한 통합 사용량 요약을 제공합니다. */
 	@GetMapping("/usage/summary/total")
 	public Mono<TotalUsageSummary> getTotalUsageSummary() {
 		return Mono.zip(
@@ -120,14 +127,15 @@ public class MetricsController {
 
 	private static final int MAX_CREDIT_SAMPLE = 10_000;
 
+	/** 사용량 분석에서 누적 크레딧을 계산합니다. */
 	private Mono<Long> calculateTotalCredits() {
-		// 대량 데이터 로딩 방지: 합리적 상한선으로 계산
 		return metricsQueryUseCase.getRecentUsageAnalytics(MAX_CREDIT_SAMPLE)
 			.map(analytics -> CostCalculationService.calculateCost(analytics))
 			.map(cost -> cost.totalCredits())
 			.reduce(0L, Long::sum);
 	}
 
+	/** 특정 파이프라인 실행의 상세 지표를 조회합니다. */
 	@GetMapping("/pipeline/{pipelineId}")
 	public Mono<PipelineDetailResponse> getPipelineDetail(@PathVariable String pipelineId) {
 		return metricsQueryUseCase.getPipelineDetail(pipelineId)
@@ -136,6 +144,7 @@ public class MetricsController {
 				"Pipeline not found: " + pipelineId)));
 	}
 
+	/** 지정한 집계 수준의 롤업 지표를 반환합니다. */
 	@GetMapping("/rollups")
 	public Flux<MetricsRollup> getMetricsRollups(
 		@RequestParam(defaultValue = "MINUTE") MetricsGranularity granularity,
@@ -143,6 +152,7 @@ public class MetricsController {
 		return metricsQueryUseCase.getMetricsRollups(granularity, limit);
 	}
 
+	/** 단계별 성능 요약을 요청한 집계 수준으로 제공합니다. */
 	@GetMapping("/stages/summary")
 	public Flux<StagePerformanceSummary> getStagePerformanceSummary(
 		@RequestParam(defaultValue = "MINUTE") MetricsGranularity granularity,
@@ -150,6 +160,7 @@ public class MetricsController {
 		return metricsQueryUseCase.getStagePerformanceSummary(granularity, limit);
 	}
 
+	/** 시간 범위 사용량 요약 응답 레코드입니다. */
 	public record UsageSummary(
 		Instant startTime,
 		Instant endTime,
@@ -157,6 +168,7 @@ public class MetricsController {
 		long totalTokens) {
 	}
 
+	/** 전체 기간 사용량 요약 응답 레코드입니다. */
 	public record TotalUsageSummary(
 		long totalRequests,
 		long totalTokens,
@@ -164,10 +176,12 @@ public class MetricsController {
 		long totalCredits) {
 	}
 
+	/** 파이프라인 상세 지표 응답 레코드입니다. */
 	public record PipelineDetailResponse(
 		String pipelineId,
 		PerformanceMetrics performance,
 		UsageAnalytics usage) {
+		/** 도메인 PipelineDetail을 API 응답으로 변환합니다. */
 		public static PipelineDetailResponse fromDomain(PipelineDetail detail) {
 			return new PipelineDetailResponse(
 				detail.pipelineId(),

@@ -3,6 +3,9 @@ package com.study.webflux.rag.domain.monitoring.model;
 import java.time.Instant;
 import java.util.List;
 
+import com.study.webflux.rag.domain.cost.model.CostInfo;
+
+/** 파이프라인 실행의 종합 분석 데이터를 표현합니다. */
 public record UsageAnalytics(
 	String pipelineId,
 	String status,
@@ -11,35 +14,42 @@ public record UsageAnalytics(
 	LlmUsage llmUsage,
 	RetrievalMetrics retrievalMetrics,
 	TtsMetrics ttsMetrics,
-	ResponseMetrics responseMetrics
+	ResponseMetrics responseMetrics,
+	CostInfo costInfo
 ) {
+	/** 사용자 입력 관련 지표입니다. */
 	public record UserRequest(
 		String inputText,
 		int inputLength,
 		String inputPreview) {
 	}
 
+	/** LLM 사용량과 생성 문장 지표입니다. */
 	public record LlmUsage(
 		String model,
-		int tokenCount,
-		Integer promptTokens,
-		Integer completionTokens,
+		int promptTokens,
+		int completionTokens,
+		int totalTokens,
 		List<String> generatedSentences,
 		long completionTimeMillis) {
 	}
 
+	/** RAG 검색 관련 지표입니다. */
 	public record RetrievalMetrics(
 		int memoryCount,
 		int documentCount,
 		long retrievalTimeMillis) {
 	}
 
+	/** TTS 합성 관련 지표입니다. */
 	public record TtsMetrics(
 		int sentenceCount,
 		int audioChunks,
-		long synthesisTimeMillis) {
+		long synthesisTimeMillis,
+		long audioLengthMillis) {
 	}
 
+	/** 응답 지연 및 실행 시간 지표입니다. */
 	public record ResponseMetrics(
 		long totalDurationMillis,
 		Long firstResponseLatencyMillis,
@@ -59,6 +69,7 @@ public record UsageAnalytics(
 		private RetrievalMetrics retrievalMetrics;
 		private TtsMetrics ttsMetrics;
 		private ResponseMetrics responseMetrics;
+		private CostInfo costInfo;
 
 		public Builder pipelineId(String pipelineId) {
 			this.pipelineId = pipelineId;
@@ -100,6 +111,11 @@ public record UsageAnalytics(
 			return this;
 		}
 
+		public Builder costInfo(CostInfo costInfo) {
+			this.costInfo = costInfo;
+			return this;
+		}
+
 		public UsageAnalytics build() {
 			return new UsageAnalytics(
 				pipelineId,
@@ -109,7 +125,8 @@ public record UsageAnalytics(
 				llmUsage,
 				retrievalMetrics,
 				ttsMetrics,
-				responseMetrics);
+				responseMetrics,
+				costInfo);
 		}
 	}
 }

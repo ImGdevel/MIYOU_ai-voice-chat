@@ -11,9 +11,11 @@ import com.study.webflux.rag.application.monitoring.monitor.PipelineMetricsRepor
 import com.study.webflux.rag.domain.monitoring.port.PerformanceMetricsRepository;
 import com.study.webflux.rag.domain.monitoring.port.UsageAnalyticsRepository;
 
+/** 파이프라인 모니터링 설정을 제공합니다. */
 @Configuration
 public class MonitoringConfiguration {
 
+	/** 영구 저장_enabled 설정에 따라 PersistentPipelineMetricsReporter를 생성합니다. */
 	@Bean
 	@Primary
 	@ConditionalOnProperty(name = "monitoring.persistent.enabled", havingValue = "true", matchIfMissing = true)

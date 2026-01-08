@@ -1,5 +1,6 @@
 package com.study.webflux.rag.domain.dialogue.model;
 
+/** 역할과 내용을 담은 대화 메시지입니다. */
 public record Message(
 	MessageRole role,
 	String content

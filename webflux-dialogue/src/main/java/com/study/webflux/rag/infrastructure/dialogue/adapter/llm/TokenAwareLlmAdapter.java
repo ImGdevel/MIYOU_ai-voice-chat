@@ -24,6 +24,7 @@ import reactor.core.publisher.Flux;
 import reactor.core.publisher.Mono;
 import reactor.core.scheduler.Schedulers;
 
+/** 토큰 사용량을 추적하는 기본 LLM 어댑터입니다. */
 @Primary
 @Component
 public class TokenAwareLlmAdapter implements LlmPort, TokenUsageProvider {
@@ -35,6 +36,7 @@ public class TokenAwareLlmAdapter implements LlmPort, TokenUsageProvider {
 		this.chatModel = chatModel;
 	}
 
+	/** 토큰 스트리밍과 사용량 기록을 수행합니다. */
 	@Override
 	public Flux<String> streamCompletion(CompletionRequest request) {
 		List<org.springframework.ai.chat.messages.Message> messages = convertMessages(
@@ -68,6 +70,7 @@ public class TokenAwareLlmAdapter implements LlmPort, TokenUsageProvider {
 			});
 	}
 
+	/** 전체 응답을 반환하면서 사용량을 기록합니다. */
 	@Override
 	public Mono<String> complete(CompletionRequest request) {
 		List<org.springframework.ai.chat.messages.Message> messages = convertMessages(
@@ -96,6 +99,7 @@ public class TokenAwareLlmAdapter implements LlmPort, TokenUsageProvider {
 		}).subscribeOn(Schedulers.boundedElastic());
 	}
 
+	/** 요청의 correlationId로 토큰 사용량을 캐시합니다. */
 	private void updateUsage(CompletionRequest request, int promptTokens, int completionTokens) {
 		String correlationId = request.additionalParams().getOrDefault("correlationId", "")
 			.toString();
@@ -106,6 +110,7 @@ public class TokenAwareLlmAdapter implements LlmPort, TokenUsageProvider {
 		}
 	}
 
+	/** correlationId 기반으로 저장된 토큰 사용량을 조회합니다. */
 	@Override
 	public java.util.Optional<TokenUsage> getTokenUsage(String correlationId) {
 		if (correlationId == null || correlationId.isBlank()) {
