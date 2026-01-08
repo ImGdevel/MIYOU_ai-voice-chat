@@ -1,12 +1,20 @@
 package com.study.webflux.rag.domain.voice.model;
 
+/** TTS 음성 합성 설정을 보관합니다. */
 public class Voice {
+	/** 공급자의 음성 ID입니다. */
 	private final String id;
+	/** 표시 이름입니다. */
 	private final String name;
+	/** TTS 서비스 제공자입니다. */
 	private final String provider;
+	/** 피치/속도 등을 담은 설정입니다. */
 	private final VoiceSettings settings;
+	/** 언어 코드입니다. */
 	private final String language;
+	/** 발화 스타일입니다. */
 	private final com.study.webflux.rag.domain.voice.model.VoiceStyle style;
+	/** 출력 오디오 형식입니다. */
 	private final AudioFormat outputFormat;
 
 	private Voice(Builder builder) {

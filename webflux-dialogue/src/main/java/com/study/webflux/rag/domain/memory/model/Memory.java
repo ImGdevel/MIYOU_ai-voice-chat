@@ -2,6 +2,7 @@ package com.study.webflux.rag.domain.memory.model;
 
 import java.time.Instant;
 
+/** 대화 기억의 속성과 상태를 담은 불변 데이터입니다. */
 public record Memory(
 	String id,
 	MemoryType type,
