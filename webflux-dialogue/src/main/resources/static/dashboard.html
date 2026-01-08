@@ -826,7 +826,7 @@
                     const inputTokens = Math.floor(inputLength / 3);
                     const contextTokens = (memoryCount * 50) + (documentCount * 100);
                     promptTokens = basePromptTokens + inputTokens + contextTokens;
-                    completionTokens = usage.llmUsage.tokenCount || 0;
+                    completionTokens = usage.llmUsage.totalTokens || 0;
                 }
 
                 const inputCost = (promptTokens / 1000000.0) * pricing.input;
@@ -1193,7 +1193,7 @@
                     <div class="detail-card">
                         <div class="detail-section-title">${t('detail_llm_retrieval')}</div>
                         <div class="kv-row"><span>${t('detail_model')}</span><span>${llmUsage.model || '-'}</span></div>
-                        <div class="kv-row"><span>${t('detail_tokens')}</span><span>${formatNumber(llmUsage.tokenCount, 0)}</span></div>
+                        <div class="kv-row"><span>${t('detail_tokens')}</span><span>${formatNumber(llmUsage.totalTokens, 0)}</span></div>
                         <div class="kv-row"><span>${t('detail_credits')}</span><span>${formatNumber(credits)}</span></div>
                         <div class="kv-row"><span>${t('detail_completion')}</span><span>${formatMillis(llmUsage.completionTimeMillis)}</span></div>
                         <div class="kv-row"><span>${t('detail_retrieved')}</span><span>${formatNumber(retrieval.memoryCount, 0)} mem / ${formatNumber(retrieval.documentCount, 0)} docs</span></div>

@@ -21,7 +21,7 @@ public interface SpringDataUsageAnalyticsRepository
 	@Query("{ 'llmUsage.model': ?0 }")
 	Flux<UsageAnalyticsEntity> findByModel(String model, Pageable pageable);
 
-	@Query("{ 'llmUsage.tokenCount': { $gte: ?0 } }")
+	@Query("{ 'llmUsage.totalTokens': { $gte: ?0 } }")
 	Flux<UsageAnalyticsEntity> findHighTokenUsage(int tokenThreshold, Pageable pageable);
 
 	Flux<UsageAnalyticsEntity> findAllByOrderByTimestampDesc(Pageable pageable);
@@ -30,12 +30,12 @@ public interface SpringDataUsageAnalyticsRepository
 
 	@Aggregation(pipeline = {
 		"{ $match: { timestamp: { $gte: ?0, $lte: ?1 } } }",
-		"{ $group: { _id: null, total: { $sum: '$llmUsage.tokenCount' } } }"
+		"{ $group: { _id: null, total: { $sum: '$llmUsage.totalTokens' } } }"
 	})
 	Mono<Long> sumTokensByTimeRange(Instant startTime, Instant endTime);
 
 	@Aggregation(pipeline = {
-		"{ $group: { _id: null, total: { $sum: '$llmUsage.tokenCount' } } }"
+		"{ $group: { _id: null, total: { $sum: '$llmUsage.totalTokens' } } }"
 	})
 	Mono<Long> sumAllTokens();
 

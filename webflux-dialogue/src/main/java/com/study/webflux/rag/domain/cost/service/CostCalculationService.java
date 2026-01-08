@@ -32,7 +32,7 @@ public class CostCalculationService {
 			: estimatePromptTokens(analytics);
 		int completionTokens = actualCompletionTokens != null
 			? actualCompletionTokens
-			: analytics.llmUsage().tokenCount();
+			: analytics.llmUsage().totalTokens();
 
 		return ModelPricing.calculateLlmCredits(model, promptTokens, completionTokens);
 	}

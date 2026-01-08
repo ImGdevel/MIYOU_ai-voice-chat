@@ -114,7 +114,7 @@ public class MetricsRollupScheduler {
 		private UsageAggregate add(UsageAnalytics analytics) {
 			requestCount += 1;
 			if (analytics.llmUsage() != null) {
-				totalTokens += analytics.llmUsage().tokenCount();
+				totalTokens += analytics.llmUsage().totalTokens();
 			}
 			if (analytics.responseMetrics() != null) {
 				totalDurationMillis += analytics.responseMetrics().totalDurationMillis();

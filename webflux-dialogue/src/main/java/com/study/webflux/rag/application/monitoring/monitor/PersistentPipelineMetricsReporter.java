@@ -126,9 +126,9 @@ public class PersistentPipelineMetricsReporter implements PipelineMetricsReporte
 
 		return new UsageAnalytics.LlmUsage(
 			extractString(attrs, "model"),
+			asInt(promptTokens),
+			asInt(completionTokens),
 			totalTokens,
-			promptTokens,
-			completionTokens,
 			summary.llmOutputs(),
 			llmStage.get().durationMillis());
 	}
@@ -163,6 +163,7 @@ public class PersistentPipelineMetricsReporter implements PipelineMetricsReporte
 		int sentenceCount = 0;
 		int audioChunks = 0;
 		long synthesisTime = 0;
+		long audioLengthMillis = 0;
 
 		for (var stage : summary.stages()) {
 			if (stage.stage() == DialoguePipelineStage.SENTENCE_ASSEMBLY) {
@@ -170,10 +171,27 @@ public class PersistentPipelineMetricsReporter implements PipelineMetricsReporte
 			} else if (stage.stage() == DialoguePipelineStage.TTS_SYNTHESIS) {
 				audioChunks = extractInt(stage.attributes(), "audioChunks");
 				synthesisTime = stage.durationMillis();
+				audioLengthMillis = extractLong(stage.attributes(), "audioLengthMillis");
 			}
 		}
 
-		return new UsageAnalytics.TtsMetrics(sentenceCount, audioChunks, synthesisTime);
+		if (audioLengthMillis == 0) {
+			audioLengthMillis = synthesisTime;
+		}
+		return new UsageAnalytics.TtsMetrics(sentenceCount, audioChunks, synthesisTime,
+			audioLengthMillis);
+	}
+
+	private int asInt(Integer value) {
+		return value != null ? value : 0;
+	}
+
+	private long extractLong(Map<String, Object> map, String key) {
+		Object value = map.get(key);
+		if (value instanceof Number) {
+			return ((Number) value).longValue();
+		}
+		return 0L;
 	}
 
 	private Optional<DialoguePipelineTracker.StageSnapshot> findStage(
