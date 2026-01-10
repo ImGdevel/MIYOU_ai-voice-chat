@@ -71,12 +71,13 @@ public class DialoguePostProcessingService {
 	 */
 	private Mono<Void> persistConversationAndMaybeExtract(Mono<PipelineInputs> inputsMono,
 		Mono<String> responseMono) {
-		return responseMono.flatMap(response -> persistConversation(inputsMono, response))
-			.flatMap(turn -> conversationCounterPort.increment())
-			.filter(count -> count % conversationThreshold == 0)
-			.flatMap(count -> memoryExtractionService.checkAndExtract())
-			.subscribeOn(Schedulers.boundedElastic())
-			.then();
+		return inputsMono.flatMap(inputs -> {
+			var userId = inputs.userId();
+			return responseMono.flatMap(response -> persistConversation(inputsMono, response))
+				.flatMap(turn -> conversationCounterPort.increment(userId))
+				.filter(count -> count % conversationThreshold == 0)
+				.flatMap(count -> memoryExtractionService.checkAndExtract(userId));
+		}).subscribeOn(Schedulers.boundedElastic()).then();
 	}
 
 	/**

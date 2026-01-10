@@ -8,6 +8,7 @@ import com.study.webflux.rag.application.dialogue.pipeline.PipelineInputs;
 import com.study.webflux.rag.application.monitoring.service.PipelineTracer;
 import com.study.webflux.rag.domain.dialogue.model.ConversationContext;
 import com.study.webflux.rag.domain.dialogue.model.ConversationTurn;
+import com.study.webflux.rag.domain.dialogue.model.UserId;
 import com.study.webflux.rag.domain.dialogue.port.ConversationRepository;
 import com.study.webflux.rag.domain.memory.model.MemoryRetrievalResult;
 import com.study.webflux.rag.domain.retrieval.model.RetrievalContext;
@@ -29,20 +30,22 @@ public class DialogueInputService {
 	 *            사용자 입력 질의
 	 * @return 파이프라인 실행에 필요한 입력 집합
 	 */
-	public Mono<PipelineInputs> prepareInputs(String text) {
-		Mono<ConversationTurn> currentTurn = Mono.fromCallable(() -> ConversationTurn.create(text))
+	public Mono<PipelineInputs> prepareInputs(UserId userId, String text) {
+		Mono<ConversationTurn> currentTurn = Mono
+			.fromCallable(() -> ConversationTurn.create(userId, text))
 			.cache();
 
 		Mono<MemoryRetrievalResult> memories = pipelineTracer.traceMemories(
-			() -> retrievalPort.retrieveMemories(text, 5));
+			() -> retrievalPort.retrieveMemories(userId, text, 5));
 
 		Mono<RetrievalContext> retrievalContext = pipelineTracer.traceRetrieval(
-			() -> retrievalPort.retrieve(text, 3));
+			() -> retrievalPort.retrieve(userId, text, 3));
 
-		Mono<ConversationContext> history = loadConversationHistory().cache();
+		Mono<ConversationContext> history = loadConversationHistory(userId).cache();
 
 		return Mono.zip(retrievalContext, memories, history, currentTurn)
 			.map(tuple -> new PipelineInputs(
+				userId,
 				tuple.getT1(),
 				tuple.getT2(),
 				tuple.getT3(),
@@ -52,8 +55,8 @@ public class DialogueInputService {
 	/**
 	 * 최근 대화 이력을 조회해 컨텍스트 객체로 변환합니다.
 	 */
-	private Mono<ConversationContext> loadConversationHistory() {
-		return conversationRepository.findRecent(10)
+	private Mono<ConversationContext> loadConversationHistory(UserId userId) {
+		return conversationRepository.findRecent(userId, 10)
 			.collectList()
 			.map(ConversationContext::of)
 			.defaultIfEmpty(ConversationContext.empty());
