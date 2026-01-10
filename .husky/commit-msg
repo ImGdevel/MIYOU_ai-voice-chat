@@ -1,0 +1,8 @@
+#!/usr/bin/env sh
+
+COMMIT_MSG_FILE=$1
+
+if grep -qi "Co-Authored-By:" "$COMMIT_MSG_FILE"; then
+  echo "❌ 외부 기여자(Co-Authored-By)가 포함된 커밋은 허용되지 않습니다"
+  exit 1
+fi
