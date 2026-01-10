@@ -415,7 +415,7 @@ public class PineconeRetrievalAdapter implements RetrievalPort {
 ## 📚 참고 자료
 
 - Clean Architecture Plan: `/Users/devon.woo/.claude/plans/cozy-weaving-summit.md`
-- Refactoring Status: `REFACTORING_STATUS.md`
+- Refactoring Status: `../refactoring/REFACTORING_STATUS.md`
 - Clean Architecture by Robert C. Martin
 
 ---
