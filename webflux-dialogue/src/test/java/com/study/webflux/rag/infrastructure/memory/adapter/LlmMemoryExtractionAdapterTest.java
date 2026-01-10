@@ -6,6 +6,7 @@ import java.util.List;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import com.study.webflux.rag.domain.dialogue.model.CompletionRequest;
 import com.study.webflux.rag.domain.dialogue.model.ConversationTurn;
+import com.study.webflux.rag.domain.dialogue.model.UserId;
 import com.study.webflux.rag.domain.dialogue.port.LlmPort;
 import com.study.webflux.rag.domain.memory.model.Memory;
 import com.study.webflux.rag.domain.memory.model.MemoryExtractionContext;
@@ -46,11 +47,14 @@ class LlmMemoryExtractionAdapterTest {
 	@Test
 	@DisplayName("대화에서 메모리 추출 성공")
 	void extractMemories_success() {
+		UserId userId = UserId.of("user-1");
 		ConversationTurn turn1 = ConversationTurn.withId("id-1",
 			"나는 서울에 살아",
 			"반갑습니다!",
 			Instant.now());
-		MemoryExtractionContext context = MemoryExtractionContext.of(List.of(turn1), List.of());
+		MemoryExtractionContext context = MemoryExtractionContext.of(userId,
+			List.of(turn1),
+			List.of());
 
 		String llmResponse = """
 			[
@@ -66,6 +70,7 @@ class LlmMemoryExtractionAdapterTest {
 		when(llmPort.complete(any(CompletionRequest.class))).thenReturn(Mono.just(llmResponse));
 
 		StepVerifier.create(adapter.extractMemories(context)).assertNext(result -> {
+			assertThat(result.userId()).isEqualTo(userId);
 			assertThat(result.type()).isEqualTo(MemoryType.FACTUAL);
 			assertThat(result.content()).isEqualTo("사용자는 서울에 거주한다");
 			assertThat(result.importance()).isEqualTo(0.7f);
@@ -78,8 +83,11 @@ class LlmMemoryExtractionAdapterTest {
 	@Test
 	@DisplayName("여러 메모리 추출 성공")
 	void extractMemories_multiple() {
+		UserId userId = UserId.of("user-1");
 		ConversationTurn turn = ConversationTurn.create("나는 커피를 좋아하고 개발자로 일해");
-		MemoryExtractionContext context = MemoryExtractionContext.of(List.of(turn), List.of());
+		MemoryExtractionContext context = MemoryExtractionContext.of(userId,
+			List.of(turn),
+			List.of());
 
 		String llmResponse = """
 			[
@@ -109,8 +117,11 @@ class LlmMemoryExtractionAdapterTest {
 	@Test
 	@DisplayName("경험적 메모리 추출 성공")
 	void extractMemories_experiential() {
+		UserId userId = UserId.of("user-1");
 		ConversationTurn turn = ConversationTurn.create("어제 친구들과 등산을 다녀왔어");
-		MemoryExtractionContext context = MemoryExtractionContext.of(List.of(turn), List.of());
+		MemoryExtractionContext context = MemoryExtractionContext.of(userId,
+			List.of(turn),
+			List.of());
 
 		String llmResponse = """
 			[
@@ -134,8 +145,11 @@ class LlmMemoryExtractionAdapterTest {
 	@Test
 	@DisplayName("빈 배열 응답 시 빈 Flux 반환")
 	void extractMemories_emptyArray() {
+		UserId userId = UserId.of("user-1");
 		ConversationTurn turn = ConversationTurn.create("안녕");
-		MemoryExtractionContext context = MemoryExtractionContext.of(List.of(turn), List.of());
+		MemoryExtractionContext context = MemoryExtractionContext.of(userId,
+			List.of(turn),
+			List.of());
 
 		when(llmPort.complete(any(CompletionRequest.class))).thenReturn(Mono.just("[]"));
 
@@ -145,8 +159,11 @@ class LlmMemoryExtractionAdapterTest {
 	@Test
 	@DisplayName("JSON 마크다운 코드 블록 파싱 성공")
 	void extractMemories_jsonMarkdown() {
+		UserId userId = UserId.of("user-1");
 		ConversationTurn turn = ConversationTurn.create("테스트");
-		MemoryExtractionContext context = MemoryExtractionContext.of(List.of(turn), List.of());
+		MemoryExtractionContext context = MemoryExtractionContext.of(userId,
+			List.of(turn),
+			List.of());
 
 		String llmResponse = """
 			```json
@@ -171,10 +188,12 @@ class LlmMemoryExtractionAdapterTest {
 	@Test
 	@DisplayName("기존 메모리를 포함한 컨텍스트로 추출")
 	void extractMemories_withExistingMemories() {
+		UserId userId = UserId.of("user-1");
 		ConversationTurn turn = ConversationTurn.create("나는 이제 부산에 살아");
-		Memory existingMemory = new Memory("mem-1", MemoryType.FACTUAL, "사용자는 서울에 거주한다", 0.7f,
-			Instant.now(), Instant.now(), 1);
-		MemoryExtractionContext context = MemoryExtractionContext.of(List.of(turn),
+		Memory existingMemory = new Memory("mem-1", userId, MemoryType.FACTUAL, "사용자는 서울에 거주한다",
+			0.7f, Instant.now(), Instant.now(), 1);
+		MemoryExtractionContext context = MemoryExtractionContext.of(userId,
+			List.of(turn),
 			List.of(existingMemory));
 
 		String llmResponse = """
@@ -198,8 +217,11 @@ class LlmMemoryExtractionAdapterTest {
 	@Test
 	@DisplayName("중요도 0.0 ~ 1.0 범위 검증")
 	void extractMemories_importanceRange() {
+		UserId userId = UserId.of("user-1");
 		ConversationTurn turn = ConversationTurn.create("테스트");
-		MemoryExtractionContext context = MemoryExtractionContext.of(List.of(turn), List.of());
+		MemoryExtractionContext context = MemoryExtractionContext.of(userId,
+			List.of(turn),
+			List.of());
 
 		String llmResponse = """
 			[
@@ -229,8 +251,11 @@ class LlmMemoryExtractionAdapterTest {
 	@Test
 	@DisplayName("잘못된 JSON 응답 시 빈 Flux 반환")
 	void extractMemories_invalidJson_returnsEmpty() {
+		UserId userId = UserId.of("user-1");
 		ConversationTurn turn = ConversationTurn.create("테스트");
-		MemoryExtractionContext context = MemoryExtractionContext.of(List.of(turn), List.of());
+		MemoryExtractionContext context = MemoryExtractionContext.of(userId,
+			List.of(turn),
+			List.of());
 
 		when(llmPort.complete(any(CompletionRequest.class))).thenReturn(
 			Mono.just("invalid json"));
@@ -241,8 +266,11 @@ class LlmMemoryExtractionAdapterTest {
 	@Test
 	@DisplayName("LLM 에러 시 에러 전파")
 	void extractMemories_llmError_propagates() {
+		UserId userId = UserId.of("user-1");
 		ConversationTurn turn = ConversationTurn.create("테스트");
-		MemoryExtractionContext context = MemoryExtractionContext.of(List.of(turn), List.of());
+		MemoryExtractionContext context = MemoryExtractionContext.of(userId,
+			List.of(turn),
+			List.of());
 
 		when(llmPort.complete(any(CompletionRequest.class))).thenReturn(
 			Mono.error(new RuntimeException("LLM API error")));
@@ -255,6 +283,7 @@ class LlmMemoryExtractionAdapterTest {
 	@Test
 	@DisplayName("여러 대화 턴을 컨텍스트로 전달")
 	void extractMemories_multipleTurns() {
+		UserId userId = UserId.of("user-1");
 		ConversationTurn turn1 = ConversationTurn.withId("id-1",
 			"나는 개발자야",
 			"좋아요",
@@ -263,7 +292,8 @@ class LlmMemoryExtractionAdapterTest {
 			"자바를 주로 사용해",
 			"알겠습니다",
 			Instant.now());
-		MemoryExtractionContext context = MemoryExtractionContext.of(List.of(turn1, turn2),
+		MemoryExtractionContext context = MemoryExtractionContext.of(userId,
+			List.of(turn1, turn2),
 			List.of());
 
 		String llmResponse = """

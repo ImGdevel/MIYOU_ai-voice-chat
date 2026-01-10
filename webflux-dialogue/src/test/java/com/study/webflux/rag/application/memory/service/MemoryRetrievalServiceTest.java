@@ -3,6 +3,7 @@ package com.study.webflux.rag.application.memory.service;
 import java.time.Instant;
 import java.util.List;
 
+import com.study.webflux.rag.domain.dialogue.model.UserId;
 import com.study.webflux.rag.domain.memory.model.Memory;
 import com.study.webflux.rag.domain.memory.model.MemoryEmbedding;
 import com.study.webflux.rag.domain.memory.model.MemoryType;
@@ -43,8 +44,10 @@ class MemoryRetrievalServiceTest {
 
 	@Test
 	void retrieveMemories_shouldRankLimitAndUpdateAccessMetrics() {
+		UserId userId = UserId.of("user-1");
 		Instant now = Instant.now();
 		Memory top = new Memory("m-top",
+			userId,
 			MemoryType.EXPERIENTIAL,
 			"사용자는 러닝을 좋아한다",
 			0.95f,
@@ -52,6 +55,7 @@ class MemoryRetrievalServiceTest {
 			now,
 			3);
 		Memory second = new Memory("m-second",
+			userId,
 			MemoryType.FACTUAL,
 			"사용자는 개발자다",
 			0.70f,
@@ -59,6 +63,7 @@ class MemoryRetrievalServiceTest {
 			now,
 			2);
 		Memory dropped = new Memory("m-dropped",
+			userId,
 			MemoryType.FACTUAL,
 			"사용자는 고양이를 키운다",
 			0.10f,
@@ -68,7 +73,8 @@ class MemoryRetrievalServiceTest {
 
 		when(embeddingPort.embed("query")).thenReturn(
 			Mono.just(MemoryEmbedding.of("query", List.of(0.1f, 0.2f))));
-		when(vectorMemoryPort.search(List.of(0.1f, 0.2f),
+		when(vectorMemoryPort.search(userId,
+			List.of(0.1f, 0.2f),
 			List.of(MemoryType.EXPERIENTIAL, MemoryType.FACTUAL),
 			0.3f,
 			4)).thenReturn(Flux.just(top, second, dropped));
@@ -77,7 +83,7 @@ class MemoryRetrievalServiceTest {
 			ArgumentMatchers.any(),
 			ArgumentMatchers.anyInt())).thenReturn(Mono.empty());
 
-		StepVerifier.create(service.retrieveMemories("query", 2)).assertNext(result -> {
+		StepVerifier.create(service.retrieveMemories(userId, "query", 2)).assertNext(result -> {
 			assertThat(result.experientialMemories()).hasSize(1);
 			assertThat(result.experientialMemories().get(0).id()).isEqualTo("m-top");
 			assertThat(result.factualMemories()).hasSize(1);
@@ -100,14 +106,16 @@ class MemoryRetrievalServiceTest {
 
 	@Test
 	void retrieveMemories_shouldReturnEmptyWithoutUpdateWhenSearchIsEmpty() {
+		UserId userId = UserId.of("user-1");
 		when(embeddingPort.embed("query")).thenReturn(
 			Mono.just(MemoryEmbedding.of("query", List.of(0.1f, 0.2f))));
-		when(vectorMemoryPort.search(ArgumentMatchers.anyList(),
+		when(vectorMemoryPort.search(ArgumentMatchers.eq(userId),
+			ArgumentMatchers.anyList(),
 			ArgumentMatchers.anyList(),
 			ArgumentMatchers.anyFloat(),
 			ArgumentMatchers.anyInt())).thenReturn(Flux.empty());
 
-		StepVerifier.create(service.retrieveMemories("query", 3)).assertNext(result -> {
+		StepVerifier.create(service.retrieveMemories(userId, "query", 3)).assertNext(result -> {
 			assertThat(result.isEmpty()).isTrue();
 		}).verifyComplete();
 
