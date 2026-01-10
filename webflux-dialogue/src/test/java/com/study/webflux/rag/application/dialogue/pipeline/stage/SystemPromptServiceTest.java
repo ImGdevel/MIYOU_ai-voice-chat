@@ -11,6 +11,7 @@ import com.study.webflux.rag.domain.retrieval.model.RetrievalDocument;
 import com.study.webflux.rag.infrastructure.common.template.FileBasedPromptTemplate;
 import com.study.webflux.rag.infrastructure.dialogue.config.properties.RagDialogueProperties;
 import org.junit.jupiter.api.BeforeEach;
+import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.extension.ExtendWith;
 import org.mockito.Mock;
@@ -33,6 +34,7 @@ class SystemPromptServiceTest {
 	}
 
 	@Test
+	@DisplayName("시스템 프롬프트 생성 시 모든 섹션을 포함한다")
 	void buildSystemPrompt_shouldRenderBaseTemplateWithAllSections() {
 		when(promptTemplate.load("system/base"))
 			.thenReturn("{{persona}}\n\n{{common}}\n\n{{memories}}\n\n{{context}}");
@@ -59,6 +61,7 @@ class SystemPromptServiceTest {
 	}
 
 	@Test
+	@DisplayName("페르소나 템플릿 누락 시 기본 프롬프트로 폴백한다")
 	void buildSystemPrompt_shouldFallbackToConfiguredSystemPromptWhenPersonaTemplateIsMissing() {
 		properties.setSystemPrompt("configured persona");
 
