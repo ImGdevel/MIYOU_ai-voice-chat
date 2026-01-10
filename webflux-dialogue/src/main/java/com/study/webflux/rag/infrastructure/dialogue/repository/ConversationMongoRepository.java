@@ -9,7 +9,8 @@ import reactor.core.publisher.Flux;
 public interface ConversationMongoRepository
 	extends
 		ReactiveMongoRepository<ConversationEntity, String> {
-	Flux<ConversationEntity> findAllByOrderByCreatedAtDesc(Pageable pageable);
 
-	Flux<ConversationEntity> findTop10ByOrderByCreatedAtDesc();
+	Flux<ConversationEntity> findByUserIdOrderByCreatedAtDesc(String userId, Pageable pageable);
+
+	Flux<ConversationEntity> findAllByUserId(String userId);
 }
