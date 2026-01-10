@@ -11,6 +11,7 @@ import com.fasterxml.jackson.databind.ObjectMapper;
 import com.study.webflux.rag.domain.dialogue.model.CompletionRequest;
 import com.study.webflux.rag.domain.dialogue.model.ConversationTurn;
 import com.study.webflux.rag.domain.dialogue.model.Message;
+import com.study.webflux.rag.domain.dialogue.model.UserId;
 import com.study.webflux.rag.domain.dialogue.port.LlmPort;
 import com.study.webflux.rag.domain.memory.model.ExtractedMemory;
 import com.study.webflux.rag.domain.memory.model.MemoryExtractionContext;
@@ -42,7 +43,8 @@ public class LlmMemoryExtractionAdapter implements MemoryExtractionPort {
 		CompletionRequest request = CompletionRequest
 			.withMessages(messages, extractionModel, false);
 
-		return llmPort.complete(request).flatMapMany(this::parseExtractedMemories);
+		return llmPort.complete(request)
+			.flatMapMany(response -> parseExtractedMemories(context.userId(), response));
 	}
 
 	private String getSystemPrompt() {
@@ -100,7 +102,7 @@ public class LlmMemoryExtractionAdapter implements MemoryExtractionPort {
 		return prompt.toString();
 	}
 
-	private Flux<ExtractedMemory> parseExtractedMemories(String jsonResponse) {
+	private Flux<ExtractedMemory> parseExtractedMemories(UserId userId, String jsonResponse) {
 		try {
 			String cleaned = jsonResponse.trim();
 			if (cleaned.startsWith("```json")) {
@@ -115,8 +117,7 @@ public class LlmMemoryExtractionAdapter implements MemoryExtractionPort {
 				new TypeReference<List<MemoryExtractionDto>>() {
 				});
 
-			return Flux.fromIterable(dtos)
-				.map(dto -> dto.toExtractedMemory(context.userId()));
+			return Flux.fromIterable(dtos).map(dto -> dto.toExtractedMemory(userId));
 		} catch (Exception e) {
 			log.warn("메모리 추출 응답 파싱 실패: {}", jsonResponse, e);
 			return Flux.empty();

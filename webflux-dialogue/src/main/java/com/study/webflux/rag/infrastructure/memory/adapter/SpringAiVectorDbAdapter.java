@@ -176,6 +176,13 @@ public class SpringAiVectorDbAdapter implements VectorMemoryPort {
 			accessCount = ((Number) accessCountObj).intValue();
 		}
 
+		Object userIdObj = metadata.get("userId");
+		if (!(userIdObj instanceof String) || ((String) userIdObj).isBlank()) {
+			throw new IllegalStateException(
+				"Document " + document.getId() + " has no userId metadata");
+		}
+		UserId userId = UserId.of((String) userIdObj);
+
 		MemoryType memoryType;
 		try {
 			memoryType = MemoryType.valueOf(type);
@@ -184,7 +191,7 @@ public class SpringAiVectorDbAdapter implements VectorMemoryPort {
 				"Document " + document.getId() + " has invalid type: " + type, e);
 		}
 
-		return new Memory(document.getId(), memoryType, document.getContent(), importance,
+		return new Memory(document.getId(), userId, memoryType, document.getContent(), importance,
 			createdAt, lastAccessedAt, accessCount);
 	}
 
