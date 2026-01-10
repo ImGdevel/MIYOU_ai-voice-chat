@@ -6,6 +6,7 @@ import java.util.function.Supplier;
 import com.study.webflux.rag.application.monitoring.service.PipelineTracer;
 import com.study.webflux.rag.domain.dialogue.port.TtsPort;
 import com.study.webflux.rag.domain.dialogue.service.SentenceAssembler;
+import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.extension.ExtendWith;
 import org.mockito.InjectMocks;
@@ -34,6 +35,7 @@ class DialogueTtsStreamServiceTest {
 	private DialogueTtsStreamService service;
 
 	@Test
+	@DisplayName("TTS 웜업은 요청당 한 번만 실행된다")
 	void prepareTtsWarmup_shouldRunPrepareOnlyOncePerRequest() {
 		AtomicInteger prepareCallCount = new AtomicInteger();
 		when(ttsPort.prepare()).thenAnswer(invocation -> Mono.defer(() -> {

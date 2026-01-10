@@ -9,6 +9,7 @@ import com.study.webflux.rag.application.dialogue.pipeline.stage.DialogueTtsStre
 import com.study.webflux.rag.domain.dialogue.model.UserId;
 import com.study.webflux.rag.domain.voice.model.AudioFormat;
 import org.junit.jupiter.api.BeforeEach;
+import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.extension.ExtendWith;
 import org.mockito.Mock;
@@ -49,6 +50,7 @@ class DialoguePipelineServiceTest {
 	}
 
 	@Test
+	@DisplayName("오디오 스트리밍 실행 시 전체 파이프라인 스테이지를 순차 호출한다")
 	void executeAudioStreaming_shouldUseDelegatedFlows() {
 		UserId userId = UserId.of("user-1");
 		String testText = "test";
@@ -74,6 +76,7 @@ class DialoguePipelineServiceTest {
 	}
 
 	@Test
+	@DisplayName("텍스트 전용 실행 시 LLM 토큰 스트림을 반환한다")
 	void executeTextOnly_shouldDelegateToUseCase() {
 		UserId userId = UserId.of("user-1");
 		String testText = "hello";

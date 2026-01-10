@@ -11,6 +11,7 @@ import com.study.webflux.rag.domain.memory.port.EmbeddingPort;
 import com.study.webflux.rag.domain.memory.port.VectorMemoryPort;
 import com.study.webflux.rag.infrastructure.memory.adapter.MemoryExtractionConfig;
 import org.junit.jupiter.api.BeforeEach;
+import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.extension.ExtendWith;
 import org.mockito.ArgumentMatchers;
@@ -43,6 +44,7 @@ class MemoryRetrievalServiceTest {
 	}
 
 	@Test
+	@DisplayName("메모리 검색 시 랭킹, 제한, 접근 메트릭 업데이트를 수행한다")
 	void retrieveMemories_shouldRankLimitAndUpdateAccessMetrics() {
 		UserId userId = UserId.of("user-1");
 		Instant now = Instant.now();
@@ -105,6 +107,7 @@ class MemoryRetrievalServiceTest {
 	}
 
 	@Test
+	@DisplayName("검색 결과가 없으면 빈 결과를 반환한다")
 	void retrieveMemories_shouldReturnEmptyWithoutUpdateWhenSearchIsEmpty() {
 		UserId userId = UserId.of("user-1");
 		when(embeddingPort.embed("query")).thenReturn(
