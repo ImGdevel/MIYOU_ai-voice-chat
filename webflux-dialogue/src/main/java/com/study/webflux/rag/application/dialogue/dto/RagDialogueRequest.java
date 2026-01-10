@@ -7,6 +7,9 @@ import java.time.Instant;
 
 @Schema(description = "대화 Request")
 public record RagDialogueRequest(
+	@Schema(description = "사용자 ID", example = "550e8400-e29b-41d4-a716-446655440000")
+	@NotBlank String userId,
+
 	@Schema(description = "유저 프롬포트", example = "안녕하세요")
 	@NotBlank String text,
 

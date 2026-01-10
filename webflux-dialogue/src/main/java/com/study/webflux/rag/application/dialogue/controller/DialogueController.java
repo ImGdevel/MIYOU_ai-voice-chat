@@ -19,6 +19,7 @@ import org.springframework.web.server.ResponseStatusException;
 
 import com.study.webflux.rag.application.dialogue.controller.docs.DialogueApi;
 import com.study.webflux.rag.application.dialogue.dto.RagDialogueRequest;
+import com.study.webflux.rag.domain.dialogue.model.UserId;
 import com.study.webflux.rag.domain.dialogue.port.DialoguePipelineUseCase;
 import com.study.webflux.rag.domain.voice.model.AudioFormat;
 import jakarta.validation.Valid;
@@ -51,7 +52,8 @@ public class DialogueController implements DialogueApi {
 
 		response.getHeaders().setContentType(MediaType.valueOf(targetFormat.getMediaType()));
 
-		return dialoguePipelineUseCase.executeAudioStreaming(request.text(), targetFormat)
+		UserId userId = UserId.of(request.userId());
+		return dialoguePipelineUseCase.executeAudioStreaming(userId, request.text(), targetFormat)
 			.map(bufferFactory::wrap);
 	}
 
@@ -59,6 +61,7 @@ public class DialogueController implements DialogueApi {
 	@PostMapping(path = "/text", produces = MediaType.TEXT_EVENT_STREAM_VALUE)
 	public Flux<String> ragDialogueText(
 		@Valid @RequestBody RagDialogueRequest request) {
-		return dialoguePipelineUseCase.executeTextOnly(request.text());
+		UserId userId = UserId.of(request.userId());
+		return dialoguePipelineUseCase.executeTextOnly(userId, request.text());
 	}
 }
