@@ -3,6 +3,7 @@ package com.study.webflux.rag.domain.memory.port;
 import java.time.Instant;
 import java.util.List;
 
+import com.study.webflux.rag.domain.dialogue.model.UserId;
 import com.study.webflux.rag.domain.memory.model.Memory;
 import com.study.webflux.rag.domain.memory.model.MemoryType;
 import reactor.core.publisher.Flux;
@@ -37,7 +38,8 @@ public interface VectorMemoryPort {
 	 *            검색할 상위 메모리 개수
 	 * @return 검색된 메모리 항목들의 Flux 스트림
 	 */
-	Flux<Memory> search(List<Float> queryEmbedding,
+	Flux<Memory> search(UserId userId,
+		List<Float> queryEmbedding,
 		List<MemoryType> types,
 		float importanceThreshold,
 		int topK);

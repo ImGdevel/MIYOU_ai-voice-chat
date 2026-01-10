@@ -1,12 +1,18 @@
 package com.study.webflux.rag.domain.memory.model;
 
+import com.study.webflux.rag.domain.dialogue.model.UserId;
+
 public record ExtractedMemory(
+	UserId userId,
 	MemoryType type,
 	String content,
 	float importance,
 	String reasoning
 ) {
 	public ExtractedMemory {
+		if (userId == null) {
+			throw new IllegalArgumentException("userId cannot be null");
+		}
 		if (type == null) {
 			throw new IllegalArgumentException("type cannot be null");
 		}
@@ -19,6 +25,6 @@ public record ExtractedMemory(
 	}
 
 	public Memory toMemory() {
-		return Memory.create(type, content, importance);
+		return Memory.create(userId, type, content, importance);
 	}
 }
