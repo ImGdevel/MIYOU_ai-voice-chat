@@ -88,19 +88,38 @@ jobs:
       - name: 체크아웃
         uses: actions/checkout@v4
 
-      - name: SSH 키 설정
+      - name: 배포 시크릿 사전 검증
+        shell: bash
+        run: |
+          test -n "${{ secrets.EC2_HOST }}" || (echo "EC2_HOST 시크릿이 비어 있습니다." >&2; exit 1)
+          test -n "${{ secrets.EC2_USER }}" || (echo "EC2_USER 시크릿이 비어 있습니다." >&2; exit 1)
+          test -n "${{ secrets.EC2_SSH_PRIVATE_KEY }}" || (echo "EC2_SSH_PRIVATE_KEY 시크릿이 비어 있습니다." >&2; exit 1)
+
+      - name: SSH 키/호스트 설정 (비-RSA 파일명 사용)
         shell: bash
         run: |
           mkdir -p ~/.ssh
           chmod 700 ~/.ssh
-          echo "${{ secrets.EC2_SSH_PRIVATE_KEY }}" > ~/.ssh/id_rsa
-          chmod 600 ~/.ssh/id_rsa
-          ssh-keyscan -H "${{ secrets.EC2_HOST }}" >> ~/.ssh/known_hosts
+          printf '%s\n' "${{ secrets.EC2_SSH_PRIVATE_KEY }}" | tr -d '\r' > ~/.ssh/deploy_key
+          chmod 600 ~/.ssh/deploy_key
+          ssh-keygen -y -f ~/.ssh/deploy_key >/dev/null
+
+          cat > ~/.ssh/config <<EOF
+          Host deploy-target
+            HostName ${{ secrets.EC2_HOST }}
+            User ${{ secrets.EC2_USER }}
+            IdentityFile ~/.ssh/deploy_key
+            IdentitiesOnly yes
+            StrictHostKeyChecking accept-new
+            ServerAliveInterval 30
+            ConnectTimeout 10
+          EOF
+          chmod 600 ~/.ssh/config
 
       - name: 원격 서버 GHCR 로그인
         shell: bash
         run: |
-          ssh "${{ secrets.EC2_USER }}@${{ secrets.EC2_HOST }}" \
+          ssh deploy-target \
             "echo '${{ secrets.GHCR_TOKEN }}' | docker login ghcr.io -u '${{ secrets.GHCR_USERNAME }}' --password-stdin"
 
       - name: 원격 배포 실행
@@ -110,4 +129,84 @@ jobs:
           AWS_REGION: ${{ secrets.AWS_REGION }}
         shell: bash
         run: |
-          ./scripts/aws/deploy_remote_compose.sh "${{ secrets.EC2_USER }}@${{ secrets.EC2_HOST }}"
+          ./scripts/aws/deploy_remote_compose.sh "deploy-target"
+
+  notify:
+    runs-on: ubuntu-latest
+    needs:
+      - gradle-build
+      - build-and-push
+      - deploy
+    if: always()
+    steps:
+      - name: 디스코드 웹훅 알림
+        env:
+          DISCORD_WEBHOOK_URL: ${{ secrets.DISCORD_WEBHOOK_URL }}
+          RESULT_GRADLE: ${{ needs.gradle-build.result }}
+          RESULT_BUILD_PUSH: ${{ needs.build-and-push.result }}
+          RESULT_DEPLOY: ${{ needs.deploy.result }}
+        shell: bash
+        run: |
+          if [[ -z "${DISCORD_WEBHOOK_URL}" ]]; then
+            echo "DISCORD_WEBHOOK_URL 시크릿이 없어 알림을 건너뜁니다."
+            exit 0
+          fi
+
+          if [[ "${RESULT_GRADLE}" == "success" && "${RESULT_BUILD_PUSH}" == "success" && "${RESULT_DEPLOY}" == "success" ]]; then
+            STATUS_TEXT="성공"
+            ICON="✅"
+            COLOR=3066993
+          else
+            STATUS_TEXT="실패"
+            ICON="❌"
+            COLOR=15158332
+          fi
+
+          RUN_URL="${{ github.server_url }}/${{ github.repository }}/actions/runs/${{ github.run_id }}"
+          PAYLOAD="$(STATUS_TEXT="${STATUS_TEXT}" ICON="${ICON}" COLOR="${COLOR}" RUN_URL="${RUN_URL}" python3 - <<'PY'
+import json
+import os
+
+status_text = os.environ["STATUS_TEXT"]
+icon = os.environ["ICON"]
+color = int(os.environ["COLOR"])
+
+repo = os.environ["GITHUB_REPOSITORY"]
+branch = os.environ["GITHUB_REF_NAME"]
+actor = os.environ["GITHUB_ACTOR"]
+run_id = os.environ["GITHUB_RUN_ID"]
+run_url = os.environ["RUN_URL"]
+result_gradle = os.environ["RESULT_GRADLE"]
+result_build_push = os.environ["RESULT_BUILD_PUSH"]
+result_deploy = os.environ["RESULT_DEPLOY"]
+
+def mark(result: str) -> str:
+    return f"{'✅' if result == 'success' else '❌'} {result}"
+
+payload = {
+    "embeds": [
+        {
+            "title": f"{icon} MIYOU CI-CD 결과: {status_text}",
+            "description": "워크플로우 실행 결과 요약",
+            "color": color,
+            "fields": [
+                {"name": "저장소", "value": repo, "inline": True},
+                {"name": "브랜치", "value": branch, "inline": True},
+                {"name": "실행자", "value": actor, "inline": True},
+                {"name": "gradle-build", "value": mark(result_gradle), "inline": True},
+                {"name": "build-and-push", "value": mark(result_build_push), "inline": True},
+                {"name": "deploy", "value": mark(result_deploy), "inline": True},
+                {"name": "실행 링크", "value": run_url, "inline": False},
+            ],
+            "footer": {"text": f"GitHub Actions • run_id={run_id}"},
+        }
+    ]
+}
+
+print(json.dumps(payload, ensure_ascii=False))
+PY
+)"
+
+          curl -sS -X POST "${DISCORD_WEBHOOK_URL}" \
+            -H "Content-Type: application/json" \
+            --data "${PAYLOAD}"
