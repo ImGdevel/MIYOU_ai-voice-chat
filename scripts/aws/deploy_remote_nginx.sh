@@ -16,11 +16,27 @@ ssh "${HOST_ALIAS}" "bash -s" -- "${REMOTE_DIR}" <<'EOF'
 set -euo pipefail
 remote_dir="$1"
 
+cd "${remote_dir}"
+if [[ ! -f ".env.deploy" ]]; then
+  echo "[nginx] .env.deploy is missing at ${remote_dir}" >&2
+  exit 1
+fi
+
+auth_user="$(grep -E '^NGINX_BASIC_AUTH_USER=' .env.deploy | tail -n1 | cut -d'=' -f2-)"
+auth_password="$(grep -E '^NGINX_BASIC_AUTH_PASSWORD=' .env.deploy | tail -n1 | cut -d'=' -f2-)"
+if [[ -z "${auth_user}" || -z "${auth_password}" ]]; then
+  echo "[nginx] NGINX_BASIC_AUTH_USER / NGINX_BASIC_AUTH_PASSWORD is required in .env.deploy" >&2
+  exit 1
+fi
+
+mkdir -p deploy/nginx
+printf '%s:%s\n' "${auth_user}" "$(openssl passwd -apr1 "${auth_password}")" > deploy/nginx/.htpasswd
+chmod 644 deploy/nginx/.htpasswd
+
 if docker ps -a --format '{{.Names}}' | grep -q '^miyou-nginx$'; then
   docker exec miyou-nginx nginx -t
   docker exec miyou-nginx nginx -s reload
 else
-  cd "${remote_dir}"
   docker compose -f docker-compose.app.yml up -d --no-deps nginx
 fi
 EOF

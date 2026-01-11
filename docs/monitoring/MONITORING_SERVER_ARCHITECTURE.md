@@ -108,6 +108,35 @@ flowchart LR
 - Prometheus -> App scrape 상태: `UP`
 - Alloy -> Loki 전송 상태: **네트워크 타임아웃(보안그룹 조정 필요)**
 
+### 12.0 실시간 상태 다이어그램 (UP/DOWN, 포트, 접근제어)
+```mermaid
+flowchart LR
+  APP["App Server\n172.31.62.169"]
+  NGINX["Nginx:80\n/actuator/prometheus allow 127.0.0.1, 172.31.44.177\n(deny all 외부)"]
+  ALLOY["Alloy\nUP"]
+  MON["Monitoring Server\n172.31.44.177\n(public 13.124.219.63 임시)"]
+  PROM["Prometheus:9090\nUP"]
+  GRAF["Grafana:3000\nUP"]
+  LOKI["Loki:3100\nUP(ready 지연 가능)"]
+
+  APP -->|"80/tcp\n/actuator/prometheus"| NGINX
+  PROM -->|"scrape: UP"| NGINX
+
+  APP -->|"docker logs"| ALLOY
+  ALLOY -->|"3100/tcp\npush: TIMEOUT"| LOKI
+
+  MON --> PROM
+  MON --> GRAF
+  MON --> LOKI
+
+  classDef ok fill:#163,stroke:#4caf50,color:#fff;
+  classDef warn fill:#3a2a00,stroke:#ffb300,color:#fff;
+  classDef fail fill:#3a0000,stroke:#ff5252,color:#fff;
+
+  class PROM,GRAF,LOKI,ALLOY ok;
+  class NGINX warn;
+```
+
 ### 12.1 남은 작업
 - 앱 서버 SG에서 모니터링 서버(`172.31.44.177`)로 향하는 Loki 포트 경로 확인
 - 모니터링 서버 SG 인바운드에 `3100/TCP`를 앱 서버(또는 앱 서버 SG) 기준으로 허용

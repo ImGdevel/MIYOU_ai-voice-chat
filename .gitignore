@@ -47,3 +47,4 @@ Claude.md
 .DS_Store
 .env
 *.pem
+deploy/nginx/.htpasswd

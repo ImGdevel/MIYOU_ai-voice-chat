@@ -74,6 +74,30 @@ ssh "${HOST_ALIAS}" "cd '${REMOTE_DIR}' && grep -qE '^OPENAI_API_KEY=.+$' .env.d
   exit 1
 }
 
+echo "[deploy] Generate nginx basic auth file from .env.deploy"
+ssh "${HOST_ALIAS}" "bash -s" -- "${REMOTE_DIR}" <<'EOF'
+set -euo pipefail
+remote_dir="$1"
+
+cd "${remote_dir}"
+if [[ ! -f ".env.deploy" ]]; then
+  echo "[deploy] .env.deploy is missing" >&2
+  exit 1
+fi
+
+auth_user="$(grep -E '^NGINX_BASIC_AUTH_USER=' .env.deploy | tail -n1 | cut -d'=' -f2-)"
+auth_password="$(grep -E '^NGINX_BASIC_AUTH_PASSWORD=' .env.deploy | tail -n1 | cut -d'=' -f2-)"
+
+if [[ -z "${auth_user}" || -z "${auth_password}" ]]; then
+  echo "[deploy] NGINX_BASIC_AUTH_USER / NGINX_BASIC_AUTH_PASSWORD is required in .env.deploy" >&2
+  exit 1
+fi
+
+mkdir -p deploy/nginx
+printf '%s:%s\n' "${auth_user}" "$(openssl passwd -apr1 "${auth_password}")" > deploy/nginx/.htpasswd
+chmod 644 deploy/nginx/.htpasswd
+EOF
+
 echo "[deploy] Pull and start containers"
 ssh "${HOST_ALIAS}" "cd '${REMOTE_DIR}' && APP_IMAGE='${APP_IMAGE}' docker compose -f docker-compose.app.yml pull && APP_IMAGE='${APP_IMAGE}' docker compose -f docker-compose.app.yml up -d"
 
