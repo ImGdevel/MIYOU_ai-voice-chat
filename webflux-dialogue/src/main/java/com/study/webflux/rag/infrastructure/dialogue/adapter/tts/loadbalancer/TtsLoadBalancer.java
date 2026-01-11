@@ -117,7 +117,7 @@ public class TtsLoadBalancer {
 	}
 
 	public void reportSuccess(TtsEndpoint endpoint) {
-		if (endpoint.getHealth() != TtsEndpoint.EndpointHealth.HEALTHY) {
+		if (endpoint.getHealth() == TtsEndpoint.EndpointHealth.TEMPORARY_FAILURE) {
 			log.info("엔드포인트 {} 정상 상태로 복구", endpoint.getId());
 			endpoint.setHealth(TtsEndpoint.EndpointHealth.HEALTHY);
 		}
