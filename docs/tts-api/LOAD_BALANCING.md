@@ -231,54 +231,45 @@ private void handleClientError(TtsEndpoint endpoint, Throwable error) {
 
 ---
 
-### 4. 요청 취소 시 ActiveRequests 누수
+### 4. ~~요청 취소 시 ActiveRequests 누수~~ ✅ 수정됨
 
-**위치**: [LoadBalancedSupertoneTtsAdapter.java:58-74](webflux-dialogue/src/main/java/com/study/webflux/rag/infrastructure/dialogue/adapter/tts/LoadBalancedSupertoneTtsAdapter.java#L58-L74)
+**상태**: 🟢 해결됨 (2026-02-15)
 
-**문제**:
+**수정 내용**:
+- `doOnCancel()` 콜백 추가로 요청 취소 시에도 카운트 감소 보장
+- 부하 측정 정확성 유지
+
+**수정된 코드**:
 ```java
-endpoint.incrementActiveRequests();
-
 return synthesizeWithEndpoint(endpoint, text, format)
-    .doOnComplete(() -> endpoint.decrementActiveRequests())  // 완료 시
-    .onErrorResume(error -> {
-        endpoint.decrementActiveRequests();  // 에러 시
-        // ...
-    });
-// doOnCancel() 없음!
+    // 클라이언트가 요청을 취소해도 activeRequests 카운트가 정확히 유지되도록 doOnCancel 추가
+    .doOnCancel(() -> {
+        endpoint.decrementActiveRequests();
+        log.debug("엔드포인트 {} 요청 취소됨", endpoint.getId());
+    })
+    .doOnComplete(() -> { ... })
+    .onErrorResume(error -> { ... });
 ```
-
-**영향**: 클라이언트가 요청을 취소하면 `activeRequests` 카운트가 감소하지 않음
-
-**재현 조건**:
-1. TTS 요청 시작 (`incrementActiveRequests()`)
-2. 클라이언트가 Subscription 취소
-3. `decrementActiveRequests()` 호출되지 않음
-4. 시간이 지나면서 카운트 누적 → 해당 엔드포인트 부하가 높게 측정됨
-
-**심각도**: 🟠 Medium
 
 ---
 
-### 5. Warmup 실패 시 상태 미반영
+### 5. ~~Warmup 실패 시 상태 미반영~~ ✅ 수정됨
 
-**위치**: [LoadBalancedSupertoneTtsAdapter.java:133-135](webflux-dialogue/src/main/java/com/study/webflux/rag/infrastructure/dialogue/adapter/tts/LoadBalancedSupertoneTtsAdapter.java#L133-L135)
+**상태**: 🟢 해결됨 (2026-02-15)
 
-**문제**:
+**수정 내용**:
+- Warmup 실패 시 `TEMPORARY_FAILURE`로 표시
+- 첫 실제 요청에서 불필요한 실패 방지 (다른 엔드포인트 우선 사용)
+- 30초 후 자동 복구 시도
+
+**수정된 코드**:
 ```java
-.doOnError(error -> log.warn("앤드포인트 준비에 실패했습니다. : {}", endpoint.getId(), error))
-.onErrorResume(error -> Mono.empty())  // 에러 무시, 상태 변경 없음
+.doOnError(error -> {
+    // Warmup 실패 시 TEMPORARY_FAILURE로 표시하여 첫 실제 요청에서 불필요한 실패 방지
+    log.warn("엔드포인트 {} warmup 실패, TEMPORARY_FAILURE로 표시", endpoint.getId());
+    endpoint.setHealth(TtsEndpoint.EndpointHealth.TEMPORARY_FAILURE);
+})
 ```
-
-**영향**: Warmup 실패한 엔드포인트도 HEALTHY 상태로 유지되어 실제 요청에서 실패 가능
-
-**재현 조건**:
-1. 애플리케이션 시작 시 `prepare()` 호출
-2. 특정 엔드포인트 네트워크 문제로 warmup 실패
-3. 해당 엔드포인트는 HEALTHY 상태 유지
-4. 첫 실제 요청에서 실패 후 재시도 발생
-
-**심각도**: 🟡 Low
 
 ---
 
@@ -289,8 +280,8 @@ return synthesizeWithEndpoint(endpoint, text, format)
 | 1 | 전체 장애 시 Fallback | ✅ 수정됨 | - | - |
 | 2 | Health/CircuitOpenedAt Race | ✅ 수정됨 | - | - |
 | 3 | CLIENT_ERROR 처리 | ✅ 수정됨 | - | - |
-| 4 | ActiveRequests 누수 | 🟠 미해결 | Medium | 부하 측정 왜곡 |
-| 5 | Warmup 실패 미반영 | 🟡 미해결 | Low | 첫 요청 실패 |
+| 4 | ActiveRequests 누수 | ✅ 수정됨 | - | - |
+| 5 | Warmup 실패 미반영 | ✅ 수정됨 | - | - |
 
 ---
 

@@ -55,23 +55,34 @@ public class LoadBalancedSupertoneTtsAdapter implements TtsPort {
 			endpoint.getActiveRequests(),
 			attemptCount + 1);
 
-		return synthesizeWithEndpoint(endpoint, text, format).doOnComplete(() -> {
-			endpoint.decrementActiveRequests();
-			loadBalancer.reportSuccess(endpoint);
-		}).onErrorResume(error -> {
-			endpoint.decrementActiveRequests();
-			loadBalancer.reportFailure(endpoint, error);
+		return synthesizeWithEndpoint(endpoint, text, format)
+			// 클라이언트가 요청을 취소해도 activeRequests 카운트가 정확히 유지되도록 doOnCancel 추가
+			.doOnCancel(() -> {
+				endpoint.decrementActiveRequests();
+				log.debug("엔드포인트 {} 요청 취소됨, 활성 요청 수: {}",
+					endpoint.getId(),
+					endpoint.getActiveRequests());
+			})
+			.doOnComplete(() -> {
+				endpoint.decrementActiveRequests();
+				loadBalancer.reportSuccess(endpoint);
+			})
+			.onErrorResume(error -> {
+				endpoint.decrementActiveRequests();
+				loadBalancer.reportFailure(endpoint, error);
 
-			TtsEndpoint.FailureType failureType = TtsErrorClassifier.classifyError(error);
+				TtsEndpoint.FailureType failureType = TtsErrorClassifier.classifyError(error);
 
-			if (failureType == TtsEndpoint.FailureType.CLIENT_ERROR) {
-				log.error("클라이언트 에러 발생, 재시도 없이 즉시 실패: {}", error.getMessage());
-				return Flux.error(error);
-			}
+				if (failureType == TtsEndpoint.FailureType.CLIENT_ERROR) {
+					log.error("클라이언트 에러 발생, 재시도 없이 즉시 실패: {}", error.getMessage());
+					return Flux.error(error);
+				}
 
-			log.warn("엔드포인트 {} 장애로 다른 엔드포인트로 재시도 ({}회차)", endpoint.getId(), attemptCount + 2);
-			return streamSynthesizeWithRetry(text, format, attemptCount + 1);
-		});
+				log.warn("엔드포인트 {} 장애로 다른 엔드포인트로 재시도 ({}회차)",
+					endpoint.getId(),
+					attemptCount + 2);
+				return streamSynthesizeWithRetry(text, format, attemptCount + 1);
+			});
 	}
 
 	private Flux<byte[]> synthesizeWithEndpoint(TtsEndpoint endpoint,
@@ -131,7 +142,14 @@ public class LoadBalancedSupertoneTtsAdapter implements TtsPort {
 	public Mono<Void> prepare() {
 		return Flux.fromIterable(loadBalancer.getEndpoints())
 			.flatMap(endpoint -> warmupEndpoint(endpoint)
-				.doOnError(error -> log.warn("앤드포인트 준비에 실패했습니다. : {}", endpoint.getId(), error))
+				.doOnSuccess(v -> log.info("엔드포인트 {} warmup 성공", endpoint.getId()))
+				.doOnError(error -> {
+					// Warmup 실패 시 TEMPORARY_FAILURE로 표시하여 첫 실제 요청에서 불필요한 실패 방지
+					log.warn("엔드포인트 {} warmup 실패, TEMPORARY_FAILURE로 표시: {}",
+						endpoint.getId(),
+						error.getMessage());
+					endpoint.setHealth(TtsEndpoint.EndpointHealth.TEMPORARY_FAILURE);
+				})
 				.onErrorResume(error -> Mono.empty()))
 			.then();
 	}

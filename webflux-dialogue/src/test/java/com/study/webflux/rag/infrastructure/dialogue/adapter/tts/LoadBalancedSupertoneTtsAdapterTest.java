@@ -197,43 +197,34 @@ class LoadBalancedSupertoneTtsAdapterTest {
 		StepVerifier.create(result).expectError().verify();
 	}
 
-	// ==================== 취약점 재현 테스트 ====================
+	// ==================== 취약점 수정 검증 테스트 ====================
 
 	@Test
-	@DisplayName("[취약점 4] 요청 취소 시 activeRequests 카운트가 감소하지 않음")
-	void vulnerability4_cancelledRequest_leaksActiveRequestCount() throws InterruptedException {
+	@DisplayName("[수정됨] 요청 취소 시 activeRequests 카운트가 정상적으로 감소")
+	void cancelledRequest_decrementsActiveRequestCount() throws InterruptedException {
 		// Given: 느린 응답을 반환하는 서버 (5초 지연)
 		fakeServer.setEndpointBehavior("key-1", FakeSupertoneServer.ServerBehavior.delayed(5000));
 		fakeServer.setEndpointBehavior("key-2", FakeSupertoneServer.ServerBehavior.delayed(5000));
 		fakeServer.setEndpointBehavior("key-3", FakeSupertoneServer.ServerBehavior.delayed(5000));
 
-		int initialCount = loadBalancer.getEndpoints().stream()
-			.mapToInt(TtsEndpoint::getActiveRequests)
-			.sum();
-
 		// When: 요청 시작 후 즉시 취소
 		Flux<byte[]> flux = adapter.streamSynthesize("test", AudioFormat.WAV);
-		flux.subscribe().dispose(); // 즉시 취소
+		flux.subscribe().dispose();
 
-		// 약간의 시간 대기 (요청이 시작되도록)
-		Thread.sleep(100);
+		// 취소 처리 대기
+		Thread.sleep(200);
 
-		// Then: activeRequests가 증가된 상태로 유지됨 (취약점)
-		// doOnCancel()이 없어서 decrementActiveRequests()가 호출되지 않음
-		// 시간이 지나면 이 카운트가 누적되어 부하 측정이 왜곡됨
+		// Then: 취소 후 activeRequests가 0으로 돌아옴 (doOnCancel로 수정됨)
 		int afterCancelCount = loadBalancer.getEndpoints().stream()
 			.mapToInt(TtsEndpoint::getActiveRequests)
 			.sum();
 
-		// 문제: 취소된 요청의 카운트가 남아있을 수 있음
-		// (정상이라면 취소 후 0이어야 함)
-		// Note: 타이밍에 따라 결과가 달라질 수 있음
-		assertThat(afterCancelCount).isGreaterThanOrEqualTo(initialCount);
+		assertThat(afterCancelCount).isEqualTo(0);
 	}
 
 	@Test
-	@DisplayName("[취약점 5] Warmup 실패 시 엔드포인트 상태가 HEALTHY로 유지됨")
-	void vulnerability5_warmupFailure_endpointStaysHealthy() {
+	@DisplayName("[수정됨] Warmup 실패 시 엔드포인트가 TEMPORARY_FAILURE로 표시됨")
+	void warmupFailure_marksEndpointAsTemporaryFailure() {
 		// Given: 모든 엔드포인트가 연결 불가 상태
 		if (server != null) {
 			server.disposeNow();
@@ -259,12 +250,11 @@ class LoadBalancedSupertoneTtsAdapterTest {
 		// When: prepare() 호출 (warmup 실패)
 		badAdapter.prepare().block();
 
-		// Then: 모든 엔드포인트가 여전히 HEALTHY 상태 (취약점)
-		// 문제: warmup 실패해도 상태 변경 없음
+		// Then: 모든 엔드포인트가 TEMPORARY_FAILURE 상태로 변경됨 (수정됨)
 		for (TtsEndpoint endpoint : badLoadBalancer.getEndpoints()) {
 			assertThat(endpoint.getHealth())
-				.as("Warmup 실패한 엔드포인트 %s가 여전히 HEALTHY 상태", endpoint.getId())
-				.isEqualTo(TtsEndpoint.EndpointHealth.HEALTHY);
+				.as("Warmup 실패한 엔드포인트 %s가 TEMPORARY_FAILURE 상태", endpoint.getId())
+				.isEqualTo(TtsEndpoint.EndpointHealth.TEMPORARY_FAILURE);
 		}
 	}
 }
