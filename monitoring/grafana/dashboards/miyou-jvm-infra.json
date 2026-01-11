@@ -58,7 +58,7 @@
           "thresholds": {
             "mode": "absolute",
             "steps": [
-              { "color": "blue", "value": null }
+              { "color": "green", "value": null }
             ]
           },
           "unit": "bytes"
@@ -124,7 +124,7 @@
           "thresholds": {
             "mode": "absolute",
             "steps": [
-              { "color": "purple", "value": null }
+              { "color": "green", "value": null }
             ]
           },
           "unit": "bytes"
