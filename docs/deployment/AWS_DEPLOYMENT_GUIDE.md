@@ -163,6 +163,42 @@ docker image prune -f
 chmod +x /opt/app/deploy.sh
 ```
 
+### 8.1 현재 레포 스크립트로 원격 배포 실행
+프로젝트 파일을 원격 서버로 동기화하고, Docker Compose로 빌드/기동한다.
+
+```bash
+SSM_PATH=/miyou/prod AWS_REGION=ap-northeast-2 ./scripts/aws/deploy_remote_compose.sh miyou-dev
+```
+
+주의:
+- 기본값은 `USE_SSM=true`이며, 원격 서버에서 SSM Parameter Store를 조회해 `.env.deploy`를 생성한다.
+- `SSM_PATH`는 필수다. (예: `/miyou/prod`)
+- `OPENAI_API_KEY`가 누락되면 스크립트가 중단된다.
+
+### 8.2 SSM 파라미터 네이밍 규칙
+`SSM_PATH=/miyou/prod` 기준:
+- `/miyou/prod/OPENAI_API_KEY`
+- `/miyou/prod/SUPERTONE_API_KEY`
+- `/miyou/prod/SUPERTONE_API_KEY_1`
+- `/miyou/prod/SUPERTONE_API_KEY_2`
+- `/miyou/prod/SUPERTONE_API_KEY_3`
+- `/miyou/prod/SUPERTONE_API_KEY_4`
+- `/miyou/prod/SUPERTONE_API_KEY_5`
+- `/miyou/prod/QDRANT_API_KEY`
+
+배포 스크립트는 prefix(`/miyou/prod/`)를 제거한 키 이름으로 `.env.deploy`를 생성한다.
+
+### 8.3 IAM 권한 필수 조건
+EC2 인스턴스 프로파일(Instance Role)에 아래 권한이 있어야 한다.
+- `ssm:GetParametersByPath`
+- `ssm:GetParameters`
+- `kms:Decrypt` (SecureString이 KMS CMK 사용 시)
+
+예시 실행:
+```bash
+SSM_PATH=/miyou/prod AWS_REGION=ap-northeast-2 ./scripts/aws/deploy_remote_compose.sh miyou-dev
+```
+
 ---
 
 ## 9. 헬스체크

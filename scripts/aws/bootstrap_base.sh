@@ -68,6 +68,11 @@ install_docker() {
   systemctl restart docker
 }
 
+install_ops_tools() {
+  # Required for SSM Parameter Store based deploy script
+  apt_install_if_missing awscli jq
+}
+
 install_ssm_agent() {
   if [[ "${INSTALL_SSM_AGENT}" != "true" ]]; then
     return 0
@@ -116,6 +121,7 @@ main() {
     DEBIAN_FRONTEND=noninteractive apt-get upgrade -y
   fi
   install_docker
+  install_ops_tools
   install_ssm_agent
   ensure_user_group
   prepare_app_dir
