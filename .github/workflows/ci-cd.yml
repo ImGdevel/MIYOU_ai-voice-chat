@@ -163,49 +163,37 @@ jobs:
           fi
 
           RUN_URL="${{ github.server_url }}/${{ github.repository }}/actions/runs/${{ github.run_id }}"
-          PAYLOAD="$(STATUS_TEXT="${STATUS_TEXT}" ICON="${ICON}" COLOR="${COLOR}" RUN_URL="${RUN_URL}" python3 - <<'PY'
-import json
-import os
-
-status_text = os.environ["STATUS_TEXT"]
-icon = os.environ["ICON"]
-color = int(os.environ["COLOR"])
-
-repo = os.environ["GITHUB_REPOSITORY"]
-branch = os.environ["GITHUB_REF_NAME"]
-actor = os.environ["GITHUB_ACTOR"]
-run_id = os.environ["GITHUB_RUN_ID"]
-run_url = os.environ["RUN_URL"]
-result_gradle = os.environ["RESULT_GRADLE"]
-result_build_push = os.environ["RESULT_BUILD_PUSH"]
-result_deploy = os.environ["RESULT_DEPLOY"]
-
-def mark(result: str) -> str:
-    return f"{'✅' if result == 'success' else '❌'} {result}"
-
-payload = {
-    "embeds": [
-        {
-            "title": f"{icon} MIYOU CI-CD 결과: {status_text}",
-            "description": "워크플로우 실행 결과 요약",
-            "color": color,
-            "fields": [
-                {"name": "저장소", "value": repo, "inline": True},
-                {"name": "브랜치", "value": branch, "inline": True},
-                {"name": "실행자", "value": actor, "inline": True},
-                {"name": "gradle-build", "value": mark(result_gradle), "inline": True},
-                {"name": "build-and-push", "value": mark(result_build_push), "inline": True},
-                {"name": "deploy", "value": mark(result_deploy), "inline": True},
-                {"name": "실행 링크", "value": run_url, "inline": False},
-            ],
-            "footer": {"text": f"GitHub Actions • run_id={run_id}"},
-        }
-    ]
-}
-
-print(json.dumps(payload, ensure_ascii=False))
-PY
-)"
+          PAYLOAD="$(jq -n \
+            --arg icon "${ICON}" \
+            --arg status "${STATUS_TEXT}" \
+            --arg repo "${GITHUB_REPOSITORY}" \
+            --arg branch "${GITHUB_REF_NAME}" \
+            --arg actor "${GITHUB_ACTOR}" \
+            --arg run_id "${GITHUB_RUN_ID}" \
+            --arg run_url "${RUN_URL}" \
+            --arg result_gradle "${RESULT_GRADLE}" \
+            --arg result_build_push "${RESULT_BUILD_PUSH}" \
+            --arg result_deploy "${RESULT_DEPLOY}" \
+            --argjson color "${COLOR}" \
+            '{
+              embeds: [
+                {
+                  title: ($icon + " MIYOU CI-CD 결과: " + $status),
+                  description: "워크플로우 실행 결과 요약",
+                  color: $color,
+                  fields: [
+                    {name: "저장소", value: $repo, inline: true},
+                    {name: "브랜치", value: $branch, inline: true},
+                    {name: "실행자", value: $actor, inline: true},
+                    {name: "gradle-build", value: ((if $result_gradle == "success" then "✅" else "❌" end) + " " + $result_gradle), inline: true},
+                    {name: "build-and-push", value: ((if $result_build_push == "success" then "✅" else "❌" end) + " " + $result_build_push), inline: true},
+                    {name: "deploy", value: ((if $result_deploy == "success" then "✅" else "❌" end) + " " + $result_deploy), inline: true},
+                    {name: "실행 링크", value: $run_url, inline: false}
+                  ],
+                  footer: {text: ("GitHub Actions • run_id=" + $run_id)}
+                }
+              ]
+            }')"
 
           curl -sS -X POST "${DISCORD_WEBHOOK_URL}" \
             -H "Content-Type: application/json" \
