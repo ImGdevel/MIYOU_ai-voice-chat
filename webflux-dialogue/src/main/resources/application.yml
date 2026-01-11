@@ -66,3 +66,13 @@ rag:
 monitoring:
   persistent:
     enabled: ${MONITORING_PERSISTENT_ENABLED:true}
+
+management:
+  endpoints:
+    web:
+      exposure:
+        include: health,info
+  endpoint:
+    health:
+      probes:
+        enabled: true
