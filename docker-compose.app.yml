@@ -37,9 +37,7 @@ services:
       - miyou-network
 
   app:
-    build:
-      context: .
-      dockerfile: Dockerfile
+    image: ${APP_IMAGE:-ghcr.io/imgdevel/miyou-dialogue:latest}
     container_name: miyou-dialogue-app
     restart: unless-stopped
     ports:

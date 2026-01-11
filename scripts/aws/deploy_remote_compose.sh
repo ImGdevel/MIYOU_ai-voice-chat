@@ -6,25 +6,14 @@ REMOTE_DIR="${REMOTE_DIR:-/opt/app/miyou}"
 USE_SSM="${USE_SSM:-true}"
 SSM_PATH="${SSM_PATH:-}"
 AWS_REGION="${AWS_REGION:-ap-northeast-2}"
-
-# Sync repository without secrets/build artifacts.
-EXCLUDES=(
-  --exclude='.git'
-  --exclude='.gradle'
-  --exclude='build'
-  --exclude='**/build'
-  --exclude='node_modules'
-  --exclude='.idea'
-  --exclude='.vscode'
-  --exclude='.env'
-  --exclude='*.pem'
-)
+APP_IMAGE="${APP_IMAGE:-ghcr.io/imgdevel/miyou-dialogue:latest}"
 
 echo "[deploy] Prepare remote dir: ${REMOTE_DIR}"
 ssh "${HOST_ALIAS}" "mkdir -p '${REMOTE_DIR}'"
 
-echo "[deploy] Uploading project snapshot"
-COPYFILE_DISABLE=1 tar -czf - "${EXCLUDES[@]}" . | ssh "${HOST_ALIAS}" "tar -xzf - -C '${REMOTE_DIR}'"
+echo "[deploy] Upload compose files"
+scp docker-compose.app.yml "${HOST_ALIAS}:${REMOTE_DIR}/docker-compose.app.yml"
+scp .env.deploy.example "${HOST_ALIAS}:${REMOTE_DIR}/.env.deploy.example"
 
 if [[ "${USE_SSM}" == "true" ]]; then
   if [[ -z "${SSM_PATH}" ]]; then
@@ -83,8 +72,8 @@ ssh "${HOST_ALIAS}" "cd '${REMOTE_DIR}' && grep -qE '^OPENAI_API_KEY=.+$' .env.d
   exit 1
 }
 
-echo "[deploy] Build and start containers"
-ssh "${HOST_ALIAS}" "cd '${REMOTE_DIR}' && docker compose -f docker-compose.app.yml up -d --build"
+echo "[deploy] Pull and start containers"
+ssh "${HOST_ALIAS}" "cd '${REMOTE_DIR}' && APP_IMAGE='${APP_IMAGE}' docker compose -f docker-compose.app.yml pull && APP_IMAGE='${APP_IMAGE}' docker compose -f docker-compose.app.yml up -d"
 
 echo "[deploy] Container status"
 ssh "${HOST_ALIAS}" "docker ps --format 'table {{.Names}}\t{{.Image}}\t{{.Status}}\t{{.Ports}}'"

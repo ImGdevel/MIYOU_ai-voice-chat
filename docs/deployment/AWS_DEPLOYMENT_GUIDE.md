@@ -164,16 +164,19 @@ chmod +x /opt/app/deploy.sh
 ```
 
 ### 8.1 현재 레포 스크립트로 원격 배포 실행
-프로젝트 파일을 원격 서버로 동기화하고, Docker Compose로 빌드/기동한다.
+Compose 파일을 원격 서버로 동기화하고, 컨테이너 이미지를 pull 후 기동한다.
 
 ```bash
-SSM_PATH=/miyou/prod AWS_REGION=ap-northeast-2 ./scripts/aws/deploy_remote_compose.sh miyou-dev
+APP_IMAGE=ghcr.io/imgdevel/miyou-dialogue:latest \
+SSM_PATH=/miyou/prod AWS_REGION=ap-northeast-2 \
+./scripts/aws/deploy_remote_compose.sh miyou-dev
 ```
 
 주의:
 - 기본값은 `USE_SSM=true`이며, 원격 서버에서 SSM Parameter Store를 조회해 `.env.deploy`를 생성한다.
 - `SSM_PATH`는 필수다. (예: `/miyou/prod`)
 - `OPENAI_API_KEY`가 누락되면 스크립트가 중단된다.
+- 서버에서 애플리케이션 빌드는 수행하지 않는다. (CI에서 이미지 빌드/푸시 후 서버는 pull만 수행)
 
 ### 8.2 SSM 파라미터 네이밍 규칙
 `SSM_PATH=/miyou/prod` 기준:
@@ -196,7 +199,9 @@ EC2 인스턴스 프로파일(Instance Role)에 아래 권한이 있어야 한�
 
 예시 실행:
 ```bash
-SSM_PATH=/miyou/prod AWS_REGION=ap-northeast-2 ./scripts/aws/deploy_remote_compose.sh miyou-dev
+APP_IMAGE=ghcr.io/imgdevel/miyou-dialogue:latest \
+SSM_PATH=/miyou/prod AWS_REGION=ap-northeast-2 \
+./scripts/aws/deploy_remote_compose.sh miyou-dev
 ```
 
 ---
