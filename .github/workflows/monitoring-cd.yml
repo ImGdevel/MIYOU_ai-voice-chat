@@ -1,0 +1,239 @@
+name: Monitoring-CD
+
+on:
+  workflow_dispatch:
+    inputs:
+      deploy_mode:
+        description: "배포 실행 모드"
+        type: choice
+        options:
+          - public_ssh
+          - private_runner
+        default: public_ssh
+      app_metrics_target:
+        description: "Prometheus scrape 대상 (예: 172.31.62.169:80)"
+        required: true
+        type: string
+        default: "172.31.62.169:80"
+      deploy_alloy:
+        description: "앱 서버 Alloy도 함께 배포"
+        type: boolean
+        default: false
+      use_ssm_webhook:
+        description: "SSM에서 Grafana Discord Webhook 읽기"
+        type: boolean
+        default: true
+
+permissions:
+  contents: read
+
+jobs:
+  deploy-public-ssh:
+    if: ${{ github.event.inputs.deploy_mode == 'public_ssh' }}
+    runs-on: ubuntu-latest
+    steps:
+      - name: 체크아웃
+        uses: actions/checkout@v4
+
+      - name: 시크릿 검증
+        shell: bash
+        run: |
+          test -n "${{ secrets.MONITORING_EC2_HOST }}" || (echo "MONITORING_EC2_HOST 시크릿이 비어 있습니다." >&2; exit 1)
+          test -n "${{ secrets.MONITORING_EC2_USER }}" || (echo "MONITORING_EC2_USER 시크릿이 비어 있습니다." >&2; exit 1)
+          test -n "${{ secrets.MONITORING_EC2_SSH_PRIVATE_KEY }}" || (echo "MONITORING_EC2_SSH_PRIVATE_KEY 시크릿이 비어 있습니다." >&2; exit 1)
+
+          if [[ "${{ github.event.inputs.deploy_alloy }}" == "true" ]]; then
+            test -n "${{ secrets.EC2_HOST }}" || (echo "EC2_HOST 시크릿이 비어 있습니다." >&2; exit 1)
+            test -n "${{ secrets.EC2_USER }}" || (echo "EC2_USER 시크릿이 비어 있습니다." >&2; exit 1)
+            test -n "${{ secrets.EC2_SSH_PRIVATE_KEY }}" || (echo "EC2_SSH_PRIVATE_KEY 시크릿이 비어 있습니다." >&2; exit 1)
+          fi
+
+      - name: SSH 설정
+        shell: bash
+        run: |
+          mkdir -p ~/.ssh
+          chmod 700 ~/.ssh
+
+          printf '%s\n' "${{ secrets.MONITORING_EC2_SSH_PRIVATE_KEY }}" | tr -d '\r' > ~/.ssh/monitoring_key
+          chmod 600 ~/.ssh/monitoring_key
+          ssh-keygen -y -f ~/.ssh/monitoring_key >/dev/null
+
+          cat > ~/.ssh/config <<CONF
+          Host monitoring-target
+            HostName ${{ secrets.MONITORING_EC2_HOST }}
+            User ${{ secrets.MONITORING_EC2_USER }}
+            IdentityFile ~/.ssh/monitoring_key
+            IdentitiesOnly yes
+            StrictHostKeyChecking accept-new
+            ServerAliveInterval 30
+            ConnectTimeout 10
+          CONF
+
+          if [[ "${{ github.event.inputs.deploy_alloy }}" == "true" ]]; then
+            printf '%s\n' "${{ secrets.EC2_SSH_PRIVATE_KEY }}" | tr -d '\r' > ~/.ssh/app_key
+            chmod 600 ~/.ssh/app_key
+            ssh-keygen -y -f ~/.ssh/app_key >/dev/null
+
+            cat >> ~/.ssh/config <<CONF
+
+          Host app-target
+            HostName ${{ secrets.EC2_HOST }}
+            User ${{ secrets.EC2_USER }}
+            IdentityFile ~/.ssh/app_key
+            IdentitiesOnly yes
+            StrictHostKeyChecking accept-new
+            ServerAliveInterval 30
+            ConnectTimeout 10
+          CONF
+          fi
+
+          chmod 600 ~/.ssh/config
+
+      - name: AWS 자격 증명 설정 (SSM 사용 시)
+        if: ${{ github.event.inputs.use_ssm_webhook == 'true' }}
+        uses: aws-actions/configure-aws-credentials@v4
+        with:
+          aws-access-key-id: ${{ secrets.AWS_ACCESS_KEY_ID }}
+          aws-secret-access-key: ${{ secrets.AWS_SECRET_ACCESS_KEY }}
+          aws-region: ${{ secrets.AWS_REGION }}
+
+      - name: SSM에서 Discord Webhook 동기화 (SSM 사용 시)
+        if: ${{ github.event.inputs.use_ssm_webhook == 'true' }}
+        env:
+          AWS_REGION: ${{ secrets.AWS_REGION }}
+          SSM_WEBHOOK_GRAFANA_PATH: ${{ secrets.SSM_WEBHOOK_GRAFANA_PATH }}
+        shell: bash
+        run: |
+          SSM_PARAM="${SSM_WEBHOOK_GRAFANA_PATH:-/miyou/prod/WEB_HOOK_GRAFANA}"
+          WEBHOOK_URL="$(aws ssm get-parameter \
+            --name "${SSM_PARAM}" \
+            --with-decryption \
+            --region "${AWS_REGION}" \
+            --query 'Parameter.Value' \
+            --output text)"
+
+          test -n "${WEBHOOK_URL}" || (echo "SSM webhook 값이 비어 있습니다: ${SSM_PARAM}" >&2; exit 1)
+          echo "::add-mask::${WEBHOOK_URL}"
+
+          printf 'DISCORD_WEBHOOK_URL=%s\n' "${WEBHOOK_URL}" > .env.monitoring
+          scp .env.monitoring monitoring-target:/opt/app/miyou-monitoring/.env.monitoring
+          rm -f .env.monitoring
+
+      - name: 모니터링 스택 배포
+        env:
+          APP_METRICS_TARGET: ${{ github.event.inputs.app_metrics_target }}
+          USE_SSM: "false"
+        shell: bash
+        run: |
+          bash ./scripts/aws/deploy_remote_prometheus.sh "monitoring-target"
+
+      - name: Alloy 배포 (옵션)
+        if: ${{ github.event.inputs.deploy_alloy == 'true' }}
+        shell: bash
+        run: |
+          bash ./scripts/aws/deploy_remote_alloy.sh "app-target"
+
+  deploy-private-runner:
+    if: ${{ github.event.inputs.deploy_mode == 'private_runner' }}
+    runs-on: [self-hosted, linux, miyou-private]
+    steps:
+      - name: 체크아웃
+        uses: actions/checkout@v4
+
+      - name: 시크릿 검증
+        shell: bash
+        run: |
+          test -n "${{ secrets.MONITORING_EC2_PRIVATE_HOST }}" || (echo "MONITORING_EC2_PRIVATE_HOST 시크릿이 비어 있습니다." >&2; exit 1)
+          test -n "${{ secrets.MONITORING_EC2_USER }}" || (echo "MONITORING_EC2_USER 시크릿이 비어 있습니다." >&2; exit 1)
+          test -n "${{ secrets.MONITORING_EC2_SSH_PRIVATE_KEY }}" || (echo "MONITORING_EC2_SSH_PRIVATE_KEY 시크릿이 비어 있습니다." >&2; exit 1)
+
+          if [[ "${{ github.event.inputs.deploy_alloy }}" == "true" ]]; then
+            test -n "${{ secrets.EC2_PRIVATE_HOST }}" || (echo "EC2_PRIVATE_HOST 시크릿이 비어 있습니다." >&2; exit 1)
+            test -n "${{ secrets.EC2_USER }}" || (echo "EC2_USER 시크릿이 비어 있습니다." >&2; exit 1)
+            test -n "${{ secrets.EC2_SSH_PRIVATE_KEY }}" || (echo "EC2_SSH_PRIVATE_KEY 시크릿이 비어 있습니다." >&2; exit 1)
+          fi
+
+      - name: SSH 설정
+        shell: bash
+        run: |
+          mkdir -p ~/.ssh
+          chmod 700 ~/.ssh
+
+          printf '%s\n' "${{ secrets.MONITORING_EC2_SSH_PRIVATE_KEY }}" | tr -d '\r' > ~/.ssh/monitoring_key
+          chmod 600 ~/.ssh/monitoring_key
+          ssh-keygen -y -f ~/.ssh/monitoring_key >/dev/null
+
+          cat > ~/.ssh/config <<CONF
+          Host monitoring-target
+            HostName ${{ secrets.MONITORING_EC2_PRIVATE_HOST }}
+            User ${{ secrets.MONITORING_EC2_USER }}
+            IdentityFile ~/.ssh/monitoring_key
+            IdentitiesOnly yes
+            StrictHostKeyChecking accept-new
+            ServerAliveInterval 30
+            ConnectTimeout 10
+          CONF
+
+          if [[ "${{ github.event.inputs.deploy_alloy }}" == "true" ]]; then
+            printf '%s\n' "${{ secrets.EC2_SSH_PRIVATE_KEY }}" | tr -d '\r' > ~/.ssh/app_key
+            chmod 600 ~/.ssh/app_key
+            ssh-keygen -y -f ~/.ssh/app_key >/dev/null
+
+            cat >> ~/.ssh/config <<CONF
+
+          Host app-target
+            HostName ${{ secrets.EC2_PRIVATE_HOST }}
+            User ${{ secrets.EC2_USER }}
+            IdentityFile ~/.ssh/app_key
+            IdentitiesOnly yes
+            StrictHostKeyChecking accept-new
+            ServerAliveInterval 30
+            ConnectTimeout 10
+          CONF
+          fi
+
+          chmod 600 ~/.ssh/config
+
+      - name: AWS 자격 증명 설정 (SSM 사용 시)
+        if: ${{ github.event.inputs.use_ssm_webhook == 'true' }}
+        uses: aws-actions/configure-aws-credentials@v4
+        with:
+          aws-access-key-id: ${{ secrets.AWS_ACCESS_KEY_ID }}
+          aws-secret-access-key: ${{ secrets.AWS_SECRET_ACCESS_KEY }}
+          aws-region: ${{ secrets.AWS_REGION }}
+
+      - name: SSM에서 Discord Webhook 동기화 (SSM 사용 시)
+        if: ${{ github.event.inputs.use_ssm_webhook == 'true' }}
+        env:
+          AWS_REGION: ${{ secrets.AWS_REGION }}
+          SSM_WEBHOOK_GRAFANA_PATH: ${{ secrets.SSM_WEBHOOK_GRAFANA_PATH }}
+        shell: bash
+        run: |
+          SSM_PARAM="${SSM_WEBHOOK_GRAFANA_PATH:-/miyou/prod/WEB_HOOK_GRAFANA}"
+          WEBHOOK_URL="$(aws ssm get-parameter \
+            --name "${SSM_PARAM}" \
+            --with-decryption \
+            --region "${AWS_REGION}" \
+            --query 'Parameter.Value' \
+            --output text)"
+
+          test -n "${WEBHOOK_URL}" || (echo "SSM webhook 값이 비어 있습니다: ${SSM_PARAM}" >&2; exit 1)
+          echo "::add-mask::${WEBHOOK_URL}"
+
+          printf 'DISCORD_WEBHOOK_URL=%s\n' "${WEBHOOK_URL}" > .env.monitoring
+          scp .env.monitoring monitoring-target:/opt/app/miyou-monitoring/.env.monitoring
+          rm -f .env.monitoring
+
+      - name: 모니터링 스택 배포
+        env:
+          APP_METRICS_TARGET: ${{ github.event.inputs.app_metrics_target }}
+          USE_SSM: "false"
+        shell: bash
+        run: |
+          bash ./scripts/aws/deploy_remote_prometheus.sh "monitoring-target"
+
+      - name: Alloy 배포 (옵션)
+        if: ${{ github.event.inputs.deploy_alloy == 'true' }}
+        shell: bash
+        run: |
+          bash ./scripts/aws/deploy_remote_alloy.sh "app-target"
