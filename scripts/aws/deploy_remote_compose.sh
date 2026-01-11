@@ -14,6 +14,8 @@ ssh "${HOST_ALIAS}" "mkdir -p '${REMOTE_DIR}'"
 echo "[deploy] Upload compose files"
 scp docker-compose.app.yml "${HOST_ALIAS}:${REMOTE_DIR}/docker-compose.app.yml"
 scp .env.deploy.example "${HOST_ALIAS}:${REMOTE_DIR}/.env.deploy.example"
+ssh "${HOST_ALIAS}" "mkdir -p '${REMOTE_DIR}/deploy/nginx'"
+scp deploy/nginx/default.conf "${HOST_ALIAS}:${REMOTE_DIR}/deploy/nginx/default.conf"
 
 if [[ "${USE_SSM}" == "true" ]]; then
   if [[ -z "${SSM_PATH}" ]]; then
