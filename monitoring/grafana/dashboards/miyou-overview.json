@@ -13,7 +13,7 @@
       "collapsed": false,
       "gridPos": { "h": 1, "w": 24, "x": 0, "y": 0 },
       "id": 100,
-      "title": "Golden Signals - Critical KPIs",
+      "title": "골든 시그널(Golden Signals) - 핵심 지표(Critical KPIs)",
       "type": "row"
     },
     {
@@ -47,7 +47,7 @@
       "targets": [
         { "expr": "max(up{job=~\"$job\",instance=~\"$instance\"})", "refId": "A" }
       ],
-      "title": "Service Health",
+      "title": "서비스 상태(Service Health)",
       "type": "stat"
     },
     {
@@ -83,7 +83,7 @@
           "refId": "A"
         }
       ],
-      "title": "Error Rate",
+      "title": "에러율(Error Rate)",
       "type": "stat"
     },
     {
@@ -119,7 +119,7 @@
           "refId": "A"
         }
       ],
-      "title": "Response Time (p95)",
+      "title": "응답 시간(Response Time) p95",
       "type": "stat"
     },
     {
@@ -146,7 +146,7 @@
           "refId": "A"
         }
       ],
-      "title": "Throughput (RPS)",
+      "title": "처리량(Throughput) - RPS",
       "type": "stat"
     },
     {
@@ -182,7 +182,7 @@
           "refId": "A"
         }
       ],
-      "title": "Saturation (Heap)",
+      "title": "포화도(Saturation) - Heap",
       "type": "gauge"
     },
     {
@@ -219,14 +219,14 @@
           "refId": "A"
         }
       ],
-      "title": "Apdex Score",
+      "title": "Apdex 점수(Apdex Score)",
       "type": "stat"
     },
     {
       "collapsed": false,
       "gridPos": { "h": 1, "w": 24, "x": 0, "y": 5 },
       "id": 101,
-      "title": "Traffic & Latency Analysis",
+      "title": "트래픽(Traffic) & 지연시간(Latency) 분석",
       "type": "row"
     },
     {
@@ -277,7 +277,7 @@
           "refId": "D"
         }
       ],
-      "title": "HTTP Traffic by Status Code",
+      "title": "HTTP 트래픽(Traffic) - 상태 코드(Status Code)별",
       "type": "timeseries"
     },
     {
@@ -310,14 +310,14 @@
           "refId": "A"
         }
       ],
-      "title": "Latency Distribution Heatmap",
+      "title": "지연시간(Latency) 분포 히트맵(Heatmap)",
       "type": "heatmap"
     },
     {
       "collapsed": false,
       "gridPos": { "h": 1, "w": 24, "x": 0, "y": 14 },
       "id": 102,
-      "title": "Error Analysis",
+      "title": "에러 분석(Error Analysis)",
       "type": "row"
     },
     {
@@ -343,16 +343,16 @@
       "targets": [
         {
           "expr": "sum(rate(http_server_requests_seconds_count{job=~\"$job\",instance=~\"$instance\",status=~\"4..\"}[5m]))",
-          "legendFormat": "4xx Client Errors",
+          "legendFormat": "4xx 클라이언트 에러(Client Errors)",
           "refId": "A"
         },
         {
           "expr": "sum(rate(http_server_requests_seconds_count{job=~\"$job\",instance=~\"$instance\",status=~\"5..\"}[5m]))",
-          "legendFormat": "5xx Server Errors",
+          "legendFormat": "5xx 서버 에러(Server Errors)",
           "refId": "B"
         }
       ],
-      "title": "Error Rate Trend",
+      "title": "에러율(Error Rate) 추이",
       "type": "timeseries"
     },
     {
@@ -379,9 +379,9 @@
           "refId": "A"
         }
       ],
-      "title": "Top Errors by Endpoint",
+      "title": "엔드포인트(Endpoint)별 주요 에러",
       "transformations": [
-        { "id": "organize", "options": { "excludeByName": { "Time": true }, "renameByName": { "uri": "Endpoint", "status": "Status", "Value": "Error Rate" } } }
+        { "id": "organize", "options": { "excludeByName": { "Time": true }, "renameByName": { "uri": "엔드포인트(Endpoint)", "status": "상태(Status)", "Value": "에러율(Error Rate)" } } }
       ],
       "type": "table"
     },
@@ -389,7 +389,7 @@
       "collapsed": false,
       "gridPos": { "h": 1, "w": 24, "x": 0, "y": 22 },
       "id": 103,
-      "title": "Resource Saturation",
+      "title": "리소스 포화도(Resource Saturation)",
       "type": "row"
     },
     {
@@ -425,7 +425,7 @@
           "refId": "A"
         }
       ],
-      "title": "Thread Pool Utilization",
+      "title": "스레드 풀(Thread Pool) 사용률",
       "type": "gauge"
     },
     {
@@ -461,7 +461,7 @@
           "refId": "A"
         }
       ],
-      "title": "Heap Memory Saturation",
+      "title": "Heap 메모리(Memory) 포화도",
       "type": "gauge"
     },
     {
@@ -495,7 +495,7 @@
           "refId": "A"
         }
       ],
-      "title": "Process CPU Usage",
+      "title": "프로세스(Process) CPU 사용률",
       "type": "gauge"
     },
     {
@@ -522,14 +522,14 @@
           "refId": "A"
         }
       ],
-      "title": "Active HTTP Connections",
+      "title": "활성 HTTP 연결(Connections)",
       "type": "stat"
     },
     {
       "collapsed": false,
       "gridPos": { "h": 1, "w": 24, "x": 0, "y": 29 },
       "id": 104,
-      "title": "TTS Service Status",
+      "title": "TTS 서비스 상태(Service Status)",
       "type": "row"
     },
     {
@@ -620,7 +620,7 @@
       "collapsed": false,
       "gridPos": { "h": 1, "w": 24, "x": 0, "y": 35 },
       "id": 105,
-      "title": "Logs",
+      "title": "로그(Logs)",
       "type": "row"
     },
     {
@@ -687,7 +687,7 @@
   "time": { "from": "now-1h", "to": "now" },
   "timepicker": {},
   "timezone": "",
-  "title": "MIYOU APM Overview",
+  "title": "MIYOU APM 개요(Overview)",
   "uid": "miyou-overview",
   "version": 3
 }

@@ -13,7 +13,7 @@
       "collapsed": false,
       "gridPos": { "h": 1, "w": 24, "x": 0, "y": 0 },
       "id": 100,
-      "title": "Memory Overview",
+      "title": "메모리 개요(Memory Overview)",
       "type": "row"
     },
     {
@@ -47,7 +47,7 @@
           "refId": "A"
         }
       ],
-      "title": "Heap Used",
+      "title": "Heap 사용량(Used)",
       "type": "gauge"
     },
     {
@@ -80,7 +80,7 @@
           "refId": "A"
         }
       ],
-      "title": "Heap Max",
+      "title": "Heap 최대값(Max)",
       "type": "stat"
     },
     {
@@ -113,7 +113,7 @@
           "refId": "A"
         }
       ],
-      "title": "Non-Heap Used",
+      "title": "Non-Heap 사용량(Used)",
       "type": "gauge"
     },
     {
@@ -146,7 +146,7 @@
           "refId": "A"
         }
       ],
-      "title": "Buffer Pool",
+      "title": "버퍼 풀(Buffer Pool)",
       "type": "stat"
     },
     {
@@ -170,7 +170,7 @@
           "refId": "A"
         }
       ],
-      "title": "Heap Memory Pools",
+      "title": "Heap 메모리 풀(Memory Pools)",
       "type": "timeseries"
     },
     {
@@ -190,18 +190,18 @@
       "targets": [
         {
           "expr": "sum(jvm_memory_used_bytes{job=~\"$job\",instance=~\"$instance\",area=\"heap\"}) / sum(jvm_memory_max_bytes{job=~\"$job\",instance=~\"$instance\",area=\"heap\"})",
-          "legendFormat": "Heap Usage %",
+          "legendFormat": "Heap 사용률(%)",
           "refId": "A"
         }
       ],
-      "title": "Heap Usage Trend",
+      "title": "Heap 사용량 추이(Usage Trend)",
       "type": "timeseries"
     },
     {
       "collapsed": false,
       "gridPos": { "h": 1, "w": 24, "x": 0, "y": 14 },
       "id": 101,
-      "title": "Garbage Collection",
+      "title": "가비지 컬렉션(Garbage Collection)",
       "type": "row"
     },
     {
@@ -225,7 +225,7 @@
           "refId": "A"
         }
       ],
-      "title": "GC Pause Count (per min)",
+      "title": "GC 일시정지 횟수(Pause Count) - 분당",
       "type": "timeseries"
     },
     {
@@ -249,7 +249,7 @@
           "refId": "A"
         }
       ],
-      "title": "GC Pause Duration (rate)",
+      "title": "GC 일시정지 시간(Pause Duration) - 비율",
       "type": "timeseries"
     },
     {
@@ -269,18 +269,18 @@
       "targets": [
         {
           "expr": "rate(jvm_gc_memory_allocated_bytes_total{job=~\"$job\",instance=~\"$instance\"}[5m])",
-          "legendFormat": "Allocated",
+          "legendFormat": "할당됨(Allocated)",
           "refId": "A"
         }
       ],
-      "title": "Memory Allocation Rate",
+      "title": "메모리 할당 속도(Allocation Rate)",
       "type": "timeseries"
     },
     {
       "collapsed": false,
       "gridPos": { "h": 1, "w": 24, "x": 0, "y": 22 },
       "id": 102,
-      "title": "Threads",
+      "title": "스레드(Threads)",
       "type": "row"
     },
     {
@@ -300,16 +300,16 @@
       "targets": [
         {
           "expr": "jvm_threads_live_threads{job=~\"$job\",instance=~\"$instance\"}",
-          "legendFormat": "Live",
+          "legendFormat": "활성(Live)",
           "refId": "A"
         },
         {
           "expr": "jvm_threads_daemon_threads{job=~\"$job\",instance=~\"$instance\"}",
-          "legendFormat": "Daemon",
+          "legendFormat": "데몬(Daemon)",
           "refId": "B"
         }
       ],
-      "title": "Live Threads",
+      "title": "활성 스레드(Live Threads)",
       "type": "timeseries"
     },
     {
@@ -329,11 +329,11 @@
       "targets": [
         {
           "expr": "jvm_threads_peak_threads{job=~\"$job\",instance=~\"$instance\"}",
-          "legendFormat": "Peak",
+          "legendFormat": "최대(Peak)",
           "refId": "A"
         }
       ],
-      "title": "Peak Threads",
+      "title": "최대 스레드(Peak Threads)",
       "type": "timeseries"
     },
     {
@@ -357,7 +357,7 @@
           "refId": "A"
         }
       ],
-      "title": "Thread States",
+      "title": "스레드 상태(Thread States)",
       "type": "timeseries"
     },
     {
@@ -386,16 +386,16 @@
       "targets": [
         {
           "expr": "process_cpu_usage{job=~\"$job\",instance=~\"$instance\"}",
-          "legendFormat": "Process CPU",
+          "legendFormat": "프로세스 CPU",
           "refId": "A"
         },
         {
           "expr": "system_cpu_usage{job=~\"$job\",instance=~\"$instance\"}",
-          "legendFormat": "System CPU",
+          "legendFormat": "시스템 CPU",
           "refId": "B"
         }
       ],
-      "title": "CPU Usage",
+      "title": "CPU 사용률(Usage)",
       "type": "timeseries"
     },
     {
@@ -415,23 +415,23 @@
       "targets": [
         {
           "expr": "system_load_average_1m{job=~\"$job\",instance=~\"$instance\"}",
-          "legendFormat": "Load Average (1m)",
+          "legendFormat": "평균 부하(Load Average) - 1분",
           "refId": "A"
         },
         {
           "expr": "system_cpu_count{job=~\"$job\",instance=~\"$instance\"}",
-          "legendFormat": "CPU Count",
+          "legendFormat": "CPU 개수(Count)",
           "refId": "B"
         }
       ],
-      "title": "System Load",
+      "title": "시스템 부하(System Load)",
       "type": "timeseries"
     },
     {
       "collapsed": false,
       "gridPos": { "h": 1, "w": 24, "x": 0, "y": 38 },
       "id": 104,
-      "title": "Class Loading",
+      "title": "클래스 로딩(Class Loading)",
       "type": "row"
     },
     {
@@ -451,11 +451,11 @@
       "targets": [
         {
           "expr": "jvm_classes_loaded_classes{job=~\"$job\",instance=~\"$instance\"}",
-          "legendFormat": "Loaded",
+          "legendFormat": "로드됨(Loaded)",
           "refId": "A"
         }
       ],
-      "title": "Classes Loaded",
+      "title": "로드된 클래스(Classes Loaded)",
       "type": "timeseries"
     },
     {
@@ -475,11 +475,11 @@
       "targets": [
         {
           "expr": "jvm_classes_unloaded_classes_total{job=~\"$job\",instance=~\"$instance\"}",
-          "legendFormat": "Unloaded Total",
+          "legendFormat": "언로드 총합(Unloaded Total)",
           "refId": "A"
         }
       ],
-      "title": "Classes Unloaded",
+      "title": "언로드된 클래스(Classes Unloaded)",
       "type": "timeseries"
     }
   ],
@@ -523,7 +523,7 @@
   "time": { "from": "now-1h", "to": "now" },
   "timepicker": {},
   "timezone": "",
-  "title": "MIYOU JVM & Infrastructure",
+  "title": "MIYOU JVM & 인프라(Infrastructure)",
   "uid": "miyou-jvm-infra",
   "version": 1
 }
