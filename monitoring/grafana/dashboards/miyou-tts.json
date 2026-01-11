@@ -13,7 +13,7 @@
       "collapsed": false,
       "gridPos": { "h": 1, "w": 24, "x": 0, "y": 0 },
       "id": 100,
-      "title": "TTS Endpoint Health Status",
+      "title": "TTS 엔드포인트 상태(Endpoint Health Status)",
       "type": "row"
     },
     {
@@ -54,7 +54,7 @@
           "refId": "A"
         }
       ],
-      "title": "Endpoint Health Status Grid",
+      "title": "엔드포인트 상태 그리드(Health Status Grid)",
       "type": "status-history"
     },
     {
@@ -96,7 +96,7 @@
       "collapsed": false,
       "gridPos": { "h": 1, "w": 24, "x": 0, "y": 7 },
       "id": 101,
-      "title": "Request Distribution & Load",
+      "title": "요청 분포(Request Distribution) & 부하(Load)",
       "type": "row"
     },
     {
@@ -125,7 +125,7 @@
           "refId": "A"
         }
       ],
-      "title": "Active Requests by Endpoint",
+      "title": "엔드포인트별 활성 요청(Active Requests)",
       "type": "barchart"
     },
     {
@@ -151,14 +151,14 @@
           "refId": "A"
         }
       ],
-      "title": "Request Distribution (Pie)",
+      "title": "요청 분포(Request Distribution) - 파이 차트",
       "type": "piechart"
     },
     {
       "collapsed": false,
       "gridPos": { "h": 1, "w": 24, "x": 0, "y": 15 },
       "id": 102,
-      "title": "Performance & Availability",
+      "title": "성능(Performance) & 가용성(Availability)",
       "type": "row"
     },
     {
@@ -182,7 +182,7 @@
           "refId": "A"
         }
       ],
-      "title": "Active Requests Over Time",
+      "title": "활성 요청 추이(Active Requests Over Time)",
       "type": "timeseries"
     },
     {
@@ -216,14 +216,14 @@
           "refId": "A"
         }
       ],
-      "title": "Endpoint Availability (5m avg)",
+      "title": "엔드포인트 가용성(Availability) - 5분 평균",
       "type": "timeseries"
     },
     {
       "collapsed": false,
       "gridPos": { "h": 1, "w": 24, "x": 0, "y": 23 },
       "id": 103,
-      "title": "Health Changes & Logs",
+      "title": "상태 변화(Health Changes) & 로그(Logs)",
       "type": "row"
     },
     {
@@ -247,7 +247,7 @@
           "refId": "A"
         }
       ],
-      "title": "Health Status Changes (5m window)",
+      "title": "상태 변화(Health Status Changes) - 5분 윈도우",
       "type": "timeseries"
     },
     {
@@ -270,14 +270,14 @@
           "refId": "A"
         }
       ],
-      "title": "TTS Error Logs",
+      "title": "TTS 에러 로그(Error Logs)",
       "type": "logs"
     },
     {
       "collapsed": false,
       "gridPos": { "h": 1, "w": 24, "x": 0, "y": 32 },
       "id": 104,
-      "title": "Endpoint Details Table",
+      "title": "엔드포인트 상세 테이블(Details Table)",
       "type": "row"
     },
     {
@@ -315,7 +315,7 @@
           "refId": "B"
         }
       ],
-      "title": "TTS Endpoint Status Table",
+      "title": "TTS 엔드포인트 상태 테이블(Status Table)",
       "transformations": [
         {
           "id": "merge",
@@ -326,9 +326,9 @@
           "options": {
             "excludeByName": { "Time": true, "job": true, "instance": true, "__name__": true },
             "renameByName": {
-              "endpoint": "Endpoint",
-              "Value #A": "Health Status",
-              "Value #B": "Active Requests"
+              "endpoint": "엔드포인트(Endpoint)",
+              "Value #A": "상태(Health Status)",
+              "Value #B": "활성 요청(Active Requests)"
             }
           }
         }
@@ -376,7 +376,7 @@
   "time": { "from": "now-1h", "to": "now" },
   "timepicker": {},
   "timezone": "",
-  "title": "MIYOU TTS LoadBalancer",
+  "title": "MIYOU TTS 로드밸런서(LoadBalancer)",
   "uid": "miyou-tts",
   "version": 2
 }
