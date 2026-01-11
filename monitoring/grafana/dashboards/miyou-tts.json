@@ -13,13 +13,14 @@
       "collapsed": false,
       "gridPos": { "h": 1, "w": 24, "x": 0, "y": 0 },
       "id": 100,
-      "title": "Endpoint Health Status",
+      "title": "TTS Endpoint Health Status",
       "type": "row"
     },
     {
       "datasource": { "uid": "prometheus" },
       "fieldConfig": {
         "defaults": {
+          "color": { "mode": "thresholds" },
           "mappings": [
             { "type": "value", "options": { "1": { "text": "HEALTHY", "color": "green" } } },
             { "type": "value", "options": { "0": { "text": "TEMP_FAIL", "color": "orange" } } },
@@ -32,179 +33,29 @@
               { "color": "orange", "value": 0 },
               { "color": "green", "value": 1 }
             ]
-          }
-        }
+          },
+          "unit": "short"
+        },
+        "overrides": []
       },
-      "gridPos": { "h": 5, "w": 4, "x": 0, "y": 1 },
+      "gridPos": { "h": 6, "w": 18, "x": 0, "y": 1 },
       "id": 1,
       "options": {
-        "colorMode": "background",
-        "graphMode": "none",
-        "justifyMode": "center",
-        "orientation": "auto",
-        "reduceOptions": { "calcs": ["lastNotNull"], "fields": "", "values": false },
-        "textMode": "value_and_name"
+        "colWidth": 0.9,
+        "legend": { "displayMode": "list", "placement": "bottom" },
+        "rowHeight": 0.9,
+        "showValue": "auto",
+        "tooltip": { "mode": "multi", "sort": "none" }
       },
       "targets": [
         {
-          "expr": "tts_endpoint_health{job=~\"$job\",instance=~\"$instance\",endpoint=\"endpoint-1\"}",
+          "expr": "tts_endpoint_health{job=~\"$job\",instance=~\"$instance\"}",
+          "legendFormat": "{{endpoint}}",
           "refId": "A"
         }
       ],
-      "title": "EP-1",
-      "type": "stat"
-    },
-    {
-      "datasource": { "uid": "prometheus" },
-      "fieldConfig": {
-        "defaults": {
-          "mappings": [
-            { "type": "value", "options": { "1": { "text": "HEALTHY", "color": "green" } } },
-            { "type": "value", "options": { "0": { "text": "TEMP_FAIL", "color": "orange" } } },
-            { "type": "value", "options": { "-1": { "text": "PERM_FAIL", "color": "red" } } }
-          ],
-          "thresholds": {
-            "mode": "absolute",
-            "steps": [
-              { "color": "red", "value": null },
-              { "color": "orange", "value": 0 },
-              { "color": "green", "value": 1 }
-            ]
-          }
-        }
-      },
-      "gridPos": { "h": 5, "w": 4, "x": 4, "y": 1 },
-      "id": 2,
-      "options": {
-        "colorMode": "background",
-        "graphMode": "none",
-        "justifyMode": "center",
-        "orientation": "auto",
-        "reduceOptions": { "calcs": ["lastNotNull"], "fields": "", "values": false },
-        "textMode": "value_and_name"
-      },
-      "targets": [
-        {
-          "expr": "tts_endpoint_health{job=~\"$job\",instance=~\"$instance\",endpoint=\"endpoint-2\"}",
-          "refId": "A"
-        }
-      ],
-      "title": "EP-2",
-      "type": "stat"
-    },
-    {
-      "datasource": { "uid": "prometheus" },
-      "fieldConfig": {
-        "defaults": {
-          "mappings": [
-            { "type": "value", "options": { "1": { "text": "HEALTHY", "color": "green" } } },
-            { "type": "value", "options": { "0": { "text": "TEMP_FAIL", "color": "orange" } } },
-            { "type": "value", "options": { "-1": { "text": "PERM_FAIL", "color": "red" } } }
-          ],
-          "thresholds": {
-            "mode": "absolute",
-            "steps": [
-              { "color": "red", "value": null },
-              { "color": "orange", "value": 0 },
-              { "color": "green", "value": 1 }
-            ]
-          }
-        }
-      },
-      "gridPos": { "h": 5, "w": 4, "x": 8, "y": 1 },
-      "id": 3,
-      "options": {
-        "colorMode": "background",
-        "graphMode": "none",
-        "justifyMode": "center",
-        "orientation": "auto",
-        "reduceOptions": { "calcs": ["lastNotNull"], "fields": "", "values": false },
-        "textMode": "value_and_name"
-      },
-      "targets": [
-        {
-          "expr": "tts_endpoint_health{job=~\"$job\",instance=~\"$instance\",endpoint=\"endpoint-3\"}",
-          "refId": "A"
-        }
-      ],
-      "title": "EP-3",
-      "type": "stat"
-    },
-    {
-      "datasource": { "uid": "prometheus" },
-      "fieldConfig": {
-        "defaults": {
-          "mappings": [
-            { "type": "value", "options": { "1": { "text": "HEALTHY", "color": "green" } } },
-            { "type": "value", "options": { "0": { "text": "TEMP_FAIL", "color": "orange" } } },
-            { "type": "value", "options": { "-1": { "text": "PERM_FAIL", "color": "red" } } }
-          ],
-          "thresholds": {
-            "mode": "absolute",
-            "steps": [
-              { "color": "red", "value": null },
-              { "color": "orange", "value": 0 },
-              { "color": "green", "value": 1 }
-            ]
-          }
-        }
-      },
-      "gridPos": { "h": 5, "w": 4, "x": 12, "y": 1 },
-      "id": 4,
-      "options": {
-        "colorMode": "background",
-        "graphMode": "none",
-        "justifyMode": "center",
-        "orientation": "auto",
-        "reduceOptions": { "calcs": ["lastNotNull"], "fields": "", "values": false },
-        "textMode": "value_and_name"
-      },
-      "targets": [
-        {
-          "expr": "tts_endpoint_health{job=~\"$job\",instance=~\"$instance\",endpoint=\"endpoint-4\"}",
-          "refId": "A"
-        }
-      ],
-      "title": "EP-4",
-      "type": "stat"
-    },
-    {
-      "datasource": { "uid": "prometheus" },
-      "fieldConfig": {
-        "defaults": {
-          "mappings": [
-            { "type": "value", "options": { "1": { "text": "HEALTHY", "color": "green" } } },
-            { "type": "value", "options": { "0": { "text": "TEMP_FAIL", "color": "orange" } } },
-            { "type": "value", "options": { "-1": { "text": "PERM_FAIL", "color": "red" } } }
-          ],
-          "thresholds": {
-            "mode": "absolute",
-            "steps": [
-              { "color": "red", "value": null },
-              { "color": "orange", "value": 0 },
-              { "color": "green", "value": 1 }
-            ]
-          }
-        }
-      },
-      "gridPos": { "h": 5, "w": 4, "x": 16, "y": 1 },
-      "id": 5,
-      "options": {
-        "colorMode": "background",
-        "graphMode": "none",
-        "justifyMode": "center",
-        "orientation": "auto",
-        "reduceOptions": { "calcs": ["lastNotNull"], "fields": "", "values": false },
-        "textMode": "value_and_name"
-      },
-      "targets": [
-        {
-          "expr": "tts_endpoint_health{job=~\"$job\",instance=~\"$instance\",endpoint=\"endpoint-5\"}",
-          "refId": "A"
-        }
-      ],
-      "title": "EP-5",
-      "type": "stat"
+      "title": "Endpoint Health Status Grid",
+      "type": "status-history"
     },
     {
       "datasource": { "uid": "prometheus" },
@@ -214,17 +65,18 @@
           "thresholds": {
             "mode": "absolute",
             "steps": [
-              { "color": "green", "value": null },
-              { "color": "yellow", "value": 3 },
-              { "color": "red", "value": 5 }
+              { "color": "red", "value": null },
+              { "color": "orange", "value": 3 },
+              { "color": "green", "value": 5 }
             ]
-          }
+          },
+          "unit": "short"
         }
       },
-      "gridPos": { "h": 5, "w": 4, "x": 20, "y": 1 },
-      "id": 6,
+      "gridPos": { "h": 6, "w": 6, "x": 18, "y": 1 },
+      "id": 2,
       "options": {
-        "colorMode": "value",
+        "colorMode": "background",
         "graphMode": "area",
         "justifyMode": "center",
         "orientation": "auto",
@@ -237,15 +89,44 @@
           "refId": "A"
         }
       ],
-      "title": "정상 엔드포인트",
+      "title": "정상 엔드포인트 수",
       "type": "stat"
     },
     {
       "collapsed": false,
-      "gridPos": { "h": 1, "w": 24, "x": 0, "y": 6 },
+      "gridPos": { "h": 1, "w": 24, "x": 0, "y": 7 },
       "id": 101,
-      "title": "Active Requests",
+      "title": "Request Distribution & Load",
       "type": "row"
+    },
+    {
+      "datasource": { "uid": "prometheus" },
+      "fieldConfig": {
+        "defaults": {
+          "color": { "mode": "palette-classic" },
+          "custom": {
+            "orientation": "horizontal",
+            "barWidth": 0.8,
+            "showValue": "always"
+          },
+          "unit": "short"
+        }
+      },
+      "gridPos": { "h": 7, "w": 12, "x": 0, "y": 8 },
+      "id": 3,
+      "options": {
+        "legend": { "displayMode": "list", "placement": "bottom" },
+        "tooltip": { "mode": "single" }
+      },
+      "targets": [
+        {
+          "expr": "tts_endpoint_active_requests{job=~\"$job\",instance=~\"$instance\"}",
+          "legendFormat": "{{endpoint}}",
+          "refId": "A"
+        }
+      ],
+      "title": "Active Requests by Endpoint",
+      "type": "barchart"
     },
     {
       "datasource": { "uid": "prometheus" },
@@ -255,27 +136,29 @@
           "unit": "short"
         }
       },
-      "gridPos": { "h": 8, "w": 24, "x": 0, "y": 7 },
-      "id": 7,
+      "gridPos": { "h": 7, "w": 12, "x": 12, "y": 8 },
+      "id": 4,
       "options": {
-        "legend": { "displayMode": "table", "placement": "right" },
-        "tooltip": { "mode": "multi" }
+        "legend": { "displayMode": "table", "placement": "right", "values": ["value"] },
+        "pieType": "donut",
+        "tooltip": { "mode": "single" },
+        "displayLabels": ["percent"]
       },
       "targets": [
         {
-          "expr": "tts_endpoint_active_requests{job=~\"$job\",instance=~\"$instance\"}",
+          "expr": "sum(tts_endpoint_active_requests{job=~\"$job\",instance=~\"$instance\"}) by (endpoint)",
           "legendFormat": "{{endpoint}}",
           "refId": "A"
         }
       ],
-      "title": "엔드포인트별 활성 요청",
-      "type": "timeseries"
+      "title": "Request Distribution (Pie)",
+      "type": "piechart"
     },
     {
       "collapsed": false,
       "gridPos": { "h": 1, "w": 24, "x": 0, "y": 15 },
       "id": 102,
-      "title": "Request Distribution",
+      "title": "Performance & Availability",
       "type": "row"
     },
     {
@@ -287,52 +170,60 @@
         }
       },
       "gridPos": { "h": 7, "w": 12, "x": 0, "y": 16 },
-      "id": 8,
+      "id": 5,
       "options": {
         "legend": { "displayMode": "table", "placement": "right" },
         "tooltip": { "mode": "multi" }
       },
       "targets": [
         {
-          "expr": "sum(increase(tts_endpoint_active_requests{job=~\"$job\",instance=~\"$instance\"}[1h])) by (endpoint)",
+          "expr": "tts_endpoint_active_requests{job=~\"$job\",instance=~\"$instance\"}",
           "legendFormat": "{{endpoint}}",
           "refId": "A"
         }
       ],
-      "title": "엔드포인트별 요청 분포 (1h)",
-      "type": "barchart"
+      "title": "Active Requests Over Time",
+      "type": "timeseries"
     },
     {
       "datasource": { "uid": "prometheus" },
       "fieldConfig": {
         "defaults": {
-          "color": { "mode": "palette-classic" },
+          "color": { "mode": "thresholds" },
+          "thresholds": {
+            "mode": "absolute",
+            "steps": [
+              { "color": "red", "value": null },
+              { "color": "yellow", "value": 0.7 },
+              { "color": "green", "value": 0.95 }
+            ]
+          },
           "unit": "percentunit",
           "min": 0,
           "max": 1
         }
       },
       "gridPos": { "h": 7, "w": 12, "x": 12, "y": 16 },
-      "id": 9,
+      "id": 6,
       "options": {
         "legend": { "displayMode": "table", "placement": "right" },
         "tooltip": { "mode": "multi" }
       },
       "targets": [
         {
-          "expr": "avg(tts_endpoint_health{job=~\"$job\",instance=~\"$instance\"} > 0) by (endpoint)",
+          "expr": "avg_over_time(tts_endpoint_health{job=~\"$job\",instance=~\"$instance\"}[5m]) > 0",
           "legendFormat": "{{endpoint}}",
           "refId": "A"
         }
       ],
-      "title": "엔드포인트별 가용률",
+      "title": "Endpoint Availability (5m avg)",
       "type": "timeseries"
     },
     {
       "collapsed": false,
       "gridPos": { "h": 1, "w": 24, "x": 0, "y": 23 },
       "id": 103,
-      "title": "Errors & Logs",
+      "title": "Health Changes & Logs",
       "type": "row"
     },
     {
@@ -344,25 +235,25 @@
         }
       },
       "gridPos": { "h": 8, "w": 12, "x": 0, "y": 24 },
-      "id": 10,
+      "id": 7,
       "options": {
         "legend": { "displayMode": "table", "placement": "right" },
         "tooltip": { "mode": "multi" }
       },
       "targets": [
         {
-          "expr": "changes(tts_endpoint_health{job=~\"$job\",instance=~\"$instance\"}[5m]) > 0",
+          "expr": "changes(tts_endpoint_health{job=~\"$job\",instance=~\"$instance\"}[5m])",
           "legendFormat": "{{endpoint}}",
           "refId": "A"
         }
       ],
-      "title": "Health 상태 변경 감지",
+      "title": "Health Status Changes (5m window)",
       "type": "timeseries"
     },
     {
       "datasource": { "uid": "loki" },
       "gridPos": { "h": 8, "w": 12, "x": 12, "y": 24 },
-      "id": 11,
+      "id": 8,
       "options": {
         "dedupStrategy": "none",
         "enableLogDetails": true,
@@ -379,8 +270,70 @@
           "refId": "A"
         }
       ],
-      "title": "TTS 에러 로그",
+      "title": "TTS Error Logs",
       "type": "logs"
+    },
+    {
+      "collapsed": false,
+      "gridPos": { "h": 1, "w": 24, "x": 0, "y": 32 },
+      "id": 104,
+      "title": "Endpoint Details Table",
+      "type": "row"
+    },
+    {
+      "datasource": { "uid": "prometheus" },
+      "fieldConfig": {
+        "defaults": {
+          "custom": {
+            "align": "auto",
+            "displayMode": "auto"
+          },
+          "mappings": [
+            { "type": "value", "options": { "1": { "text": "HEALTHY", "color": "green" } } },
+            { "type": "value", "options": { "0": { "text": "TEMP_FAIL", "color": "orange" } } },
+            { "type": "value", "options": { "-1": { "text": "PERM_FAIL", "color": "red" } } }
+          ]
+        }
+      },
+      "gridPos": { "h": 6, "w": 24, "x": 0, "y": 33 },
+      "id": 9,
+      "options": {
+        "showHeader": true,
+        "sortBy": [{ "displayName": "Active Requests", "desc": true }]
+      },
+      "targets": [
+        {
+          "expr": "tts_endpoint_health{job=~\"$job\",instance=~\"$instance\"}",
+          "format": "table",
+          "instant": true,
+          "refId": "A"
+        },
+        {
+          "expr": "tts_endpoint_active_requests{job=~\"$job\",instance=~\"$instance\"}",
+          "format": "table",
+          "instant": true,
+          "refId": "B"
+        }
+      ],
+      "title": "TTS Endpoint Status Table",
+      "transformations": [
+        {
+          "id": "merge",
+          "options": {}
+        },
+        {
+          "id": "organize",
+          "options": {
+            "excludeByName": { "Time": true, "job": true, "instance": true, "__name__": true },
+            "renameByName": {
+              "endpoint": "Endpoint",
+              "Value #A": "Health Status",
+              "Value #B": "Active Requests"
+            }
+          }
+        }
+      ],
+      "type": "table"
     }
   ],
   "refresh": "15s",
@@ -425,5 +378,5 @@
   "timezone": "",
   "title": "MIYOU TTS LoadBalancer",
   "uid": "miyou-tts",
-  "version": 1
+  "version": 2
 }
