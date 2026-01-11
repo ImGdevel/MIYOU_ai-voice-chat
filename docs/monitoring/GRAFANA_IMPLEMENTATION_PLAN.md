@@ -1,5 +1,7 @@
 # Grafana 모니터링 구현 계획
 
+아키텍처/배치 관점의 상위 설계는 `docs/monitoring/MONITORING_SERVER_ARCHITECTURE.md`를 우선 참고한다.
+
 ## 목표
 
 RAG 파이프라인에서 수집된 메트릭을 Grafana 대시보드로 시각화하여 실시간 모니터링 및 성능 분석을 가능하게 한다.
