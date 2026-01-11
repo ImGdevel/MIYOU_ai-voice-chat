@@ -1,0 +1,19 @@
+services:
+  alloy:
+    image: grafana/alloy:v1.4.2
+    container_name: miyou-alloy
+    restart: unless-stopped
+    command:
+      - "run"
+      - "/etc/alloy/config.alloy"
+      - "--storage.path=/var/lib/alloy/data"
+    environment:
+      LOKI_WRITE_URL: ${LOKI_WRITE_URL}
+      ALLOY_INSTANCE: ${ALLOY_INSTANCE:-miyou-app}
+    volumes:
+      - ./monitoring/alloy/config.alloy:/etc/alloy/config.alloy:ro
+      - alloy-data:/var/lib/alloy/data
+      - /var/run/docker.sock:/var/run/docker.sock:ro
+
+volumes:
+  alloy-data:
