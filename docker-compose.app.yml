@@ -1,0 +1,70 @@
+services:
+  mongodb:
+    image: mongo:7.0
+    container_name: miyou-mongodb
+    restart: unless-stopped
+    ports:
+      - "27018:27017"
+    environment:
+      MONGO_INITDB_DATABASE: ragdb
+    volumes:
+      - mongodb-data:/data/db
+    networks:
+      - miyou-network
+
+  redis:
+    image: redis:7.2-alpine
+    container_name: miyou-redis
+    restart: unless-stopped
+    ports:
+      - "16379:6379"
+    command: redis-server --appendonly yes
+    volumes:
+      - redis-data:/data
+    networks:
+      - miyou-network
+
+  qdrant:
+    image: qdrant/qdrant:latest
+    container_name: miyou-qdrant
+    restart: unless-stopped
+    ports:
+      - "6333:6333"
+      - "6334:6334"
+    volumes:
+      - qdrant-data:/qdrant/storage
+    networks:
+      - miyou-network
+
+  app:
+    image: ${APP_IMAGE:-ghcr.io/imgdevel/miyou-dialogue:latest}
+    container_name: miyou-dialogue-app
+    restart: unless-stopped
+    ports:
+      - "8081:8081"
+    env_file:
+      - .env.deploy
+    environment:
+      MONGODB_URI: ${MONGODB_URI:-mongodb://mongodb:27017/ragdb}
+      REDIS_HOST: ${REDIS_HOST:-redis}
+      REDIS_PORT: ${REDIS_PORT:-6379}
+      QDRANT_HOST: ${QDRANT_HOST:-qdrant}
+      QDRANT_PORT: ${QDRANT_PORT:-6334}
+      QDRANT_URL: ${QDRANT_URL:-http://qdrant:6333}
+      QDRANT_COLLECTION: ${QDRANT_COLLECTION:-user_memories}
+      MONITORING_PERSISTENT_ENABLED: ${MONITORING_PERSISTENT_ENABLED:-true}
+    depends_on:
+      - mongodb
+      - redis
+      - qdrant
+    networks:
+      - miyou-network
+
+volumes:
+  mongodb-data:
+  redis-data:
+  qdrant-data:
+
+networks:
+  miyou-network:
+    driver: bridge
