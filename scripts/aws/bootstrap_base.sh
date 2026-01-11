@@ -1,10 +1,10 @@
 #!/usr/bin/env bash
 set -euo pipefail
 
-# Minimal, repeatable EC2 bootstrap for Ubuntu 22.04 LTS
-# - Installs Docker Engine + Compose plugin
-# - Creates /opt/app for deployment artifacts
-# - Optionally installs AWS SSM Agent
+# Ubuntu 22.04 LTS용 최소/반복 가능 EC2 부트스트랩
+# - Docker Engine + Compose 플러그인 설치
+# - 배포 아티팩트용 /opt/app 디렉토리 생성
+# - 선택적으로 AWS SSM Agent 설치
 
 APP_DIR="${APP_DIR:-/opt/app}"
 APP_USER="${APP_USER:-ubuntu}"
@@ -69,7 +69,7 @@ install_docker() {
 }
 
 install_ops_tools() {
-  # Required for SSM Parameter Store based deploy script
+  # SSM Parameter Store 기반 배포 스크립트 실행에 필요
   apt_install_if_missing awscli jq
 }
 

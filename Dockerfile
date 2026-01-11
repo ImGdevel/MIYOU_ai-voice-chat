@@ -3,7 +3,7 @@
 FROM gradle:8.10.2-jdk21 AS builder
 WORKDIR /workspace
 
-# Prime dependency cache first
+# 의존성 캐시를 먼저 준비
 COPY gradlew gradlew
 COPY gradle gradle
 COPY settings.gradle build.gradle ./
@@ -12,7 +12,7 @@ COPY webflux-dialogue/build.gradle webflux-dialogue/build.gradle
 RUN chmod +x gradlew
 RUN ./gradlew --no-daemon :webflux-dialogue:dependencies > /dev/null || true
 
-# Build app jar
+# 애플리케이션 JAR 빌드
 COPY webflux-dialogue webflux-dialogue
 RUN ./gradlew --no-daemon :webflux-dialogue:bootJar -x test
 
