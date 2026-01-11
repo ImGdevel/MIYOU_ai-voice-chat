@@ -102,28 +102,35 @@ flowchart LR
   GRAF -->|"query logs"| LOKI
 ```
 
-## 12. 현재 구현 상태 (2026-02-15 기준)
+## 12. 현재 구현 상태 (2026-02-15 업데이트)
 - 모니터링 서버(`172.31.44.177`)에 `Prometheus`, `Grafana`, `Loki` 컨테이너 기동 완료
-- 애플리케이션 서버에 `Alloy` 컨테이너 기동 완료
+- 애플리케이션 서버(`172.31.62.169`)에 `Alloy` 컨테이너 기동 완료
 - Prometheus -> App scrape 상태: `UP`
-- Alloy -> Loki 전송 상태: **네트워크 타임아웃(보안그룹 조정 필요)**
+- Alloy -> Loki 전송 상태: `정상(로그 유입 확인)`
+- 외부 직접 접근:
+  - `13.124.219.63:3000`, `:9090`, `:3100` 는 현재 동작하나, 운영 안정화 후 SG 제한/비공개 전환 예정
+- 앱 서버 Nginx 경유 접근:
+  - `http://52.78.129.179/admin/monitoring/grafana/`
+  - `http://52.78.129.179/admin/monitoring/prometheus/`
+  - `http://52.78.129.179/admin/monitoring/loki/ready`
+  - 위 경로는 Basic Auth로 보호
 
 ### 12.0 실시간 상태 다이어그램 (UP/DOWN, 포트, 접근제어)
 ```mermaid
 flowchart LR
   APP["App Server\n172.31.62.169"]
-  NGINX["Nginx:80\n/actuator/prometheus allow 127.0.0.1, 172.31.44.177\n(deny all 외부)"]
+  NGINX["Nginx:80\n/actuator/prometheus allow 127.0.0.1, 172.31.44.177\n/admin/monitoring/* Basic Auth 적용"]
   ALLOY["Alloy\nUP"]
   MON["Monitoring Server\n172.31.44.177\n(public 13.124.219.63 임시)"]
   PROM["Prometheus:9090\nUP"]
   GRAF["Grafana:3000\nUP"]
-  LOKI["Loki:3100\nUP(ready 지연 가능)"]
+  LOKI["Loki:3100\nUP"]
 
   APP -->|"80/tcp\n/actuator/prometheus"| NGINX
   PROM -->|"scrape: UP"| NGINX
 
   APP -->|"docker logs"| ALLOY
-  ALLOY -->|"3100/tcp\npush: TIMEOUT"| LOKI
+  ALLOY -->|"3100/tcp\npush: UP"| LOKI
 
   MON --> PROM
   MON --> GRAF
@@ -138,6 +145,51 @@ flowchart LR
 ```
 
 ### 12.1 남은 작업
-- 앱 서버 SG에서 모니터링 서버(`172.31.44.177`)로 향하는 Loki 포트 경로 확인
-- 모니터링 서버 SG 인바운드에 `3100/TCP`를 앱 서버(또는 앱 서버 SG) 기준으로 허용
-- 허용 후 Loki 쿼리에서 로그 수집 확인
+- 모니터링 서버 public 노출 포트(`3000/9090/3100`) 최소화 또는 비공개 전환
+- Grafana/Prometheus/Loki 접근 정책을 SG + Nginx 기준으로 최종 고정
+- Basic Auth 계정/비밀번호를 SSM 파라미터 기반으로 관리(코드/문서 하드코딩 금지)
+- 운영 대시보드/알림 룰 고도화
+
+## 13. 작업 이력 요약 (2026-02-15)
+
+### 13.1 네트워크/접근 장애
+- 증상:
+  - 외부에서 모니터링 서버 포트 접근 타임아웃
+  - Alloy -> Loki `context deadline exceeded`
+- 원인:
+  - SG/NACL 경로 미반영 또는 잘못된 SG에 규칙 추가
+- 조치:
+  - SG 규칙 재적용 후 외부 헬스체크 및 내부 private 경로 확인
+- 결과:
+  - `3000/9090/3100` 외부 응답 확인
+  - Alloy 로그 전송 정상화, Loki 라벨/스트림 유입 확인
+
+### 13.2 Grafana 서브패스 404(Whitelabel) 장애
+- 증상:
+  - `/admin/monitoring/grafana/` 접근 시 Grafana 대신 앱의 Whitelabel 404 출력
+- 원인:
+  - Grafana 서브패스 미설정 + 프록시 경로 헤더 충돌
+- 조치:
+  - Grafana `GF_SERVER_ROOT_URL=/admin/monitoring/grafana/`
+  - Grafana `GF_SERVER_SERVE_FROM_SUB_PATH=true`
+  - Nginx 프록시 경로 정리 및 불필요 header 제거
+- 결과:
+  - `/admin/monitoring/grafana/login` 정상 응답(200)
+
+### 13.3 인증 혼선(반복 로그인 팝업)
+- 증상:
+  - Basic Auth 입력 후 반복 인증창 표시
+- 원인:
+  - 사용자명 오타(`myyou` vs `miyou`)
+  - `.htpasswd` 파일 권한 과도 제한(컨테이너 내부 읽기 실패)
+- 조치:
+  - 계정명 `miyou`로 통일
+  - `.htpasswd` 권한 조정
+  - 배포 스크립트에서 `.env.deploy` 기반 `.htpasswd` 자동생성 추가
+- 결과:
+  - 무인증 `401`, 인증 시 `200` 확인
+
+### 13.4 자격증명 운영 정책
+- Grafana admin 비밀번호는 서버에서 재설정 가능(grafana-cli)
+- Nginx Basic Auth 값은 Git 커밋 금지
+- `.env.deploy` / SSM 파라미터를 통해 주입하고, 배포 시 해시 파일(`.htpasswd`) 생성
