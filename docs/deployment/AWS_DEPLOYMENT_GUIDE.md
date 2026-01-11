@@ -3,6 +3,9 @@
 본 문서는 **EC2 + Docker Compose** 기준으로 AWS 배포 환경을 준비하는 절차를 정리한다.
 (추후 ECS/Fargate로 확장 가능)
 
+CI/CD, Nginx, 운영 트러블슈팅까지 포함한 최신 운영 절차는
+`docs/deployment/MIYOU_CI_CD_RUNBOOK.md`를 함께 참고한다.
+
 ---
 
 ## 1. 목표 아키텍처
