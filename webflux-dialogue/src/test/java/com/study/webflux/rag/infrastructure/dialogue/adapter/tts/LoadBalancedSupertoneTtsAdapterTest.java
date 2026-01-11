@@ -1,6 +1,9 @@
 package com.study.webflux.rag.infrastructure.dialogue.adapter.tts;
 
 import java.util.List;
+import java.util.concurrent.CountDownLatch;
+import java.util.concurrent.TimeUnit;
+import java.util.concurrent.atomic.AtomicInteger;
 
 import org.springframework.http.HttpStatus;
 import org.springframework.http.client.reactive.ReactorClientHttpConnector;
@@ -21,6 +24,8 @@ import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Test;
 import reactor.core.publisher.Flux;
+import reactor.core.publisher.Mono;
+import reactor.core.scheduler.Schedulers;
 import reactor.netty.DisposableServer;
 import reactor.netty.http.server.HttpServer;
 import reactor.test.StepVerifier;
@@ -256,5 +261,136 @@ class LoadBalancedSupertoneTtsAdapterTest {
 				.as("Warmup 실패한 엔드포인트 %s가 TEMPORARY_FAILURE 상태", endpoint.getId())
 				.isEqualTo(TtsEndpoint.EndpointHealth.TEMPORARY_FAILURE);
 		}
+	}
+
+	// ==================== 동시 요청 테스트 ====================
+
+	@Test
+	@DisplayName("[동시성] 여러 요청이 동시에 들어와도 로드밸런싱이 올바르게 동작")
+	void concurrentRequests_loadBalancedCorrectly() throws InterruptedException {
+		// Given: 모든 엔드포인트가 정상
+		fakeServer.setEndpointBehavior("key-1", FakeSupertoneServer.ServerBehavior.success());
+		fakeServer.setEndpointBehavior("key-2", FakeSupertoneServer.ServerBehavior.success());
+		fakeServer.setEndpointBehavior("key-3", FakeSupertoneServer.ServerBehavior.success());
+		fakeServer.resetRequestCounts();
+
+		// When: 30개의 동시 요청
+		int requestCount = 30;
+		CountDownLatch latch = new CountDownLatch(requestCount);
+		AtomicInteger successCount = new AtomicInteger(0);
+
+		for (int i = 0; i < requestCount; i++) {
+			Mono.fromRunnable(() -> {
+				adapter.streamSynthesize("Test " + System.currentTimeMillis())
+					.doOnComplete(() -> {
+						successCount.incrementAndGet();
+						latch.countDown();
+					})
+					.doOnError(e -> latch.countDown())
+					.subscribeOn(Schedulers.parallel())
+					.subscribe();
+			}).subscribeOn(Schedulers.parallel()).subscribe();
+		}
+
+		latch.await(10, TimeUnit.SECONDS);
+
+		// Then: 모든 요청 성공
+		assertThat(successCount.get()).isEqualTo(requestCount);
+
+		// 요청이 모든 엔드포인트에 분산됨
+		int total = fakeServer.getRequestCount("key-1")
+			+ fakeServer.getRequestCount("key-2")
+			+ fakeServer.getRequestCount("key-3");
+		assertThat(total).isEqualTo(requestCount);
+
+		// 각 엔드포인트가 최소 1개 이상의 요청을 받음
+		assertThat(fakeServer.getRequestCount("key-1")).isGreaterThan(0);
+		assertThat(fakeServer.getRequestCount("key-2")).isGreaterThan(0);
+		assertThat(fakeServer.getRequestCount("key-3")).isGreaterThan(0);
+	}
+
+	@Test
+	@DisplayName("[동시성] 일부 엔드포인트 장애 시에도 동시 요청이 정상 처리됨")
+	void concurrentRequests_withPartialFailure() throws InterruptedException {
+		// Given: endpoint-1은 장애, 나머지는 정상
+		fakeServer.setEndpointBehavior("key-1",
+			FakeSupertoneServer.ServerBehavior.error(HttpStatus.SERVICE_UNAVAILABLE));
+		fakeServer.setEndpointBehavior("key-2", FakeSupertoneServer.ServerBehavior.success());
+		fakeServer.setEndpointBehavior("key-3", FakeSupertoneServer.ServerBehavior.success());
+		fakeServer.resetRequestCounts();
+
+		// When: 20개의 동시 요청
+		int requestCount = 20;
+		CountDownLatch latch = new CountDownLatch(requestCount);
+		AtomicInteger successCount = new AtomicInteger(0);
+
+		for (int i = 0; i < requestCount; i++) {
+			Mono.fromRunnable(() -> {
+				adapter.streamSynthesize("Test " + System.currentTimeMillis())
+					.doOnComplete(() -> {
+						successCount.incrementAndGet();
+						latch.countDown();
+					})
+					.doOnError(e -> latch.countDown())
+					.subscribeOn(Schedulers.parallel())
+					.subscribe();
+			}).subscribeOn(Schedulers.parallel()).subscribe();
+		}
+
+		latch.await(10, TimeUnit.SECONDS);
+
+		// Then: 모든 요청이 성공 (재시도 덕분에)
+		assertThat(successCount.get()).isEqualTo(requestCount);
+
+		// endpoint-2, endpoint-3에서만 성공 요청 처리됨
+		int successRequests = fakeServer.getRequestCount("key-2")
+			+ fakeServer.getRequestCount("key-3");
+		assertThat(successRequests).isEqualTo(requestCount);
+
+		// endpoint-1은 TEMPORARY_FAILURE 상태
+		TtsEndpoint endpoint1 = loadBalancer.getEndpoints().get(0);
+		assertThat(endpoint1.getHealth()).isEqualTo(TtsEndpoint.EndpointHealth.TEMPORARY_FAILURE);
+	}
+
+	@Test
+	@DisplayName("[동시성] activeRequests 카운터가 동시 요청에서도 정확하게 관리됨")
+	void concurrentRequests_maintainsAccurateActiveRequestCount() throws InterruptedException {
+		// Given: 느린 응답을 반환하는 서버 (100ms 지연)
+		fakeServer.setEndpointBehavior("key-1", FakeSupertoneServer.ServerBehavior.delayed(100));
+		fakeServer.setEndpointBehavior("key-2", FakeSupertoneServer.ServerBehavior.delayed(100));
+		fakeServer.setEndpointBehavior("key-3", FakeSupertoneServer.ServerBehavior.delayed(100));
+
+		// When: 15개의 동시 요청
+		int requestCount = 15;
+		CountDownLatch startLatch = new CountDownLatch(requestCount);
+		CountDownLatch endLatch = new CountDownLatch(requestCount);
+
+		for (int i = 0; i < requestCount; i++) {
+			Mono.fromRunnable(() -> {
+				adapter.streamSynthesize("Test " + System.currentTimeMillis())
+					.doOnSubscribe(s -> startLatch.countDown())
+					.doFinally(s -> endLatch.countDown())
+					.subscribeOn(Schedulers.parallel())
+					.subscribe();
+			}).subscribeOn(Schedulers.parallel()).subscribe();
+		}
+
+		// 모든 요청이 시작될 때까지 대기
+		startLatch.await(3, TimeUnit.SECONDS);
+
+		// Then: activeRequests 합계가 요청 수와 일치
+		int activeRequestsSum = loadBalancer.getEndpoints().stream()
+			.mapToInt(TtsEndpoint::getActiveRequests)
+			.sum();
+		assertThat(activeRequestsSum).isGreaterThan(0).isLessThanOrEqualTo(requestCount);
+
+		// 모든 요청 완료 대기
+		endLatch.await(5, TimeUnit.SECONDS);
+
+		// Then: 모든 요청 완료 후 activeRequests가 0
+		int finalActiveRequests = loadBalancer.getEndpoints().stream()
+			.mapToInt(TtsEndpoint::getActiveRequests)
+			.sum();
+		assertThat(finalActiveRequests).isEqualTo(0);
 	}
 }
