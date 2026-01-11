@@ -11,6 +11,22 @@ let canvasCtx;
 let shuffledIndices = [];
 let isPlaying = false;
 
+function getOrCreateUserId() {
+    const storageKey = 'miyou-user-id';
+    const existingUserId = localStorage.getItem(storageKey);
+
+    if (existingUserId) {
+        return existingUserId;
+    }
+
+    const newUserId = (window.crypto && window.crypto.randomUUID)
+        ? window.crypto.randomUUID()
+        : `${Date.now()}-${Math.random().toString(16).slice(2)}`;
+
+    localStorage.setItem(storageKey, newUserId);
+    return newUserId;
+}
+
 function shuffleArray(array) {
     const shuffled = [...array];
     for (let i = shuffled.length - 1; i > 0; i--) {
@@ -191,6 +207,7 @@ async function streamTextOnly(queryText, sendBtn) {
                 'Content-Type': 'application/json',
             },
             body: JSON.stringify({
+                userId: getOrCreateUserId(),
                 text: queryText,
                 requestedAt: new Date().toISOString()
             })
@@ -259,6 +276,7 @@ async function streamWithVoice(queryText, sendBtn) {
                         'Content-Type': 'application/json',
                     },
                     body: JSON.stringify({
+                        userId: getOrCreateUserId(),
                         text: queryText,
                         requestedAt: new Date().toISOString()
                     })
