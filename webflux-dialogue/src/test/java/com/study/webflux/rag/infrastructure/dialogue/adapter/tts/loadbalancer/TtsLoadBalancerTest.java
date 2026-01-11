@@ -11,6 +11,7 @@ import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Test;
 
 import static org.assertj.core.api.Assertions.assertThat;
+import static org.assertj.core.api.Assertions.assertThatThrownBy;
 
 class TtsLoadBalancerTest {
 
@@ -100,14 +101,16 @@ class TtsLoadBalancerTest {
 	}
 
 	@Test
-	@DisplayName("클라이언트 에러 처리")
-	void handleClientError() {
+	@DisplayName("클라이언트 에러 발생 시 엔드포인트 상태 유지")
+	void handleClientError_keepsEndpointHealthy() {
 		TtsEndpoint endpoint = endpoints.get(0);
 		Exception error = WebClientResponseException.create(400, "Bad Request", null, null, null);
 
 		loadBalancer.reportFailure(endpoint, error);
 
-		assertThat(endpoint.getHealth()).isEqualTo(TtsEndpoint.EndpointHealth.CLIENT_ERROR);
+		// CLIENT_ERROR는 클라이언트 요청 문제이므로 엔드포인트 상태 유지
+		assertThat(endpoint.getHealth()).isEqualTo(TtsEndpoint.EndpointHealth.HEALTHY);
+		assertThat(endpoint.isAvailable()).isTrue();
 	}
 
 	@Test
@@ -131,67 +134,56 @@ class TtsLoadBalancerTest {
 		assertThat(selected).isEqualTo(endpoints.get(0));
 	}
 
-	// ==================== 취약점 재현 테스트 ====================
+	// ==================== 취약점 수정 검증 테스트 ====================
 
 	@Test
-	@DisplayName("[취약점 1] 모든 엔드포인트가 PERMANENT_FAILURE일 때 첫 번째 반환 - 영구 장애 엔드포인트로 요청됨")
-	void vulnerability1_allPermanentFailure_returnsFirstEndpoint() {
+	@DisplayName("[수정됨] 모든 엔드포인트가 PERMANENT_FAILURE일 때 예외 발생")
+	void allPermanentFailure_throwsException() {
 		// Given: 모든 엔드포인트가 PERMANENT_FAILURE 상태
 		endpoints.forEach(e -> e.setHealth(TtsEndpoint.EndpointHealth.PERMANENT_FAILURE));
+
+		// When & Then: 예외 발생
+		assertThatThrownBy(() -> loadBalancer.selectEndpoint())
+			.isInstanceOf(IllegalStateException.class)
+			.hasMessageContaining("사용 가능한 TTS 엔드포인트가 없습니다");
+	}
+
+	@Test
+	@DisplayName("[수정됨] HEALTHY 없을 때 TEMPORARY_FAILURE 엔드포인트 우선 선택")
+	void noHealthy_selectsTemporaryFailureFirst() {
+		// Given: 일부 TEMPORARY_FAILURE, 일부 PERMANENT_FAILURE
+		endpoints.get(0).setHealth(TtsEndpoint.EndpointHealth.PERMANENT_FAILURE);
+		endpoints.get(1).setHealth(TtsEndpoint.EndpointHealth.TEMPORARY_FAILURE);
+		endpoints.get(2).setHealth(TtsEndpoint.EndpointHealth.PERMANENT_FAILURE);
 
 		// When
 		TtsEndpoint selected = loadBalancer.selectEndpoint();
 
-		// Then: 첫 번째 엔드포인트 반환 (PERMANENT_FAILURE 상태임에도)
-		assertThat(selected).isEqualTo(endpoints.get(0));
-		assertThat(selected.getHealth()).isEqualTo(TtsEndpoint.EndpointHealth.PERMANENT_FAILURE);
-		// 문제: 영구 장애 상태의 엔드포인트로 요청이 전송됨
+		// Then: TEMPORARY_FAILURE 엔드포인트 선택 (복구 가능성 있음)
+		assertThat(selected.getId()).isEqualTo("endpoint-2");
+		assertThat(selected.getHealth()).isEqualTo(TtsEndpoint.EndpointHealth.TEMPORARY_FAILURE);
 	}
 
 	@Test
-	@DisplayName("[취약점 3] CLIENT_ERROR 발생 후 해당 엔드포인트가 선택에서 제외됨")
-	void vulnerability3_clientError_excludesEndpointFromSelection() {
+	@DisplayName("[수정됨] CLIENT_ERROR 발생 후에도 해당 엔드포인트가 정상 선택됨")
+	void clientError_endpointStillSelected() {
 		// Given: endpoint-1에서 400 Bad Request 발생
 		TtsEndpoint endpoint1 = endpoints.get(0);
 		Exception badRequest = WebClientResponseException
 			.create(400, "Bad Request", null, null, null);
 		loadBalancer.reportFailure(endpoint1, badRequest);
 
-		// Then: endpoint-1이 CLIENT_ERROR 상태로 변경됨
-		assertThat(endpoint1.getHealth()).isEqualTo(TtsEndpoint.EndpointHealth.CLIENT_ERROR);
-		assertThat(endpoint1.isAvailable()).isFalse();
+		// Then: endpoint-1이 여전히 HEALTHY 상태
+		assertThat(endpoint1.getHealth()).isEqualTo(TtsEndpoint.EndpointHealth.HEALTHY);
+		assertThat(endpoint1.isAvailable()).isTrue();
 
 		// When: 다음 요청에서 엔드포인트 선택
 		List<String> selectedIds = new ArrayList<>();
-		for (int i = 0; i < 10; i++) {
+		for (int i = 0; i < 9; i++) {
 			selectedIds.add(loadBalancer.selectEndpoint().getId());
 		}
 
-		// Then: endpoint-1은 한 번도 선택되지 않음 (취약점)
-		// 문제: CLIENT_ERROR는 클라이언트 요청 문제인데 엔드포인트가 비정상으로 처리됨
-		assertThat(selectedIds).doesNotContain("endpoint-1");
-		assertThat(selectedIds).containsOnly("endpoint-2", "endpoint-3");
-	}
-
-	@Test
-	@DisplayName("[취약점 3] CLIENT_ERROR는 30초 후에도 자동 복구되지 않음")
-	void vulnerability3_clientError_noAutoRecovery() throws Exception {
-		// Given: endpoint-1에서 400 Bad Request 발생
-		TtsEndpoint endpoint1 = endpoints.get(0);
-		Exception badRequest = WebClientResponseException
-			.create(400, "Bad Request", null, null, null);
-		loadBalancer.reportFailure(endpoint1, badRequest);
-
-		assertThat(endpoint1.getHealth()).isEqualTo(TtsEndpoint.EndpointHealth.CLIENT_ERROR);
-
-		// When: 시간이 지나도 (여러 번 selectEndpoint 호출해도) 복구되지 않음
-		// Note: TEMPORARY_FAILURE는 30초 후 복구되지만 CLIENT_ERROR는 복구 로직 없음
-		for (int i = 0; i < 100; i++) {
-			loadBalancer.selectEndpoint();
-		}
-
-		// Then: 여전히 CLIENT_ERROR 상태
-		assertThat(endpoint1.getHealth()).isEqualTo(TtsEndpoint.EndpointHealth.CLIENT_ERROR);
-		assertThat(endpoint1.isAvailable()).isFalse();
+		// Then: endpoint-1도 정상적으로 선택됨
+		assertThat(selectedIds).contains("endpoint-1");
 	}
 }
