@@ -159,6 +159,145 @@ supertone:
 2. endpoint-2 실패 → 최대 재시도 횟수 초과
 3. "모든 TTS 엔드포인트 요청 실패" 에러 반환
 
+## 알려진 취약점 및 개선 포인트
+
+> **분석일**: 2026-02-15
+> **분석 대상**: TtsLoadBalancer, TtsEndpoint, TtsErrorClassifier, LoadBalancedSupertoneTtsAdapter
+
+### 1. 전체 장애 시 Fallback 취약점
+
+**위치**: [TtsLoadBalancer.java:69-71](webflux-dialogue/src/main/java/com/study/webflux/rag/infrastructure/dialogue/adapter/tts/loadbalancer/TtsLoadBalancer.java#L69-L71)
+
+**문제**:
+```java
+if (bestEndpoint == null) {
+    log.warn("모든 TTS 엔드포인트가 비정상 상태입니다. 기본 엔드포인트를 사용합니다.");
+    return endpoints.get(0);  // PERMANENT_FAILURE 상태여도 반환
+}
+```
+
+**영향**: 모든 엔드포인트가 비정상일 때 영구 장애 상태(401/402/403)의 엔드포인트로 요청 시도
+
+**재현 조건**:
+1. 모든 엔드포인트가 PERMANENT_FAILURE 또는 TEMPORARY_FAILURE 상태
+2. `selectEndpoint()` 호출 시 무조건 첫 번째 엔드포인트 반환
+
+**심각도**: 🟠 Medium
+
+---
+
+### 2. Health/CircuitOpenedAt Race Condition
+
+**위치**: [TtsEndpoint.java:42-50](webflux-dialogue/src/main/java/com/study/webflux/rag/infrastructure/dialogue/adapter/tts/loadbalancer/TtsEndpoint.java#L42-L50)
+
+**문제**:
+```java
+public void setHealth(EndpointHealth health) {
+    this.health = health;                    // volatile 쓰기 1
+    if (health == EndpointHealth.TEMPORARY_FAILURE || ...) {
+        this.circuitOpenedAt = Instant.now(); // volatile 쓰기 2 (원자적이지 않음)
+    }
+}
+```
+
+**영향**: 멀티스레드 환경에서 `health`와 `circuitOpenedAt` 사이 불일치 가능
+
+**재현 조건**:
+1. Thread A: `setHealth(TEMPORARY_FAILURE)` 호출
+2. Thread B: `setHealth(HEALTHY)` 호출 (동시에)
+3. 결과: `health=HEALTHY`, `circuitOpenedAt=non-null` (불일치)
+
+**심각도**: 🟡 Low (실제 영향 제한적)
+
+---
+
+### 3. CLIENT_ERROR 상태 처리 불일치
+
+**위치**: [TtsEndpoint.java:68-69](webflux-dialogue/src/main/java/com/study/webflux/rag/infrastructure/dialogue/adapter/tts/loadbalancer/TtsEndpoint.java#L68-L69)
+
+**문제**:
+```java
+public boolean isAvailable() {
+    return health == EndpointHealth.HEALTHY;  // CLIENT_ERROR도 비정상 처리
+}
+```
+
+**영향**: 400/404 에러 발생 시 해당 엔드포인트가 비정상으로 처리되어 다음 요청에서 제외됨
+
+**논리적 문제**: CLIENT_ERROR는 클라이언트 요청 문제이지 엔드포인트 문제가 아님. 다음 정상 요청은 처리 가능해야 함.
+
+**재현 조건**:
+1. 잘못된 요청으로 400 에러 발생
+2. 해당 엔드포인트가 CLIENT_ERROR 상태로 변경
+3. 이후 정상 요청도 해당 엔드포인트 제외 (30초간 복구 안됨)
+
+**심각도**: 🟠 Medium
+
+---
+
+### 4. 요청 취소 시 ActiveRequests 누수
+
+**위치**: [LoadBalancedSupertoneTtsAdapter.java:58-74](webflux-dialogue/src/main/java/com/study/webflux/rag/infrastructure/dialogue/adapter/tts/LoadBalancedSupertoneTtsAdapter.java#L58-L74)
+
+**문제**:
+```java
+endpoint.incrementActiveRequests();
+
+return synthesizeWithEndpoint(endpoint, text, format)
+    .doOnComplete(() -> endpoint.decrementActiveRequests())  // 완료 시
+    .onErrorResume(error -> {
+        endpoint.decrementActiveRequests();  // 에러 시
+        // ...
+    });
+// doOnCancel() 없음!
+```
+
+**영향**: 클라이언트가 요청을 취소하면 `activeRequests` 카운트가 감소하지 않음
+
+**재현 조건**:
+1. TTS 요청 시작 (`incrementActiveRequests()`)
+2. 클라이언트가 Subscription 취소
+3. `decrementActiveRequests()` 호출되지 않음
+4. 시간이 지나면서 카운트 누적 → 해당 엔드포인트 부하가 높게 측정됨
+
+**심각도**: 🟠 Medium
+
+---
+
+### 5. Warmup 실패 시 상태 미반영
+
+**위치**: [LoadBalancedSupertoneTtsAdapter.java:133-135](webflux-dialogue/src/main/java/com/study/webflux/rag/infrastructure/dialogue/adapter/tts/LoadBalancedSupertoneTtsAdapter.java#L133-L135)
+
+**문제**:
+```java
+.doOnError(error -> log.warn("앤드포인트 준비에 실패했습니다. : {}", endpoint.getId(), error))
+.onErrorResume(error -> Mono.empty())  // 에러 무시, 상태 변경 없음
+```
+
+**영향**: Warmup 실패한 엔드포인트도 HEALTHY 상태로 유지되어 실제 요청에서 실패 가능
+
+**재현 조건**:
+1. 애플리케이션 시작 시 `prepare()` 호출
+2. 특정 엔드포인트 네트워크 문제로 warmup 실패
+3. 해당 엔드포인트는 HEALTHY 상태 유지
+4. 첫 실제 요청에서 실패 후 재시도 발생
+
+**심각도**: 🟡 Low
+
+---
+
+### 취약점 요약 테이블
+
+| # | 취약점 | 심각도 | 재현 난이도 | 영향 |
+|---|--------|--------|-------------|------|
+| 1 | 전체 장애 시 Fallback | 🟠 Medium | 쉬움 | 영구 장애 엔드포인트로 요청 |
+| 2 | Health/CircuitOpenedAt Race | 🟡 Low | 어려움 | 상태 불일치 |
+| 3 | CLIENT_ERROR 처리 | 🟠 Medium | 쉬움 | 정상 엔드포인트 제외 |
+| 4 | ActiveRequests 누수 | 🟠 Medium | 중간 | 부하 측정 왜곡 |
+| 5 | Warmup 실패 미반영 | 🟡 Low | 쉬움 | 첫 요청 실패 |
+
+---
+
 ## 아키텍처
 
 ### 주요 컴포넌트

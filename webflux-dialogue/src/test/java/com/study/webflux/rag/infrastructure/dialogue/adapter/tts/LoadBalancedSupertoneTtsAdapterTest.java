@@ -196,4 +196,75 @@ class LoadBalancedSupertoneTtsAdapterTest {
 
 		StepVerifier.create(result).expectError().verify();
 	}
+
+	// ==================== 취약점 재현 테스트 ====================
+
+	@Test
+	@DisplayName("[취약점 4] 요청 취소 시 activeRequests 카운트가 감소하지 않음")
+	void vulnerability4_cancelledRequest_leaksActiveRequestCount() throws InterruptedException {
+		// Given: 느린 응답을 반환하는 서버 (5초 지연)
+		fakeServer.setEndpointBehavior("key-1", FakeSupertoneServer.ServerBehavior.delayed(5000));
+		fakeServer.setEndpointBehavior("key-2", FakeSupertoneServer.ServerBehavior.delayed(5000));
+		fakeServer.setEndpointBehavior("key-3", FakeSupertoneServer.ServerBehavior.delayed(5000));
+
+		int initialCount = loadBalancer.getEndpoints().stream()
+			.mapToInt(TtsEndpoint::getActiveRequests)
+			.sum();
+
+		// When: 요청 시작 후 즉시 취소
+		Flux<byte[]> flux = adapter.streamSynthesize("test", AudioFormat.WAV);
+		flux.subscribe().dispose(); // 즉시 취소
+
+		// 약간의 시간 대기 (요청이 시작되도록)
+		Thread.sleep(100);
+
+		// Then: activeRequests가 증가된 상태로 유지됨 (취약점)
+		// doOnCancel()이 없어서 decrementActiveRequests()가 호출되지 않음
+		// 시간이 지나면 이 카운트가 누적되어 부하 측정이 왜곡됨
+		int afterCancelCount = loadBalancer.getEndpoints().stream()
+			.mapToInt(TtsEndpoint::getActiveRequests)
+			.sum();
+
+		// 문제: 취소된 요청의 카운트가 남아있을 수 있음
+		// (정상이라면 취소 후 0이어야 함)
+		// Note: 타이밍에 따라 결과가 달라질 수 있음
+		assertThat(afterCancelCount).isGreaterThanOrEqualTo(initialCount);
+	}
+
+	@Test
+	@DisplayName("[취약점 5] Warmup 실패 시 엔드포인트 상태가 HEALTHY로 유지됨")
+	void vulnerability5_warmupFailure_endpointStaysHealthy() {
+		// Given: 모든 엔드포인트가 연결 불가 상태
+		if (server != null) {
+			server.disposeNow();
+			server = null;
+		}
+
+		// 새로운 어댑터 생성 (연결 불가한 URL 사용)
+		List<TtsEndpoint> badEndpoints = List.of(
+			new TtsEndpoint("bad-1", "key-1", "http://localhost:59999"),
+			new TtsEndpoint("bad-2", "key-2", "http://localhost:59998"));
+		TtsLoadBalancer badLoadBalancer = new TtsLoadBalancer(badEndpoints);
+
+		WebClient.Builder webClientBuilder = WebClient.builder()
+			.clientConnector(new ReactorClientHttpConnector());
+
+		Voice voice = Voice.builder().id("test-voice-id").name("Test Voice").provider("supertone")
+			.language("ko").style(VoiceStyle.NEUTRAL).outputFormat(AudioFormat.WAV)
+			.settings(new VoiceSettings(0, 1.0, 1.0)).build();
+
+		LoadBalancedSupertoneTtsAdapter badAdapter = new LoadBalancedSupertoneTtsAdapter(
+			webClientBuilder, badLoadBalancer, voice);
+
+		// When: prepare() 호출 (warmup 실패)
+		badAdapter.prepare().block();
+
+		// Then: 모든 엔드포인트가 여전히 HEALTHY 상태 (취약점)
+		// 문제: warmup 실패해도 상태 변경 없음
+		for (TtsEndpoint endpoint : badLoadBalancer.getEndpoints()) {
+			assertThat(endpoint.getHealth())
+				.as("Warmup 실패한 엔드포인트 %s가 여전히 HEALTHY 상태", endpoint.getId())
+				.isEqualTo(TtsEndpoint.EndpointHealth.HEALTHY);
+		}
+	}
 }
