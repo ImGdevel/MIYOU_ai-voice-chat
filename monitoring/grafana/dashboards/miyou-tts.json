@@ -18,6 +18,7 @@
     },
     {
       "datasource": { "uid": "prometheus" },
+      "description": "TTS 엔드포인트 1~5의 상태를 시간 흐름에 따라 그리드로 표시합니다. 1=HEALTHY(녹색), 0=TEMP_FAIL(주황색), -1=PERM_FAIL(빨간색)이며, 상태 변화 패턴을 한눈에 파악할 수 있습니다.",
       "fieldConfig": {
         "defaults": {
           "color": { "mode": "thresholds" },
@@ -59,6 +60,7 @@
     },
     {
       "datasource": { "uid": "prometheus" },
+      "description": "전체 TTS 엔드포인트 중 정상(HEALTHY) 상태인 개수를 표시합니다. 전체 5개 중 3개 미만(orange), 5개(green)로 색상이 변경되며, 로드밸런서 가용성을 나타냅니다.",
       "fieldConfig": {
         "defaults": {
           "color": { "mode": "thresholds" },
@@ -101,6 +103,7 @@
     },
     {
       "datasource": { "uid": "prometheus" },
+      "description": "각 TTS 엔드포인트에서 현재 처리 중인 활성 요청 수를 막대 차트로 표시합니다. 로드밸런서가 요청을 고르게 분산하는지 확인할 수 있으며, 특정 엔드포인트에 부하 집중 여부를 파악합니다.",
       "fieldConfig": {
         "defaults": {
           "color": { "mode": "palette-classic" },
@@ -130,6 +133,7 @@
     },
     {
       "datasource": { "uid": "prometheus" },
+      "description": "TTS 엔드포인트별 활성 요청 수의 비율을 도넛 차트로 표시합니다. 전체 요청 중 각 엔드포인트가 처리하는 비중을 백분율로 확인할 수 있으며, 로드밸런싱 균형도를 파악합니다.",
       "fieldConfig": {
         "defaults": {
           "color": { "mode": "palette-classic" },
@@ -163,6 +167,7 @@
     },
     {
       "datasource": { "uid": "prometheus" },
+      "description": "각 TTS 엔드포인트의 활성 요청 수를 시계열로 표시합니다. 시간에 따른 부하 변화와 로드밸런서의 요청 분산 패턴을 파악할 수 있으며, 피크 타임과 평상시 패턴을 비교할 수 있습니다.",
       "fieldConfig": {
         "defaults": {
           "color": { "mode": "palette-classic" },
@@ -187,6 +192,7 @@
     },
     {
       "datasource": { "uid": "prometheus" },
+      "description": "각 TTS 엔드포인트의 5분 이동평균 가용성을 백분율로 표시합니다. 1.0(100%)은 5분 동안 계속 HEALTHY 상태, 0.7 미만(yellow), 0.95 이상(green)으로 SLA 준수 여부를 확인합니다.",
       "fieldConfig": {
         "defaults": {
           "color": { "mode": "thresholds" },
@@ -228,6 +234,7 @@
     },
     {
       "datasource": { "uid": "prometheus" },
+      "description": "5분 동안 각 TTS 엔드포인트의 상태(health) 값이 변경된 횟수를 표시합니다. 빈번한 변화는 엔드포인트가 불안정하거나 네트워크 장애가 발생하고 있음을 나타냅니다.",
       "fieldConfig": {
         "defaults": {
           "color": { "mode": "palette-classic" },
@@ -252,6 +259,7 @@
     },
     {
       "datasource": { "uid": "loki" },
+      "description": "Loki에서 수집한 TTS 관련 에러 로그를 실시간으로 표시합니다. 'TTS', 'Supertone' 키워드와 'error', 'exception', 'failed', 'timeout' 키워드가 모두 포함된 로그만 필터링합니다.",
       "gridPos": { "h": 8, "w": 12, "x": 12, "y": 24 },
       "id": 8,
       "options": {
@@ -282,6 +290,7 @@
     },
     {
       "datasource": { "uid": "prometheus" },
+      "description": "TTS 엔드포인트별 상태와 활성 요청 수를 테이블 형태로 요약 표시합니다. 엔드포인트명, 상태(HEALTHY/TEMP_FAIL/PERM_FAIL), 활성 요청 수를 한눈에 확인할 수 있으며, 활성 요청 수 기준으로 내림차순 정렬됩니다.",
       "fieldConfig": {
         "defaults": {
           "custom": {
