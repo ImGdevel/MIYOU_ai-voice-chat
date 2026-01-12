@@ -33,6 +33,7 @@ aws_region="$3"
 
 cd "${remote_dir}"
 tmp_file=".env.deploy.tmp"
+ssm_json_file=".ssm-params.json"
 
 if ! command -v aws >/dev/null 2>&1; then
   echo "[deploy] aws cli is missing on remote host" >&2
@@ -48,19 +49,37 @@ aws ssm get-parameters-by-path \
   --recursive \
   --path "${ssm_path}" \
   --region "${aws_region}" \
-  --output json \
-| jq -r --arg prefix "${ssm_path}/" '.Parameters[]
+  --output json > "${ssm_json_file}"
+
+jq -r --arg prefix "${ssm_path}/" '.Parameters[]
     | (.Name | sub("^"+$prefix; "")) as $n
-    | "\($n)=\(.Value)"' > "${tmp_file}"
+    | "\($n)=\(.Value)"' "${ssm_json_file}" > "${tmp_file}"
 
 if [[ ! -s "${tmp_file}" ]]; then
   echo "[deploy] No SSM parameters found under ${ssm_path}" >&2
-  rm -f "${tmp_file}"
+  rm -f "${tmp_file}" "${ssm_json_file}"
   exit 1
 fi
 
+# NGINX 기본 인증 파라미터는 SecureString 저장을 강제한다.
+for key in NGINX_BASIC_AUTH_USER NGINX_BASIC_AUTH_PASSWORD; do
+  param_name="${ssm_path}/${key}"
+  param_type="$(jq -r --arg name "${param_name}" '.Parameters[] | select(.Name == $name) | .Type' "${ssm_json_file}")"
+  if [[ -z "${param_type}" || "${param_type}" == "null" ]]; then
+    echo "[deploy] Missing SSM parameter: ${param_name}" >&2
+    rm -f "${tmp_file}" "${ssm_json_file}"
+    exit 1
+  fi
+  if [[ "${param_type}" != "SecureString" ]]; then
+    echo "[deploy] ${param_name} must be SecureString (current: ${param_type})" >&2
+    rm -f "${tmp_file}" "${ssm_json_file}"
+    exit 1
+  fi
+done
+
 mv "${tmp_file}" .env.deploy
 chmod 600 .env.deploy
+rm -f "${ssm_json_file}"
 EOF
 else
   echo "[deploy] Ensure env file exists"
