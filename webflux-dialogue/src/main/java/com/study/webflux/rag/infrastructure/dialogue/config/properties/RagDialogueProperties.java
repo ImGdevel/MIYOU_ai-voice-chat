@@ -246,6 +246,7 @@ public class RagDialogueProperties {
 		private String apiKey;
 		private int vectorDimension = 1536;
 		private String collectionName = "user_memories";
+		private boolean autoCreateCollection = true;
 
 		public String getUrl() {
 			return url;
@@ -277,6 +278,14 @@ public class RagDialogueProperties {
 
 		public void setCollectionName(String collectionName) {
 			this.collectionName = collectionName;
+		}
+
+		public boolean isAutoCreateCollection() {
+			return autoCreateCollection;
+		}
+
+		public void setAutoCreateCollection(boolean autoCreateCollection) {
+			this.autoCreateCollection = autoCreateCollection;
 		}
 	}
 
