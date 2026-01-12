@@ -45,7 +45,11 @@
   - 비활성 슬롯(blue/green) 이미지 pull/up
   - 후보 슬롯 health check(`/actuator/health`) 통과 시 Nginx 스위치
   - 스위치 후 health 재검증 실패 시 즉시 롤백
+  - 구 슬롯 종료 전 드레인 타임 적용 후 graceful stop
   - 성공 시 기존 활성 슬롯 중지/삭제, `.active_color` 갱신
+  - 조정 가능 변수:
+    - `DRAIN_SECONDS` (기본 45)
+    - `STOP_TIMEOUT_SECONDS` (기본 30)
 
 ## 4. GitHub Secrets 목록
 필수:

@@ -9,6 +9,8 @@ AWS_REGION="${AWS_REGION:-ap-northeast-2}"
 APP_IMAGE="${APP_IMAGE:-ghcr.io/imgdevel/miyou-dialogue:latest}"
 HEALTH_CHECK_RETRIES="${HEALTH_CHECK_RETRIES:-30}"
 HEALTH_CHECK_INTERVAL="${HEALTH_CHECK_INTERVAL:-3}"
+DRAIN_SECONDS="${DRAIN_SECONDS:-45}"
+STOP_TIMEOUT_SECONDS="${STOP_TIMEOUT_SECONDS:-30}"
 
 echo "[blue-green] Prepare remote dir: ${REMOTE_DIR}"
 ssh "${HOST_ALIAS}" "mkdir -p '${REMOTE_DIR}/deploy/nginx'"
@@ -92,12 +94,14 @@ ssh "${HOST_ALIAS}" "cd '${REMOTE_DIR}' && grep -qE '^OPENAI_API_KEY=.+$' .env.d
 }
 
 echo "[blue-green] Deploy and switch traffic"
-ssh "${HOST_ALIAS}" "bash -s" -- "${REMOTE_DIR}" "${APP_IMAGE}" "${HEALTH_CHECK_RETRIES}" "${HEALTH_CHECK_INTERVAL}" <<'EOF'
+ssh "${HOST_ALIAS}" "bash -s" -- "${REMOTE_DIR}" "${APP_IMAGE}" "${HEALTH_CHECK_RETRIES}" "${HEALTH_CHECK_INTERVAL}" "${DRAIN_SECONDS}" "${STOP_TIMEOUT_SECONDS}" <<'EOF'
 set -euo pipefail
 remote_dir="$1"
 app_image="$2"
 health_retries="$3"
 health_interval="$4"
+drain_seconds="$5"
+stop_timeout_seconds="$6"
 
 cd "${remote_dir}"
 
@@ -161,7 +165,16 @@ if ! curl -fsS http://127.0.0.1/actuator/health | grep -q '"status":"UP"'; then
   exit 1
 fi
 
-APP_IMAGE="${app_image}" docker compose -f docker-compose.app.yml stop "${active_service}" || true
+if [[ "${drain_seconds}" =~ ^[0-9]+$ ]] && [[ "${drain_seconds}" -gt 0 ]]; then
+  echo "[blue-green] Drain old app for ${drain_seconds}s: ${active_service}"
+  sleep "${drain_seconds}"
+fi
+
+if [[ "${stop_timeout_seconds}" =~ ^[0-9]+$ ]] && [[ "${stop_timeout_seconds}" -gt 0 ]]; then
+  docker stop -t "${stop_timeout_seconds}" "miyou-dialogue-app-${active}" >/dev/null 2>&1 || true
+else
+  APP_IMAGE="${app_image}" docker compose -f docker-compose.app.yml stop "${active_service}" || true
+fi
 APP_IMAGE="${app_image}" docker compose -f docker-compose.app.yml rm -f "${active_service}" || true
 docker rm -f miyou-dialogue-app >/dev/null 2>&1 || true
 echo "${candidate}" > .active_color
