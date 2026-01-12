@@ -70,10 +70,10 @@ jobs:
         uses: gradle/actions/setup-gradle@v4
 
       - name: 테스트 실행
-        run: ./gradlew --no-daemon :webflux-dialogue:test
+        run: ./gradlew --no-daemon --build-cache :webflux-dialogue:test
 
       - name: JAR 빌드
-        run: ./gradlew --no-daemon :webflux-dialogue:bootJar -x test
+        run: ./gradlew --no-daemon --build-cache :webflux-dialogue:bootJar -x test
 
   build-and-push:
     runs-on: ubuntu-latest
@@ -116,8 +116,8 @@ jobs:
           tags: |
             ${{ steps.meta.outputs.image_ref }}
             ${{ steps.meta.outputs.image_latest }}
-          cache-from: type=gha
-          cache-to: type=gha,mode=max
+          cache-from: type=gha,scope=miyou-dialogue-image
+          cache-to: type=gha,mode=max,scope=miyou-dialogue-image
 
   deploy:
     runs-on: ubuntu-latest
