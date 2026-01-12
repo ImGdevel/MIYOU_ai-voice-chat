@@ -1,0 +1,129 @@
+groups:
+  - name: pipeline-alerts
+    rules:
+      # 파이프라인 오류율 알림
+      - alert: PipelineHighErrorRate
+        expr: |
+          (
+            sum(rate(dialogue_pipeline_executions_total{status="failed"}[5m]))
+            /
+            sum(rate(dialogue_pipeline_executions_total[5m]))
+          ) * 100 > 5
+        for: 2m
+        labels:
+          severity: critical
+        annotations:
+          summary: "파이프라인 오류율이 5%를 초과했습니다"
+          description: "현재 오류율: {{ $value | printf \"%.2f\" }}%"
+
+      # P95 응답시간 알림
+      - alert: PipelineHighLatency
+        expr: |
+          histogram_quantile(0.95,
+            sum(rate(dialogue_pipeline_duration_seconds_bucket[5m])) by (le)
+          ) * 1000 > 10000
+        for: 5m
+        labels:
+          severity: warning
+        annotations:
+          summary: "파이프라인 P95 응답시간이 10초를 초과했습니다"
+          description: "현재 P95 응답시간: {{ $value | printf \"%.0f\" }}ms"
+
+      # TTFB 지연 알림
+      - alert: PipelineSlowTTFB
+        expr: |
+          histogram_quantile(0.95,
+            sum(rate(dialogue_pipeline_response_first_seconds_bucket[5m])) by (le)
+          ) * 1000 > 5000
+        for: 5m
+        labels:
+          severity: warning
+        annotations:
+          summary: "첫 응답 지연(TTFB)이 5초를 초과했습니다"
+          description: "현재 P95 TTFB: {{ $value | printf \"%.0f\" }}ms"
+
+      # 스테이지 실패 알림
+      - alert: StageHighFailureRate
+        expr: |
+          (
+            sum(rate(dialogue_pipeline_stage_duration_seconds_count{status="failed"}[5m])) by (stage)
+            /
+            sum(rate(dialogue_pipeline_stage_duration_seconds_count[5m])) by (stage)
+          ) * 100 > 10
+        for: 3m
+        labels:
+          severity: warning
+        annotations:
+          summary: "스테이지 {{ $labels.stage }} 실패율이 10%를 초과했습니다"
+          description: "현재 실패율: {{ $value | printf \"%.2f\" }}%"
+
+  - name: llm-alerts
+    rules:
+      # LLM 토큰 사용량 급증 알림
+      - alert: LLMTokenSpike
+        expr: |
+          sum(rate(llm_tokens_total{type="total"}[5m]))
+          >
+          sum(rate(llm_tokens_total{type="total"}[1h] offset 5m)) * 2
+        for: 10m
+        labels:
+          severity: warning
+        annotations:
+          summary: "LLM 토큰 사용량이 평소의 2배를 초과했습니다"
+          description: "비용 급증 가능성이 있습니다. 확인이 필요합니다."
+
+      # LLM 스테이지 지연 알림
+      - alert: LLMCompletionSlow
+        expr: |
+          histogram_quantile(0.95,
+            sum(rate(dialogue_pipeline_stage_duration_seconds_bucket{stage="llm_completion"}[5m])) by (le)
+          ) * 1000 > 8000
+        for: 5m
+        labels:
+          severity: warning
+        annotations:
+          summary: "LLM 응답 시간이 8초를 초과했습니다"
+          description: "현재 P95 LLM 응답시간: {{ $value | printf \"%.0f\" }}ms"
+
+  - name: tts-alerts
+    rules:
+      # TTS 스테이지 지연 알림
+      - alert: TTSSynthesisSlow
+        expr: |
+          histogram_quantile(0.95,
+            sum(rate(dialogue_pipeline_stage_duration_seconds_bucket{stage="tts_synthesis"}[5m])) by (le)
+          ) * 1000 > 5000
+        for: 5m
+        labels:
+          severity: warning
+        annotations:
+          summary: "TTS 합성 시간이 5초를 초과했습니다"
+          description: "현재 P95 TTS 합성시간: {{ $value | printf \"%.0f\" }}ms"
+
+  - name: availability-alerts
+    rules:
+      # 파이프라인 처리량 저하 알림
+      - alert: PipelineLowThroughput
+        expr: |
+          sum(rate(dialogue_pipeline_executions_total[5m])) < 0.1
+          and
+          sum(rate(dialogue_pipeline_executions_total[1h] offset 5m)) > 0.5
+        for: 10m
+        labels:
+          severity: warning
+        annotations:
+          summary: "파이프라인 처리량이 급격히 감소했습니다"
+          description: "트래픽 감소 또는 시스템 장애 가능성을 확인하세요."
+
+      # 파이프라인 완전 중단 알림
+      - alert: PipelineDown
+        expr: |
+          sum(rate(dialogue_pipeline_executions_total[5m])) == 0
+          and
+          sum(rate(dialogue_pipeline_executions_total[1h] offset 5m)) > 0
+        for: 5m
+        labels:
+          severity: critical
+        annotations:
+          summary: "파이프라인이 완전히 중단되었습니다"
+          description: "지난 5분간 파이프라인 실행이 없습니다. 즉시 확인이 필요합니다."
