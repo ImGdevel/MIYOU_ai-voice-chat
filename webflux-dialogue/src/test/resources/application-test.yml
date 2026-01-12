@@ -53,6 +53,7 @@ rag:
       api-key: ""
       vector-dimension: 1536
       collection-name: user_memories_test
+      auto-create-collection: false
     memory:
       embedding-model: text-embedding-3-small
       extraction-model: gpt-4o-mini
