@@ -37,6 +37,41 @@ active_service="app_blue"
 if [[ -f ".active_color" ]] && grep -q '^green$' .active_color; then
   active_service="app_green"
 fi
+
+service_running() {
+  local service="$1"
+  local color="${service#app_}"
+  docker ps --format '{{.Names}}' | grep -q "^miyou-dialogue-app-${color}$"
+}
+
+if ! service_running "${active_service}"; then
+  fallback_service="app_blue"
+  if [[ "${active_service}" == "app_blue" ]]; then
+    fallback_service="app_green"
+  fi
+
+  if service_running "${fallback_service}"; then
+    echo "[nginx] Active marker(${active_service}) is stale, switch target to ${fallback_service}"
+    active_service="${fallback_service}"
+  else
+    echo "[nginx] No running app slot detected, start ${active_service} before nginx reload"
+    app_image=""
+    if [[ -f ".app_image" ]]; then
+      app_image="$(cat .app_image)"
+    fi
+    if [[ -n "${app_image}" ]]; then
+      APP_IMAGE="${app_image}" docker compose -f docker-compose.app.yml up -d --no-deps "${active_service}"
+    else
+      docker compose -f docker-compose.app.yml up -d --no-deps "${active_service}"
+    fi
+  fi
+fi
+
+if ! grep -q '\$app_upstream' deploy/nginx/default.conf; then
+  echo "[nginx] default.conf must use \$app_upstream variable for zero-downtime reload safety" >&2
+  exit 1
+fi
+
 sed -i -E "s/app_(blue|green):8081/${active_service}:8081/g" deploy/nginx/default.conf
 
 if docker ps -a --format '{{.Names}}' | grep -q '^miyou-nginx$'; then

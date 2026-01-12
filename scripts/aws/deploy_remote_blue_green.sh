@@ -20,6 +20,9 @@ echo "[blue-green] Upload compose files and nginx config"
 scp docker-compose.app.yml "${HOST_ALIAS}:${REMOTE_DIR}/docker-compose.app.yml"
 scp .env.deploy.example "${HOST_ALIAS}:${REMOTE_DIR}/.env.deploy.example"
 scp deploy/nginx/default.conf "${HOST_ALIAS}:${REMOTE_DIR}/deploy/nginx/default.conf"
+ssh "${HOST_ALIAS}" "mkdir -p '${REMOTE_DIR}/scripts' '${REMOTE_DIR}/logs'"
+scp scripts/aws/remote_app_self_heal.sh "${HOST_ALIAS}:${REMOTE_DIR}/scripts/remote_app_self_heal.sh"
+ssh "${HOST_ALIAS}" "chmod +x '${REMOTE_DIR}/scripts/remote_app_self_heal.sh'"
 
 if [[ "${USE_SSM}" == "true" ]]; then
   if [[ -z "${SSM_PATH}" ]]; then
@@ -87,6 +90,24 @@ else
   echo "[blue-green] Ensure env file exists"
   ssh "${HOST_ALIAS}" "cd '${REMOTE_DIR}' && if [ ! -f .env.deploy ]; then cp .env.deploy.example .env.deploy; fi"
 fi
+
+echo "[blue-green] Ensure self-heal watchdog cron job"
+ssh "${HOST_ALIAS}" "bash -s" -- "${REMOTE_DIR}" <<'EOF'
+set -euo pipefail
+remote_dir="$1"
+cron_line="* * * * * bash ${remote_dir}/scripts/remote_app_self_heal.sh ${remote_dir} >> ${remote_dir}/logs/self-heal.log 2>&1"
+
+if ! command -v crontab >/dev/null 2>&1; then
+  echo "[blue-green] crontab not found, skip self-heal cron install" >&2
+  exit 0
+fi
+
+tmp_cron="$(mktemp)"
+crontab -l 2>/dev/null | grep -v 'remote_app_self_heal.sh' > "${tmp_cron}" || true
+echo "${cron_line}" >> "${tmp_cron}"
+crontab "${tmp_cron}"
+rm -f "${tmp_cron}"
+EOF
 
 echo "[blue-green] Validate required secrets"
 ssh "${HOST_ALIAS}" "cd '${REMOTE_DIR}' && grep -qE '^OPENAI_API_KEY=.+$' .env.deploy" || {
@@ -214,6 +235,7 @@ fi
 APP_IMAGE="${app_image}" docker compose -f docker-compose.app.yml rm -f "${active_service}" || true
 docker rm -f miyou-dialogue-app >/dev/null 2>&1 || true
 echo "${candidate}" > .active_color
+echo "${app_image}" > .app_image
 trap - ERR
 
 echo "[blue-green] Switched active app to ${candidate_service}"
