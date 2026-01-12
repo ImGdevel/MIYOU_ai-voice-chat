@@ -38,7 +38,8 @@ public class TtsConfiguration {
 
 	/** 모든 엔드포인트를 활용하는 TTS 로드 밸런서를 생성합니다. */
 	@Bean
-	public TtsLoadBalancer ttsLoadBalancer(RagDialogueProperties properties) {
+	public TtsLoadBalancer ttsLoadBalancer(RagDialogueProperties properties,
+		TtsBackpressureMetrics ttsBackpressureMetrics) {
 		var supertone = properties.getSupertone();
 		List<TtsEndpoint> endpoints = supertone.getEndpoints().stream()
 			.map(config -> new TtsEndpoint(config.getId(), config.getApiKey(), config.getBaseUrl()))
@@ -46,7 +47,14 @@ public class TtsConfiguration {
 
 		TtsLoadBalancer loadBalancer = new TtsLoadBalancer(endpoints);
 		loadBalancer.setFailureEventPublisher(event -> {
-			log.error("TTS 엔드포인트 영구 장애 발생: {}", event);
+			ttsBackpressureMetrics.recordEndpointFailure(event.getEndpointId(),
+				event.getErrorType(),
+				event.getErrorMessage());
+			if ("PERMANENT_FAILURE".equals(event.getErrorType())) {
+				log.error("TTS 엔드포인트 영구 장애 발생: {}", event);
+				return;
+			}
+			log.warn("TTS 엔드포인트 장애 이벤트: {}", event);
 		});
 
 		return loadBalancer;
