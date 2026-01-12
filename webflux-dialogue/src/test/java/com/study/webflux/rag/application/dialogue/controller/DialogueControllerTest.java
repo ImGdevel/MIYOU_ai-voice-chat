@@ -9,6 +9,7 @@ import org.springframework.test.context.bean.override.mockito.MockitoBean;
 import org.springframework.test.web.reactive.server.WebTestClient;
 
 import com.study.webflux.rag.application.dialogue.dto.RagDialogueRequest;
+import com.study.webflux.rag.application.dialogue.service.DialogueSpeechService;
 import com.study.webflux.rag.domain.dialogue.model.UserId;
 import com.study.webflux.rag.domain.dialogue.port.DialoguePipelineUseCase;
 import com.study.webflux.rag.domain.voice.model.AudioFormat;
@@ -28,6 +29,9 @@ class DialogueControllerTest {
 
 	@MockitoBean
 	private DialoguePipelineUseCase dialoguePipelineUseCase;
+
+	@MockitoBean
+	private DialogueSpeechService dialogueSpeechService;
 
 	@Test
 	@DisplayName("텍스트 질의 요청 시 스트리밍 응답을 반환한다")

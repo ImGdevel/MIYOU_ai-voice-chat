@@ -10,6 +10,7 @@ import com.study.webflux.rag.domain.memory.model.MemoryType;
 import com.study.webflux.rag.domain.memory.port.EmbeddingPort;
 import com.study.webflux.rag.domain.memory.port.VectorMemoryPort;
 import com.study.webflux.rag.infrastructure.memory.adapter.MemoryExtractionConfig;
+import com.study.webflux.rag.infrastructure.monitoring.config.RagQualityMetricsConfiguration;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Test;
@@ -35,12 +36,18 @@ class MemoryRetrievalServiceTest {
 	@Mock
 	private VectorMemoryPort vectorMemoryPort;
 
+	@Mock
+	private RagQualityMetricsConfiguration ragQualityMetricsConfiguration;
+
 	private MemoryRetrievalService service;
 
 	@BeforeEach
 	void setUp() {
 		MemoryExtractionConfig config = new MemoryExtractionConfig("gpt-4o-mini", 5, 0.05f, 0.3f);
-		service = new MemoryRetrievalService(embeddingPort, vectorMemoryPort, config);
+		service = new MemoryRetrievalService(embeddingPort,
+			vectorMemoryPort,
+			ragQualityMetricsConfiguration,
+			config);
 	}
 
 	@Test

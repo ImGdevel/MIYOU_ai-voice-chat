@@ -19,6 +19,8 @@ import com.study.webflux.rag.domain.voice.model.VoiceStyle;
 import com.study.webflux.rag.infrastructure.dialogue.adapter.tts.loadbalancer.FakeSupertoneServer;
 import com.study.webflux.rag.infrastructure.dialogue.adapter.tts.loadbalancer.TtsEndpoint;
 import com.study.webflux.rag.infrastructure.dialogue.adapter.tts.loadbalancer.TtsLoadBalancer;
+import com.study.webflux.rag.infrastructure.monitoring.config.TtsBackpressureMetrics;
+import io.micrometer.core.instrument.simple.SimpleMeterRegistry;
 import org.junit.jupiter.api.AfterEach;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.DisplayName;
@@ -41,6 +43,7 @@ class LoadBalancedSupertoneTtsAdapterTest {
 	private DisposableServer server;
 	private TtsLoadBalancer loadBalancer;
 	private LoadBalancedSupertoneTtsAdapter adapter;
+	private TtsBackpressureMetrics ttsBackpressureMetrics;
 
 	@BeforeEach
 	void setUp() {
@@ -52,6 +55,7 @@ class LoadBalancedSupertoneTtsAdapterTest {
 			new TtsEndpoint("endpoint-3", "key-3", BASE_URL));
 
 		loadBalancer = new TtsLoadBalancer(endpoints);
+		ttsBackpressureMetrics = new TtsBackpressureMetrics(new SimpleMeterRegistry());
 
 		WebClient.Builder webClientBuilder = WebClient.builder()
 			.clientConnector(new ReactorClientHttpConnector());
@@ -60,7 +64,10 @@ class LoadBalancedSupertoneTtsAdapterTest {
 			.language("ko").style(VoiceStyle.NEUTRAL).outputFormat(AudioFormat.WAV)
 			.settings(new VoiceSettings(0, 1.0, 1.0)).build();
 
-		adapter = new LoadBalancedSupertoneTtsAdapter(webClientBuilder, loadBalancer, voice);
+		adapter = new LoadBalancedSupertoneTtsAdapter(webClientBuilder,
+			loadBalancer,
+			voice,
+			ttsBackpressureMetrics);
 	}
 
 	@AfterEach
@@ -250,7 +257,10 @@ class LoadBalancedSupertoneTtsAdapterTest {
 			.settings(new VoiceSettings(0, 1.0, 1.0)).build();
 
 		LoadBalancedSupertoneTtsAdapter badAdapter = new LoadBalancedSupertoneTtsAdapter(
-			webClientBuilder, badLoadBalancer, voice);
+			webClientBuilder,
+			badLoadBalancer,
+			voice,
+			new TtsBackpressureMetrics(new SimpleMeterRegistry()));
 
 		// When: prepare() 호출 (warmup 실패)
 		badAdapter.prepare().block();
