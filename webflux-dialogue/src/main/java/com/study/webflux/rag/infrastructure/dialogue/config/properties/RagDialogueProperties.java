@@ -14,6 +14,7 @@ public class RagDialogueProperties {
 
 	private OpenAi openai = new OpenAi();
 	private Supertone supertone = new Supertone();
+	private Stt stt = new Stt();
 	private Qdrant qdrant = new Qdrant();
 	private Memory memory = new Memory();
 	private String systemPrompt = "";
@@ -35,6 +36,14 @@ public class RagDialogueProperties {
 
 	public void setSupertone(Supertone supertone) {
 		this.supertone = supertone;
+	}
+
+	public Stt getStt() {
+		return stt;
+	}
+
+	public void setStt(Stt stt) {
+		this.stt = stt;
 	}
 
 	public Qdrant getQdrant() {
@@ -199,6 +208,36 @@ public class RagDialogueProperties {
 			public void setSpeed(double speed) {
 				this.speed = speed;
 			}
+		}
+	}
+
+	public static class Stt {
+		private String model = "whisper-1";
+		private String language = "ko";
+		private long maxFileSizeBytes = 25L * 1024L * 1024L;
+
+		public String getModel() {
+			return model;
+		}
+
+		public void setModel(String model) {
+			this.model = model;
+		}
+
+		public String getLanguage() {
+			return language;
+		}
+
+		public void setLanguage(String language) {
+			this.language = language;
+		}
+
+		public long getMaxFileSizeBytes() {
+			return maxFileSizeBytes;
+		}
+
+		public void setMaxFileSizeBytes(long maxFileSizeBytes) {
+			this.maxFileSizeBytes = maxFileSizeBytes;
 		}
 	}
 

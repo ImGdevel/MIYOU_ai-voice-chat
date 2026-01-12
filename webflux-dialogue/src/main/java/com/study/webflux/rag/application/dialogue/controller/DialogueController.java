@@ -8,22 +8,28 @@ import org.springframework.core.io.buffer.DataBufferFactory;
 import org.springframework.core.io.buffer.DefaultDataBufferFactory;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.MediaType;
+import org.springframework.http.codec.multipart.FilePart;
 import org.springframework.http.server.reactive.ServerHttpResponse;
 import org.springframework.validation.annotation.Validated;
 import org.springframework.web.bind.annotation.PostMapping;
 import org.springframework.web.bind.annotation.RequestBody;
 import org.springframework.web.bind.annotation.RequestMapping;
 import org.springframework.web.bind.annotation.RequestParam;
+import org.springframework.web.bind.annotation.RequestPart;
 import org.springframework.web.bind.annotation.RestController;
 import org.springframework.web.server.ResponseStatusException;
 
 import com.study.webflux.rag.application.dialogue.controller.docs.DialogueApi;
 import com.study.webflux.rag.application.dialogue.dto.RagDialogueRequest;
+import com.study.webflux.rag.application.dialogue.dto.SttDialogueResponse;
+import com.study.webflux.rag.application.dialogue.dto.SttTranscriptionResponse;
+import com.study.webflux.rag.application.dialogue.service.DialogueSpeechService;
 import com.study.webflux.rag.domain.dialogue.model.UserId;
 import com.study.webflux.rag.domain.dialogue.port.DialoguePipelineUseCase;
 import com.study.webflux.rag.domain.voice.model.AudioFormat;
 import jakarta.validation.Valid;
 import reactor.core.publisher.Flux;
+import reactor.core.publisher.Mono;
 
 /** RAG 대화 파이프라인 REST 엔드포인트. */
 @Validated
@@ -34,6 +40,7 @@ import reactor.core.publisher.Flux;
 public class DialogueController implements DialogueApi {
 
 	private final DialoguePipelineUseCase dialoguePipelineUseCase;
+	private final DialogueSpeechService dialogueSpeechService;
 	private final DataBufferFactory bufferFactory = new DefaultDataBufferFactory();
 
 	/** TTS 포함 RAG 파이프라인을 실행하고 요청 포맷으로 오디오를 스트리밍. */
@@ -63,5 +70,28 @@ public class DialogueController implements DialogueApi {
 		@Valid @RequestBody RagDialogueRequest request) {
 		UserId userId = UserId.of(request.userId());
 		return dialoguePipelineUseCase.executeTextOnly(userId, request.text());
+	}
+
+	/** 업로드한 음성 파일을 Whisper STT로 텍스트 변환합니다. */
+	@PostMapping(path = "/stt", consumes = MediaType.MULTIPART_FORM_DATA_VALUE)
+	public Mono<SttTranscriptionResponse> ragDialogueStt(
+		@RequestPart("audio") FilePart audioFile,
+		@RequestParam(required = false) String language) {
+		return dialogueSpeechService.transcribe(audioFile, language)
+			.map(SttTranscriptionResponse::new);
+	}
+
+	/** 음성 파일을 텍스트로 변환 후 대화 응답을 생성합니다. */
+	@PostMapping(path = "/stt/text", consumes = MediaType.MULTIPART_FORM_DATA_VALUE)
+	public Mono<SttDialogueResponse> ragDialogueSttText(
+		@RequestPart("audio") FilePart audioFile,
+		@RequestParam(required = false) String language,
+		@RequestParam(required = false) String userId) {
+		UserId targetUserId = (userId == null || userId.isBlank())
+			? UserId.generate()
+			: UserId.of(
+				userId);
+		return dialogueSpeechService.transcribeAndRespond(targetUserId, audioFile, language)
+			.map(result -> new SttDialogueResponse(result.transcription(), result.response()));
 	}
 }
