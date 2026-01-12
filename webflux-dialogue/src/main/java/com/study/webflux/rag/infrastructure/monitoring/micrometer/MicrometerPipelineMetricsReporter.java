@@ -8,7 +8,9 @@ import com.study.webflux.rag.application.monitoring.monitor.DialoguePipelineTrac
 import com.study.webflux.rag.application.monitoring.monitor.DialoguePipelineTracker.StageSnapshot;
 import com.study.webflux.rag.application.monitoring.monitor.PipelineMetricsReporter;
 import com.study.webflux.rag.domain.monitoring.model.DialoguePipelineStage;
+import com.study.webflux.rag.infrastructure.monitoring.config.CostTrackingMetricsConfiguration;
 import com.study.webflux.rag.infrastructure.monitoring.config.LlmMetricsConfiguration;
+import com.study.webflux.rag.infrastructure.monitoring.config.UxMetricsConfiguration;
 import io.micrometer.core.instrument.Counter;
 import io.micrometer.core.instrument.MeterRegistry;
 import io.micrometer.core.instrument.Timer;
@@ -23,11 +25,17 @@ public class MicrometerPipelineMetricsReporter implements PipelineMetricsReporte
 
 	private final MeterRegistry meterRegistry;
 	private final LlmMetricsConfiguration llmMetrics;
+	private final CostTrackingMetricsConfiguration costMetrics;
+	private final UxMetricsConfiguration uxMetrics;
 
 	public MicrometerPipelineMetricsReporter(MeterRegistry meterRegistry,
-		LlmMetricsConfiguration llmMetrics) {
+		LlmMetricsConfiguration llmMetrics,
+		CostTrackingMetricsConfiguration costMetrics,
+		UxMetricsConfiguration uxMetrics) {
 		this.meterRegistry = meterRegistry;
 		this.llmMetrics = llmMetrics;
+		this.costMetrics = costMetrics;
+		this.uxMetrics = uxMetrics;
 	}
 
 	@Override
@@ -37,6 +45,9 @@ public class MicrometerPipelineMetricsReporter implements PipelineMetricsReporte
 		recordStageGapMetrics(summary);
 		recordLlmMetrics(summary);
 		recordResponseLatencyMetrics(summary);
+		// Phase 2: 비용 및 UX 메트릭
+		recordCostMetrics(summary);
+		recordUxMetrics(summary);
 	}
 
 	private void recordPipelineMetrics(PipelineSummary summary) {
@@ -276,5 +287,95 @@ public class MicrometerPipelineMetricsReporter implements PipelineMetricsReporte
 				}
 			}
 		}
+	}
+
+	/**
+	 * 비용 메트릭을 기록합니다. Phase 2A: Cost Tracking
+	 */
+	private void recordCostMetrics(PipelineSummary summary) {
+		for (StageSnapshot stage : summary.stages()) {
+			// LLM 비용 기록
+			if (stage.stage() == DialoguePipelineStage.LLM_COMPLETION) {
+				Object model = stage.attributes().get("model");
+				String modelTag = model != null ? model.toString() : "unknown";
+
+				Object promptTokensObj = stage.attributes().get("prompt.tokens");
+				Object completionTokensObj = stage.attributes().get("completion.tokens");
+
+				if (promptTokensObj instanceof Number && completionTokensObj instanceof Number) {
+					int promptTokens = ((Number) promptTokensObj).intValue();
+					int completionTokens = ((Number) completionTokensObj).intValue();
+
+					costMetrics.recordLlmCost(modelTag, promptTokens, completionTokens);
+
+					// 사용자별 비용 (userId가 attributes에 있다면)
+					Object userIdObj = summary.attributes().get("user.id");
+					if (userIdObj != null) {
+						String userId = userIdObj.toString();
+						// 비용 재계산 (중복 계산 방지를 위해 별도 메서드로 분리 가능)
+						double cost = calculateLlmCost(modelTag, promptTokens, completionTokens);
+						costMetrics.recordUserLlmCost(userId, modelTag, cost);
+					}
+				}
+			}
+
+			// TTS 비용 기록
+			if (stage.stage() == DialoguePipelineStage.TTS_SYNTHESIS) {
+				Object providerObj = stage.attributes().get("provider");
+				String provider = providerObj != null ? providerObj.toString() : "unknown";
+
+				Object charactersObj = stage.attributes().get("characters");
+				if (charactersObj instanceof Number) {
+					int characters = ((Number) charactersObj).intValue();
+					costMetrics.recordTtsCost(provider, characters);
+				}
+			}
+		}
+	}
+
+	/**
+	 * UX 메트릭을 기록합니다. Phase 2B: User Experience
+	 */
+	private void recordUxMetrics(PipelineSummary summary) {
+		// 첫 응답 시간 (TTFB)
+		if (summary.firstResponseLatencyMillis() != null
+			&& summary.firstResponseLatencyMillis() >= 0) {
+			uxMetrics.recordFirstResponseLatency(summary.firstResponseLatencyMillis());
+		}
+
+		// 전체 응답 시간
+		long totalDurationMs = summary.durationMillis();
+		if (totalDurationMs >= 0) {
+			uxMetrics.recordCompleteResponseLatency(totalDurationMs);
+		}
+
+		// 에러 기록
+		if (summary
+			.status() == com.study.webflux.rag.domain.monitoring.model.PipelineStatus.FAILED) {
+			Object errorTypeObj = summary.attributes().get("error.type");
+			String errorType = errorTypeObj != null ? errorTypeObj.toString() : "unknown";
+			uxMetrics.recordError(errorType);
+		}
+	}
+
+	/**
+	 * LLM 비용 계산 (CostTrackingMetricsConfiguration과 동일 로직).
+	 */
+	private double calculateLlmCost(String model, int promptTokens, int completionTokens) {
+		String modelLower = model.toLowerCase();
+
+		if (modelLower.contains("gpt-4o") && !modelLower.contains("mini")) {
+			double promptCost = (promptTokens / 1_000_000.0) * 2.50;
+			double completionCost = (completionTokens / 1_000_000.0) * 10.00;
+			return promptCost + completionCost;
+		}
+
+		if (modelLower.contains("gpt-4o-mini")) {
+			double promptCost = (promptTokens / 1_000_000.0) * 0.150;
+			double completionCost = (completionTokens / 1_000_000.0) * 0.600;
+			return promptCost + completionCost;
+		}
+
+		return ((promptTokens + completionTokens) / 1_000_000.0) * 5.0;
 	}
 }

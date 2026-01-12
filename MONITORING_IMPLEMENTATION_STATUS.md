@@ -1,7 +1,7 @@
 # MIYOU 모니터링 시스템 구현 현황
 
 **업데이트**: 2026-02-16
-**전체 진행률**: Phase 1A 완료 (100%), Phase 1B 완료 (100%), Phase 1C 완료 (100%)
+**전체 진행률**: Phase 1 완료 (100%), Phase 2 완료 (100%)
 
 ---
 
@@ -421,6 +421,61 @@ sum by(level) (count_over_time({job="$job"} | json | level =~ "ERROR|WARN|INFO|D
 
 ---
 
+### Phase 2: 비용 & UX 메트릭 (100% 완료)
+
+#### 14. 비용 추적 메트릭 ✅
+
+**파일**: [CostTrackingMetricsConfiguration.java](webflux-dialogue/src/main/java/com/study/webflux/rag/infrastructure/monitoring/config/CostTrackingMetricsConfiguration.java)
+
+- LLM 누적/일일/월별 비용 (USD)
+- TTS 누적/일일/월별 비용 (USD)
+- 모델별/사용자별/제공자별 비용 추적
+- 예산 관리 Gauge
+
+**제공 메트릭** (8개):
+- `llm.cost.usd.total` - LLM 누적 비용
+- `llm.cost.usd.daily` - LLM 일일 비용
+- `llm.cost.usd.monthly` - LLM 월별 비용
+- `llm.cost.by_model` - 모델별 비용
+- `llm.cost.by_user` - 사용자별 비용
+- `tts.cost.usd.total` - TTS 누적 비용
+- `tts.cost.usd.daily` - TTS 일일 비용
+- `tts.cost.usd.monthly` - TTS 월별 비용
+- `cost.budget.remaining` - 남은 예산
+
+#### 15. UX 메트릭 ✅
+
+**파일**: [UxMetricsConfiguration.java](webflux-dialogue/src/main/java/com/study/webflux/rag/infrastructure/monitoring/config/UxMetricsConfiguration.java)
+
+- TTFB (Time To First Byte) 분포
+- 전체 응답 시간 분포
+- 에러율 및 에러 타입별 분류
+- Apdex 만족도 점수
+- 대화 중단율
+
+**제공 메트릭** (7개):
+- `ux.response.latency.first` - 첫 응답 시간 (TTFB)
+- `ux.response.latency.complete` - 전체 응답 시간
+- `ux.error.rate` - 에러 발생 횟수
+- `ux.error.by_type` - 에러 타입별 횟수
+- `ux.satisfaction.score` - Apdex 점수
+- `ux.abandonment.rate` - 중단 횟수
+- `ux.abandonment.by_stage` - Stage별 중단 횟수
+
+#### 16. Cost Tracking 대시보드 ✅
+
+**파일**: [miyou-cost-tracking.json](monitoring/grafana/dashboards/miyou-cost-tracking.json)
+
+**구성**: 4 Rows, 9 Panels
+
+#### 17. UX 대시보드 ✅
+
+**파일**: [miyou-ux.json](monitoring/grafana/dashboards/miyou-ux.json)
+
+**구성**: 3 Rows, 8 Panels
+
+---
+
 ## 📝 구현 노트
 
 ### Similarity Score 수집 방식
@@ -551,6 +606,33 @@ if (scoresObj instanceof List<?>) {
 | `conversation.count.distribution` | Distribution Summary | - | 1C | ✅ |
 | `conversation.by_type` | Counter | `type` | 1C | ✅ |
 
+### 비용 추적 메트릭 (Phase 2)
+
+| 메트릭 | 타입 | Tags | Phase | 상태 |
+|--------|------|------|-------|------|
+| `llm.cost.usd.total` | Counter | - | 2A | ✅ |
+| `llm.cost.usd.daily` | Gauge | - | 2A | ✅ |
+| `llm.cost.usd.monthly` | Gauge | - | 2A | ✅ |
+| `llm.cost.by_model` | Counter | `model` | 2A | ✅ |
+| `llm.cost.by_user` | Counter | `user_id`, `model` | 2A | ✅ |
+| `tts.cost.usd.total` | Counter | - | 2A | ✅ |
+| `tts.cost.usd.daily` | Gauge | - | 2A | ✅ |
+| `tts.cost.usd.monthly` | Gauge | - | 2A | ✅ |
+| `tts.cost.by_provider` | Counter | `provider` | 2A | ✅ |
+| `cost.budget.remaining` | Gauge | `budget_type` | 2A | ✅ |
+
+### UX 메트릭 (Phase 2)
+
+| 메트릭 | 타입 | Tags | Phase | 상태 |
+|--------|------|------|-------|------|
+| `ux.response.latency.first` | Distribution Summary | - | 2B | ✅ |
+| `ux.response.latency.complete` | Distribution Summary | - | 2B | ✅ |
+| `ux.error.rate` | Counter | - | 2B | ✅ |
+| `ux.error.by_type` | Counter | `error_type` | 2B | ✅ |
+| `ux.satisfaction.score` | Gauge | - | 2B | ✅ |
+| `ux.abandonment.rate` | Counter | - | 2B | ✅ |
+| `ux.abandonment.by_stage` | Counter | `stage` | 2B | ✅ |
+
 ---
 
 ## 🎯 다음 작업 계획
@@ -588,18 +670,27 @@ Phase 1의 모든 작업이 완료되었습니다:
 - 메트릭 노출 검증
 - Grafana 대시보드 import 및 검증
 
-### Phase 2: Cost & UX Metrics (향후 작업)
+### ✅ Phase 2 완료 (100%)
 
-1. [ ] 비용 추적 메트릭
-2. [ ] UX 지표 메트릭
+Phase 2의 모든 작업이 완료되었습니다:
+
+**Phase 2A - Cost Tracking**:
+1. ✅ CostTrackingMetricsConfiguration 생성
+2. ✅ MicrometerPipelineMetricsReporter 비용 메트릭 통합
+3. ✅ miyou-cost-tracking.json 대시보드 생성
+
+**Phase 2B - UX Metrics**:
+1. ✅ UxMetricsConfiguration 생성
+2. ✅ MicrometerPipelineMetricsReporter UX 메트릭 통합
+3. ✅ miyou-ux.json 대시보드 생성
 
 ---
 
 ## 📁 생성/수정된 파일 목록
 
-### 생성된 파일 (8개)
+### 생성된 파일 (13개)
 
-**Phase 1A (3개)**:
+**Phase 1A (2개)**:
 1. ✅ [PipelineMetricsConfiguration.java](webflux-dialogue/src/main/java/com/study/webflux/rag/infrastructure/monitoring/config/PipelineMetricsConfiguration.java)
 2. ✅ [TtsBackpressureMetrics.java](webflux-dialogue/src/main/java/com/study/webflux/rag/infrastructure/monitoring/config/TtsBackpressureMetrics.java)
 
@@ -607,17 +698,25 @@ Phase 1의 모든 작업이 완료되었습니다:
 3. ✅ [RagQualityMetricsConfiguration.java](webflux-dialogue/src/main/java/com/study/webflux/rag/infrastructure/monitoring/config/RagQualityMetricsConfiguration.java)
 4. ✅ [MemoryExtractionMetricsConfiguration.java](webflux-dialogue/src/main/java/com/study/webflux/rag/infrastructure/monitoring/config/MemoryExtractionMetricsConfiguration.java)
 
-**Phase 1C (3개)**:
+**Phase 1C (2개)**:
 5. ✅ [LlmMetricsConfiguration.java](webflux-dialogue/src/main/java/com/study/webflux/rag/infrastructure/monitoring/config/LlmMetricsConfiguration.java)
 6. ✅ [ConversationMetricsConfiguration.java](webflux-dialogue/src/main/java/com/study/webflux/rag/infrastructure/monitoring/config/ConversationMetricsConfiguration.java)
 
-**Phase 1D - Grafana Dashboards (3개)**:
-7. ✅ [miyou-pipeline-bottleneck.json](monitoring/grafana/dashboards/miyou-pipeline-bottleneck.json)
-8. ✅ [miyou-rag-quality.json](monitoring/grafana/dashboards/miyou-rag-quality.json)
-9. ✅ [miyou-application-logs.json](monitoring/grafana/dashboards/miyou-application-logs.json)
+**Phase 2A (1개)**:
+7. ✅ [CostTrackingMetricsConfiguration.java](webflux-dialogue/src/main/java/com/study/webflux/rag/infrastructure/monitoring/config/CostTrackingMetricsConfiguration.java)
+
+**Phase 2B (1개)**:
+8. ✅ [UxMetricsConfiguration.java](webflux-dialogue/src/main/java/com/study/webflux/rag/infrastructure/monitoring/config/UxMetricsConfiguration.java)
+
+**Grafana Dashboards (5개)**:
+9. ✅ [miyou-pipeline-bottleneck.json](monitoring/grafana/dashboards/miyou-pipeline-bottleneck.json)
+10. ✅ [miyou-rag-quality.json](monitoring/grafana/dashboards/miyou-rag-quality.json)
+11. ✅ [miyou-application-logs.json](monitoring/grafana/dashboards/miyou-application-logs.json)
+12. ✅ [miyou-cost-tracking.json](monitoring/grafana/dashboards/miyou-cost-tracking.json)
+13. ✅ [miyou-ux.json](monitoring/grafana/dashboards/miyou-ux.json)
 
 **문서**:
-10. ✅ [MONITORING_IMPLEMENTATION_STATUS.md](MONITORING_IMPLEMENTATION_STATUS.md) (이 문서)
+14. ✅ [MONITORING_IMPLEMENTATION_STATUS.md](MONITORING_IMPLEMENTATION_STATUS.md) (이 문서)
 
 ### 수정된 파일 (4개)
 
