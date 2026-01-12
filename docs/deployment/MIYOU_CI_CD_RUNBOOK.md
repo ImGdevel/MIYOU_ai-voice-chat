@@ -8,19 +8,24 @@
 - 서버: EC2 (Ubuntu + Docker + Docker Compose)
 - 설정/시크릿: AWS SSM Parameter Store (`/miyou/prod/*`)
 - 진입점: Nginx(80) -> App(8081, 내부 노출)
+- 앱 배포 토폴로지: `app_blue` / `app_green` 2개 슬롯 기반
 
 ## 2. 워크플로우 개요
 파일: `.github/workflows/ci-cd.yml`
 
 트리거:
 - `workflow_dispatch` (수동 실행)
-  - 입력값: `deploy_nginx` (boolean, 기본 `false`)
+  - 입력값:
+    - `deploy_strategy`: `blue_green | rolling` (기본 `blue_green`)
+    - `deploy_nginx`: boolean (기본 `false`)
 
 잡 순서:
 1. `detect-nginx-changes`: 직전 커밋 대비 Nginx 변경 감지
 2. `gradle-build`: 테스트 + `bootJar`
 3. `build-and-push`: Docker 이미지 빌드/푸시
 4. `deploy`: 서버 앱/스토리지 스택 배포
+   - `blue_green`: `deploy_remote_blue_green.sh` 실행
+   - `rolling`: `deploy_remote_compose.sh` 실행
 5. `deploy_nginx`: 조건부 Nginx 배포
    - 조건 A: `deploy_nginx=true`
    - 조건 B: `deploy/nginx/**` 또는 `docker-compose.app.yml` 변경 감지
@@ -30,11 +35,17 @@
 - `scripts/aws/deploy_remote_compose.sh`
   - compose, env, nginx conf 동기화
   - SSM에서 `.env.deploy` 생성
-  - 컨테이너 pull/up
+  - 현재 활성 색상(`.active_color`) 기준 서비스 pull/up
 - `scripts/aws/deploy_remote_nginx.sh`
   - nginx conf 동기화
+  - 현재 활성 색상 기준 proxy 대상 반영
   - `nginx -t` 후 `nginx -s reload` (컨테이너 존재 시)
   - 미존재 시 nginx 컨테이너 최초 생성
+- `scripts/aws/deploy_remote_blue_green.sh`
+  - 비활성 슬롯(blue/green) 이미지 pull/up
+  - 후보 슬롯 health check(`/actuator/health`) 통과 시 Nginx 스위치
+  - 스위치 후 health 재검증 실패 시 즉시 롤백
+  - 성공 시 기존 활성 슬롯 중지/삭제, `.active_color` 갱신
 
 ## 4. GitHub Secrets 목록
 필수:
@@ -81,7 +92,10 @@
 ## 8. 실행 방법
 1) GitHub Actions > `CI-CD` > `Run workflow`
 2) 브랜치 선택 (`develop` 권장)
-3) `deploy_nginx` 선택
+3) `deploy_strategy` 선택
+   - `blue_green` (권장): 무중단에 가까운 전환
+   - `rolling`: 단순 롤링 방식
+4) `deploy_nginx` 선택
    - `false`: Nginx 변경 시에만 Nginx 배포
    - `true`: 변경 감지와 무관하게 Nginx 배포 강제
 
@@ -98,6 +112,9 @@
 - health 404:
   - 원인: actuator 비활성
   - 대응: actuator 의존성/노출 설정 추가
+- Blue/Green 전환 중 Nginx 502:
+  - 원인: 후보 슬롯 기동 전 트래픽 스위치 또는 잘못된 proxy 대상
+  - 대응: 후보 슬롯 health check 통과 후 스위치, 실패 시 즉시 롤백
 
 ## 10. 커밋 정책 (Nginx 관련)
 - 커밋 권장:
@@ -106,3 +123,13 @@
 - 커밋 금지:
   - 인증서/개인키
   - 실제 시크릿 값(.env 실값, 토큰, API 키)
+
+## 11. 작업 종료 문서화 규칙
+- 배포/운영 로직 변경 시 반드시 본 런북 업데이트
+- 변경 대상:
+  - 워크플로우 입력/동작 순서
+  - 배포 스크립트 동작/롤백 방식
+  - 운영자가 실행하는 절차와 점검 포인트
+- PR/커밋 전 최소 확인:
+  - 문서와 실제 스크립트 동작 불일치 여부
+  - 신규 환경변수/시크릿 요구사항 반영 여부
