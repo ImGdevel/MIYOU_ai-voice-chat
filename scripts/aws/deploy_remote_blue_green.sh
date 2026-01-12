@@ -11,6 +11,7 @@ HEALTH_CHECK_RETRIES="${HEALTH_CHECK_RETRIES:-30}"
 HEALTH_CHECK_INTERVAL="${HEALTH_CHECK_INTERVAL:-3}"
 DRAIN_SECONDS="${DRAIN_SECONDS:-45}"
 STOP_TIMEOUT_SECONDS="${STOP_TIMEOUT_SECONDS:-30}"
+POST_SWITCH_MONITOR_SECONDS="${POST_SWITCH_MONITOR_SECONDS:-120}"
 
 echo "[blue-green] Prepare remote dir: ${REMOTE_DIR}"
 ssh "${HOST_ALIAS}" "mkdir -p '${REMOTE_DIR}/deploy/nginx'"
@@ -94,7 +95,7 @@ ssh "${HOST_ALIAS}" "cd '${REMOTE_DIR}' && grep -qE '^OPENAI_API_KEY=.+$' .env.d
 }
 
 echo "[blue-green] Deploy and switch traffic"
-ssh "${HOST_ALIAS}" "bash -s" -- "${REMOTE_DIR}" "${APP_IMAGE}" "${HEALTH_CHECK_RETRIES}" "${HEALTH_CHECK_INTERVAL}" "${DRAIN_SECONDS}" "${STOP_TIMEOUT_SECONDS}" <<'EOF'
+ssh "${HOST_ALIAS}" "bash -s" -- "${REMOTE_DIR}" "${APP_IMAGE}" "${HEALTH_CHECK_RETRIES}" "${HEALTH_CHECK_INTERVAL}" "${DRAIN_SECONDS}" "${STOP_TIMEOUT_SECONDS}" "${POST_SWITCH_MONITOR_SECONDS}" <<'EOF'
 set -euo pipefail
 remote_dir="$1"
 app_image="$2"
@@ -102,6 +103,7 @@ health_retries="$3"
 health_interval="$4"
 drain_seconds="$5"
 stop_timeout_seconds="$6"
+post_switch_monitor_seconds="$7"
 
 cd "${remote_dir}"
 
@@ -130,10 +132,31 @@ active_service="app_${active}"
 
 echo "[blue-green] Active=${active_service}, Candidate=${candidate_service}"
 
+switched="false"
+rollback() {
+  set +e
+  echo "[blue-green] Rollback triggered"
+
+  # active 슬롯이 내려갔을 수 있으므로 우선 재기동 시도
+  APP_IMAGE="${app_image}" docker compose -f docker-compose.app.yml up -d --no-deps "${active_service}" >/dev/null 2>&1 || true
+
+  # 트래픽을 active로 복구
+  sed -i -E "s/app_(blue|green):8081/${active_service}:8081/g" deploy/nginx/default.conf
+  docker exec miyou-nginx nginx -t >/dev/null 2>&1 || true
+  docker exec miyou-nginx nginx -s reload >/dev/null 2>&1 || true
+
+  # candidate 비정상 상태 정리 (실패 중 재시작 루프 방지)
+  APP_IMAGE="${app_image}" docker compose -f docker-compose.app.yml stop "${candidate_service}" >/dev/null 2>&1 || true
+  echo "[blue-green] Rollback finished (active=${active_service})"
+}
+
+trap 'rollback' ERR
+
 sed -i -E "s/app_(blue|green):8081/${active_service}:8081/g" deploy/nginx/default.conf
 
 APP_IMAGE="${app_image}" docker compose -f docker-compose.app.yml pull "${candidate_service}"
-APP_IMAGE="${app_image}" docker compose -f docker-compose.app.yml up -d mongodb redis qdrant nginx "${candidate_service}"
+APP_IMAGE="${app_image}" docker compose -f docker-compose.app.yml up -d mongodb redis qdrant nginx
+APP_IMAGE="${app_image}" docker compose -f docker-compose.app.yml up -d --no-deps "${candidate_service}"
 
 health_ok="false"
 for attempt in $(seq 1 "${health_retries}"); do
@@ -156,13 +179,26 @@ sed -i -E "s/app_(blue|green):8081/${candidate_service}:8081/g" deploy/nginx/def
 
 docker exec miyou-nginx nginx -t
 docker exec miyou-nginx nginx -s reload
+switched="true"
 
 if ! curl -fsS http://127.0.0.1/actuator/health | grep -q '"status":"UP"'; then
-  echo "[blue-green] Post-switch health check failed, rollback starts" >&2
-  sed -i -E "s/app_(blue|green):8081/${active_service}:8081/g" deploy/nginx/default.conf
-  docker exec miyou-nginx nginx -t
-  docker exec miyou-nginx nginx -s reload
+  echo "[blue-green] Post-switch health check failed" >&2
   exit 1
+fi
+
+# 전환 직후 candidate 안정화 모니터링. 실패 시 ERR trap이 롤백 수행.
+if [[ "${post_switch_monitor_seconds}" =~ ^[0-9]+$ ]] && [[ "${post_switch_monitor_seconds}" -gt 0 ]]; then
+  echo "[blue-green] Monitor candidate health for ${post_switch_monitor_seconds}s"
+  monitor_elapsed=0
+  while [[ "${monitor_elapsed}" -lt "${post_switch_monitor_seconds}" ]]; do
+    if ! docker run --rm --network miyou_miyou-network curlimages/curl:8.10.1 -fsS \
+        "http://${candidate_service}:8081/actuator/health" | grep -q '"status":"UP"'; then
+      echo "[blue-green] Candidate became unhealthy during monitor window" >&2
+      exit 1
+    fi
+    sleep 5
+    monitor_elapsed=$((monitor_elapsed + 5))
+  done
 fi
 
 if [[ "${drain_seconds}" =~ ^[0-9]+$ ]] && [[ "${drain_seconds}" -gt 0 ]]; then
@@ -178,6 +214,7 @@ fi
 APP_IMAGE="${app_image}" docker compose -f docker-compose.app.yml rm -f "${active_service}" || true
 docker rm -f miyou-dialogue-app >/dev/null 2>&1 || true
 echo "${candidate}" > .active_color
+trap - ERR
 
 echo "[blue-green] Switched active app to ${candidate_service}"
 EOF
