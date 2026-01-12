@@ -143,6 +143,20 @@ active="blue"
 if [[ -f ".active_color" ]] && grep -q '^green$' .active_color; then
   active="green"
 fi
+
+service_running() {
+  local color="$1"
+  docker ps --format '{{.Names}}' | grep -q "^miyou-dialogue-app-${color}$"
+}
+
+if [[ "${active}" == "blue" ]] && ! service_running "blue" && service_running "green"; then
+  echo "[blue-green] Active marker(blue) is stale, align active=green"
+  active="green"
+elif [[ "${active}" == "green" ]] && ! service_running "green" && service_running "blue"; then
+  echo "[blue-green] Active marker(green) is stale, align active=blue"
+  active="blue"
+fi
+
 if [[ "${active}" == "blue" ]]; then
   candidate="green"
 else
