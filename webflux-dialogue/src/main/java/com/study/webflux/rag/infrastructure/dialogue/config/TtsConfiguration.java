@@ -15,6 +15,7 @@ import com.study.webflux.rag.infrastructure.dialogue.adapter.tts.SupertoneConfig
 import com.study.webflux.rag.infrastructure.dialogue.adapter.tts.loadbalancer.TtsEndpoint;
 import com.study.webflux.rag.infrastructure.dialogue.adapter.tts.loadbalancer.TtsLoadBalancer;
 import com.study.webflux.rag.infrastructure.dialogue.config.properties.RagDialogueProperties;
+import com.study.webflux.rag.infrastructure.monitoring.config.TtsBackpressureMetrics;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
@@ -56,7 +57,9 @@ public class TtsConfiguration {
 	@Primary
 	public TtsPort ttsPort(WebClient.Builder webClientBuilder,
 		TtsLoadBalancer loadBalancer,
-		Voice voice) {
-		return new LoadBalancedSupertoneTtsAdapter(webClientBuilder, loadBalancer, voice);
+		Voice voice,
+		TtsBackpressureMetrics ttsBackpressureMetrics) {
+		return new LoadBalancedSupertoneTtsAdapter(webClientBuilder, loadBalancer, voice,
+			ttsBackpressureMetrics);
 	}
 }
