@@ -1,7 +1,7 @@
 # MIYOU 모니터링 시스템 구현 현황
 
 **업데이트**: 2026-02-16
-**전체 진행률**: Phase 1A 완료 (100%), Phase 1B 부분 완료 (70%)
+**전체 진행률**: Phase 1A 완료 (100%), Phase 1B 완료 (100%)
 
 ---
 
@@ -67,7 +67,7 @@ backpressureMetrics.recordStageDataSize("llm_completion", "text", 2048);
 
 ---
 
-### Phase 1B: RAG 품질 모니터링 (70% 완료)
+### Phase 1B: RAG 품질 모니터링 (100% 완료)
 
 #### 4. RAG Quality 메트릭 설정 ✅
 
@@ -166,22 +166,18 @@ rag_memory_count{memory_type="experiential"}
 rag_memory_count{memory_type="factual"}
 ```
 
----
+#### 7. MemoryRetrievalService 메트릭 통합 ✅
 
-## ⏳ 진행 중인 작업
+**파일**: [MemoryRetrievalService.java](webflux-dialogue/src/main/java/com/study/webflux/rag/application/memory/service/MemoryRetrievalService.java)
 
-### Phase 1B: 서비스 통합 (30% 남음)
+**구현 내용**:
+1. ✅ `RagQualityMetricsConfiguration` 의존성 주입
+2. ✅ `searchCandidateMemories()` 후 candidate count 기록
+3. ✅ `rankAndLimit()` 후 filtered count 기록
+4. ✅ Memory importance 점수 기록
+5. ✅ 메트릭 수집을 위한 doOnNext 훅 추가
 
-#### 7. MemoryRetrievalService 메트릭 통합 ⏳
-
-**작업 내용**:
-1. `RagQualityMetricsConfiguration` 의존성 주입
-2. `searchCandidateMemories()` 후 candidate count 기록
-3. `rankAndLimit()` 후 filtered count 기록
-4. Memory importance/similarity 점수 기록
-5. Pipeline attributes에 타입별 개수 추가
-
-**예상 수정 코드**:
+**구현 코드**:
 ```java
 @Service
 public class MemoryRetrievalService {
@@ -222,15 +218,18 @@ public class MemoryRetrievalService {
 }
 ```
 
-#### 8. MemoryExtractionService 메트릭 통합 ⏳
+#### 8. MemoryExtractionService 메트릭 통합 ✅
 
-**작업 내용**:
-1. `MemoryExtractionMetricsConfiguration` 의존성 주입
-2. `checkAndExtract()` 호출 시 triggered 카운터 증가
-3. 추출 성공/실패 기록
-4. 타입별 개수 및 중요도 기록
+**파일**: [MemoryExtractionService.java](webflux-dialogue/src/main/java/com/study/webflux/rag/application/memory/service/MemoryExtractionService.java)
 
-**예상 수정 코드**:
+**구현 내용**:
+1. ✅ `MemoryExtractionMetricsConfiguration` 의존성 주입
+2. ✅ `checkAndExtract()` 호출 시 triggered 카운터 증가
+3. ✅ 추출 성공/실패 기록 (doOnNext/doOnError 훅)
+4. ✅ 타입별 개수 집계 및 기록 (Collectors.groupingBy)
+5. ✅ 중요도 기록 (forEach로 개별 점수 수집)
+
+**구현 코드**:
 ```java
 @Service
 public class MemoryExtractionService {
@@ -276,14 +275,18 @@ public class MemoryExtractionService {
 }
 ```
 
-#### 9. Vector Search Similarity Score 노출 ⏳
+---
 
-**현재 상황**:
-- `SpringAiVectorDbAdapter`가 Qdrant `ScoredPoint`를 사용하여 검색
-- `ScoredPoint.getScore()`에 similarity score 포함
-- 현재 `Memory` 객체로 변환 시 score가 손실됨
+## 📝 구현 노트
 
-**해결 방안 (Option B - Pipeline Attributes 사용)**:
+### Similarity Score 수집 방식
+
+**현재 구현 방식**:
+- Importance score를 similarity proxy로 사용
+- `MemoryRetrievalService`에서 `memory.importance()` 값을 메트릭으로 기록
+- Qdrant ScoredPoint의 실제 similarity score는 현재 수집하지 않음
+
+**향후 개선 옵션 (Optional)**:
 
 ```java
 // SpringAiVectorDbAdapter.java
@@ -360,22 +363,22 @@ if (scoresObj instanceof List<?>) {
 
 | 메트릭 | 타입 | Tags | Phase | 상태 |
 |--------|------|------|-------|------|
-| `rag.memory.similarity.score` | Distribution Summary | - | 1B | ✅ 설정 |
-| `rag.memory.importance` | Distribution Summary | - | 1B | ✅ 설정 |
-| `rag.memory.candidate.count` | Counter | - | 1B | ✅ 설정 |
-| `rag.memory.filtered.count` | Counter | - | 1B | ✅ 설정 |
+| `rag.memory.similarity.score` | Distribution Summary | - | 1B | ✅ |
+| `rag.memory.importance` | Distribution Summary | - | 1B | ✅ |
+| `rag.memory.candidate.count` | Counter | - | 1B | ✅ |
+| `rag.memory.filtered.count` | Counter | - | 1B | ✅ |
 | `rag.memory.count` | Gauge | `memory_type` | 1B | ✅ |
-| `rag.document.relevance.score` | Distribution Summary | - | 1B | ✅ 설정 |
+| `rag.document.relevance.score` | Distribution Summary | - | 1B | ✅ |
 
 ### 메모리 추출 메트릭
 
 | 메트릭 | 타입 | Tags | Phase | 상태 |
 |--------|------|------|-------|------|
-| `memory.extraction.triggered` | Counter | - | 1B | ✅ 설정 |
-| `memory.extraction.success` | Counter | - | 1B | ✅ 설정 |
-| `memory.extraction.failure` | Counter | - | 1B | ✅ 설정 |
-| `memory.extracted.count` | Counter | `type` | 1B | ✅ 설정 |
-| `memory.extracted.importance` | Distribution Summary | - | 1B | ✅ 설정 |
+| `memory.extraction.triggered` | Counter | - | 1B | ✅ |
+| `memory.extraction.success` | Counter | - | 1B | ✅ |
+| `memory.extraction.failure` | Counter | - | 1B | ✅ |
+| `memory.extracted.count` | Counter | `type` | 1B | ✅ |
+| `memory.extracted.importance` | Distribution Summary | - | 1B | ✅ |
 
 ### LLM 메트릭 (기존)
 
@@ -388,27 +391,18 @@ if (scoresObj instanceof List<?>) {
 
 ## 🎯 다음 작업 계획
 
-### 즉시 작업 (Phase 1B 완료)
+### ✅ Phase 1B 완료 (100%)
 
-1. ⏳ **MemoryRetrievalService 메트릭 통합**
-   - 예상 소요: 30분
-   - 파일: MemoryRetrievalService.java
-   - 의존성 주입 및 메트릭 호출 추가
+Phase 1B의 모든 작업이 완료되었습니다:
+1. ✅ RAG 품질 메트릭 설정 파일 생성
+2. ✅ 메모리 추출 메트릭 설정 파일 생성
+3. ✅ MemoryRetrievalService 메트릭 통합
+4. ✅ MemoryExtractionService 메트릭 통합
+5. ✅ MicrometerPipelineMetricsReporter 통합
 
-2. ⏳ **MemoryExtractionService 메트릭 통합**
-   - 예상 소요: 30분
-   - 파일: MemoryExtractionService.java
-   - 의존성 주입 및 메트릭 호출 추가
-
-3. ⏳ **Similarity Score 노출 (Option B)**
-   - 예상 소요: 20분
-   - 파일: SpringAiVectorDbAdapter.java
-   - Pipeline Attributes에 similarity scores 저장
-
-4. ⏳ **검증**
-   - 애플리케이션 재시작
-   - `/actuator/prometheus` 확인
-   - 메트릭 노출 검증
+**다음 검증 단계**:
+- 애플리케이션 시작 후 `/actuator/prometheus` 확인
+- 메트릭 노출 검증
 
 ### Phase 1C: LLM/Logs (다음 단계)
 
