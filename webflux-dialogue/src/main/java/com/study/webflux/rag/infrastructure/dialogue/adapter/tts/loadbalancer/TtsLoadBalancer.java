@@ -137,18 +137,14 @@ public class TtsLoadBalancer {
 		String description = getErrorDescription(error);
 		log.warn("엔드포인트 {} 일시적 장애: {}", endpoint.getId(), description);
 		endpoint.setHealth(TtsEndpoint.EndpointHealth.TEMPORARY_FAILURE);
+		publishFailureEvent(endpoint, "TEMPORARY_FAILURE", description);
 	}
 
 	private void handlePermanentFailure(TtsEndpoint endpoint, Throwable error) {
 		String description = getErrorDescription(error);
 		log.error("엔드포인트 {} 영구 장애: {}", endpoint.getId(), description);
 		endpoint.setHealth(TtsEndpoint.EndpointHealth.PERMANENT_FAILURE);
-
-		if (failureEventPublisher != null) {
-			TtsEndpointFailureEvent event = new TtsEndpointFailureEvent(endpoint.getId(),
-				"PERMANENT_FAILURE", description);
-			failureEventPublisher.accept(event);
-		}
+		publishFailureEvent(endpoint, "PERMANENT_FAILURE", description);
 	}
 
 	private void handleClientError(TtsEndpoint endpoint, Throwable error) {
@@ -156,6 +152,17 @@ public class TtsLoadBalancer {
 		log.warn("클라이언트 에러 발생 (엔드포인트 {} 상태 유지): {}", endpoint.getId(), description);
 		// CLIENT_ERROR는 클라이언트 요청 문제이므로 엔드포인트 상태를 변경하지 않음
 		// 다음 정상 요청은 해당 엔드포인트에서 처리 가능
+		publishFailureEvent(endpoint, "CLIENT_ERROR", description);
+	}
+
+	private void publishFailureEvent(TtsEndpoint endpoint, String errorType, String description) {
+		if (failureEventPublisher == null) {
+			return;
+		}
+		TtsEndpointFailureEvent event = new TtsEndpointFailureEvent(endpoint.getId(),
+			errorType,
+			description);
+		failureEventPublisher.accept(event);
 	}
 
 	private String getErrorDescription(Throwable error) {

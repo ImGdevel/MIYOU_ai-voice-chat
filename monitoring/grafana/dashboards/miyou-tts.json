@@ -18,14 +18,15 @@
     },
     {
       "datasource": { "uid": "prometheus" },
-      "description": "TTS 엔드포인트 1~5의 상태를 시간 흐름에 따라 그리드로 표시합니다. 1=HEALTHY(녹색), 0=TEMP_FAIL(주황색), -1=PERM_FAIL(빨간색)이며, 상태 변화 패턴을 한눈에 파악할 수 있습니다.",
+      "description": "TTS 엔드포인트 1~5의 상태를 시간 흐름에 따라 그리드로 표시합니다. 1=HEALTHY(녹색), 0=TEMP_FAIL(주황색), -1=PERM_FAIL(빨간색), -2=CLIENT_ERR(보라색)입니다.",
       "fieldConfig": {
         "defaults": {
           "color": { "mode": "thresholds" },
           "mappings": [
             { "type": "value", "options": { "1": { "text": "HEALTHY", "color": "green" } } },
             { "type": "value", "options": { "0": { "text": "TEMP_FAIL", "color": "orange" } } },
-            { "type": "value", "options": { "-1": { "text": "PERM_FAIL", "color": "red" } } }
+            { "type": "value", "options": { "-1": { "text": "PERM_FAIL", "color": "red" } } },
+            { "type": "value", "options": { "-2": { "text": "CLIENT_ERR", "color": "purple" } } }
           ],
           "thresholds": {
             "mode": "absolute",
@@ -282,8 +283,56 @@
       "type": "logs"
     },
     {
+      "datasource": { "uid": "prometheus" },
+      "description": "최근 15분 기준 엔드포인트별 장애 원인을 집계합니다. error_type은 TEMPORARY_FAILURE/PERMANENT_FAILURE/CLIENT_ERROR, reason_code는 HTTP 상태코드 또는 TIMEOUT/NETWORK/UNKNOWN 입니다.",
+      "fieldConfig": {
+        "defaults": {
+          "color": { "mode": "thresholds" },
+          "thresholds": {
+            "mode": "absolute",
+            "steps": [
+              { "color": "green", "value": null },
+              { "color": "orange", "value": 1 },
+              { "color": "red", "value": 5 }
+            ]
+          },
+          "unit": "short"
+        }
+      },
+      "gridPos": { "h": 6, "w": 24, "x": 0, "y": 32 },
+      "id": 10,
+      "options": {
+        "showHeader": true,
+        "sortBy": [{ "displayName": "장애 횟수(15m)", "desc": true }]
+      },
+      "targets": [
+        {
+          "expr": "sum by (endpoint, error_type, reason_code) (increase(tts_endpoint_failure_total{job=~\"$job\",instance=~\"$instance\"}[15m]))",
+          "format": "table",
+          "instant": true,
+          "refId": "A"
+        }
+      ],
+      "title": "비활성/장애 원인(15분 집계)",
+      "transformations": [
+        {
+          "id": "organize",
+          "options": {
+            "excludeByName": { "Time": true, "job": true, "instance": true, "__name__": true },
+            "renameByName": {
+              "endpoint": "엔드포인트(Endpoint)",
+              "error_type": "장애 유형(Error Type)",
+              "reason_code": "원인 코드(Reason Code)",
+              "Value": "장애 횟수(15m)"
+            }
+          }
+        }
+      ],
+      "type": "table"
+    },
+    {
       "collapsed": false,
-      "gridPos": { "h": 1, "w": 24, "x": 0, "y": 32 },
+      "gridPos": { "h": 1, "w": 24, "x": 0, "y": 38 },
       "id": 104,
       "title": "엔드포인트 상세 테이블(Details Table)",
       "type": "row"
@@ -300,11 +349,12 @@
           "mappings": [
             { "type": "value", "options": { "1": { "text": "HEALTHY", "color": "green" } } },
             { "type": "value", "options": { "0": { "text": "TEMP_FAIL", "color": "orange" } } },
-            { "type": "value", "options": { "-1": { "text": "PERM_FAIL", "color": "red" } } }
+            { "type": "value", "options": { "-1": { "text": "PERM_FAIL", "color": "red" } } },
+            { "type": "value", "options": { "-2": { "text": "CLIENT_ERR", "color": "purple" } } }
           ]
         }
       },
-      "gridPos": { "h": 6, "w": 24, "x": 0, "y": 33 },
+      "gridPos": { "h": 6, "w": 24, "x": 0, "y": 39 },
       "id": 9,
       "options": {
         "showHeader": true,
@@ -322,6 +372,12 @@
           "format": "table",
           "instant": true,
           "refId": "B"
+        },
+        {
+          "expr": "tts_endpoint_last_failure_code{job=~\"$job\",instance=~\"$instance\"}",
+          "format": "table",
+          "instant": true,
+          "refId": "C"
         }
       ],
       "title": "TTS 엔드포인트 상태 테이블(Status Table)",
@@ -337,7 +393,8 @@
             "renameByName": {
               "endpoint": "엔드포인트(Endpoint)",
               "Value #A": "상태(Health Status)",
-              "Value #B": "활성 요청(Active Requests)"
+              "Value #B": "활성 요청(Active Requests)",
+              "Value #C": "최근 실패 코드(Last Failure Code)"
             }
           }
         }
