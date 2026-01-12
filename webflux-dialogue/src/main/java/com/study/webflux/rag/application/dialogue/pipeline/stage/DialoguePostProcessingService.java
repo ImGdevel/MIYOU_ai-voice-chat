@@ -13,6 +13,7 @@ import com.study.webflux.rag.domain.dialogue.port.TokenUsageProvider;
 import com.study.webflux.rag.domain.memory.port.ConversationCounterPort;
 import com.study.webflux.rag.domain.monitoring.model.DialoguePipelineStage;
 import com.study.webflux.rag.infrastructure.dialogue.config.properties.RagDialogueProperties;
+import com.study.webflux.rag.infrastructure.monitoring.config.ConversationMetricsConfiguration;
 import reactor.core.publisher.Flux;
 import reactor.core.publisher.Mono;
 import reactor.core.scheduler.Schedulers;
@@ -26,6 +27,7 @@ public class DialoguePostProcessingService {
 	private final MemoryExtractionService memoryExtractionService;
 	private final LlmPort llmPort;
 	private final PipelineTracer pipelineTracer;
+	private final ConversationMetricsConfiguration conversationMetrics;
 	private final int conversationThreshold;
 
 	public DialoguePostProcessingService(ConversationRepository conversationRepository,
@@ -33,12 +35,14 @@ public class DialoguePostProcessingService {
 		MemoryExtractionService memoryExtractionService,
 		LlmPort llmPort,
 		PipelineTracer pipelineTracer,
+		ConversationMetricsConfiguration conversationMetrics,
 		RagDialogueProperties properties) {
 		this.conversationRepository = conversationRepository;
 		this.conversationCounterPort = conversationCounterPort;
 		this.memoryExtractionService = memoryExtractionService;
 		this.llmPort = llmPort;
 		this.pipelineTracer = pipelineTracer;
+		this.conversationMetrics = conversationMetrics;
 		this.conversationThreshold = properties.getMemory().getConversationThreshold();
 		if (this.conversationThreshold <= 0) {
 			throw new IllegalArgumentException("conversationThreshold 설정값은 0 이하일 수 없습니다.");
@@ -73,8 +77,18 @@ public class DialoguePostProcessingService {
 		Mono<String> responseMono) {
 		return inputsMono.flatMap(inputs -> {
 			var userId = inputs.userId();
-			return responseMono.flatMap(response -> persistConversation(inputsMono, response))
+			return responseMono.flatMap(response -> {
+				// 질의 길이와 응답 길이 기록
+				conversationMetrics.recordQueryLength(inputs.currentTurn().query().length());
+				conversationMetrics.recordResponseLength(response.length());
+				return persistConversation(inputsMono, response);
+			})
 				.flatMap(turn -> conversationCounterPort.increment(userId))
+				.doOnNext(count -> {
+					// 대화 카운트 증가 및 분포 기록
+					conversationMetrics.recordConversationIncrement();
+					conversationMetrics.recordConversationCount(count);
+				})
 				.filter(count -> count % conversationThreshold == 0)
 				.flatMap(count -> memoryExtractionService.checkAndExtract(userId));
 		}).subscribeOn(Schedulers.boundedElastic()).then();
