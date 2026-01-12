@@ -44,6 +44,10 @@ rag:
         pitch-shift: 0
         pitch-variance: 1.0
         speed: 1.1
+    stt:
+      model: whisper-1
+      language: ko
+      max-file-size-bytes: 26214400
     qdrant:
       url: http://localhost:6333
       api-key: ""
