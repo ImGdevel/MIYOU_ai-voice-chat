@@ -1,6 +1,7 @@
 # MIYOU CI/CD 운영 런북
 
 본 문서는 현재 프로젝트의 **GitHub Actions + GHCR + EC2(Docker Compose) + Nginx** 배포 구조를 운영 관점에서 정리한다.
+구현 상세(시퀀스/계약/확장 전략)는 `docs/spec/tech/nginx-cicd-deploy/README.md`를 함께 참고한다.
 
 ## 1. 현재 배포 아키텍처
 - CI: GitHub Actions
@@ -22,7 +23,10 @@
 잡 순서:
 1. `detect-nginx-changes`: 직전 커밋 대비 Nginx 변경 감지
 2. `gradle-build`: 테스트 + `bootJar`
+   - Gradle build cache 사용(`--build-cache`)
 3. `build-and-push`: Docker 이미지 빌드/푸시
+   - Buildx GHA cache scope 고정(`miyou-dialogue-image`)
+   - Dockerfile Gradle 캐시 마운트 적용
 4. `deploy`: 서버 앱/스토리지 스택 배포
    - `blue_green`: `deploy_remote_blue_green.sh` 실행
    - `rolling`: `deploy_remote_compose.sh` 실행
@@ -36,20 +40,28 @@
   - compose, env, nginx conf 동기화
   - SSM에서 `.env.deploy` 생성
   - 현재 활성 색상(`.active_color`) 기준 서비스 pull/up
+  - self-heal watchdog cron(1분 주기) 설치
+  - 마지막 배포 이미지 `.app_image` 기록
 - `scripts/aws/deploy_remote_nginx.sh`
   - nginx conf 동기화
   - 현재 활성 색상 기준 proxy 대상 반영
   - `nginx -t` 후 `nginx -s reload` (컨테이너 존재 시)
   - 미존재 시 nginx 컨테이너 최초 생성
+  - active 슬롯 미실행 시 fallback 슬롯 자동 전환
+  - blue/green 둘 다 미실행 시 active 슬롯 선기동 후 reload
 - `scripts/aws/deploy_remote_blue_green.sh`
   - 비활성 슬롯(blue/green) 이미지 pull/up
   - 후보 슬롯 health check(`/actuator/health`) 통과 시 Nginx 스위치
   - 스위치 후 health 재검증 실패 시 즉시 롤백
+  - 전환 후 모니터링 구간(`POST_SWITCH_MONITOR_SECONDS`) 내 실패 시 롤백
   - 구 슬롯 종료 전 드레인 타임 적용 후 graceful stop
   - 성공 시 기존 활성 슬롯 중지/삭제, `.active_color` 갱신
+  - self-heal watchdog cron(1분 주기) 설치
+  - 마지막 배포 이미지 `.app_image` 기록
   - 조정 가능 변수:
     - `DRAIN_SECONDS` (기본 45)
     - `STOP_TIMEOUT_SECONDS` (기본 30)
+    - `POST_SWITCH_MONITOR_SECONDS` (기본 120)
 
 ## 4. GitHub Secrets 목록
 필수:
@@ -119,6 +131,9 @@
 - Blue/Green 전환 중 Nginx 502:
   - 원인: 후보 슬롯 기동 전 트래픽 스위치 또는 잘못된 proxy 대상
   - 대응: 후보 슬롯 health check 통과 후 스위치, 실패 시 즉시 롤백
+- `host not found in upstream app_blue`:
+  - 원인: `.active_color`와 실제 실행 슬롯 불일치 상태에서 nginx reload
+  - 대응: nginx 배포 스크립트가 실행 중 슬롯 기준 fallback/선기동 후 reload
 
 ## 10. 커밋 정책 (Nginx 관련)
 - 커밋 권장:
