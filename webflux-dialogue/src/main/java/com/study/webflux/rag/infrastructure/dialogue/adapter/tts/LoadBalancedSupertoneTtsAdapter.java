@@ -5,7 +5,6 @@ import java.util.HashMap;
 import java.util.Map;
 import java.util.concurrent.ConcurrentHashMap;
 
-import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 
 import org.springframework.core.io.buffer.DataBuffer;
@@ -19,6 +18,7 @@ import com.study.webflux.rag.domain.voice.model.Voice;
 import com.study.webflux.rag.infrastructure.dialogue.adapter.tts.loadbalancer.TtsEndpoint;
 import com.study.webflux.rag.infrastructure.dialogue.adapter.tts.loadbalancer.TtsErrorClassifier;
 import com.study.webflux.rag.infrastructure.dialogue.adapter.tts.loadbalancer.TtsLoadBalancer;
+import com.study.webflux.rag.infrastructure.monitoring.config.TtsBackpressureMetrics;
 import reactor.core.publisher.Flux;
 import reactor.core.publisher.Mono;
 
@@ -27,13 +27,27 @@ import reactor.core.publisher.Mono;
  */
 @Slf4j
 @Component
-@RequiredArgsConstructor
 public class LoadBalancedSupertoneTtsAdapter implements TtsPort {
 
 	private final WebClient.Builder webClientBuilder;
 	private final TtsLoadBalancer loadBalancer;
 	private final Voice voice;
+	private final TtsBackpressureMetrics ttsBackpressureMetrics;
 	private final Map<String, WebClient> webClientCache = new ConcurrentHashMap<>();
+
+	public LoadBalancedSupertoneTtsAdapter(
+		WebClient.Builder webClientBuilder,
+		TtsLoadBalancer loadBalancer,
+		Voice voice,
+		TtsBackpressureMetrics ttsBackpressureMetrics) {
+		this.webClientBuilder = webClientBuilder;
+		this.loadBalancer = loadBalancer;
+		this.voice = voice;
+		this.ttsBackpressureMetrics = ttsBackpressureMetrics;
+
+		// TTS 엔드포인트 메트릭 등록
+		this.ttsBackpressureMetrics.registerEndpoints(loadBalancer.getEndpoints());
+	}
 
 	@Override
 	public Flux<byte[]> streamSynthesize(String text, AudioFormat format) {
