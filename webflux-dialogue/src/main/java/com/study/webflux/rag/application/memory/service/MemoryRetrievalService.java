@@ -12,6 +12,7 @@ import com.study.webflux.rag.domain.memory.model.MemoryType;
 import com.study.webflux.rag.domain.memory.port.EmbeddingPort;
 import com.study.webflux.rag.domain.memory.port.VectorMemoryPort;
 import com.study.webflux.rag.infrastructure.memory.adapter.MemoryExtractionConfig;
+import com.study.webflux.rag.infrastructure.monitoring.config.RagQualityMetricsConfiguration;
 import reactor.core.publisher.Mono;
 
 /**
@@ -25,14 +26,17 @@ public class MemoryRetrievalService {
 
 	private final EmbeddingPort embeddingPort;
 	private final VectorMemoryPort vectorMemoryPort;
+	private final RagQualityMetricsConfiguration ragMetrics;
 	private final float importanceBoost;
 	private final float importanceThreshold;
 
 	public MemoryRetrievalService(EmbeddingPort embeddingPort,
 		VectorMemoryPort vectorMemoryPort,
+		RagQualityMetricsConfiguration ragMetrics,
 		MemoryExtractionConfig config) {
 		this.embeddingPort = embeddingPort;
 		this.vectorMemoryPort = vectorMemoryPort;
+		this.ragMetrics = ragMetrics;
 		this.importanceBoost = config.importanceBoost();
 		this.importanceThreshold = config.importanceThreshold();
 	}
@@ -49,7 +53,24 @@ public class MemoryRetrievalService {
 	public Mono<MemoryRetrievalResult> retrieveMemories(UserId userId, String query, int topK) {
 		return embeddingPort.embed(query)
 			.flatMap(embedding -> searchCandidateMemories(userId, embedding.vector(), topK))
+			.doOnNext(candidates -> {
+				// 후보 메모리 개수 기록
+				ragMetrics.recordMemoryCandidateCount(candidates.size());
+			})
 			.map(memories -> rankAndLimit(memories, topK))
+			.doOnNext(ranked -> {
+				// 필터링된 메모리 개수 계산 및 기록
+				int candidateCount = topK * CANDIDATE_MULTIPLIER;
+				int filteredCount = Math.max(0, candidateCount - ranked.size());
+				ragMetrics.recordMemoryFilteredCount(filteredCount);
+
+				// 메모리 중요도 점수 기록
+				ranked.forEach(memory -> {
+					if (memory.importance() != null) {
+						ragMetrics.recordMemoryImportanceScore(memory.importance());
+					}
+				});
+			})
 			.map(this::groupByType)
 			.flatMap(this::updateAccessMetrics);
 	}

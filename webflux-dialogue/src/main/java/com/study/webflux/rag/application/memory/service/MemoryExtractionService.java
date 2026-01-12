@@ -17,6 +17,8 @@ import com.study.webflux.rag.domain.memory.port.ConversationCounterPort;
 import com.study.webflux.rag.domain.memory.port.EmbeddingPort;
 import com.study.webflux.rag.domain.memory.port.MemoryExtractionPort;
 import com.study.webflux.rag.domain.memory.port.VectorMemoryPort;
+import com.study.webflux.rag.infrastructure.monitoring.config.MemoryExtractionMetricsConfiguration;
+import reactor.core.publisher.Flux;
 import reactor.core.publisher.Mono;
 
 /**
@@ -33,6 +35,7 @@ public class MemoryExtractionService {
 	private final EmbeddingPort embeddingPort;
 	private final VectorMemoryPort vectorMemoryPort;
 	private final MemoryRetrievalService retrievalService;
+	private final MemoryExtractionMetricsConfiguration extractionMetrics;
 	private final int conversationThreshold;
 
 	/**
@@ -43,6 +46,7 @@ public class MemoryExtractionService {
 			.filter(this::isExtractionTurn)
 			.flatMap(count -> {
 				log.info("메모리 추출 트리거: 대화 횟수={}", count);
+				extractionMetrics.recordExtractionTriggered();
 				return performExtraction(userId);
 			})
 			.then();
@@ -55,6 +59,30 @@ public class MemoryExtractionService {
 		return loadRecentConversations(userId)
 			.flatMap(conversations -> buildExtractionContext(userId, conversations))
 			.flatMapMany(extractionPort::extractMemories)
+			.collectList()
+			.doOnNext(extractedList -> {
+				// 추출 성공 기록
+				extractionMetrics.recordExtractionSuccess(extractedList.size());
+
+				// 타입별 개수 집계
+				java.util.Map<String, Long> typeCounts = extractedList.stream()
+					.collect(java.util.stream.Collectors.groupingBy(
+						extracted -> extracted.type().name(),
+						java.util.stream.Collectors.counting()));
+
+				typeCounts.forEach((type, count) -> extractionMetrics
+					.recordExtractedMemoryType(type, count.intValue()));
+
+				// 중요도 기록
+				extractedList.forEach(extracted -> extractionMetrics
+					.recordExtractedImportance(extracted.importance()));
+			})
+			.doOnError(error -> {
+				// 추출 실패 기록
+				extractionMetrics.recordExtractionFailure();
+				log.error("메모리 추출 실패", error);
+			})
+			.flatMapMany(Flux::fromIterable)
 			.flatMap(this::saveExtractedMemory)
 			.doOnNext(memory -> log.info("추출 및 저장된 메모리: type={}, importance={}, content={}",
 				memory.type(),
