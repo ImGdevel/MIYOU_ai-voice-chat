@@ -153,7 +153,7 @@
       },
       "targets": [
         {
-          "expr": "sum(rate(http_server_requests_seconds_count{job=~\"$job\",instance=~\"$instance\",status=~\"[45]..\"}[5m])) / clamp_min(sum(rate(http_server_requests_seconds_count{job=~\"$job\",instance=~\"$instance\"}[5m])), 0.001)",
+          "expr": "sum(rate(http_server_requests_seconds_count{job=~\"$job\",instance=~\"$instance\",uri!~\"/actuator.*|/admin.*\",status=~\"[45]..\"}[5m])) / clamp_min(sum(rate(http_server_requests_seconds_count{job=~\"$job\",instance=~\"$instance\",uri!~\"/actuator.*|/admin.*\"}[5m])), 0.001)",
           "refId": "A"
         }
       ],
@@ -217,7 +217,7 @@
       },
       "targets": [
         {
-          "expr": "histogram_quantile(0.95, sum(rate(http_server_requests_seconds_bucket{job=~\"$job\",instance=~\"$instance\"}[5m])) by (le))",
+          "expr": "histogram_quantile(0.95, sum(rate(http_server_requests_seconds_bucket{job=~\"$job\",instance=~\"$instance\",uri!~\"/actuator.*|/admin.*\"}[5m])) by (le))",
           "refId": "A"
         }
       ],
@@ -260,7 +260,7 @@
       },
       "targets": [
         {
-          "expr": "sum(rate(http_server_requests_seconds_count{job=~\"$job\",instance=~\"$instance\"}[1m]))",
+          "expr": "sum(rate(http_server_requests_seconds_count{job=~\"$job\",instance=~\"$instance\",uri!~\"/actuator.*|/admin.*\"}[1m]))",
           "refId": "A"
         }
       ],
@@ -386,7 +386,7 @@
       },
       "targets": [
         {
-          "expr": "(sum(rate(http_server_requests_seconds_count{job=~\"$job\",instance=~\"$instance\",status!~\"5..\"}[5m])) + sum(rate(http_server_requests_seconds_bucket{job=~\"$job\",instance=~\"$instance\",le=\"0.5\"}[5m]))) / (2 * clamp_min(sum(rate(http_server_requests_seconds_count{job=~\"$job\",instance=~\"$instance\"}[5m])), 0.001))",
+          "expr": "(sum(rate(http_server_requests_seconds_count{job=~\"$job\",instance=~\"$instance\",uri!~\"/actuator.*|/admin.*\",status!~\"5..\"}[5m])) + sum(rate(http_server_requests_seconds_bucket{job=~\"$job\",instance=~\"$instance\",uri!~\"/actuator.*|/admin.*\",le=\"0.5\"}[5m]))) / (2 * clamp_min(sum(rate(http_server_requests_seconds_count{job=~\"$job\",instance=~\"$instance\",uri!~\"/actuator.*|/admin.*\"}[5m])), 0.001))",
           "refId": "A"
         }
       ],
@@ -507,22 +507,22 @@
       },
       "targets": [
         {
-          "expr": "sum(rate(http_server_requests_seconds_count{job=~\"$job\",instance=~\"$instance\",status=~\"2..\"}[1m]))",
+          "expr": "sum(rate(http_server_requests_seconds_count{job=~\"$job\",instance=~\"$instance\",uri!~\"/actuator.*|/admin.*\",status=~\"2..\"}[1m]))",
           "legendFormat": "2xx",
           "refId": "A"
         },
         {
-          "expr": "sum(rate(http_server_requests_seconds_count{job=~\"$job\",instance=~\"$instance\",status=~\"3..\"}[1m]))",
+          "expr": "sum(rate(http_server_requests_seconds_count{job=~\"$job\",instance=~\"$instance\",uri!~\"/actuator.*|/admin.*\",status=~\"3..\"}[1m]))",
           "legendFormat": "3xx",
           "refId": "B"
         },
         {
-          "expr": "sum(rate(http_server_requests_seconds_count{job=~\"$job\",instance=~\"$instance\",status=~\"4..\"}[1m]))",
+          "expr": "sum(rate(http_server_requests_seconds_count{job=~\"$job\",instance=~\"$instance\",uri!~\"/actuator.*|/admin.*\",status=~\"4..\"}[1m]))",
           "legendFormat": "4xx",
           "refId": "C"
         },
         {
-          "expr": "sum(rate(http_server_requests_seconds_count{job=~\"$job\",instance=~\"$instance\",status=~\"5..\"}[1m]))",
+          "expr": "sum(rate(http_server_requests_seconds_count{job=~\"$job\",instance=~\"$instance\",uri!~\"/actuator.*|/admin.*\",status=~\"5..\"}[1m]))",
           "legendFormat": "5xx",
           "refId": "D"
         }
@@ -585,7 +585,7 @@
       },
       "targets": [
         {
-          "expr": "sum(increase(http_server_requests_seconds_bucket{job=~\"$job\",instance=~\"$instance\"}[$__interval])) by (le)",
+          "expr": "sum(increase(http_server_requests_seconds_bucket{job=~\"$job\",instance=~\"$instance\",uri!~\"/actuator.*|/admin.*\"}[$__interval])) by (le)",
           "format": "heatmap",
           "legendFormat": "{{le}}",
           "refId": "A"
@@ -646,12 +646,12 @@
       },
       "targets": [
         {
-          "expr": "sum(rate(http_server_requests_seconds_count{job=~\"$job\",instance=~\"$instance\",status=~\"4..\"}[5m]))",
+          "expr": "sum(rate(http_server_requests_seconds_count{job=~\"$job\",instance=~\"$instance\",uri!~\"/actuator.*|/admin.*\",status=~\"4..\"}[5m]))",
           "legendFormat": "4xx 클라이언트 에러(Client Errors)",
           "refId": "A"
         },
         {
-          "expr": "sum(rate(http_server_requests_seconds_count{job=~\"$job\",instance=~\"$instance\",status=~\"5..\"}[5m]))",
+          "expr": "sum(rate(http_server_requests_seconds_count{job=~\"$job\",instance=~\"$instance\",uri!~\"/actuator.*|/admin.*\",status=~\"5..\"}[5m]))",
           "legendFormat": "5xx 서버 에러(Server Errors)",
           "refId": "B"
         }
@@ -685,7 +685,7 @@
       },
       "targets": [
         {
-          "expr": "topk(10, sum(rate(http_server_requests_seconds_count{job=~\"$job\",instance=~\"$instance\",status=~\"[45]..\"}[5m])) by (uri, status))",
+          "expr": "topk(10, sum(rate(http_server_requests_seconds_count{job=~\"$job\",instance=~\"$instance\",uri!~\"/actuator.*|/admin.*\",status=~\"[45]..\"}[5m])) by (uri, status))",
           "format": "table",
           "instant": true,
           "refId": "A"
