@@ -10,11 +10,13 @@ COPY settings.gradle build.gradle ./
 COPY config config
 COPY webflux-dialogue/build.gradle webflux-dialogue/build.gradle
 RUN chmod +x gradlew
-RUN ./gradlew --no-daemon :webflux-dialogue:dependencies > /dev/null || true
+RUN --mount=type=cache,target=/home/gradle/.gradle \
+    ./gradlew --no-daemon --build-cache :webflux-dialogue:dependencies > /dev/null || true
 
 # 애플리케이션 JAR 빌드
 COPY webflux-dialogue webflux-dialogue
-RUN ./gradlew --no-daemon :webflux-dialogue:bootJar -x test
+RUN --mount=type=cache,target=/home/gradle/.gradle \
+    ./gradlew --no-daemon --build-cache :webflux-dialogue:bootJar -x test
 
 FROM eclipse-temurin:21-jre-jammy
 WORKDIR /app
