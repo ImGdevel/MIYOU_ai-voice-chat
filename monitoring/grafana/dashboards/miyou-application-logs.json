@@ -1,0 +1,306 @@
+{
+  "annotations": {
+    "list": []
+  },
+  "editable": true,
+  "fiscalYearStartMonth": 0,
+  "graphTooltip": 1,
+  "id": null,
+  "links": [],
+  "liveNow": false,
+  "panels": [
+    {
+      "collapsed": false,
+      "gridPos": { "h": 1, "w": 24, "x": 0, "y": 0 },
+      "id": 100,
+      "title": "로그 레벨 분포(Log Level Distribution)",
+      "type": "row"
+    },
+    {
+      "datasource": { "uid": "loki" },
+      "description": "시간대별 로그 레벨 분포를 표시합니다. ERROR, WARN, INFO, DEBUG 레벨의 비율을 시각화하여 애플리케이션의 건강 상태를 파악할 수 있습니다.",
+      "fieldConfig": {
+        "defaults": {
+          "color": { "mode": "palette-classic" },
+          "custom": {
+            "axisLabel": "",
+            "axisPlacement": "auto",
+            "barAlignment": 0,
+            "drawStyle": "line",
+            "fillOpacity": 30,
+            "gradientMode": "none",
+            "lineInterpolation": "smooth",
+            "lineWidth": 2,
+            "pointSize": 5,
+            "showPoints": "never",
+            "spanNulls": true,
+            "stacking": { "group": "A", "mode": "normal" }
+          },
+          "thresholds": {
+            "mode": "absolute",
+            "steps": [
+              { "color": "green", "value": null }
+            ]
+          },
+          "unit": "short"
+        },
+        "overrides": [
+          {
+            "matcher": { "id": "byName", "options": "ERROR" },
+            "properties": [{ "id": "color", "value": { "fixedColor": "red", "mode": "fixed" } }]
+          },
+          {
+            "matcher": { "id": "byName", "options": "WARN" },
+            "properties": [{ "id": "color", "value": { "fixedColor": "orange", "mode": "fixed" } }]
+          },
+          {
+            "matcher": { "id": "byName", "options": "INFO" },
+            "properties": [{ "id": "color", "value": { "fixedColor": "green", "mode": "fixed" } }]
+          },
+          {
+            "matcher": { "id": "byName", "options": "DEBUG" },
+            "properties": [{ "id": "color", "value": { "fixedColor": "blue", "mode": "fixed" } }]
+          }
+        ]
+      },
+      "gridPos": { "h": 8, "w": 24, "x": 0, "y": 1 },
+      "id": 1,
+      "options": {
+        "legend": { "calcs": ["sum", "mean"], "displayMode": "table", "placement": "right" },
+        "tooltip": { "mode": "multi", "sort": "desc" }
+      },
+      "targets": [
+        {
+          "expr": "sum by(level) (count_over_time({job=\"$job\", instance=~\"$instance\"} | json | level =~ \"ERROR|WARN|INFO|DEBUG\" [$__interval]))",
+          "refId": "A",
+          "legendFormat": "{{level}}"
+        }
+      ],
+      "title": "로그 레벨별 발생 추이(Log Level Trend)",
+      "type": "timeseries"
+    },
+    {
+      "collapsed": false,
+      "gridPos": { "h": 1, "w": 24, "x": 0, "y": 9 },
+      "id": 101,
+      "title": "에러 로그 분석(Error Log Analysis)",
+      "type": "row"
+    },
+    {
+      "datasource": { "uid": "loki" },
+      "description": "최근 발생한 ERROR 레벨 로그를 실시간으로 표시합니다. 스택 트레이스와 함께 에러 원인을 파악할 수 있습니다.",
+      "gridPos": { "h": 10, "w": 24, "x": 0, "y": 10 },
+      "id": 2,
+      "options": {
+        "dedupStrategy": "none",
+        "enableLogDetails": true,
+        "prettifyLogMessage": true,
+        "showCommonLabels": false,
+        "showLabels": false,
+        "showTime": true,
+        "sortOrder": "Descending",
+        "wrapLogMessage": true
+      },
+      "targets": [
+        {
+          "expr": "{job=\"$job\", instance=~\"$instance\"} | json | level=\"ERROR\"",
+          "refId": "A"
+        }
+      ],
+      "title": "ERROR 로그(Error Logs)",
+      "type": "logs"
+    },
+    {
+      "datasource": { "uid": "loki" },
+      "description": "ERROR 로그를 logger(클래스명) 기준으로 집계하여 어느 클래스에서 에러가 많이 발생하는지 파악합니다.",
+      "fieldConfig": {
+        "defaults": {
+          "color": { "mode": "palette-classic" },
+          "custom": { "hideFrom": { "legend": false, "tooltip": false, "viz": false } },
+          "unit": "short"
+        }
+      },
+      "gridPos": { "h": 8, "w": 12, "x": 0, "y": 20 },
+      "id": 3,
+      "options": {
+        "displayLabels": ["name", "percent"],
+        "legend": { "displayMode": "table", "placement": "right", "values": ["value", "percent"] },
+        "pieType": "pie",
+        "reduceOptions": { "calcs": ["sum"], "fields": "", "values": false },
+        "tooltip": { "mode": "single" }
+      },
+      "targets": [
+        {
+          "expr": "sum by(logger_name) (count_over_time({job=\"$job\", instance=~\"$instance\"} | json | level=\"ERROR\" [$__range]))",
+          "refId": "A",
+          "legendFormat": "{{logger_name}}"
+        }
+      ],
+      "title": "ERROR 발생 클래스 분포(Error by Logger)",
+      "type": "piechart"
+    },
+    {
+      "datasource": { "uid": "loki" },
+      "description": "WARN 로그를 logger(클래스명) 기준으로 집계하여 경고가 많이 발생하는 클래스를 파악합니다.",
+      "fieldConfig": {
+        "defaults": {
+          "color": { "mode": "palette-classic" },
+          "custom": { "hideFrom": { "legend": false, "tooltip": false, "viz": false } },
+          "unit": "short"
+        }
+      },
+      "gridPos": { "h": 8, "w": 12, "x": 12, "y": 20 },
+      "id": 4,
+      "options": {
+        "displayLabels": ["name", "percent"],
+        "legend": { "displayMode": "table", "placement": "right", "values": ["value", "percent"] },
+        "pieType": "pie",
+        "reduceOptions": { "calcs": ["sum"], "fields": "", "values": false },
+        "tooltip": { "mode": "single" }
+      },
+      "targets": [
+        {
+          "expr": "sum by(logger_name) (count_over_time({job=\"$job\", instance=~\"$instance\"} | json | level=\"WARN\" [$__range]))",
+          "refId": "A",
+          "legendFormat": "{{logger_name}}"
+        }
+      ],
+      "title": "WARN 발생 클래스 분포(Warning by Logger)",
+      "type": "piechart"
+    },
+    {
+      "collapsed": false,
+      "gridPos": { "h": 1, "w": 24, "x": 0, "y": 28 },
+      "id": 102,
+      "title": "애플리케이션 이벤트(Application Events)",
+      "type": "row"
+    },
+    {
+      "datasource": { "uid": "loki" },
+      "description": "메모리 추출 관련 로그를 표시합니다. '메모리 추출' 키워드가 포함된 로그를 필터링하여 메모리 추출 프로세스를 모니터링합니다.",
+      "gridPos": { "h": 8, "w": 12, "x": 0, "y": 29 },
+      "id": 5,
+      "options": {
+        "dedupStrategy": "none",
+        "enableLogDetails": true,
+        "prettifyLogMessage": true,
+        "showCommonLabels": false,
+        "showLabels": false,
+        "showTime": true,
+        "sortOrder": "Descending",
+        "wrapLogMessage": true
+      },
+      "targets": [
+        {
+          "expr": "{job=\"$job\", instance=~\"$instance\"} |~ \"메모리 추출|memory extraction\"",
+          "refId": "A"
+        }
+      ],
+      "title": "메모리 추출 로그(Memory Extraction Logs)",
+      "type": "logs"
+    },
+    {
+      "datasource": { "uid": "loki" },
+      "description": "LLM 호출 관련 로그를 표시합니다. LLM 요청 및 응답 처리 과정을 모니터링합니다.",
+      "gridPos": { "h": 8, "w": 12, "x": 12, "y": 29 },
+      "id": 6,
+      "options": {
+        "dedupStrategy": "none",
+        "enableLogDetails": true,
+        "prettifyLogMessage": true,
+        "showCommonLabels": false,
+        "showLabels": false,
+        "showTime": true,
+        "sortOrder": "Descending",
+        "wrapLogMessage": true
+      },
+      "targets": [
+        {
+          "expr": "{job=\"$job\", instance=~\"$instance\"} |~ \"LLM|OpenAI|Claude|GPT\"",
+          "refId": "A"
+        }
+      ],
+      "title": "LLM 호출 로그(LLM Request Logs)",
+      "type": "logs"
+    },
+    {
+      "collapsed": false,
+      "gridPos": { "h": 1, "w": 24, "x": 0, "y": 37 },
+      "id": 103,
+      "title": "전체 로그 스트림(Full Log Stream)",
+      "type": "row"
+    },
+    {
+      "datasource": { "uid": "loki" },
+      "description": "모든 애플리케이션 로그를 실시간으로 표시합니다. 로그 검색 및 필터링을 통해 특정 이벤트를 추적할 수 있습니다.",
+      "gridPos": { "h": 12, "w": 24, "x": 0, "y": 38 },
+      "id": 7,
+      "options": {
+        "dedupStrategy": "none",
+        "enableLogDetails": true,
+        "prettifyLogMessage": true,
+        "showCommonLabels": false,
+        "showLabels": true,
+        "showTime": true,
+        "sortOrder": "Descending",
+        "wrapLogMessage": true
+      },
+      "targets": [
+        {
+          "expr": "{job=\"$job\", instance=~\"$instance\"}",
+          "refId": "A"
+        }
+      ],
+      "title": "전체 로그(All Logs)",
+      "type": "logs"
+    }
+  ],
+  "refresh": "30s",
+  "schemaVersion": 38,
+  "style": "dark",
+  "tags": ["miyou", "logs", "loki"],
+  "templating": {
+    "list": [
+      {
+        "current": { "selected": false, "text": "miyou-dialogue", "value": "miyou-dialogue" },
+        "datasource": { "type": "prometheus", "uid": "prometheus" },
+        "hide": 0,
+        "includeAll": false,
+        "label": "Job",
+        "multi": false,
+        "name": "job",
+        "options": [],
+        "query": "label_values(up, job)",
+        "refresh": 1,
+        "regex": "",
+        "skipUrlSync": false,
+        "sort": 0,
+        "type": "query"
+      },
+      {
+        "allValue": ".*",
+        "current": { "selected": true, "text": "All", "value": "$__all" },
+        "datasource": { "type": "prometheus", "uid": "prometheus" },
+        "hide": 0,
+        "includeAll": true,
+        "label": "Instance",
+        "multi": true,
+        "name": "instance",
+        "options": [],
+        "query": "label_values(up{job=~\"$job\"}, instance)",
+        "refresh": 1,
+        "regex": "",
+        "skipUrlSync": false,
+        "sort": 0,
+        "type": "query"
+      }
+    ]
+  },
+  "time": { "from": "now-6h", "to": "now" },
+  "timepicker": {},
+  "timezone": "browser",
+  "title": "MIYOU - Application Logs",
+  "uid": "miyou-application-logs",
+  "version": 1,
+  "weekStart": ""
+}
