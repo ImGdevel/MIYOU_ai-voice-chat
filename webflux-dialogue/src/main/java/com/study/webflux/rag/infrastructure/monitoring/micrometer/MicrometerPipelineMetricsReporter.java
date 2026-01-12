@@ -1,0 +1,184 @@
+package com.study.webflux.rag.infrastructure.monitoring.micrometer;
+
+import java.util.concurrent.TimeUnit;
+
+import org.springframework.stereotype.Component;
+
+import com.study.webflux.rag.application.monitoring.monitor.DialoguePipelineTracker.PipelineSummary;
+import com.study.webflux.rag.application.monitoring.monitor.DialoguePipelineTracker.StageSnapshot;
+import com.study.webflux.rag.application.monitoring.monitor.PipelineMetricsReporter;
+import com.study.webflux.rag.domain.monitoring.model.DialoguePipelineStage;
+import io.micrometer.core.instrument.Counter;
+import io.micrometer.core.instrument.MeterRegistry;
+import io.micrometer.core.instrument.Timer;
+
+/**
+ * Micrometer를 사용하여 파이프라인 메트릭을 Prometheus로 내보내는 Reporter입니다.
+ */
+@Component
+public class MicrometerPipelineMetricsReporter implements PipelineMetricsReporter {
+
+	private static final String METRIC_PREFIX = "dialogue.pipeline";
+
+	private final MeterRegistry meterRegistry;
+
+	public MicrometerPipelineMetricsReporter(MeterRegistry meterRegistry) {
+		this.meterRegistry = meterRegistry;
+	}
+
+	@Override
+	public void report(PipelineSummary summary) {
+		recordPipelineMetrics(summary);
+		recordStageMetrics(summary);
+		recordLlmMetrics(summary);
+		recordResponseLatencyMetrics(summary);
+	}
+
+	private void recordPipelineMetrics(PipelineSummary summary) {
+		String status = summary.status().name().toLowerCase();
+
+		// 파이프라인 실행 시간
+		Timer.builder(METRIC_PREFIX + ".duration")
+			.tag("status", status)
+			.description("Total pipeline execution time")
+			.register(meterRegistry)
+			.record(summary.durationMillis(), TimeUnit.MILLISECONDS);
+
+		// 파이프라인 실행 횟수
+		Counter.builder(METRIC_PREFIX + ".executions")
+			.tag("status", status)
+			.description("Number of pipeline executions")
+			.register(meterRegistry)
+			.increment();
+
+		// 입력 길이
+		Object inputLength = summary.attributes().get("input.length");
+		if (inputLength instanceof Number) {
+			meterRegistry.summary(METRIC_PREFIX + ".input.length")
+				.record(((Number) inputLength).doubleValue());
+		}
+	}
+
+	private void recordStageMetrics(PipelineSummary summary) {
+		for (StageSnapshot stage : summary.stages()) {
+			String stageName = stage.stage().name().toLowerCase();
+			String stageStatus = stage.status().name().toLowerCase();
+
+			// 스테이지 실행 시간
+			if (stage.durationMillis() >= 0) {
+				Timer.builder(METRIC_PREFIX + ".stage.duration")
+					.tag("stage", stageName)
+					.tag("status", stageStatus)
+					.description("Stage execution time")
+					.register(meterRegistry)
+					.record(stage.durationMillis(), TimeUnit.MILLISECONDS);
+			}
+
+			// 스테이지별 속성 메트릭
+			recordStageAttributes(stage);
+		}
+	}
+
+	private void recordStageAttributes(StageSnapshot stage) {
+		String stageName = stage.stage().name().toLowerCase();
+
+		// MEMORY_RETRIEVAL: 검색된 메모리 수
+		if (stage.stage() == DialoguePipelineStage.MEMORY_RETRIEVAL) {
+			recordCounterFromAttribute(stage,
+				"memory.count",
+				METRIC_PREFIX + ".memory.retrieved",
+				stageName);
+		}
+
+		// RETRIEVAL: 검색된 문서 수
+		if (stage.stage() == DialoguePipelineStage.RETRIEVAL) {
+			recordCounterFromAttribute(stage,
+				"document.count",
+				METRIC_PREFIX + ".documents.retrieved",
+				stageName);
+		}
+
+		// SENTENCE_ASSEMBLY: 생성된 문장 수
+		if (stage.stage() == DialoguePipelineStage.SENTENCE_ASSEMBLY) {
+			recordCounterFromAttribute(stage,
+				"sentence.count",
+				METRIC_PREFIX + ".sentences.generated",
+				stageName);
+		}
+
+		// TTS_SYNTHESIS: 오디오 청크 수
+		if (stage.stage() == DialoguePipelineStage.TTS_SYNTHESIS) {
+			recordCounterFromAttribute(stage,
+				"audio.chunks",
+				METRIC_PREFIX + ".audio.chunks",
+				stageName);
+		}
+	}
+
+	private void recordCounterFromAttribute(StageSnapshot stage,
+		String attrKey,
+		String metricName,
+		String stageName) {
+		Object value = stage.attributes().get(attrKey);
+		if (value instanceof Number) {
+			meterRegistry.summary(metricName)
+				.record(((Number) value).doubleValue());
+		}
+	}
+
+	private void recordLlmMetrics(PipelineSummary summary) {
+		for (StageSnapshot stage : summary.stages()) {
+			if (stage.stage() != DialoguePipelineStage.LLM_COMPLETION) {
+				continue;
+			}
+
+			// 모델명
+			Object model = stage.attributes().get("model");
+			String modelTag = model != null ? model.toString() : "unknown";
+
+			// 토큰 사용량
+			recordTokenCounter(stage, "prompt.tokens", "prompt", modelTag);
+			recordTokenCounter(stage, "completion.tokens", "completion", modelTag);
+			recordTokenCounter(stage, "total.tokens", "total", modelTag);
+
+			// 비용 (있는 경우)
+			Object cost = stage.attributes().get("cost.usd");
+			if (cost instanceof Number) {
+				meterRegistry.gauge("llm.cost.usd", ((Number) cost).doubleValue());
+			}
+		}
+	}
+
+	private void recordTokenCounter(StageSnapshot stage,
+		String attrKey,
+		String tokenType,
+		String model) {
+		Object value = stage.attributes().get(attrKey);
+		if (value instanceof Number) {
+			Counter.builder("llm.tokens")
+				.tag("type", tokenType)
+				.tag("model", model)
+				.description("LLM token usage")
+				.register(meterRegistry)
+				.increment(((Number) value).doubleValue());
+		}
+	}
+
+	private void recordResponseLatencyMetrics(PipelineSummary summary) {
+		// 첫 응답 지연 시간 (TTFB)
+		if (summary.firstResponseLatencyMillis() != null) {
+			Timer.builder(METRIC_PREFIX + ".response.first")
+				.description("Time to first response")
+				.register(meterRegistry)
+				.record(summary.firstResponseLatencyMillis(), TimeUnit.MILLISECONDS);
+		}
+
+		// 마지막 응답 지연 시간 (TTLB)
+		if (summary.lastResponseLatencyMillis() != null) {
+			Timer.builder(METRIC_PREFIX + ".response.last")
+				.description("Time to last response")
+				.register(meterRegistry)
+				.record(summary.lastResponseLatencyMillis(), TimeUnit.MILLISECONDS);
+		}
+	}
+}

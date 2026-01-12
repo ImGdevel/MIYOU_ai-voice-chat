@@ -1,0 +1,68 @@
+global:
+  resolve_timeout: 5m
+  # Slack webhook URL (환경변수로 설정)
+  slack_api_url: '${SLACK_WEBHOOK_URL}'
+
+route:
+  group_by: ['alertname', 'severity']
+  group_wait: 30s
+  group_interval: 5m
+  repeat_interval: 4h
+  receiver: 'default-receiver'
+  routes:
+    # Critical 알림은 즉시 전송
+    - match:
+        severity: critical
+      receiver: 'critical-receiver'
+      group_wait: 10s
+      repeat_interval: 1h
+
+    # Warning 알림
+    - match:
+        severity: warning
+      receiver: 'warning-receiver'
+      group_wait: 1m
+      repeat_interval: 4h
+
+receivers:
+  - name: 'default-receiver'
+    slack_configs:
+      - channel: '#miyou-alerts'
+        send_resolved: true
+        title: '{{ .Status | toUpper }} {{ if eq .Status "firing" }}🔥{{ else }}✅{{ end }} {{ .CommonLabels.alertname }}'
+        text: |
+          *Summary:* {{ .CommonAnnotations.summary }}
+          *Description:* {{ .CommonAnnotations.description }}
+          *Severity:* {{ .CommonLabels.severity }}
+
+  - name: 'critical-receiver'
+    slack_configs:
+      - channel: '#miyou-alerts-critical'
+        send_resolved: true
+        color: '{{ if eq .Status "firing" }}danger{{ else }}good{{ end }}'
+        title: '🚨 CRITICAL {{ .Status | toUpper }} - {{ .CommonLabels.alertname }}'
+        text: |
+          *Summary:* {{ .CommonAnnotations.summary }}
+          *Description:* {{ .CommonAnnotations.description }}
+
+          *Labels:*
+          {{ range .Labels.SortedPairs }}• {{ .Name }}: {{ .Value }}
+          {{ end }}
+
+  - name: 'warning-receiver'
+    slack_configs:
+      - channel: '#miyou-alerts'
+        send_resolved: true
+        color: '{{ if eq .Status "firing" }}warning{{ else }}good{{ end }}'
+        title: '⚠️ WARNING {{ .Status | toUpper }} - {{ .CommonLabels.alertname }}'
+        text: |
+          *Summary:* {{ .CommonAnnotations.summary }}
+          *Description:* {{ .CommonAnnotations.description }}
+
+inhibit_rules:
+  # Critical 알림이 발생하면 동일 alertname의 Warning 알림 억제
+  - source_match:
+      severity: 'critical'
+    target_match:
+      severity: 'warning'
+    equal: ['alertname']
