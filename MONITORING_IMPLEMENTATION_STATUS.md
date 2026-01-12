@@ -578,16 +578,15 @@ Phase 1의 모든 작업이 완료되었습니다:
 4. ✅ DialoguePostProcessingService Conversation 통합
 5. ✅ `miyou-application-logs.json` 대시보드 생성
 
+**Phase 1D - Grafana Dashboards**:
+1. ✅ `miyou-pipeline-bottleneck.json` 대시보드 생성 (5 Rows, 12 panels)
+2. ✅ `miyou-rag-quality.json` 대시보드 생성 (7 Rows, 16 panels)
+3. ✅ `miyou-application-logs.json` 대시보드 생성 (4 Rows, 7 panels)
+
 **다음 검증 단계**:
 - 애플리케이션 시작 후 `/actuator/prometheus` 확인
 - 메트릭 노출 검증
 - Grafana 대시보드 import 및 검증
-
-### Grafana 대시보드 생성 (다음 단계)
-
-1. [ ] `miyou-pipeline-bottleneck.json` (5 Rows, 12 패널)
-2. [ ] `miyou-rag-quality.json` (7 Rows, 15 패널)
-3. ✅ `miyou-application-logs.json` (4 Rows, 7 패널)
 
 ### Phase 2: Cost & UX Metrics (향후 작업)
 
@@ -611,10 +610,14 @@ Phase 1의 모든 작업이 완료되었습니다:
 **Phase 1C (3개)**:
 5. ✅ [LlmMetricsConfiguration.java](webflux-dialogue/src/main/java/com/study/webflux/rag/infrastructure/monitoring/config/LlmMetricsConfiguration.java)
 6. ✅ [ConversationMetricsConfiguration.java](webflux-dialogue/src/main/java/com/study/webflux/rag/infrastructure/monitoring/config/ConversationMetricsConfiguration.java)
-7. ✅ [miyou-application-logs.json](monitoring/grafana/dashboards/miyou-application-logs.json)
+
+**Phase 1D - Grafana Dashboards (3개)**:
+7. ✅ [miyou-pipeline-bottleneck.json](monitoring/grafana/dashboards/miyou-pipeline-bottleneck.json)
+8. ✅ [miyou-rag-quality.json](monitoring/grafana/dashboards/miyou-rag-quality.json)
+9. ✅ [miyou-application-logs.json](monitoring/grafana/dashboards/miyou-application-logs.json)
 
 **문서**:
-8. ✅ [MONITORING_IMPLEMENTATION_STATUS.md](MONITORING_IMPLEMENTATION_STATUS.md) (이 문서)
+10. ✅ [MONITORING_IMPLEMENTATION_STATUS.md](MONITORING_IMPLEMENTATION_STATUS.md) (이 문서)
 
 ### 수정된 파일 (4개)
 
@@ -694,12 +697,157 @@ sum(rag_memory_filtered_count) / sum(rag_memory_candidate_count) * 100
 sum(memory_extraction_success) / (sum(memory_extraction_success) + sum(memory_extraction_failure)) * 100
 ```
 
-### 3. Grafana 시각화 확인
+### 3. Grafana 대시보드 Import
 
-대시보드 생성 후:
+**1. miyou-pipeline-bottleneck.json**:
+- Grafana → Dashboards → Import → Upload JSON file
+- UID: `miyou-pipeline-bottleneck`
+- 5 Rows, 12 Panels 구성
+
+**2. miyou-rag-quality.json**:
+- Grafana → Dashboards → Import → Upload JSON file
+- UID: `miyou-rag-quality`
+- 7 Rows, 16 Panels 구성
+
+**3. miyou-application-logs.json**:
+- Grafana → Dashboards → Import → Upload JSON file
+- UID: `miyou-application-logs`
+- 4 Rows, 7 Panels 구성
+
+**시각화 확인**:
 - 모든 패널 데이터 로딩 확인
 - 시간 범위 변경 시 쿼리 정상 작동 확인
 - 새로고침 시 메트릭 업데이트 확인
+
+---
+
+## 📊 Grafana 대시보드 구성
+
+### miyou-pipeline-bottleneck.json
+
+**목적**: 파이프라인 병목 지점 분석 및 백프레셔 모니터링
+
+**구성**:
+
+**Row 1: Stage Gap 분석 (2 panels)**
+1. Stage 전환 시간 p95 - Time series chart
+   - Stage 간 전환 시간의 95 백분위수
+   - 가장 느린 전환 구간 식별
+2. Top 5 병목 Stage 전환 - Table
+   - 평균 전환 시간이 가장 긴 5개 전환
+   - From/To Stage 표시
+
+**Row 2: TTS Backpressure 분석 (4 panels)**
+3. TTS 엔드포인트별 활성 요청 - Time series chart
+   - 각 엔드포인트의 동시 처리 요청 수
+4. TTS 엔드포인트 상태 - Stat panel
+   - HEALTHY/TEMP_FAIL/PERM_FAIL/CLIENT_ERROR 상태 표시
+5. TTS Queue 크기 - Stacked time series
+   - 엔드포인트별 대기 중인 요청 수
+6. 정상 TTS 엔드포인트 수 - Stat panel
+   - HEALTHY 상태 엔드포인트 개수
+
+**Row 3: Pipeline Backpressure 분석 (2 panels)**
+7. Sentence Buffer 크기 - Time series chart
+   - 문장 버퍼의 실시간 크기
+8. Stage별 데이터 크기 - Time series chart
+   - 각 Stage에서 처리하는 데이터 크기 (bytes)
+
+**Row 4: 전체 파이프라인 흐름 (2 panels)**
+9. Stage별 평균 실행 시간 - Stacked time series
+   - 각 Stage가 전체 레이턴시에 기여하는 비중
+10. 파이프라인 처리량 - Stat panel
+    - 초당 완료된 대화 수 (RPS)
+
+**Row 5: Reactor Netty 백프레셔 (2 panels)**
+11. Event Loop 대기 작업 수 - Time series chart
+    - Event Loop에 큐잉된 작업 수
+12. 활성 HTTP 연결 수 - Time series chart
+    - Reactor Netty의 동시 연결 수
+
+---
+
+### miyou-rag-quality.json
+
+**목적**: RAG 검색 품질 및 메모리 추출 성능 모니터링
+
+**구성**:
+
+**Row 1: 메모리 검색 품질 (3 panels)**
+1. 메모리 유사도 점수 분포 - Time series chart
+   - p50, p75, p90, p95, p99 백분위수 표시
+2. 평균 유사도 점수 - Stat panel
+   - 0.7 이상이 목표 (green threshold)
+3. 검색된 메모리 개수 - Stat panel
+   - 평균 검색 결과 개수
+
+**Row 2: 메모리 중요도 분석 (2 panels)**
+4. 메모리 중요도 점수 분포 - Time series chart
+   - p50, p75, p90, p95, p99 백분위수 표시
+5. 평균 중요도 점수 - Stat panel
+   - 검색된 메모리의 품질 지표
+
+**Row 3: 메모리 필터링 분석 (2 panels)**
+6. 메모리 필터링 비율 - Time series chart
+   - 후보 대비 필터링된 메모리 비율 (%)
+7. 후보/필터링 메모리 개수 - Time series chart
+   - Candidate vs Filtered 개수 비교
+
+**Row 4: 메모리 타입 분포 (2 panels)**
+8. 메모리 타입 분포 - Pie chart
+   - Experiential vs Factual 비율
+9. 메모리 타입별 검색 추이 - Stacked time series
+   - 시간대별 타입별 검색 빈도
+
+**Row 5: 메모리 추출 성능 (3 panels)**
+10. 메모리 추출 성공률 - Stat panel
+    - 성공 / (성공 + 실패), 95% 이상 목표
+11. 분당 추출 빈도 - Stat panel
+    - 분당 메모리 추출 트리거 횟수
+12. 메모리 추출 성공/실패 추이 - Stacked time series
+    - 시간대별 성공/실패 패턴
+
+**Row 6: 추출된 메모리 품질 (2 panels)**
+13. 추출된 메모리 중요도 분포 - Time series chart
+    - 추출된 메모리의 p50-p99 중요도 점수
+14. 평균 추출 중요도 점수 - Stat panel
+    - 추출 품질 평가 지표
+
+**Row 7: 추출된 메모리 타입 분포 (2 panels)**
+15. 추출 메모리 타입 분포 - Pie chart
+    - Experiential vs Factual 추출 비율
+16. 타입별 메모리 추출 추이 - Stacked time series
+    - 시간대별 타입별 추출 빈도
+
+---
+
+### miyou-application-logs.json
+
+**목적**: 애플리케이션 로그 분석 및 에러 추적
+
+**구성** (이전에 구현됨):
+
+**Row 1: 로그 레벨 분포 (1 panel)**
+1. 로그 레벨별 발생 추이 - Stacked time series
+   - ERROR/WARN/INFO/DEBUG 적층 차트
+
+**Row 2: 에러 로그 분석 (3 panels)**
+2. ERROR 로그 - Logs panel
+   - 실시간 에러 로그 스트림
+3. ERROR 발생 클래스 분포 - Pie chart
+   - logger_name 기준 에러 분포
+4. WARN 발생 클래스 분포 - Pie chart
+   - logger_name 기준 경고 분포
+
+**Row 3: 애플리케이션 이벤트 (2 panels)**
+5. 메모리 추출 로그 - Logs panel
+   - "메모리 추출|memory extraction" 키워드 필터링
+6. LLM 호출 로그 - Logs panel
+   - "LLM|OpenAI|Claude|GPT" 키워드 필터링
+
+**Row 4: 전체 로그 스트림 (1 panel)**
+7. 전체 로그 - Logs panel
+   - 모든 애플리케이션 로그 실시간 표시
 
 ---
 

@@ -1,0 +1,779 @@
+{
+  "annotations": {
+    "list": []
+  },
+  "editable": true,
+  "fiscalYearStartMonth": 0,
+  "graphTooltip": 1,
+  "id": null,
+  "links": [],
+  "liveNow": false,
+  "panels": [
+    {
+      "collapsed": false,
+      "gridPos": { "h": 1, "w": 24, "x": 0, "y": 0 },
+      "id": 100,
+      "title": "메모리 검색 품질 (Memory Retrieval Quality)",
+      "type": "row"
+    },
+    {
+      "datasource": { "uid": "prometheus" },
+      "description": "검색된 메모리의 유사도 점수 분포(p50, p75, p90, p95, p99)를 표시합니다. 높은 유사도는 검색 품질이 좋음을 의미합니다.",
+      "fieldConfig": {
+        "defaults": {
+          "color": { "mode": "palette-classic" },
+          "custom": {
+            "axisLabel": "Similarity Score",
+            "axisPlacement": "auto",
+            "fillOpacity": 20,
+            "lineWidth": 2,
+            "spanNulls": false
+          },
+          "thresholds": {
+            "mode": "absolute",
+            "steps": [
+              { "color": "red", "value": null },
+              { "color": "yellow", "value": 0.5 },
+              { "color": "green", "value": 0.7 }
+            ]
+          },
+          "unit": "percentunit",
+          "min": 0,
+          "max": 1
+        }
+      },
+      "gridPos": { "h": 8, "w": 12, "x": 0, "y": 1 },
+      "id": 1,
+      "options": {
+        "legend": { "calcs": ["mean", "lastNotNull"], "displayMode": "table", "placement": "bottom" },
+        "tooltip": { "mode": "multi" }
+      },
+      "targets": [
+        {
+          "expr": "rag_memory_similarity_score{job=~\"$job\", instance=~\"$instance\", quantile=\"0.5\"}",
+          "legendFormat": "p50",
+          "refId": "A"
+        },
+        {
+          "expr": "rag_memory_similarity_score{job=~\"$job\", instance=~\"$instance\", quantile=\"0.75\"}",
+          "legendFormat": "p75",
+          "refId": "B"
+        },
+        {
+          "expr": "rag_memory_similarity_score{job=~\"$job\", instance=~\"$instance\", quantile=\"0.9\"}",
+          "legendFormat": "p90",
+          "refId": "C"
+        },
+        {
+          "expr": "rag_memory_similarity_score{job=~\"$job\", instance=~\"$instance\", quantile=\"0.95\"}",
+          "legendFormat": "p95",
+          "refId": "D"
+        },
+        {
+          "expr": "rag_memory_similarity_score{job=~\"$job\", instance=~\"$instance\", quantile=\"0.99\"}",
+          "legendFormat": "p99",
+          "refId": "E"
+        }
+      ],
+      "title": "메모리 유사도 점수 분포 (Memory Similarity Score Distribution)",
+      "type": "timeseries"
+    },
+    {
+      "datasource": { "uid": "prometheus" },
+      "description": "평균 메모리 유사도 점수를 표시합니다. 0.7 이상이 목표이며, 낮을 경우 검색 품질 개선이 필요합니다.",
+      "fieldConfig": {
+        "defaults": {
+          "color": { "mode": "thresholds" },
+          "thresholds": {
+            "mode": "absolute",
+            "steps": [
+              { "color": "red", "value": null },
+              { "color": "yellow", "value": 0.5 },
+              { "color": "green", "value": 0.7 }
+            ]
+          },
+          "unit": "percentunit",
+          "min": 0,
+          "max": 1
+        }
+      },
+      "gridPos": { "h": 8, "w": 6, "x": 12, "y": 1 },
+      "id": 2,
+      "options": {
+        "colorMode": "background",
+        "graphMode": "area",
+        "justifyMode": "center",
+        "orientation": "auto",
+        "reduceOptions": {
+          "calcs": ["lastNotNull"],
+          "fields": "",
+          "values": false
+        },
+        "textMode": "value"
+      },
+      "targets": [
+        {
+          "expr": "avg(rag_memory_similarity_score_mean{job=~\"$job\", instance=~\"$instance\"})",
+          "refId": "A"
+        }
+      ],
+      "title": "평균 유사도 점수 (Average Similarity Score)",
+      "type": "stat"
+    },
+    {
+      "datasource": { "uid": "prometheus" },
+      "description": "검색된 메모리의 평균 개수를 표시합니다. 적절한 메모리 개수는 응답 품질과 처리 속도의 균형을 맞춥니다.",
+      "fieldConfig": {
+        "defaults": {
+          "color": { "mode": "palette-classic" },
+          "thresholds": {
+            "mode": "absolute",
+            "steps": [
+              { "color": "green", "value": null }
+            ]
+          },
+          "unit": "short"
+        }
+      },
+      "gridPos": { "h": 8, "w": 6, "x": 18, "y": 1 },
+      "id": 3,
+      "options": {
+        "colorMode": "value",
+        "graphMode": "area",
+        "justifyMode": "center",
+        "orientation": "auto",
+        "reduceOptions": {
+          "calcs": ["lastNotNull"],
+          "fields": "",
+          "values": false
+        },
+        "textMode": "value"
+      },
+      "targets": [
+        {
+          "expr": "avg(rag_memory_similarity_score_count{job=~\"$job\", instance=~\"$instance\"})",
+          "refId": "A"
+        }
+      ],
+      "title": "검색된 메모리 개수 (Retrieved Memory Count)",
+      "type": "stat"
+    },
+    {
+      "collapsed": false,
+      "gridPos": { "h": 1, "w": 24, "x": 0, "y": 9 },
+      "id": 101,
+      "title": "메모리 중요도 분석 (Memory Importance Analysis)",
+      "type": "row"
+    },
+    {
+      "datasource": { "uid": "prometheus" },
+      "description": "검색된 메모리의 중요도 점수 분포를 표시합니다. 높은 중요도는 사용자에게 의미 있는 메모리가 검색되었음을 나타냅니다.",
+      "fieldConfig": {
+        "defaults": {
+          "color": { "mode": "palette-classic" },
+          "custom": {
+            "axisLabel": "Importance Score",
+            "axisPlacement": "auto",
+            "fillOpacity": 20,
+            "lineWidth": 2,
+            "spanNulls": false
+          },
+          "unit": "percentunit",
+          "min": 0,
+          "max": 1
+        }
+      },
+      "gridPos": { "h": 8, "w": 16, "x": 0, "y": 10 },
+      "id": 4,
+      "options": {
+        "legend": { "calcs": ["mean", "lastNotNull"], "displayMode": "table", "placement": "bottom" },
+        "tooltip": { "mode": "multi" }
+      },
+      "targets": [
+        {
+          "expr": "rag_memory_importance_score{job=~\"$job\", instance=~\"$instance\", quantile=\"0.5\"}",
+          "legendFormat": "p50",
+          "refId": "A"
+        },
+        {
+          "expr": "rag_memory_importance_score{job=~\"$job\", instance=~\"$instance\", quantile=\"0.75\"}",
+          "legendFormat": "p75",
+          "refId": "B"
+        },
+        {
+          "expr": "rag_memory_importance_score{job=~\"$job\", instance=~\"$instance\", quantile=\"0.9\"}",
+          "legendFormat": "p90",
+          "refId": "C"
+        },
+        {
+          "expr": "rag_memory_importance_score{job=~\"$job\", instance=~\"$instance\", quantile=\"0.95\"}",
+          "legendFormat": "p95",
+          "refId": "D"
+        },
+        {
+          "expr": "rag_memory_importance_score{job=~\"$job\", instance=~\"$instance\", quantile=\"0.99\"}",
+          "legendFormat": "p99",
+          "refId": "E"
+        }
+      ],
+      "title": "메모리 중요도 점수 분포 (Memory Importance Score Distribution)",
+      "type": "timeseries"
+    },
+    {
+      "datasource": { "uid": "prometheus" },
+      "description": "평균 메모리 중요도 점수를 표시합니다. 검색된 메모리의 품질을 평가하는 지표입니다.",
+      "fieldConfig": {
+        "defaults": {
+          "color": { "mode": "thresholds" },
+          "thresholds": {
+            "mode": "absolute",
+            "steps": [
+              { "color": "red", "value": null },
+              { "color": "yellow", "value": 0.4 },
+              { "color": "green", "value": 0.6 }
+            ]
+          },
+          "unit": "percentunit",
+          "min": 0,
+          "max": 1
+        }
+      },
+      "gridPos": { "h": 8, "w": 8, "x": 16, "y": 10 },
+      "id": 5,
+      "options": {
+        "colorMode": "background",
+        "graphMode": "area",
+        "justifyMode": "center",
+        "orientation": "auto",
+        "reduceOptions": {
+          "calcs": ["lastNotNull"],
+          "fields": "",
+          "values": false
+        },
+        "textMode": "value"
+      },
+      "targets": [
+        {
+          "expr": "avg(rag_memory_importance_score_mean{job=~\"$job\", instance=~\"$instance\"})",
+          "refId": "A"
+        }
+      ],
+      "title": "평균 중요도 점수 (Average Importance Score)",
+      "type": "stat"
+    },
+    {
+      "collapsed": false,
+      "gridPos": { "h": 1, "w": 24, "x": 0, "y": 18 },
+      "id": 102,
+      "title": "메모리 필터링 분석 (Memory Filtering Analysis)",
+      "type": "row"
+    },
+    {
+      "datasource": { "uid": "prometheus" },
+      "description": "메모리 필터링 비율을 표시합니다. 후보 메모리 중 최종적으로 필터링된 비율을 계산하여 검색 효율성을 평가합니다.",
+      "fieldConfig": {
+        "defaults": {
+          "color": { "mode": "palette-classic" },
+          "custom": {
+            "axisLabel": "Filtering Rate (%)",
+            "axisPlacement": "auto",
+            "fillOpacity": 30,
+            "lineWidth": 2,
+            "spanNulls": false
+          },
+          "unit": "percent"
+        }
+      },
+      "gridPos": { "h": 7, "w": 12, "x": 0, "y": 19 },
+      "id": 6,
+      "options": {
+        "legend": { "calcs": ["mean"], "displayMode": "list", "placement": "bottom" },
+        "tooltip": { "mode": "single" }
+      },
+      "targets": [
+        {
+          "expr": "100 * sum(rate(rag_memory_filtered_count{job=~\"$job\", instance=~\"$instance\"}[5m])) / clamp_min(sum(rate(rag_memory_candidate_count{job=~\"$job\", instance=~\"$instance\"}[5m])), 0.001)",
+          "legendFormat": "Filtering Rate",
+          "refId": "A"
+        }
+      ],
+      "title": "메모리 필터링 비율 (Memory Filtering Rate)",
+      "type": "timeseries"
+    },
+    {
+      "datasource": { "uid": "prometheus" },
+      "description": "후보 메모리와 필터링된 메모리의 개수를 비교합니다. 필터링 전후의 메모리 개수 변화를 추적합니다.",
+      "fieldConfig": {
+        "defaults": {
+          "color": { "mode": "palette-classic" },
+          "custom": {
+            "axisLabel": "Memory Count",
+            "axisPlacement": "auto",
+            "fillOpacity": 20,
+            "lineWidth": 2,
+            "spanNulls": false
+          },
+          "unit": "short"
+        }
+      },
+      "gridPos": { "h": 7, "w": 12, "x": 12, "y": 19 },
+      "id": 7,
+      "options": {
+        "legend": { "calcs": ["mean"], "displayMode": "table", "placement": "bottom" },
+        "tooltip": { "mode": "multi" }
+      },
+      "targets": [
+        {
+          "expr": "rate(rag_memory_candidate_count{job=~\"$job\", instance=~\"$instance\"}[5m])",
+          "legendFormat": "Candidate Count",
+          "refId": "A"
+        },
+        {
+          "expr": "rate(rag_memory_filtered_count{job=~\"$job\", instance=~\"$instance\"}[5m])",
+          "legendFormat": "Filtered Count",
+          "refId": "B"
+        }
+      ],
+      "title": "후보/필터링 메모리 개수 (Candidate vs Filtered Memory)",
+      "type": "timeseries"
+    },
+    {
+      "collapsed": false,
+      "gridPos": { "h": 1, "w": 24, "x": 0, "y": 26 },
+      "id": 103,
+      "title": "메모리 타입 분포 (Memory Type Distribution)",
+      "type": "row"
+    },
+    {
+      "datasource": { "uid": "prometheus" },
+      "description": "검색된 메모리의 타입별 분포를 파이 차트로 표시합니다. Experiential과 Factual 메모리의 비율을 파악할 수 있습니다.",
+      "fieldConfig": {
+        "defaults": {
+          "color": { "mode": "palette-classic" },
+          "custom": { "hideFrom": { "legend": false, "tooltip": false, "viz": false } },
+          "unit": "short"
+        },
+        "overrides": [
+          {
+            "matcher": { "id": "byName", "options": "experiential" },
+            "properties": [{ "id": "color", "value": { "fixedColor": "blue", "mode": "fixed" } }]
+          },
+          {
+            "matcher": { "id": "byName", "options": "factual" },
+            "properties": [{ "id": "color", "value": { "fixedColor": "green", "mode": "fixed" } }]
+          }
+        ]
+      },
+      "gridPos": { "h": 8, "w": 12, "x": 0, "y": 27 },
+      "id": 8,
+      "options": {
+        "displayLabels": ["name", "percent"],
+        "legend": { "displayMode": "table", "placement": "right", "values": ["value", "percent"] },
+        "pieType": "pie",
+        "reduceOptions": { "calcs": ["lastNotNull"], "fields": "", "values": false },
+        "tooltip": { "mode": "single" }
+      },
+      "targets": [
+        {
+          "expr": "sum(rag_memory_count{job=~\"$job\", instance=~\"$instance\"}) by (memory_type)",
+          "legendFormat": "{{memory_type}}",
+          "refId": "A"
+        }
+      ],
+      "title": "메모리 타입 분포 (Memory Type Distribution)",
+      "type": "piechart"
+    },
+    {
+      "datasource": { "uid": "prometheus" },
+      "description": "시간별 메모리 타입 검색 추이를 표시합니다. Experiential과 Factual 메모리의 검색 빈도를 추적합니다.",
+      "fieldConfig": {
+        "defaults": {
+          "color": { "mode": "palette-classic" },
+          "custom": {
+            "axisLabel": "Memory Count",
+            "axisPlacement": "auto",
+            "fillOpacity": 30,
+            "lineWidth": 2,
+            "spanNulls": false,
+            "stacking": { "group": "A", "mode": "normal" }
+          },
+          "unit": "short"
+        }
+      },
+      "gridPos": { "h": 8, "w": 12, "x": 12, "y": 27 },
+      "id": 9,
+      "options": {
+        "legend": { "calcs": ["sum", "mean"], "displayMode": "table", "placement": "bottom" },
+        "tooltip": { "mode": "multi" }
+      },
+      "targets": [
+        {
+          "expr": "sum(rate(rag_memory_count{job=~\"$job\", instance=~\"$instance\"}[5m])) by (memory_type)",
+          "legendFormat": "{{memory_type}}",
+          "refId": "A"
+        }
+      ],
+      "title": "메모리 타입별 검색 추이 (Memory Type Retrieval Trend)",
+      "type": "timeseries"
+    },
+    {
+      "collapsed": false,
+      "gridPos": { "h": 1, "w": 24, "x": 0, "y": 35 },
+      "id": 104,
+      "title": "메모리 추출 성능 (Memory Extraction Performance)",
+      "type": "row"
+    },
+    {
+      "datasource": { "uid": "prometheus" },
+      "description": "메모리 추출 성공률을 표시합니다. 성공한 추출 / (성공 + 실패) 비율을 계산합니다. 95% 이상이 목표입니다.",
+      "fieldConfig": {
+        "defaults": {
+          "color": { "mode": "thresholds" },
+          "thresholds": {
+            "mode": "absolute",
+            "steps": [
+              { "color": "red", "value": null },
+              { "color": "yellow", "value": 0.8 },
+              { "color": "green", "value": 0.95 }
+            ]
+          },
+          "unit": "percentunit",
+          "min": 0,
+          "max": 1
+        }
+      },
+      "gridPos": { "h": 7, "w": 6, "x": 0, "y": 36 },
+      "id": 10,
+      "options": {
+        "colorMode": "background",
+        "graphMode": "area",
+        "justifyMode": "center",
+        "orientation": "auto",
+        "reduceOptions": {
+          "calcs": ["lastNotNull"],
+          "fields": "",
+          "values": false
+        },
+        "textMode": "value"
+      },
+      "targets": [
+        {
+          "expr": "sum(memory_extraction_success{job=~\"$job\", instance=~\"$instance\"}) / clamp_min(sum(memory_extraction_success{job=~\"$job\", instance=~\"$instance\"}) + sum(memory_extraction_failure{job=~\"$job\", instance=~\"$instance\"}), 1)",
+          "refId": "A"
+        }
+      ],
+      "title": "메모리 추출 성공률 (Extraction Success Rate)",
+      "type": "stat"
+    },
+    {
+      "datasource": { "uid": "prometheus" },
+      "description": "분당 메모리 추출 트리거 빈도를 표시합니다. 사용자 대화 빈도에 따라 자동으로 메모리 추출이 실행되는 빈도를 보여줍니다.",
+      "fieldConfig": {
+        "defaults": {
+          "color": { "mode": "palette-classic" },
+          "unit": "short"
+        }
+      },
+      "gridPos": { "h": 7, "w": 6, "x": 6, "y": 36 },
+      "id": 11,
+      "options": {
+        "colorMode": "value",
+        "graphMode": "area",
+        "justifyMode": "center",
+        "orientation": "auto",
+        "reduceOptions": {
+          "calcs": ["lastNotNull"],
+          "fields": "",
+          "values": false
+        },
+        "textMode": "value"
+      },
+      "targets": [
+        {
+          "expr": "sum(rate(memory_extraction_triggered{job=~\"$job\", instance=~\"$instance\"}[5m])) * 60",
+          "refId": "A"
+        }
+      ],
+      "title": "분당 추출 빈도 (Extraction Frequency per Minute)",
+      "type": "stat"
+    },
+    {
+      "datasource": { "uid": "prometheus" },
+      "description": "메모리 추출 성공/실패 추이를 표시합니다. 시간대별 추출 성공 및 실패 패턴을 파악할 수 있습니다.",
+      "fieldConfig": {
+        "defaults": {
+          "color": { "mode": "palette-classic" },
+          "custom": {
+            "axisLabel": "Count",
+            "axisPlacement": "auto",
+            "fillOpacity": 30,
+            "lineWidth": 2,
+            "spanNulls": false,
+            "stacking": { "group": "A", "mode": "normal" }
+          },
+          "unit": "short"
+        },
+        "overrides": [
+          {
+            "matcher": { "id": "byName", "options": "Success" },
+            "properties": [{ "id": "color", "value": { "fixedColor": "green", "mode": "fixed" } }]
+          },
+          {
+            "matcher": { "id": "byName", "options": "Failure" },
+            "properties": [{ "id": "color", "value": { "fixedColor": "red", "mode": "fixed" } }]
+          }
+        ]
+      },
+      "gridPos": { "h": 7, "w": 12, "x": 12, "y": 36 },
+      "id": 12,
+      "options": {
+        "legend": { "calcs": ["sum"], "displayMode": "table", "placement": "bottom" },
+        "tooltip": { "mode": "multi" }
+      },
+      "targets": [
+        {
+          "expr": "sum(rate(memory_extraction_success{job=~\"$job\", instance=~\"$instance\"}[5m]))",
+          "legendFormat": "Success",
+          "refId": "A"
+        },
+        {
+          "expr": "sum(rate(memory_extraction_failure{job=~\"$job\", instance=~\"$instance\"}[5m]))",
+          "legendFormat": "Failure",
+          "refId": "B"
+        }
+      ],
+      "title": "메모리 추출 성공/실패 추이 (Extraction Success/Failure Trend)",
+      "type": "timeseries"
+    },
+    {
+      "collapsed": false,
+      "gridPos": { "h": 1, "w": 24, "x": 0, "y": 43 },
+      "id": 105,
+      "title": "추출된 메모리 품질 (Extracted Memory Quality)",
+      "type": "row"
+    },
+    {
+      "datasource": { "uid": "prometheus" },
+      "description": "추출된 메모리의 중요도 점수 분포를 표시합니다. 높은 중요도는 가치 있는 메모리가 추출되었음을 나타냅니다.",
+      "fieldConfig": {
+        "defaults": {
+          "color": { "mode": "palette-classic" },
+          "custom": {
+            "axisLabel": "Importance Score",
+            "axisPlacement": "auto",
+            "fillOpacity": 20,
+            "lineWidth": 2,
+            "spanNulls": false
+          },
+          "unit": "percentunit",
+          "min": 0,
+          "max": 1
+        }
+      },
+      "gridPos": { "h": 8, "w": 16, "x": 0, "y": 44 },
+      "id": 13,
+      "options": {
+        "legend": { "calcs": ["mean"], "displayMode": "table", "placement": "bottom" },
+        "tooltip": { "mode": "multi" }
+      },
+      "targets": [
+        {
+          "expr": "memory_extracted_importance{job=~\"$job\", instance=~\"$instance\", quantile=\"0.5\"}",
+          "legendFormat": "p50",
+          "refId": "A"
+        },
+        {
+          "expr": "memory_extracted_importance{job=~\"$job\", instance=~\"$instance\", quantile=\"0.75\"}",
+          "legendFormat": "p75",
+          "refId": "B"
+        },
+        {
+          "expr": "memory_extracted_importance{job=~\"$job\", instance=~\"$instance\", quantile=\"0.9\"}",
+          "legendFormat": "p90",
+          "refId": "C"
+        },
+        {
+          "expr": "memory_extracted_importance{job=~\"$job\", instance=~\"$instance\", quantile=\"0.95\"}",
+          "legendFormat": "p95",
+          "refId": "D"
+        },
+        {
+          "expr": "memory_extracted_importance{job=~\"$job\", instance=~\"$instance\", quantile=\"0.99\"}",
+          "legendFormat": "p99",
+          "refId": "E"
+        }
+      ],
+      "title": "추출된 메모리 중요도 분포 (Extracted Memory Importance Distribution)",
+      "type": "timeseries"
+    },
+    {
+      "datasource": { "uid": "prometheus" },
+      "description": "평균 추출 메모리 중요도 점수를 표시합니다. 추출 품질을 평가하는 핵심 지표입니다.",
+      "fieldConfig": {
+        "defaults": {
+          "color": { "mode": "thresholds" },
+          "thresholds": {
+            "mode": "absolute",
+            "steps": [
+              { "color": "red", "value": null },
+              { "color": "yellow", "value": 0.5 },
+              { "color": "green", "value": 0.7 }
+            ]
+          },
+          "unit": "percentunit",
+          "min": 0,
+          "max": 1
+        }
+      },
+      "gridPos": { "h": 8, "w": 8, "x": 16, "y": 44 },
+      "id": 14,
+      "options": {
+        "colorMode": "background",
+        "graphMode": "area",
+        "justifyMode": "center",
+        "orientation": "auto",
+        "reduceOptions": {
+          "calcs": ["lastNotNull"],
+          "fields": "",
+          "values": false
+        },
+        "textMode": "value"
+      },
+      "targets": [
+        {
+          "expr": "avg(memory_extracted_importance_mean{job=~\"$job\", instance=~\"$instance\"})",
+          "refId": "A"
+        }
+      ],
+      "title": "평균 추출 중요도 점수 (Average Extracted Importance)",
+      "type": "stat"
+    },
+    {
+      "collapsed": false,
+      "gridPos": { "h": 1, "w": 24, "x": 0, "y": 52 },
+      "id": 106,
+      "title": "추출된 메모리 타입 분포 (Extracted Memory Type Distribution)",
+      "type": "row"
+    },
+    {
+      "datasource": { "uid": "prometheus" },
+      "description": "추출된 메모리의 타입별 분포를 파이 차트로 표시합니다. Experiential과 Factual 메모리의 추출 비율을 파악할 수 있습니다.",
+      "fieldConfig": {
+        "defaults": {
+          "color": { "mode": "palette-classic" },
+          "custom": { "hideFrom": { "legend": false, "tooltip": false, "viz": false } },
+          "unit": "short"
+        },
+        "overrides": [
+          {
+            "matcher": { "id": "byName", "options": "experiential" },
+            "properties": [{ "id": "color", "value": { "fixedColor": "blue", "mode": "fixed" } }]
+          },
+          {
+            "matcher": { "id": "byName", "options": "factual" },
+            "properties": [{ "id": "color", "value": { "fixedColor": "green", "mode": "fixed" } }]
+          }
+        ]
+      },
+      "gridPos": { "h": 8, "w": 12, "x": 0, "y": 53 },
+      "id": 15,
+      "options": {
+        "displayLabels": ["name", "percent"],
+        "legend": { "displayMode": "table", "placement": "right", "values": ["value", "percent"] },
+        "pieType": "pie",
+        "reduceOptions": { "calcs": ["sum"], "fields": "", "values": false },
+        "tooltip": { "mode": "single" }
+      },
+      "targets": [
+        {
+          "expr": "sum(memory_extracted_count{job=~\"$job\", instance=~\"$instance\"}) by (type)",
+          "legendFormat": "{{type}}",
+          "refId": "A"
+        }
+      ],
+      "title": "추출 메모리 타입 분포 (Extracted Memory Type Distribution)",
+      "type": "piechart"
+    },
+    {
+      "datasource": { "uid": "prometheus" },
+      "description": "시간별 메모리 타입 추출 추이를 표시합니다. Experiential과 Factual 메모리의 추출 빈도를 추적합니다.",
+      "fieldConfig": {
+        "defaults": {
+          "color": { "mode": "palette-classic" },
+          "custom": {
+            "axisLabel": "Extracted Count",
+            "axisPlacement": "auto",
+            "fillOpacity": 30,
+            "lineWidth": 2,
+            "spanNulls": false,
+            "stacking": { "group": "A", "mode": "normal" }
+          },
+          "unit": "short"
+        }
+      },
+      "gridPos": { "h": 8, "w": 12, "x": 12, "y": 53 },
+      "id": 16,
+      "options": {
+        "legend": { "calcs": ["sum", "mean"], "displayMode": "table", "placement": "bottom" },
+        "tooltip": { "mode": "multi" }
+      },
+      "targets": [
+        {
+          "expr": "sum(rate(memory_extracted_count{job=~\"$job\", instance=~\"$instance\"}[5m])) by (type)",
+          "legendFormat": "{{type}}",
+          "refId": "A"
+        }
+      ],
+      "title": "타입별 메모리 추출 추이 (Memory Extraction Trend by Type)",
+      "type": "timeseries"
+    }
+  ],
+  "refresh": "15s",
+  "schemaVersion": 38,
+  "style": "dark",
+  "tags": ["miyou", "rag", "quality", "memory"],
+  "templating": {
+    "list": [
+      {
+        "current": { "selected": false, "text": "miyou-dialogue", "value": "miyou-dialogue" },
+        "datasource": { "type": "prometheus", "uid": "prometheus" },
+        "hide": 0,
+        "includeAll": false,
+        "label": "Job",
+        "multi": false,
+        "name": "job",
+        "options": [],
+        "query": "label_values(up, job)",
+        "refresh": 1,
+        "regex": "",
+        "skipUrlSync": false,
+        "sort": 0,
+        "type": "query"
+      },
+      {
+        "allValue": ".*",
+        "current": { "selected": true, "text": "All", "value": "$__all" },
+        "datasource": { "type": "prometheus", "uid": "prometheus" },
+        "hide": 0,
+        "includeAll": true,
+        "label": "Instance",
+        "multi": true,
+        "name": "instance",
+        "options": [],
+        "query": "label_values(up{job=~\"$job\"}, instance)",
+        "refresh": 1,
+        "regex": "",
+        "skipUrlSync": false,
+        "sort": 0,
+        "type": "query"
+      }
+    ]
+  },
+  "time": { "from": "now-1h", "to": "now" },
+  "timepicker": {},
+  "timezone": "browser",
+  "title": "MIYOU - RAG Quality Monitoring",
+  "uid": "miyou-rag-quality",
+  "version": 1,
+  "weekStart": ""
+}
