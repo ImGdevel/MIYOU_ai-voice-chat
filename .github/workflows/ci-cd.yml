@@ -3,6 +3,14 @@ name: CI-CD
 on:
   workflow_dispatch:
     inputs:
+      deploy_strategy:
+        description: "앱 배포 전략"
+        type: choice
+        required: false
+        default: blue_green
+        options:
+          - blue_green
+          - rolling
       deploy_nginx:
         description: "Nginx 배포를 강제로 실행할지 여부"
         type: boolean
@@ -159,7 +167,11 @@ jobs:
           AWS_REGION: ${{ secrets.AWS_REGION }}
         shell: bash
         run: |
-          ./scripts/aws/deploy_remote_compose.sh "deploy-target"
+          if [[ "${{ github.event.inputs.deploy_strategy }}" == "rolling" ]]; then
+            ./scripts/aws/deploy_remote_compose.sh "deploy-target"
+          else
+            ./scripts/aws/deploy_remote_blue_green.sh "deploy-target"
+          fi
 
   deploy_nginx:
     runs-on: ubuntu-latest

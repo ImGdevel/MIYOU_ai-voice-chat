@@ -118,7 +118,22 @@ chmod 644 deploy/nginx/.htpasswd
 EOF
 
 echo "[deploy] Pull and start containers"
-ssh "${HOST_ALIAS}" "cd '${REMOTE_DIR}' && APP_IMAGE='${APP_IMAGE}' docker compose -f docker-compose.app.yml pull && APP_IMAGE='${APP_IMAGE}' docker compose -f docker-compose.app.yml up -d"
+ssh "${HOST_ALIAS}" "bash -s" -- "${REMOTE_DIR}" "${APP_IMAGE}" <<'EOF'
+set -euo pipefail
+remote_dir="$1"
+app_image="$2"
+
+cd "${remote_dir}"
+active_service="app_blue"
+if [[ -f ".active_color" ]] && grep -q '^green$' .active_color; then
+  active_service="app_green"
+fi
+
+sed -i -E "s/app_(blue|green):8081/${active_service}:8081/g" deploy/nginx/default.conf
+
+APP_IMAGE="${app_image}" docker compose -f docker-compose.app.yml pull "${active_service}" nginx mongodb redis qdrant
+APP_IMAGE="${app_image}" docker compose -f docker-compose.app.yml up -d mongodb redis qdrant nginx "${active_service}"
+EOF
 
 echo "[deploy] Container status"
 ssh "${HOST_ALIAS}" "docker ps --format 'table {{.Names}}\t{{.Image}}\t{{.Status}}\t{{.Ports}}'"

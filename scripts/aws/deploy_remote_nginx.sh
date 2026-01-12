@@ -33,6 +33,12 @@ mkdir -p deploy/nginx
 printf '%s:%s\n' "${auth_user}" "$(openssl passwd -apr1 "${auth_password}")" > deploy/nginx/.htpasswd
 chmod 644 deploy/nginx/.htpasswd
 
+active_service="app_blue"
+if [[ -f ".active_color" ]] && grep -q '^green$' .active_color; then
+  active_service="app_green"
+fi
+sed -i -E "s/app_(blue|green):8081/${active_service}:8081/g" deploy/nginx/default.conf
+
 if docker ps -a --format '{{.Names}}' | grep -q '^miyou-nginx$'; then
   docker exec miyou-nginx nginx -t
   docker exec miyou-nginx nginx -s reload
