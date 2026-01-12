@@ -4,13 +4,14 @@ set -euo pipefail
 HOST_ALIAS="${1:-miyou-monitoring}"
 REMOTE_DIR="${REMOTE_DIR:-/opt/app/miyou-monitoring}"
 APP_METRICS_TARGET="${APP_METRICS_TARGET:-}"
+APP_METRICS_TARGETS="${APP_METRICS_TARGETS:-}"
 SSH_OPTS="${SSH_OPTS:-}"
 USE_SSM="${USE_SSM:-true}"
 SSM_WEBHOOK_PARAM="${SSM_WEBHOOK_PARAM:-/miyou/prod/WEB_HOOK_GRAFANA}"
 AWS_REGION="${AWS_REGION:-ap-northeast-2}"
 
-if [[ -z "${APP_METRICS_TARGET}" ]]; then
-  echo "[monitoring] APP_METRICS_TARGET is required. (example: 172.31.62.169:80)" >&2
+if [[ -z "${APP_METRICS_TARGET}" && -z "${APP_METRICS_TARGETS}" ]]; then
+  echo "[monitoring] APP_METRICS_TARGET 또는 APP_METRICS_TARGETS가 필요합니다. (example: 172.31.62.169:80 또는 app.internal:80,app2.internal:80)" >&2
   exit 1
 fi
 
@@ -18,6 +19,28 @@ SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
 PROJECT_ROOT="$(cd "${SCRIPT_DIR}/../.." && pwd)"
 TMP_TARGET_FILE="$(mktemp)"
 trap 'rm -f "${TMP_TARGET_FILE}"' EXIT
+
+if [[ -z "${APP_METRICS_TARGETS}" ]]; then
+  APP_METRICS_TARGETS="${APP_METRICS_TARGET}"
+fi
+
+IFS=',' read -r -a RAW_TARGETS <<< "${APP_METRICS_TARGETS}"
+TARGETS_JSON=""
+for target in "${RAW_TARGETS[@]}"; do
+  trimmed="$(echo "${target}" | xargs)"
+  if [[ -z "${trimmed}" ]]; then
+    continue
+  fi
+  if [[ -n "${TARGETS_JSON}" ]]; then
+    TARGETS_JSON="${TARGETS_JSON}, "
+  fi
+  TARGETS_JSON="${TARGETS_JSON}\"${trimmed}\""
+done
+
+if [[ -z "${TARGETS_JSON}" ]]; then
+  echo "[monitoring] 유효한 타깃이 없습니다. APP_METRICS_TARGETS='${APP_METRICS_TARGETS}'" >&2
+  exit 1
+fi
 
 cat > "${TMP_TARGET_FILE}" <<EOF
 [
@@ -27,7 +50,7 @@ cat > "${TMP_TARGET_FILE}" <<EOF
       "env": "prod"
     },
     "targets": [
-      "${APP_METRICS_TARGET}"
+      ${TARGETS_JSON}
     ]
   }
 ]
