@@ -30,6 +30,7 @@ public class MicrometerPipelineMetricsReporter implements PipelineMetricsReporte
 	public void report(PipelineSummary summary) {
 		recordPipelineMetrics(summary);
 		recordStageMetrics(summary);
+		recordStageGapMetrics(summary);
 		recordLlmMetrics(summary);
 		recordResponseLatencyMetrics(summary);
 	}
@@ -88,6 +89,9 @@ public class MicrometerPipelineMetricsReporter implements PipelineMetricsReporte
 				"memory.count",
 				METRIC_PREFIX + ".memory.retrieved",
 				stageName);
+
+			// RAG 품질 메트릭 (Phase 1B)
+			recordRagQualityMetrics(stage);
 		}
 
 		// RETRIEVAL: 검색된 문서 수
@@ -112,6 +116,26 @@ public class MicrometerPipelineMetricsReporter implements PipelineMetricsReporte
 				"audio.chunks",
 				METRIC_PREFIX + ".audio.chunks",
 				stageName);
+		}
+	}
+
+	/**
+	 * RAG 품질 메트릭을 기록합니다. Phase 1B: RAG Quality Monitoring
+	 */
+	private void recordRagQualityMetrics(StageSnapshot stage) {
+		// Memory count by type
+		Object experientialCount = stage.attributes().get("memory.experiential.count");
+		if (experientialCount instanceof Number) {
+			meterRegistry.gauge("rag.memory.count",
+				io.micrometer.core.instrument.Tags.of("memory_type", "experiential"),
+				((Number) experientialCount).doubleValue());
+		}
+
+		Object factualCount = stage.attributes().get("memory.factual.count");
+		if (factualCount instanceof Number) {
+			meterRegistry.gauge("rag.memory.count",
+				io.micrometer.core.instrument.Tags.of("memory_type", "factual"),
+				((Number) factualCount).doubleValue());
 		}
 	}
 
@@ -179,6 +203,43 @@ public class MicrometerPipelineMetricsReporter implements PipelineMetricsReporte
 				.description("Time to last response")
 				.register(meterRegistry)
 				.record(summary.lastResponseLatencyMillis(), TimeUnit.MILLISECONDS);
+		}
+	}
+
+	/**
+	 * Stage 간 Gap (전환 시간)을 기록합니다. Phase 1A: Pipeline Bottleneck Analysis
+	 */
+	private void recordStageGapMetrics(PipelineSummary summary) {
+		var stages = summary.stages().stream()
+			.sorted((a, b) -> {
+				if (a.startedAt() == null)
+					return 1;
+				if (b.startedAt() == null)
+					return -1;
+				return a.startedAt().compareTo(b.startedAt());
+			})
+			.toList();
+
+		for (int i = 0; i < stages.size() - 1; i++) {
+			StageSnapshot current = stages.get(i);
+			StageSnapshot next = stages.get(i + 1);
+
+			// Gap 계산: 현재 Stage 종료 → 다음 Stage 시작
+			if (current.finishedAt() != null && next.startedAt() != null) {
+				long gapMillis = java.time.Duration.between(
+					current.finishedAt(),
+					next.startedAt()).toMillis();
+
+				// Gap이 음수면 병렬 실행된 것이므로 0으로 처리
+				if (gapMillis >= 0) {
+					Timer.builder(METRIC_PREFIX + ".stage.gap")
+						.tag("from_stage", current.stage().name().toLowerCase())
+						.tag("to_stage", next.stage().name().toLowerCase())
+						.description("Time gap between stage transitions")
+						.register(meterRegistry)
+						.record(gapMillis, TimeUnit.MILLISECONDS);
+				}
+			}
 		}
 	}
 }
