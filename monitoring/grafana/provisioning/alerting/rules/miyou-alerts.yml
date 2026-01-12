@@ -99,8 +99,8 @@ groups:
             datasourceUid: prometheus
             model:
               expr: |
-                sum(rate(http_server_requests_seconds_count{job="miyou-app",status=~"5.."}[5m])) /
-                clamp_min(sum(rate(http_server_requests_seconds_count{job="miyou-app"}[5m])), 0.001)
+                sum(rate(http_server_requests_seconds_count{job="miyou-app",uri!~"/actuator.*|/admin.*",status=~"5.."}[5m])) /
+                clamp_min(sum(rate(http_server_requests_seconds_count{job="miyou-app",uri!~"/actuator.*|/admin.*"}[5m])), 0.001)
               instant: true
               intervalMs: 1000
               maxDataPoints: 43200
@@ -141,7 +141,7 @@ groups:
             datasourceUid: prometheus
             model:
               expr: |
-                histogram_quantile(0.95, sum(rate(http_server_requests_seconds_bucket{job="miyou-app"}[5m])) by (le))
+                histogram_quantile(0.95, sum(rate(http_server_requests_seconds_bucket{job="miyou-app",uri!~"/actuator.*|/admin.*"}[5m])) by (le))
               instant: true
               intervalMs: 1000
               maxDataPoints: 43200
