@@ -5,6 +5,7 @@ import java.util.List;
 
 import org.springframework.stereotype.Service;
 
+import com.study.webflux.rag.domain.dialogue.model.PersonaId;
 import com.study.webflux.rag.domain.dialogue.model.UserId;
 import com.study.webflux.rag.domain.memory.model.Memory;
 import com.study.webflux.rag.domain.memory.model.MemoryRetrievalResult;
@@ -44,27 +45,32 @@ public class MemoryRetrievalService {
 	/**
 	 * 질의를 임베딩한 뒤 후보 메모리를 조회하고, 랭킹/그룹핑 후 접근 메트릭을 갱신합니다.
 	 *
+	 * @param personaId
+	 *            페르소나 ID
+	 * @param userId
+	 *            사용자 ID
 	 * @param query
 	 *            검색 질의
 	 * @param topK
 	 *            반환할 상위 메모리 수
 	 * @return 유형별(경험/사실)로 그룹화된 메모리 결과
 	 */
-	public Mono<MemoryRetrievalResult> retrieveMemories(UserId userId, String query, int topK) {
+	public Mono<MemoryRetrievalResult> retrieveMemories(PersonaId personaId,
+		UserId userId,
+		String query,
+		int topK) {
 		return embeddingPort.embed(query)
-			.flatMap(embedding -> searchCandidateMemories(userId, embedding.vector(), topK))
+			.flatMap(
+				embedding -> searchCandidateMemories(personaId, userId, embedding.vector(), topK))
 			.doOnNext(candidates -> {
-				// 후보 메모리 개수 기록
 				ragMetrics.recordMemoryCandidateCount(candidates.size());
 			})
 			.map(memories -> rankAndLimit(memories, topK))
 			.doOnNext(ranked -> {
-				// 필터링된 메모리 개수 계산 및 기록
 				int candidateCount = topK * CANDIDATE_MULTIPLIER;
 				int filteredCount = Math.max(0, candidateCount - ranked.size());
 				ragMetrics.recordMemoryFilteredCount(filteredCount);
 
-				// 메모리 중요도 점수 기록
 				ranked.forEach(memory -> {
 					if (memory.importance() != null) {
 						ragMetrics.recordMemoryImportanceScore(memory.importance());
@@ -76,13 +82,22 @@ public class MemoryRetrievalService {
 	}
 
 	/**
+	 * 하위 호환성을 위한 기존 메서드
+	 */
+	public Mono<MemoryRetrievalResult> retrieveMemories(UserId userId, String query, int topK) {
+		return retrieveMemories(PersonaId.defaultPersona(), userId, query, topK);
+	}
+
+	/**
 	 * 벡터 저장소에서 중요도 임계값을 만족하는 후보 메모리를 조회합니다.
 	 */
-	private Mono<List<Memory>> searchCandidateMemories(UserId userId,
+	private Mono<List<Memory>> searchCandidateMemories(PersonaId personaId,
+		UserId userId,
 		List<Float> queryEmbedding,
 		int topK) {
 		List<MemoryType> types = List.of(MemoryType.EXPERIENTIAL, MemoryType.FACTUAL);
-		return vectorMemoryPort.search(userId,
+		return vectorMemoryPort.search(personaId,
+			userId,
 			queryEmbedding,
 			types,
 			importanceThreshold,
