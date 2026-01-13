@@ -24,6 +24,7 @@ import com.study.webflux.rag.application.dialogue.dto.RagDialogueRequest;
 import com.study.webflux.rag.application.dialogue.dto.SttDialogueResponse;
 import com.study.webflux.rag.application.dialogue.dto.SttTranscriptionResponse;
 import com.study.webflux.rag.application.dialogue.service.DialogueSpeechService;
+import com.study.webflux.rag.domain.dialogue.model.PersonaId;
 import com.study.webflux.rag.domain.dialogue.model.UserId;
 import com.study.webflux.rag.domain.dialogue.port.DialoguePipelineUseCase;
 import com.study.webflux.rag.domain.voice.model.AudioFormat;
@@ -59,8 +60,10 @@ public class DialogueController implements DialogueApi {
 
 		response.getHeaders().setContentType(MediaType.valueOf(targetFormat.getMediaType()));
 
+		PersonaId personaId = request.getPersonaIdOrDefault();
 		UserId userId = UserId.of(request.userId());
-		return dialoguePipelineUseCase.executeAudioStreaming(userId, request.text(), targetFormat)
+		return dialoguePipelineUseCase
+			.executeAudioStreaming(personaId, userId, request.text(), targetFormat)
 			.map(bufferFactory::wrap);
 	}
 
@@ -68,8 +71,9 @@ public class DialogueController implements DialogueApi {
 	@PostMapping(path = "/text", produces = MediaType.TEXT_EVENT_STREAM_VALUE)
 	public Flux<String> ragDialogueText(
 		@Valid @RequestBody RagDialogueRequest request) {
+		PersonaId personaId = request.getPersonaIdOrDefault();
 		UserId userId = UserId.of(request.userId());
-		return dialoguePipelineUseCase.executeTextOnly(userId, request.text());
+		return dialoguePipelineUseCase.executeTextOnly(personaId, userId, request.text());
 	}
 
 	/** 업로드한 음성 파일을 Whisper STT로 텍스트 변환합니다. */
