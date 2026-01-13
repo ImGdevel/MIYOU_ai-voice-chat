@@ -2,10 +2,10 @@
   {
     "labels": {
       "service": "miyou-app",
-      "env": "prod"
+      "env": "replace-me"
     },
     "targets": [
-      "172.31.62.169:80"
+      "replace-me-host:80"
     ]
   }
 ]
