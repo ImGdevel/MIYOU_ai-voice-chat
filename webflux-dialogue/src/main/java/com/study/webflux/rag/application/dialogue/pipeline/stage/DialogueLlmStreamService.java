@@ -57,7 +57,8 @@ public class DialogueLlmStreamService {
 				? java.util.Map.<String, Object>of("correlationId", tracker.pipelineId())
 				: java.util.Map.<String, Object>of();
 			return inputsMono.flatMapMany(inputs -> pipelineTracer.tracePrompt(
-				() -> messageService.buildMessages(inputs.retrievalContext(),
+				() -> messageService.buildMessages(inputs.personaId(),
+					inputs.retrievalContext(),
 					inputs.memories(),
 					inputs.conversationContext(),
 					inputs.currentTurn().query()))
