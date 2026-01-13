@@ -13,4 +13,11 @@ public interface ConversationMongoRepository
 	Flux<ConversationEntity> findByUserIdOrderByCreatedAtDesc(String userId, Pageable pageable);
 
 	Flux<ConversationEntity> findAllByUserId(String userId);
+
+	Flux<ConversationEntity> findByPersonaIdAndUserIdOrderByCreatedAtDesc(
+		String personaId,
+		String userId,
+		Pageable pageable);
+
+	Flux<ConversationEntity> findAllByPersonaIdAndUserId(String personaId, String userId);
 }
