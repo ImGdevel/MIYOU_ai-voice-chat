@@ -111,6 +111,7 @@ public class DialogueController implements DialogueApi {
 	public Mono<SttTranscriptionResponse> ragDialogueStt(
 		@RequestPart("audio") FilePart audioFile,
 		@RequestParam(required = false) String language) {
+		log.info("STT request - language: {}, filename: {}", language, audioFile.filename());
 		return dialogueSpeechService.transcribe(audioFile, language)
 			.map(SttTranscriptionResponse::new);
 	}
@@ -121,6 +122,10 @@ public class DialogueController implements DialogueApi {
 		@RequestPart("audio") FilePart audioFile,
 		@RequestParam(required = false) String language,
 		@RequestParam @jakarta.validation.constraints.NotBlank String sessionId) {
+		log.info("STT/Text request - sessionId: {}, language: {}, filename: {}",
+			sessionId,
+			language,
+			audioFile.filename());
 		ConversationSessionId sid = ConversationSessionId.of(sessionId);
 		return sessionRepository.findById(sid)
 			.switchIfEmpty(Mono.error(new ResponseStatusException(HttpStatus.NOT_FOUND,
