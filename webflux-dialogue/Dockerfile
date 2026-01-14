@@ -7,7 +7,6 @@ WORKDIR /workspace
 COPY gradlew gradlew
 COPY gradle gradle
 COPY settings.gradle build.gradle ./
-COPY config config
 COPY webflux-dialogue/build.gradle webflux-dialogue/build.gradle
 RUN chmod +x gradlew
 RUN --mount=type=cache,target=/home/gradle/.gradle \

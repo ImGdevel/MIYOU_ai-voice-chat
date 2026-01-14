@@ -113,7 +113,7 @@ sequenceDiagram
 ### 4.4 CI 캐시 계약
 - Gradle: `--build-cache` + `gradle.properties(org.gradle.caching=true)`
 - Docker Buildx: `cache-from/to type=gha,scope=miyou-dialogue-image`
-- Dockerfile: BuildKit 캐시 마운트(`/home/gradle/.gradle`)
+- `webflux-dialogue/Dockerfile`: BuildKit 캐시 마운트(`/home/gradle/.gradle`)
 
 ## 5) Extension/migration strategy
 - self-heal 고도화:

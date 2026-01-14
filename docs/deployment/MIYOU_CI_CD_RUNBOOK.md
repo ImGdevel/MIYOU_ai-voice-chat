@@ -27,7 +27,7 @@
    - Gradle build cache 사용(`--build-cache`)
 3. `build-and-push`: Docker 이미지 빌드/푸시
    - Buildx GHA cache scope 고정(`miyou-dialogue-image`)
-   - Dockerfile Gradle 캐시 마운트 적용
+   - `webflux-dialogue/Dockerfile` Gradle 캐시 마운트 적용
 4. `deploy`: 서버 앱/스토리지 스택 배포
    - `blue_green`: `deploy_remote_blue_green.sh` 실행
    - `rolling`: `deploy_remote_compose.sh` 실행
