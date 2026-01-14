@@ -41,8 +41,13 @@ public class PersonaVoiceProvider {
 		String personaKey = personaId.value();
 		Map<String, PersonaVoiceConfig> personas = properties.getPersonas();
 
-		if (personas.containsKey(personaKey)) {
-			PersonaVoiceConfig config = personas.get(personaKey);
+		if (personas == null) {
+			log.warn("personas 설정이 없어 기본 보이스 사용 (personaKey={})", personaKey);
+			return defaultVoice;
+		}
+
+		PersonaVoiceConfig config = personas.get(personaKey);
+		if (config != null) {
 			return buildVoiceFromConfig(personaKey, config);
 		}
 
