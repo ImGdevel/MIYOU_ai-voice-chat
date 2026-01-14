@@ -2,11 +2,11 @@ package com.study.webflux.rag.domain.memory.model;
 
 import java.time.Instant;
 
-import com.study.webflux.rag.domain.dialogue.model.UserId;
+import com.study.webflux.rag.domain.dialogue.model.ConversationSessionId;
 
 public record Memory(
 	String id,
-	UserId userId,
+	ConversationSessionId sessionId,
 	MemoryType type,
 	String content,
 	Float importance,
@@ -15,8 +15,8 @@ public record Memory(
 	Integer accessCount
 ) {
 	public Memory {
-		if (userId == null) {
-			throw new IllegalArgumentException("userId cannot be null");
+		if (sessionId == null) {
+			throw new IllegalArgumentException("sessionId cannot be null");
 		}
 		if (type == null) {
 			throw new IllegalArgumentException("type cannot be null");
@@ -29,13 +29,16 @@ public record Memory(
 		}
 	}
 
-	public static Memory create(UserId userId, MemoryType type, String content, float importance) {
+	public static Memory create(ConversationSessionId sessionId,
+		MemoryType type,
+		String content,
+		float importance) {
 		Instant now = Instant.now();
-		return new Memory(null, userId, type, content, importance, now, now, 0);
+		return new Memory(null, sessionId, type, content, importance, now, now, 0);
 	}
 
 	public Memory withId(String id) {
-		return new Memory(id, userId, type, content, importance, createdAt, lastAccessedAt,
+		return new Memory(id, sessionId, type, content, importance, createdAt, lastAccessedAt,
 			accessCount);
 	}
 
@@ -43,7 +46,7 @@ public record Memory(
 		float currentImportance = importance != null ? importance : 0.0f;
 		float newImportance = Math.min(1.0f, currentImportance + importanceBoost);
 		int currentAccessCount = accessCount != null ? accessCount : 0;
-		return new Memory(id, userId, type, content, newImportance, createdAt, Instant.now(),
+		return new Memory(id, sessionId, type, content, newImportance, createdAt, Instant.now(),
 			currentAccessCount + 1);
 	}
 

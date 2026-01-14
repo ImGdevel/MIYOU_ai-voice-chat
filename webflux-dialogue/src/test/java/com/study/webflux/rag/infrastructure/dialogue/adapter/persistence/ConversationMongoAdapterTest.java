@@ -5,8 +5,9 @@ import java.time.Instant;
 import org.springframework.data.domain.PageRequest;
 
 import com.study.webflux.rag.domain.dialogue.entity.ConversationEntity;
+import com.study.webflux.rag.domain.dialogue.model.ConversationSessionId;
 import com.study.webflux.rag.domain.dialogue.model.ConversationTurn;
-import com.study.webflux.rag.domain.dialogue.model.UserId;
+import com.study.webflux.rag.fixture.ConversationSessionFixture;
 import com.study.webflux.rag.infrastructure.dialogue.repository.ConversationMongoRepository;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.DisplayName;
@@ -40,9 +41,10 @@ class ConversationMongoAdapterTest {
 	@DisplayName("대화 턴 저장 성공")
 	void save_success() {
 		Instant now = Instant.now();
-		UserId userId = UserId.of("user-1");
-		ConversationTurn turn = ConversationTurn.create(userId, "안녕하세요");
-		ConversationEntity savedEntity = new ConversationEntity("id-123", "user-1", "안녕하세요",
+		ConversationSessionId sessionId = ConversationSessionFixture.createId();
+		ConversationTurn turn = ConversationTurn.create(sessionId, "안녕하세요");
+		ConversationEntity savedEntity = new ConversationEntity("id-123", sessionId.value(),
+			"안녕하세요",
 			null, now);
 
 		when(mongoRepository.save(any(ConversationEntity.class))).thenReturn(
@@ -50,7 +52,7 @@ class ConversationMongoAdapterTest {
 
 		StepVerifier.create(adapter.save(turn)).assertNext(result -> {
 			assertThat(result.id()).isEqualTo("id-123");
-			assertThat(result.userId()).isEqualTo(userId);
+			assertThat(result.sessionId()).isEqualTo(sessionId);
 			assertThat(result.query()).isEqualTo("안녕하세요");
 			assertThat(result.createdAt()).isEqualTo(now);
 		}).verifyComplete();
@@ -62,9 +64,10 @@ class ConversationMongoAdapterTest {
 	@DisplayName("응답 포함 대화 턴 저장 성공")
 	void save_withResponse_success() {
 		Instant now = Instant.now();
-		UserId userId = UserId.of("user-1");
-		ConversationTurn turn = ConversationTurn.withId("id-456", userId, "질문", "답변", now);
-		ConversationEntity savedEntity = new ConversationEntity("id-456", "user-1", "질문", "답변",
+		ConversationSessionId sessionId = ConversationSessionFixture.createId();
+		ConversationTurn turn = ConversationTurn.withId("id-456", sessionId, "질문", "답변", now);
+		ConversationEntity savedEntity = new ConversationEntity("id-456", sessionId.value(), "질문",
+			"답변",
 			now);
 
 		when(mongoRepository.save(any(ConversationEntity.class))).thenReturn(
@@ -72,7 +75,7 @@ class ConversationMongoAdapterTest {
 
 		StepVerifier.create(adapter.save(turn)).assertNext(result -> {
 			assertThat(result.id()).isEqualTo("id-456");
-			assertThat(result.userId()).isEqualTo(userId);
+			assertThat(result.sessionId()).isEqualTo(sessionId);
 			assertThat(result.query()).isEqualTo("질문");
 			assertThat(result.response()).isEqualTo("답변");
 		}).verifyComplete();
@@ -81,32 +84,36 @@ class ConversationMongoAdapterTest {
 	@Test
 	@DisplayName("최근 대화 조회 시 역순으로 정렬하여 반환")
 	void findRecent_success() {
-		UserId userId = UserId.of("user-1");
+		ConversationSessionId sessionId = ConversationSessionFixture.createId();
 		Instant time1 = Instant.parse("2025-01-01T10:00:00Z");
 		Instant time2 = Instant.parse("2025-01-01T11:00:00Z");
 		Instant time3 = Instant.parse("2025-01-01T12:00:00Z");
 
-		ConversationEntity entity1 = new ConversationEntity("id-1", "user-1", "첫 번째", "응답1",
+		ConversationEntity entity1 = new ConversationEntity("id-1", sessionId.value(), "첫 번째",
+			"응답1",
 			time1);
-		ConversationEntity entity2 = new ConversationEntity("id-2", "user-1", "두 번째", "응답2",
+		ConversationEntity entity2 = new ConversationEntity("id-2", sessionId.value(), "두 번째",
+			"응답2",
 			time2);
-		ConversationEntity entity3 = new ConversationEntity("id-3", "user-1", "세 번째", "응답3",
+		ConversationEntity entity3 = new ConversationEntity("id-3", sessionId.value(), "세 번째",
+			"응답3",
 			time3);
 
-		when(mongoRepository.findByUserIdOrderByCreatedAtDesc("user-1", PageRequest.of(0, 10)))
+		when(mongoRepository.findBySessionIdOrderByCreatedAtDesc(sessionId.value(),
+			PageRequest.of(0, 10)))
 			.thenReturn(Flux.just(entity3, entity2, entity1));
 
-		StepVerifier.create(adapter.findRecent(userId, 10)).assertNext(result -> {
+		StepVerifier.create(adapter.findRecent(sessionId, 10)).assertNext(result -> {
 			assertThat(result.id()).isEqualTo("id-1");
-			assertThat(result.userId()).isEqualTo(userId);
+			assertThat(result.sessionId()).isEqualTo(sessionId);
 			assertThat(result.query()).isEqualTo("첫 번째");
 		}).assertNext(result -> {
 			assertThat(result.id()).isEqualTo("id-2");
-			assertThat(result.userId()).isEqualTo(userId);
+			assertThat(result.sessionId()).isEqualTo(sessionId);
 			assertThat(result.query()).isEqualTo("두 번째");
 		}).assertNext(result -> {
 			assertThat(result.id()).isEqualTo("id-3");
-			assertThat(result.userId()).isEqualTo(userId);
+			assertThat(result.sessionId()).isEqualTo(sessionId);
 			assertThat(result.query()).isEqualTo("세 번째");
 		}).verifyComplete();
 	}
@@ -114,26 +121,29 @@ class ConversationMongoAdapterTest {
 	@Test
 	@DisplayName("최근 대화 조회 시 결과가 없으면 빈 Flux 반환")
 	void findRecent_empty() {
-		UserId userId = UserId.of("user-1");
-		when(mongoRepository.findByUserIdOrderByCreatedAtDesc("user-1", PageRequest.of(0, 10)))
+		ConversationSessionId sessionId = ConversationSessionFixture.createId();
+		when(mongoRepository.findBySessionIdOrderByCreatedAtDesc(sessionId.value(),
+			PageRequest.of(0, 10)))
 			.thenReturn(Flux.empty());
 
-		StepVerifier.create(adapter.findRecent(userId, 10)).verifyComplete();
+		StepVerifier.create(adapter.findRecent(sessionId, 10)).verifyComplete();
 	}
 
 	@Test
 	@DisplayName("단일 대화 턴 조회 시 순서 유지")
 	void findRecent_singleTurn() {
 		Instant now = Instant.now();
-		UserId userId = UserId.of("user-1");
-		ConversationEntity entity = new ConversationEntity("id-1", "user-1", "질문", "답변", now);
+		ConversationSessionId sessionId = ConversationSessionFixture.createId();
+		ConversationEntity entity = new ConversationEntity("id-1", sessionId.value(), "질문", "답변",
+			now);
 
-		when(mongoRepository.findByUserIdOrderByCreatedAtDesc("user-1", PageRequest.of(0, 10)))
+		when(mongoRepository.findBySessionIdOrderByCreatedAtDesc(sessionId.value(),
+			PageRequest.of(0, 10)))
 			.thenReturn(Flux.just(entity));
 
-		StepVerifier.create(adapter.findRecent(userId, 10)).assertNext(result -> {
+		StepVerifier.create(adapter.findRecent(sessionId, 10)).assertNext(result -> {
 			assertThat(result.id()).isEqualTo("id-1");
-			assertThat(result.userId()).isEqualTo(userId);
+			assertThat(result.sessionId()).isEqualTo(sessionId);
 			assertThat(result.query()).isEqualTo("질문");
 			assertThat(result.response()).isEqualTo("답변");
 		}).verifyComplete();
@@ -142,24 +152,27 @@ class ConversationMongoAdapterTest {
 	@Test
 	@DisplayName("모든 대화 조회 성공")
 	void findAll_success() {
-		UserId userId = UserId.of("user-1");
+		ConversationSessionId sessionId = ConversationSessionFixture.createId();
 		Instant time1 = Instant.now();
 		Instant time2 = time1.plusSeconds(60);
 
-		ConversationEntity entity1 = new ConversationEntity("id-1", "user-1", "첫 번째", "응답1",
+		ConversationEntity entity1 = new ConversationEntity("id-1", sessionId.value(), "첫 번째",
+			"응답1",
 			time1);
-		ConversationEntity entity2 = new ConversationEntity("id-2", "user-1", "두 번째", "응답2",
+		ConversationEntity entity2 = new ConversationEntity("id-2", sessionId.value(), "두 번째",
+			"응답2",
 			time2);
 
-		when(mongoRepository.findAllByUserId("user-1")).thenReturn(Flux.just(entity1, entity2));
+		when(mongoRepository.findAllBySessionId(sessionId.value()))
+			.thenReturn(Flux.just(entity1, entity2));
 
-		StepVerifier.create(adapter.findAll(userId)).assertNext(result -> {
+		StepVerifier.create(adapter.findAll(sessionId)).assertNext(result -> {
 			assertThat(result.id()).isEqualTo("id-1");
-			assertThat(result.userId()).isEqualTo(userId);
+			assertThat(result.sessionId()).isEqualTo(sessionId);
 			assertThat(result.createdAt()).isEqualTo(time1);
 		}).assertNext(result -> {
 			assertThat(result.id()).isEqualTo("id-2");
-			assertThat(result.userId()).isEqualTo(userId);
+			assertThat(result.sessionId()).isEqualTo(sessionId);
 			assertThat(result.createdAt()).isEqualTo(time2);
 		}).verifyComplete();
 	}
@@ -167,16 +180,17 @@ class ConversationMongoAdapterTest {
 	@Test
 	@DisplayName("모든 대화 조회 시 결과가 없으면 빈 Flux 반환")
 	void findAll_empty() {
-		UserId userId = UserId.of("user-1");
-		when(mongoRepository.findAllByUserId("user-1")).thenReturn(Flux.empty());
+		ConversationSessionId sessionId = ConversationSessionFixture.createId();
+		when(mongoRepository.findAllBySessionId(sessionId.value())).thenReturn(Flux.empty());
 
-		StepVerifier.create(adapter.findAll(userId)).verifyComplete();
+		StepVerifier.create(adapter.findAll(sessionId)).verifyComplete();
 	}
 
 	@Test
 	@DisplayName("저장 실패 시 에러 전파")
 	void save_error_propagates() {
-		ConversationTurn turn = ConversationTurn.create(UserId.of("user-1"), "에러 테스트");
+		ConversationSessionId sessionId = ConversationSessionFixture.createId();
+		ConversationTurn turn = ConversationTurn.create(sessionId, "에러 테스트");
 
 		when(mongoRepository.save(any(ConversationEntity.class))).thenReturn(
 			Mono.error(new RuntimeException("MongoDB connection failed")));
@@ -190,11 +204,12 @@ class ConversationMongoAdapterTest {
 	@Test
 	@DisplayName("조회 실패 시 에러 전파")
 	void findRecent_error_propagates() {
-		UserId userId = UserId.of("user-1");
-		when(mongoRepository.findByUserIdOrderByCreatedAtDesc("user-1", PageRequest.of(0, 10)))
+		ConversationSessionId sessionId = ConversationSessionFixture.createId();
+		when(mongoRepository.findBySessionIdOrderByCreatedAtDesc(sessionId.value(),
+			PageRequest.of(0, 10)))
 			.thenReturn(Flux.error(new RuntimeException("Query timeout")));
 
-		StepVerifier.create(adapter.findRecent(userId, 10))
+		StepVerifier.create(adapter.findRecent(sessionId, 10))
 			.expectErrorMatches(throwable -> throwable.getMessage().contains("Query timeout"))
 			.verify();
 	}

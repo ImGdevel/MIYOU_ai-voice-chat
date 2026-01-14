@@ -9,6 +9,7 @@ import org.springframework.stereotype.Service;
 
 import com.study.webflux.rag.domain.dialogue.model.ConversationContext;
 import com.study.webflux.rag.domain.dialogue.model.Message;
+import com.study.webflux.rag.domain.dialogue.model.PersonaId;
 import com.study.webflux.rag.domain.memory.model.MemoryRetrievalResult;
 import com.study.webflux.rag.domain.retrieval.model.RetrievalContext;
 
@@ -23,7 +24,8 @@ public class DialogueMessageService {
 	/**
 	 * 시스템 프롬프트와 이전 대화, 현재 사용자 쿼리를 조합해 LLM 요청 메시지 목록을 만듭니다.
 	 */
-	public List<Message> buildMessages(RetrievalContext context,
+	public List<Message> buildMessages(PersonaId personaId,
+		RetrievalContext context,
 		MemoryRetrievalResult memories,
 		ConversationContext conversationContext,
 		String currentQuery) {
@@ -33,7 +35,8 @@ public class DialogueMessageService {
 
 		List<Message> messages = new ArrayList<>();
 
-		String fullSystemPrompt = systemPromptService.buildSystemPrompt(context, memories);
+		String fullSystemPrompt = systemPromptService
+			.buildSystemPrompt(personaId, context, memories);
 		if (fullSystemPrompt == null || fullSystemPrompt.isBlank()) {
 			fullSystemPrompt = DEFAULT_SYSTEM_PROMPT;
 		}

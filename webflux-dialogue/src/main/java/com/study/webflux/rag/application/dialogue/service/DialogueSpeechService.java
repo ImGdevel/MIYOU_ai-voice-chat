@@ -10,7 +10,7 @@ import org.springframework.stereotype.Service;
 import org.springframework.web.server.ResponseStatusException;
 
 import com.study.webflux.rag.domain.dialogue.model.AudioTranscriptionInput;
-import com.study.webflux.rag.domain.dialogue.model.UserId;
+import com.study.webflux.rag.domain.dialogue.model.ConversationSession;
 import com.study.webflux.rag.domain.dialogue.port.DialoguePipelineUseCase;
 import com.study.webflux.rag.domain.dialogue.port.SttPort;
 import com.study.webflux.rag.infrastructure.dialogue.config.properties.RagDialogueProperties;
@@ -32,11 +32,12 @@ public class DialogueSpeechService {
 	}
 
 	/** 음성 파일을 텍스트로 변환한 뒤 텍스트 응답을 생성합니다. */
-	public Mono<SpeechDialogueResult> transcribeAndRespond(UserId userId,
+	public Mono<SpeechDialogueResult> transcribeAndRespond(ConversationSession session,
 		FilePart filePart,
 		String language) {
 		return transcribe(filePart, language)
-			.flatMap(transcription -> dialoguePipelineUseCase.executeTextOnly(userId, transcription)
+			.flatMap(transcription -> dialoguePipelineUseCase
+				.executeTextOnly(session, transcription)
 				.collectList()
 				.map(tokens -> new SpeechDialogueResult(transcription, String.join("", tokens))));
 	}

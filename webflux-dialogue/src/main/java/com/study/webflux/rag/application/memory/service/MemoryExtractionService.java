@@ -7,8 +7,8 @@ import lombok.extern.slf4j.Slf4j;
 
 import org.springframework.stereotype.Service;
 
+import com.study.webflux.rag.domain.dialogue.model.ConversationSessionId;
 import com.study.webflux.rag.domain.dialogue.model.ConversationTurn;
-import com.study.webflux.rag.domain.dialogue.model.UserId;
 import com.study.webflux.rag.domain.dialogue.port.ConversationRepository;
 import com.study.webflux.rag.domain.memory.model.ExtractedMemory;
 import com.study.webflux.rag.domain.memory.model.Memory;
@@ -38,33 +38,25 @@ public class MemoryExtractionService {
 	private final MemoryExtractionMetricsConfiguration extractionMetrics;
 	private final int conversationThreshold;
 
-	/**
-	 * 누적 대화 수가 임계값 배수인 경우에만 메모리 추출 파이프라인을 실행합니다.
-	 */
-	public Mono<Void> checkAndExtract(UserId userId) {
-		return counterPort.get(userId)
+	public Mono<Void> checkAndExtract(ConversationSessionId sessionId) {
+		return counterPort.get(sessionId)
 			.filter(this::isExtractionTurn)
 			.flatMap(count -> {
-				log.info("메모리 추출 트리거: 대화 횟수={}", count);
+				log.info("메모리 추출 트리거: sessionId={}, 대화 횟수={}", sessionId.value(), count);
 				extractionMetrics.recordExtractionTriggered();
-				return performExtraction(userId);
+				return performExtraction(sessionId);
 			})
 			.then();
 	}
 
-	/**
-	 * 최근 대화를 기준으로 메모리 추출 컨텍스트를 구성하고 추출 결과를 저장합니다.
-	 */
-	private Mono<Void> performExtraction(UserId userId) {
-		return loadRecentConversations(userId)
-			.flatMap(conversations -> buildExtractionContext(userId, conversations))
+	private Mono<Void> performExtraction(ConversationSessionId sessionId) {
+		return loadRecentConversations(sessionId)
+			.flatMap(conversations -> buildExtractionContext(sessionId, conversations))
 			.flatMapMany(extractionPort::extractMemories)
 			.collectList()
 			.doOnNext(extractedList -> {
-				// 추출 성공 기록
 				extractionMetrics.recordExtractionSuccess(extractedList.size());
 
-				// 타입별 개수 집계
 				java.util.Map<String, Long> typeCounts = extractedList.stream()
 					.collect(java.util.stream.Collectors.groupingBy(
 						extracted -> extracted.type().name(),
@@ -73,12 +65,10 @@ public class MemoryExtractionService {
 				typeCounts.forEach((type, count) -> extractionMetrics
 					.recordExtractedMemoryType(type, count.intValue()));
 
-				// 중요도 기록
 				extractedList.forEach(extracted -> extractionMetrics
 					.recordExtractedImportance(extracted.importance()));
 			})
 			.doOnError(error -> {
-				// 추출 실패 기록
 				extractionMetrics.recordExtractionFailure();
 				log.error("메모리 추출 실패", error);
 			})
@@ -91,9 +81,6 @@ public class MemoryExtractionService {
 			.then();
 	}
 
-	/**
-	 * 추출된 메모리를 임베딩한 뒤 벡터 저장소에 저장합니다.
-	 */
 	private Mono<Memory> saveExtractedMemory(ExtractedMemory extracted) {
 		Memory memory = extracted.toMemory();
 
@@ -105,21 +92,17 @@ public class MemoryExtractionService {
 		return count > 0 && count % conversationThreshold == 0;
 	}
 
-	/**
-	 * 임계 대화 수만큼 최근 대화 이력을 불러옵니다.
-	 */
-	private Mono<List<ConversationTurn>> loadRecentConversations(UserId userId) {
-		return conversationRepository.findRecent(userId, conversationThreshold).collectList();
+	private Mono<List<ConversationTurn>> loadRecentConversations(ConversationSessionId sessionId) {
+		return conversationRepository.findRecent(sessionId, conversationThreshold)
+			.collectList();
 	}
 
-	/**
-	 * 대화 이력과 관련 메모리를 결합해 추출 컨텍스트를 구성합니다.
-	 */
-	private Mono<MemoryExtractionContext> buildExtractionContext(UserId userId,
+	private Mono<MemoryExtractionContext> buildExtractionContext(ConversationSessionId sessionId,
 		List<ConversationTurn> conversations) {
 		String combinedQuery = mergeQueries(conversations);
-		return retrievalService.retrieveMemories(userId, combinedQuery, 10)
-			.map(result -> MemoryExtractionContext.of(userId, conversations, result.allMemories()));
+		return retrievalService.retrieveMemories(sessionId, combinedQuery, 10)
+			.map(result -> MemoryExtractionContext
+				.of(sessionId, conversations, result.allMemories()));
 	}
 
 	private String mergeQueries(List<ConversationTurn> conversations) {

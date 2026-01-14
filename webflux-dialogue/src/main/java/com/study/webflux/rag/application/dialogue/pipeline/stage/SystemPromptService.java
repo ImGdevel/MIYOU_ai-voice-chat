@@ -7,6 +7,7 @@ import lombok.extern.slf4j.Slf4j;
 
 import org.springframework.stereotype.Service;
 
+import com.study.webflux.rag.domain.dialogue.model.PersonaId;
 import com.study.webflux.rag.domain.memory.model.Memory;
 import com.study.webflux.rag.domain.memory.model.MemoryRetrievalResult;
 import com.study.webflux.rag.domain.retrieval.model.RetrievalContext;
@@ -17,6 +18,7 @@ import com.study.webflux.rag.infrastructure.dialogue.config.properties.RagDialog
 @Service
 public class SystemPromptService {
 
+	private static final String PERSONA_TEMPLATE_PREFIX = "system/persona/";
 	private static final String PERSONA_PLACEHOLDER = "{{persona}}";
 	private static final String COMMON_PLACEHOLDER = "{{common}}";
 	private static final String MEMORIES_PLACEHOLDER = "{{memories}}";
@@ -30,7 +32,7 @@ public class SystemPromptService {
 	private final FileBasedPromptTemplate promptTemplate;
 	private final String configuredSystemPrompt;
 	private final String baseTemplate;
-	private final String personaTemplate;
+	private final String defaultPersonaTemplate;
 	private final String commonTemplate;
 
 	public SystemPromptService(FileBasedPromptTemplate promptTemplate,
@@ -38,21 +40,25 @@ public class SystemPromptService {
 		this.promptTemplate = promptTemplate;
 		this.configuredSystemPrompt = properties.getSystemPrompt();
 		this.baseTemplate = resolveTemplateContent(properties.getSystemBasePromptTemplate());
-		this.personaTemplate = resolveTemplateContent(properties.getSystemPromptTemplate());
+		this.defaultPersonaTemplate = resolveTemplateContent(properties.getSystemPromptTemplate());
 		this.commonTemplate = resolveTemplateContent(properties.getCommonSystemPromptTemplate());
 	}
 
 	/**
-	 * 템플릿/설정값과 회수된 메모리·검색 컨텍스트를 반영해 시스템 프롬프트를 생성합니다.
+	 * 페르소나별 시스템 프롬프트를 생성합니다.
 	 *
+	 * @param personaId
+	 *            페르소나 ID (템플릿 파일명으로 사용)
 	 * @param context
 	 *            현재 질의에 대한 검색 컨텍스트
 	 * @param memories
 	 *            현재 대화 상대에 대한 회수 메모리
 	 * @return LLM 요청에 주입할 시스템 프롬프트
 	 */
-	public String buildSystemPrompt(RetrievalContext context, MemoryRetrievalResult memories) {
-		PromptSections sections = new PromptSections(resolvePersonaPrompt(),
+	public String buildSystemPrompt(PersonaId personaId,
+		RetrievalContext context,
+		MemoryRetrievalResult memories) {
+		PromptSections sections = new PromptSections(resolvePersonaPrompt(personaId),
 			commonTemplate,
 			buildMemoryBlock(memories),
 			buildContextBlock(context));
@@ -68,16 +74,51 @@ public class SystemPromptService {
 	}
 
 	/**
-	 * 페르소나 프롬프트를 템플릿 우선 정책으로 선택합니다.
+	 * 기본 페르소나로 시스템 프롬프트를 생성합니다. (하위 호환성)
 	 */
-	private String resolvePersonaPrompt() {
-		if (!personaTemplate.isBlank()) {
-			return personaTemplate;
+	public String buildSystemPrompt(RetrievalContext context, MemoryRetrievalResult memories) {
+		return buildSystemPrompt(PersonaId.defaultPersona(), context, memories);
+	}
+
+	/**
+	 * 페르소나 프롬프트를 personaId 기반으로 동적 로드합니다.
+	 */
+	private String resolvePersonaPrompt(PersonaId personaId) {
+		if (personaId != null && !PersonaId.DEFAULT.equals(personaId)) {
+			String dynamicTemplate = loadPersonaTemplate(personaId);
+			if (!dynamicTemplate.isBlank()) {
+				return dynamicTemplate;
+			}
+		}
+		return resolveDefaultPersonaPrompt();
+	}
+
+	/**
+	 * 기본 페르소나 프롬프트를 템플릿 우선 정책으로 선택합니다.
+	 */
+	private String resolveDefaultPersonaPrompt() {
+		if (!defaultPersonaTemplate.isBlank()) {
+			return defaultPersonaTemplate;
 		}
 		if (configuredSystemPrompt != null) {
 			return configuredSystemPrompt.trim();
 		}
 		return "";
+	}
+
+	/**
+	 * personaId에 해당하는 템플릿 파일을 로드합니다.
+	 */
+	private String loadPersonaTemplate(PersonaId personaId) {
+		String templatePath = PERSONA_TEMPLATE_PREFIX + personaId.value();
+		try {
+			return promptTemplate.load(templatePath).trim();
+		} catch (RuntimeException e) {
+			log.warn("페르소나 템플릿 '{}'을 불러오지 못해 기본 페르소나를 사용합니다: {}",
+				templatePath,
+				e.getMessage());
+			return "";
+		}
 	}
 
 	/**

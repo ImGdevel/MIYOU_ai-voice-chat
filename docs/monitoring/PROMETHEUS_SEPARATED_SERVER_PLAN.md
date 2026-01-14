@@ -7,8 +7,8 @@
 ## 확정된 전제
 - 모니터링 서버(EC2) 분리 운영
 - 앱-모니터링 통신은 private IP 사용
-- 모니터링 서버 private IP: `172.31.44.177`
-- 모니터링 서버 public IP: `15.164.50.54` (임시, 이후 제거 예정)
+- 모니터링 서버 private IP: `<MONITORING_SERVER_PRIVATE_IP>`
+- 모니터링 서버 public IP: `<MONITORING_SERVER_PUBLIC_IP>`
 
 ## 작업 단계
 1. 앱 메트릭 노출 준비
@@ -23,19 +23,36 @@
    - 앱 서버 SG: `8081` 인바운드를 모니터링 서버(또는 SG)로만 제한
    - 모니터링 서버 SG: `9090`은 운영 정책에 맞게 제한(권장: 비공개/터널)
 4. 검증
-   - Prometheus `/targets`에서 `miyou-app`이 `UP`
+   - Prometheus `/targets`에서 `miyou-dialogue`이 `UP`
    - PromQL 조회 가능 여부 확인
 
 ## 실행 명령 (로컬 -> 모니터링 서버)
 ```bash
 APP_METRICS_TARGET=<APP_PRIVATE_IP>:8081 \
-./scripts/aws/deploy_remote_prometheus.sh ubuntu@15.164.50.54
+./scripts/aws/deploy_remote_prometheus.sh ubuntu@<MONITORING_SERVER_PUBLIC_IP>
 ```
 
 예시:
 ```bash
-APP_METRICS_TARGET=172.31.62.169:80 \
-./scripts/aws/deploy_remote_prometheus.sh ubuntu@15.164.50.54
+APP_METRICS_TARGET=<APP_PRIVATE_IP>:80 \
+./scripts/aws/deploy_remote_prometheus.sh ubuntu@<MONITORING_SERVER_PUBLIC_IP>
+```
+
+## SSM 기반 타깃 주입 (권장)
+- Prometheus app target은 SSM 파라미터로 관리:
+  - 기본 경로: `/miyou/prod/APP_METRICS_TARGETS`
+  - 값 예시: `172.31.62.169:80` 또는 `app1.internal:80,app2.internal:80`
+- 배포 스크립트 우선순위:
+  1. `APP_METRICS_TARGET` / `APP_METRICS_TARGETS`
+  2. `USE_SSM_TARGETS=true`일 때 SSM에서 조회
+
+실행 예시:
+```bash
+SSH_OPTS='-i /path/to/key.pem -o StrictHostKeyChecking=no' \
+USE_SSM_TARGETS=true \
+SSM_TARGETS_PARAM=/miyou/prod/APP_METRICS_TARGETS \
+AWS_REGION=ap-northeast-2 \
+bash ./scripts/aws/deploy_remote_prometheus.sh ubuntu@<MONITORING_SERVER_PUBLIC_IP>
 ```
 
 ## 지금 필요한 정보

@@ -1,12 +1,15 @@
 package com.study.webflux.rag.infrastructure.dialogue.config.properties;
 
 import java.util.ArrayList;
+import java.util.HashMap;
 import java.util.List;
+import java.util.Map;
 
 import org.springframework.boot.context.properties.ConfigurationProperties;
 import org.springframework.stereotype.Component;
 
 import com.study.webflux.rag.infrastructure.common.constants.DialogueConstants;
+import jakarta.validation.constraints.NotBlank;
 
 @Component
 @ConfigurationProperties(prefix = "rag.dialogue")
@@ -21,6 +24,7 @@ public class RagDialogueProperties {
 	private String systemPromptTemplate = "system/persona/maid";
 	private String commonSystemPromptTemplate = "system/common";
 	private String systemBasePromptTemplate = "system/base";
+	private Map<String, PersonaVoiceConfig> personas = new HashMap<>();
 
 	public OpenAi getOpenai() {
 		return openai;
@@ -92,6 +96,14 @@ public class RagDialogueProperties {
 
 	public void setSystemBasePromptTemplate(String systemBasePromptTemplate) {
 		this.systemBasePromptTemplate = systemBasePromptTemplate;
+	}
+
+	public Map<String, PersonaVoiceConfig> getPersonas() {
+		return personas;
+	}
+
+	public void setPersonas(Map<String, PersonaVoiceConfig> personas) {
+		this.personas = personas;
 	}
 
 	public static class OpenAi {
@@ -364,6 +376,46 @@ public class RagDialogueProperties {
 
 		public void setBaseUrl(String baseUrl) {
 			this.baseUrl = baseUrl;
+		}
+	}
+
+	public static class PersonaVoiceConfig {
+		@NotBlank
+		private String voiceId;
+		private String language = DialogueConstants.Supertone.Language.KOREAN;
+		private String style = DialogueConstants.Supertone.Style.NEUTRAL;
+		private Supertone.VoiceSettings voiceSettings = new Supertone.VoiceSettings();
+
+		public String getVoiceId() {
+			return voiceId;
+		}
+
+		public void setVoiceId(String voiceId) {
+			this.voiceId = voiceId;
+		}
+
+		public String getLanguage() {
+			return language;
+		}
+
+		public void setLanguage(String language) {
+			this.language = language;
+		}
+
+		public String getStyle() {
+			return style;
+		}
+
+		public void setStyle(String style) {
+			this.style = style;
+		}
+
+		public Supertone.VoiceSettings getVoiceSettings() {
+			return voiceSettings;
+		}
+
+		public void setVoiceSettings(Supertone.VoiceSettings voiceSettings) {
+			this.voiceSettings = voiceSettings;
 		}
 	}
 }

@@ -4,7 +4,7 @@ import lombok.RequiredArgsConstructor;
 
 import org.springframework.stereotype.Component;
 
-import com.study.webflux.rag.domain.dialogue.model.UserId;
+import com.study.webflux.rag.domain.dialogue.model.ConversationSessionId;
 import com.study.webflux.rag.domain.dialogue.port.ConversationRepository;
 import com.study.webflux.rag.domain.memory.model.MemoryRetrievalResult;
 import com.study.webflux.rag.domain.retrieval.model.RetrievalContext;
@@ -18,18 +18,20 @@ public class InMemoryRetrievalAdapter implements RetrievalPort {
 
 	private final ConversationRepository conversationRepository;
 
-	/** 전체 대화를 메모리에서 로드하고 키워드 유사도로 문서를 검색합니다. */
 	@Override
-	public Mono<RetrievalContext> retrieve(UserId userId, String query, int topK) {
-		return conversationRepository.findAll(userId)
+	public Mono<RetrievalContext> retrieve(ConversationSessionId sessionId,
+		String query,
+		int topK) {
+		return conversationRepository.findAll(sessionId)
 			.collectList()
 			.map(turns -> KeywordSimilaritySupport.rankDocumentsByQuery(query, turns, topK))
 			.map(documents -> RetrievalContext.of(query, documents));
 	}
 
-	/** 메모리 검색은 지원하지 않습니다. */
 	@Override
-	public Mono<MemoryRetrievalResult> retrieveMemories(UserId userId, String query, int topK) {
+	public Mono<MemoryRetrievalResult> retrieveMemories(ConversationSessionId sessionId,
+		String query,
+		int topK) {
 		return Mono.just(MemoryRetrievalResult.empty());
 	}
 }

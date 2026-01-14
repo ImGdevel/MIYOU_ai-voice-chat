@@ -7,12 +7,32 @@
     <link rel="stylesheet" href="/css/style.css">
 </head>
 <body>
+    <!-- Persona Selection Modal -->
+    <div class="persona-modal" id="personaModal">
+        <div class="persona-content">
+            <h2>페르소나 선택</h2>
+            <p class="persona-description">대화할 페르소나를 선택하세요</p>
+            <div class="persona-grid">
+                <button class="persona-card" data-persona="maid" tabindex="0">
+                    <div class="persona-icon">👩‍💼</div>
+                    <div class="persona-name">메이드 리리아</div>
+                    <div class="persona-desc">친절하고 따뜻한 메이드</div>
+                </button>
+                <button class="persona-card" data-persona="interviewer" tabindex="0">
+                    <div class="persona-icon">💼</div>
+                    <div class="persona-name">면접관</div>
+                    <div class="persona-desc">전문적인 기술 면접관</div>
+                </button>
+            </div>
+        </div>
+    </div>
+
     <div class="voice-container">
         <div class="visualizer-wrapper">
             <canvas id="visualizer" width="300" height="300"></canvas>
         </div>
 
-        <div class="status-text" id="statusText">대화를 시작하려면 화면을 탭하세요</div>
+        <div class="status-text" id="statusText">페르소나를 선택하세요</div>
     </div>
 
     <div class="input-overlay" id="inputOverlay">

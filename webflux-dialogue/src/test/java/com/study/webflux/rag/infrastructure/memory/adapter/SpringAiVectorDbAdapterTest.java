@@ -8,9 +8,10 @@ import org.springframework.ai.document.Document;
 import org.springframework.ai.vectorstore.VectorStore;
 
 import com.google.common.util.concurrent.Futures;
-import com.study.webflux.rag.domain.dialogue.model.UserId;
+import com.study.webflux.rag.domain.dialogue.model.ConversationSessionId;
 import com.study.webflux.rag.domain.memory.model.Memory;
 import com.study.webflux.rag.domain.memory.model.MemoryType;
+import com.study.webflux.rag.fixture.ConversationSessionFixture;
 import com.study.webflux.rag.infrastructure.dialogue.config.properties.RagDialogueProperties;
 import io.qdrant.client.QdrantClient;
 import io.qdrant.client.grpc.JsonWithInt;
@@ -58,8 +59,8 @@ class SpringAiVectorDbAdapterTest {
 	@Test
 	@DisplayName("메모리를 벡터 DB에 저장한다")
 	void upsert_success() {
-		UserId userId = UserId.of("user-1");
-		Memory memory = new Memory(null, userId, MemoryType.EXPERIENTIAL, "테스트 메모리", 0.8f,
+		ConversationSessionId sessionId = ConversationSessionFixture.createId();
+		Memory memory = new Memory(null, sessionId, MemoryType.EXPERIENTIAL, "테스트 메모리", 0.8f,
 			Instant.now(), Instant.now(), 1);
 		List<Float> embedding = List.of(0.1f, 0.2f, 0.3f);
 
@@ -76,9 +77,9 @@ class SpringAiVectorDbAdapterTest {
 	@Test
 	@DisplayName("ID가 있는 메모리를 저장할 때 ID를 유지한다")
 	void upsert_withExistingId_preservesId() {
-		UserId userId = UserId.of("user-1");
+		ConversationSessionId sessionId = ConversationSessionFixture.createId();
 		String existingId = "existing-id-123";
-		Memory memory = new Memory(existingId, userId, MemoryType.FACTUAL, "기존 메모리", 0.5f, null,
+		Memory memory = new Memory(existingId, sessionId, MemoryType.FACTUAL, "기존 메모리", 0.5f, null,
 			null, null);
 		List<Float> embedding = List.of(0.1f, 0.2f);
 
@@ -90,11 +91,11 @@ class SpringAiVectorDbAdapterTest {
 	@Test
 	@DisplayName("메모리 저장 시 메타데이터를 올바르게 설정한다")
 	void upsert_setsMetadataCorrectly() {
-		UserId userId = UserId.of("user-1");
+		ConversationSessionId sessionId = ConversationSessionFixture.createId();
 		Instant createdAt = Instant.parse("2025-01-01T00:00:00Z");
 		Instant lastAccessedAt = Instant.parse("2025-01-02T00:00:00Z");
 
-		Memory memory = new Memory(null, userId, MemoryType.EXPERIENTIAL, "메타데이터 테스트", 0.9f,
+		Memory memory = new Memory(null, sessionId, MemoryType.EXPERIENTIAL, "메타데이터 테스트", 0.9f,
 			createdAt, lastAccessedAt, 5);
 		List<Float> embedding = List.of(0.1f);
 
@@ -107,7 +108,7 @@ class SpringAiVectorDbAdapterTest {
 		Document capturedDoc = captor.getValue().get(0);
 		Map<String, Object> metadata = capturedDoc.getMetadata();
 
-		assertThat(metadata.get("userId")).isEqualTo("user-1");
+		assertThat(metadata.get("sessionId")).isEqualTo(sessionId.value());
 		assertThat(metadata.get("type")).isEqualTo("EXPERIENTIAL");
 		assertThat(metadata.get("importance")).isEqualTo(0.9f);
 		assertThat(metadata.get("createdAt")).isEqualTo(createdAt.toEpochMilli());
@@ -118,7 +119,7 @@ class SpringAiVectorDbAdapterTest {
 	@Test
 	@DisplayName("타입과 중요도 필터로 메모리를 검색한다")
 	void search_withFilters_success() throws Exception {
-		UserId userId = UserId.of("user-1");
+		ConversationSessionId sessionId = ConversationSessionFixture.createId();
 		List<Float> queryEmbedding = List.of(0.1f, 0.2f, 0.3f);
 		List<MemoryType> types = List.of(MemoryType.EXPERIENTIAL, MemoryType.FACTUAL);
 		float importanceThreshold = 0.5f;
@@ -137,7 +138,7 @@ class SpringAiVectorDbAdapterTest {
 
 		StepVerifier
 			.create(
-				vectorDbAdapter.search(userId, queryEmbedding, types, importanceThreshold, topK))
+				vectorDbAdapter.search(sessionId, queryEmbedding, types, importanceThreshold, topK))
 			.assertNext(result -> {
 				assertThat(result).isNotNull();
 				assertThat(result.id()).isEqualTo("doc-1");
@@ -150,21 +151,21 @@ class SpringAiVectorDbAdapterTest {
 	@Test
 	@DisplayName("검색 결과가 없으면 빈 Flux를 반환한다")
 	void search_noResults_returnsEmpty() throws Exception {
-		UserId userId = UserId.of("user-1");
+		ConversationSessionId sessionId = ConversationSessionFixture.createId();
 		List<Float> queryEmbedding = List.of(0.1f);
 		List<MemoryType> types = List.of(MemoryType.EXPERIENTIAL);
 
 		when(qdrantClient.searchAsync(any(SearchPoints.class)))
 			.thenReturn(Futures.immediateFuture(List.of()));
 
-		StepVerifier.create(vectorDbAdapter.search(userId, queryEmbedding, types, 0.5f, 5))
+		StepVerifier.create(vectorDbAdapter.search(sessionId, queryEmbedding, types, 0.5f, 5))
 			.verifyComplete();
 	}
 
 	@Test
 	@DisplayName("여러 메모리를 검색하여 반환한다")
 	void search_multipleResults_returnsAll() throws Exception {
-		UserId userId = UserId.of("user-1");
+		ConversationSessionId sessionId = ConversationSessionFixture.createId();
 		List<Float> queryEmbedding = List.of(0.1f);
 		List<MemoryType> types = List.of(MemoryType.EXPERIENTIAL);
 
@@ -189,7 +190,7 @@ class SpringAiVectorDbAdapterTest {
 		when(qdrantClient.searchAsync(any(SearchPoints.class)))
 			.thenReturn(Futures.immediateFuture(List.of(point1, point2)));
 
-		StepVerifier.create(vectorDbAdapter.search(userId, queryEmbedding, types, 0.5f, 5))
+		StepVerifier.create(vectorDbAdapter.search(sessionId, queryEmbedding, types, 0.5f, 5))
 			.assertNext(result -> {
 				assertThat(result.id()).isEqualTo("doc-1");
 				assertThat(result.importance()).isEqualTo(0.9f);
@@ -216,7 +217,7 @@ class SpringAiVectorDbAdapterTest {
 	@Test
 	@DisplayName("ScoredPoint에서 Memory로 변환 시 모든 필드를 매핑한다")
 	void search_mapsAllFields() throws Exception {
-		UserId userId = UserId.of("user-1");
+		ConversationSessionId sessionId = ConversationSessionFixture.createId();
 		Instant now = Instant.now();
 
 		ScoredPoint point = ScoredPoint.newBuilder()
@@ -236,7 +237,7 @@ class SpringAiVectorDbAdapterTest {
 			.thenReturn(Futures.immediateFuture(List.of(point)));
 
 		StepVerifier
-			.create(vectorDbAdapter.search(userId,
+			.create(vectorDbAdapter.search(sessionId,
 				List.of(0.1f),
 				List.of(MemoryType.FACTUAL),
 				0.5f,
@@ -255,7 +256,7 @@ class SpringAiVectorDbAdapterTest {
 	@Test
 	@DisplayName("메타데이터에 선택적 필드가 없어도 정상 처리한다")
 	void search_withMissingOptionalFields_success() throws Exception {
-		UserId userId = UserId.of("user-1");
+		ConversationSessionId sessionId = ConversationSessionFixture.createId();
 		ScoredPoint point = ScoredPoint.newBuilder()
 			.setId(Points.PointId.newBuilder().setUuid("doc-min").build())
 			.putPayload("content", JsonWithInt.Value.newBuilder().setStringValue("최소 메모리").build())
@@ -267,7 +268,7 @@ class SpringAiVectorDbAdapterTest {
 			.thenReturn(Futures.immediateFuture(List.of(point)));
 
 		StepVerifier
-			.create(vectorDbAdapter.search(userId,
+			.create(vectorDbAdapter.search(sessionId,
 				List.of(0.1f),
 				List.of(MemoryType.EXPERIENTIAL),
 				0.0f,
@@ -285,13 +286,13 @@ class SpringAiVectorDbAdapterTest {
 	@Test
 	@DisplayName("단일 타입으로 검색 시 Qdrant 검색이 호출된다")
 	void search_singleType_createsCorrectFilter() throws Exception {
-		UserId userId = UserId.of("user-1");
+		ConversationSessionId sessionId = ConversationSessionFixture.createId();
 		List<MemoryType> types = List.of(MemoryType.FACTUAL);
 
 		when(qdrantClient.searchAsync(any(SearchPoints.class)))
 			.thenReturn(Futures.immediateFuture(List.of()));
 
-		StepVerifier.create(vectorDbAdapter.search(userId, List.of(0.1f), types, 0.3f, 5))
+		StepVerifier.create(vectorDbAdapter.search(sessionId, List.of(0.1f), types, 0.3f, 5))
 			.verifyComplete();
 
 		verify(qdrantClient).searchAsync(any(SearchPoints.class));

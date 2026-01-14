@@ -7,21 +7,28 @@ APP_METRICS_TARGET="${APP_METRICS_TARGET:-}"
 APP_METRICS_TARGETS="${APP_METRICS_TARGETS:-}"
 SSH_OPTS="${SSH_OPTS:-}"
 USE_SSM="${USE_SSM:-true}"
+USE_SSM_TARGETS="${USE_SSM_TARGETS:-true}"
 SSM_WEBHOOK_PARAM="${SSM_WEBHOOK_PARAM:-/miyou/prod/WEB_HOOK_GRAFANA}"
+SSM_TARGETS_PARAM="${SSM_TARGETS_PARAM:-/miyou/prod/APP_METRICS_TARGETS}"
 AWS_REGION="${AWS_REGION:-ap-northeast-2}"
-
-if [[ -z "${APP_METRICS_TARGET}" && -z "${APP_METRICS_TARGETS}" ]]; then
-  echo "[monitoring] APP_METRICS_TARGET 또는 APP_METRICS_TARGETS가 필요합니다. (example: 172.31.62.169:80 또는 app.internal:80,app2.internal:80)" >&2
-  exit 1
-fi
 
 SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
 PROJECT_ROOT="$(cd "${SCRIPT_DIR}/../.." && pwd)"
 TMP_TARGET_FILE="$(mktemp)"
 trap 'rm -f "${TMP_TARGET_FILE}"' EXIT
 
+if [[ -z "${APP_METRICS_TARGET}" && -z "${APP_METRICS_TARGETS}" && "${USE_SSM_TARGETS}" == "true" ]]; then
+  echo "[monitoring] Resolve app metrics targets from SSM: ${SSM_TARGETS_PARAM}"
+  APP_METRICS_TARGETS="$(ssh ${SSH_OPTS} "${HOST_ALIAS}" "aws ssm get-parameter --name '${SSM_TARGETS_PARAM}' --with-decryption --region '${AWS_REGION}' --query 'Parameter.Value' --output text 2>/dev/null || true")"
+fi
+
 if [[ -z "${APP_METRICS_TARGETS}" ]]; then
   APP_METRICS_TARGETS="${APP_METRICS_TARGET}"
+fi
+
+if [[ -z "${APP_METRICS_TARGETS}" ]]; then
+  echo "[monitoring] APP_METRICS_TARGET/APP_METRICS_TARGETS 또는 SSM(${SSM_TARGETS_PARAM})가 필요합니다. (example: 172.31.62.169:80 또는 app.internal:80,app2.internal:80)" >&2
+  exit 1
 fi
 
 IFS=',' read -r -a RAW_TARGETS <<< "${APP_METRICS_TARGETS}"
@@ -46,7 +53,7 @@ cat > "${TMP_TARGET_FILE}" <<EOF
 [
   {
     "labels": {
-      "service": "miyou-app",
+      "service": "miyou-dialogue",
       "env": "prod"
     },
     "targets": [
