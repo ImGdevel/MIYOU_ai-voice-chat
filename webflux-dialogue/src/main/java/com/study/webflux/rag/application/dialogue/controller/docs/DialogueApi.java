@@ -1,5 +1,7 @@
 package com.study.webflux.rag.application.dialogue.controller.docs;
 
+import com.study.webflux.rag.application.dialogue.dto.CreateSessionRequest;
+import com.study.webflux.rag.application.dialogue.dto.CreateSessionResponse;
 import com.study.webflux.rag.application.dialogue.dto.RagDialogueRequest;
 import com.study.webflux.rag.application.dialogue.dto.SttDialogueResponse;
 import com.study.webflux.rag.application.dialogue.dto.SttTranscriptionResponse;
@@ -23,6 +25,19 @@ import reactor.core.publisher.Mono;
 	description = "LLM 및 TTS를 활용한 RAG 대화 파이프라인"
 )
 public interface DialogueApi {
+
+	@Operation(
+		summary = "새 대화 세션 생성",
+		description = "사용자와 페르소나로 새로운 대화 세션을 생성합니다"
+	)
+	@ApiResponse(
+		responseCode = "200",
+		description = "세션 생성 성공",
+		content = @Content(mediaType = MediaType.APPLICATION_JSON_VALUE)
+	)
+	Mono<CreateSessionResponse> createSession(
+		@Valid CreateSessionRequest request
+	);
 
 	@Operation(
 		summary = "오디오 스트리밍 응답",

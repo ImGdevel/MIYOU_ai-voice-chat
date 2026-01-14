@@ -20,11 +20,16 @@ import org.springframework.web.bind.annotation.RestController;
 import org.springframework.web.server.ResponseStatusException;
 
 import com.study.webflux.rag.application.dialogue.controller.docs.DialogueApi;
+import com.study.webflux.rag.application.dialogue.dto.CreateSessionRequest;
+import com.study.webflux.rag.application.dialogue.dto.CreateSessionResponse;
 import com.study.webflux.rag.application.dialogue.dto.RagDialogueRequest;
 import com.study.webflux.rag.application.dialogue.dto.SttDialogueResponse;
 import com.study.webflux.rag.application.dialogue.dto.SttTranscriptionResponse;
 import com.study.webflux.rag.application.dialogue.service.DialogueSpeechService;
+import com.study.webflux.rag.domain.dialogue.model.ConversationSession;
 import com.study.webflux.rag.domain.dialogue.model.ConversationSessionId;
+import com.study.webflux.rag.domain.dialogue.model.PersonaId;
+import com.study.webflux.rag.domain.dialogue.model.UserId;
 import com.study.webflux.rag.domain.dialogue.port.ConversationSessionRepository;
 import com.study.webflux.rag.domain.dialogue.port.DialoguePipelineUseCase;
 import com.study.webflux.rag.domain.voice.model.AudioFormat;
@@ -44,6 +49,24 @@ public class DialogueController implements DialogueApi {
 	private final ConversationSessionRepository sessionRepository;
 	private final DialogueSpeechService dialogueSpeechService;
 	private final DataBufferFactory bufferFactory = new DefaultDataBufferFactory();
+
+	/** 새 대화 세션을 생성합니다. */
+	@PostMapping("/session")
+	public Mono<CreateSessionResponse> createSession(
+		@Valid @RequestBody CreateSessionRequest request) {
+		PersonaId personaId = request.personaId() != null && !request.personaId().isBlank()
+			? PersonaId.of(request.personaId())
+			: PersonaId.defaultPersona();
+
+		UserId userId = UserId.of(request.userId());
+		ConversationSession session = ConversationSession.create(personaId, userId);
+
+		return sessionRepository.save(session)
+			.map(saved -> new CreateSessionResponse(
+				saved.sessionId().value(),
+				saved.userId().value(),
+				saved.personaId().value()));
+	}
 
 	/** TTS 포함 RAG 파이프라인을 실행하고 요청 포맷으로 오디오를 스트리밍. */
 	@PostMapping(path = "/audio", produces = {"audio/wav", "audio/mpeg"})
