@@ -23,7 +23,7 @@
    - 앱 서버 SG: `8081` 인바운드를 모니터링 서버(또는 SG)로만 제한
    - 모니터링 서버 SG: `9090`은 운영 정책에 맞게 제한(권장: 비공개/터널)
 4. 검증
-   - Prometheus `/targets`에서 `miyou-app`이 `UP`
+   - Prometheus `/targets`에서 `miyou-dialogue`이 `UP`
    - PromQL 조회 가능 여부 확인
 
 ## 실행 명령 (로컬 -> 모니터링 서버)
