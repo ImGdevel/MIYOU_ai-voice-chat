@@ -35,7 +35,7 @@ public final class PipelineInputsFixture {
 
 	public static PipelineInputs createWithQuery(String query) {
 		ConversationSession session = ConversationSessionFixture.create();
-		ConversationTurn turn = ConversationTurnFixture.create(query);
+		ConversationTurn turn = ConversationTurn.create(session.sessionId(), query);
 		return new PipelineInputs(
 			session,
 			RetrievalContext.empty(query),
