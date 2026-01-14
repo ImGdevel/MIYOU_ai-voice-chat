@@ -1,12 +1,13 @@
 package com.study.webflux.rag.application.dialogue.pipeline.stage;
 
 import com.study.webflux.rag.application.monitoring.service.PipelineTracer;
+import com.study.webflux.rag.domain.dialogue.model.ConversationSession;
 import com.study.webflux.rag.domain.dialogue.model.ConversationTurn;
-import com.study.webflux.rag.domain.dialogue.model.UserId;
 import com.study.webflux.rag.domain.dialogue.port.ConversationRepository;
 import com.study.webflux.rag.domain.memory.model.MemoryRetrievalResult;
 import com.study.webflux.rag.domain.retrieval.model.RetrievalContext;
 import com.study.webflux.rag.domain.retrieval.port.RetrievalPort;
+import com.study.webflux.rag.fixture.ConversationSessionFixture;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Test;
@@ -46,26 +47,24 @@ class DialogueInputServiceTest {
 	@Test
 	@DisplayName("입력 준비 시 검색 컨텍스트, 메모리, 대화 이력을 포함한다")
 	void prepareInputs_shouldReturnPipelineInputsWithAllComponents() {
-		UserId userId = UserId.of("user-1");
+		ConversationSession session = ConversationSessionFixture.create();
 		String query = "안녕하세요";
 
 		RetrievalContext retrievalContext = RetrievalContext.empty(query);
 		MemoryRetrievalResult memories = MemoryRetrievalResult.empty();
-		ConversationTurn previousTurn = ConversationTurn.create(userId, "이전 질문")
+		ConversationTurn previousTurn = ConversationTurn
+			.create(session.sessionId(), "이전 질문")
 			.withResponse("이전 응답");
 
-		when(pipelineTracer.traceRetrieval(any())).thenAnswer(invocation -> {
-			return Mono.just(retrievalContext);
-		});
-		when(pipelineTracer.traceMemories(any())).thenAnswer(invocation -> {
-			return Mono.just(memories);
-		});
-		when(conversationRepository.findRecent(eq(userId), anyInt()))
+		when(pipelineTracer.traceRetrieval(any()))
+			.thenAnswer(invocation -> Mono.just(retrievalContext));
+		when(pipelineTracer.traceMemories(any())).thenAnswer(invocation -> Mono.just(memories));
+		when(conversationRepository.findRecent(eq(session.sessionId()), anyInt()))
 			.thenReturn(Flux.just(previousTurn));
 
-		StepVerifier.create(service.prepareInputs(userId, query))
+		StepVerifier.create(service.prepareInputs(session, query))
 			.assertNext(inputs -> {
-				assertThat(inputs.userId()).isEqualTo(userId);
+				assertThat(inputs.session()).isEqualTo(session);
 				assertThat(inputs.retrievalContext()).isEqualTo(retrievalContext);
 				assertThat(inputs.memories()).isEqualTo(memories);
 				assertThat(inputs.conversationContext()).isNotNull();
@@ -78,19 +77,17 @@ class DialogueInputServiceTest {
 	@Test
 	@DisplayName("대화 이력이 없으면 빈 컨텍스트를 반환한다")
 	void prepareInputs_withEmptyHistory_shouldReturnEmptyContext() {
-		UserId userId = UserId.of("user-1");
+		ConversationSession session = ConversationSessionFixture.create();
 		String query = "첫 질문";
 
-		when(pipelineTracer.traceRetrieval(any())).thenAnswer(invocation -> {
-			return Mono.just(RetrievalContext.empty(query));
-		});
-		when(pipelineTracer.traceMemories(any())).thenAnswer(invocation -> {
-			return Mono.just(MemoryRetrievalResult.empty());
-		});
-		when(conversationRepository.findRecent(eq(userId), anyInt()))
+		when(pipelineTracer.traceRetrieval(any()))
+			.thenAnswer(invocation -> Mono.just(RetrievalContext.empty(query)));
+		when(pipelineTracer.traceMemories(any()))
+			.thenAnswer(invocation -> Mono.just(MemoryRetrievalResult.empty()));
+		when(conversationRepository.findRecent(eq(session.sessionId()), anyInt()))
 			.thenReturn(Flux.empty());
 
-		StepVerifier.create(service.prepareInputs(userId, query))
+		StepVerifier.create(service.prepareInputs(session, query))
 			.assertNext(inputs -> {
 				assertThat(inputs.conversationContext().turns()).isEmpty();
 			})
@@ -100,19 +97,17 @@ class DialogueInputServiceTest {
 	@Test
 	@DisplayName("검색 실패 시 에러를 전파한다")
 	void prepareInputs_withRetrievalError_shouldPropagateError() {
-		UserId userId = UserId.of("user-1");
+		ConversationSession session = ConversationSessionFixture.create();
 		String query = "실패 테스트";
 
-		when(pipelineTracer.traceRetrieval(any())).thenAnswer(invocation -> {
-			return Mono.error(new RuntimeException("검색 실패"));
-		});
-		when(pipelineTracer.traceMemories(any())).thenAnswer(invocation -> {
-			return Mono.just(MemoryRetrievalResult.empty());
-		});
-		when(conversationRepository.findRecent(eq(userId), anyInt()))
+		when(pipelineTracer.traceRetrieval(any()))
+			.thenAnswer(invocation -> Mono.error(new RuntimeException("검색 실패")));
+		when(pipelineTracer.traceMemories(any()))
+			.thenAnswer(invocation -> Mono.just(MemoryRetrievalResult.empty()));
+		when(conversationRepository.findRecent(eq(session.sessionId()), anyInt()))
 			.thenReturn(Flux.empty());
 
-		StepVerifier.create(service.prepareInputs(userId, query))
+		StepVerifier.create(service.prepareInputs(session, query))
 			.expectErrorMatches(error -> error.getMessage().contains("검색 실패"))
 			.verify();
 	}
@@ -120,19 +115,17 @@ class DialogueInputServiceTest {
 	@Test
 	@DisplayName("검색과 메모리 조회를 병렬로 실행한다")
 	void prepareInputs_shouldExecuteRetrievalAndMemoryInParallel() {
-		UserId userId = UserId.of("user-1");
+		ConversationSession session = ConversationSessionFixture.create();
 		String query = "병렬 테스트";
 
-		when(pipelineTracer.traceRetrieval(any())).thenAnswer(invocation -> {
-			return Mono.just(RetrievalContext.empty(query));
-		});
-		when(pipelineTracer.traceMemories(any())).thenAnswer(invocation -> {
-			return Mono.just(MemoryRetrievalResult.empty());
-		});
-		when(conversationRepository.findRecent(eq(userId), anyInt()))
+		when(pipelineTracer.traceRetrieval(any()))
+			.thenAnswer(invocation -> Mono.just(RetrievalContext.empty(query)));
+		when(pipelineTracer.traceMemories(any()))
+			.thenAnswer(invocation -> Mono.just(MemoryRetrievalResult.empty()));
+		when(conversationRepository.findRecent(eq(session.sessionId()), anyInt()))
 			.thenReturn(Flux.empty());
 
-		StepVerifier.create(service.prepareInputs(userId, query))
+		StepVerifier.create(service.prepareInputs(session, query))
 			.assertNext(inputs -> {
 				assertThat(inputs).isNotNull();
 			})

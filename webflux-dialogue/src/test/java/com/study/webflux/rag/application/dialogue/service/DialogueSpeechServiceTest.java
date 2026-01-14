@@ -6,9 +6,10 @@ import org.springframework.http.MediaType;
 import org.springframework.http.codec.multipart.FilePart;
 import org.springframework.web.server.ResponseStatusException;
 
-import com.study.webflux.rag.domain.dialogue.model.UserId;
+import com.study.webflux.rag.domain.dialogue.model.ConversationSession;
 import com.study.webflux.rag.domain.dialogue.port.DialoguePipelineUseCase;
 import com.study.webflux.rag.domain.dialogue.port.SttPort;
+import com.study.webflux.rag.fixture.ConversationSessionFixture;
 import com.study.webflux.rag.infrastructure.dialogue.config.properties.RagDialogueProperties;
 import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Test;
@@ -33,12 +34,14 @@ class DialogueSpeechServiceTest {
 			MediaType.parseMediaType("audio/mpeg"),
 			"dummy-audio".getBytes());
 
+		ConversationSession session = ConversationSessionFixture.create();
+
 		when(sttPort.transcribe(any())).thenReturn(Mono.just("회의 일정 알려줘"));
 		when(dialoguePipelineUseCase.executeTextOnly(any(), any()))
 			.thenReturn(Flux.just("오늘 회의는 ", "오후 2시입니다."));
 
 		Mono<DialogueSpeechService.SpeechDialogueResult> result = service.transcribeAndRespond(
-			UserId.of("user-1"),
+			session,
 			audioFile,
 			null);
 
