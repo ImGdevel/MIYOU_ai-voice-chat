@@ -302,7 +302,7 @@ async function sendAudioForTranscription(audioBlob, mimeType) {
                          mimeType.includes('wav') ? 'wav' : 'webm';
 
         const formData = new FormData();
-        formData.append('audioFile', audioBlob, `recording.${extension}`);
+        formData.append('audio', audioBlob, `recording.${extension}`);
         formData.append('sessionId', currentSessionId);
         formData.append('language', 'ko');
 
