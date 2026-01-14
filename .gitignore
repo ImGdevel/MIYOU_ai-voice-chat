@@ -48,3 +48,4 @@ Claude.md
 .env
 *.pem
 deploy/nginx/.htpasswd
+wiki/
