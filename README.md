@@ -71,7 +71,7 @@ graph TB
     App <-->|"카운터"| Redis
 ```
 
-→ **[아키텍처 상세 문서](docs/portfolio/01-architecture.md)** — 헥사고날 구조, Before/After 비교, SOLID 원칙 적용
+→ **[아키텍처 상세 문서](https://github.com/ImGdevel/MIYOU_ai-voice-chat/wiki/아키텍처-설계)** — 헥사고날 구조, Before/After 비교, SOLID 원칙 적용
 
 ---
 
@@ -109,7 +109,7 @@ return Mono.zip(
 
 문장이 완성될 때마다 TTS를 즉시 기동하여 LLM 응답 완료를 기다리지 않습니다.
 
-→ **[성능 최적화 상세 문서](docs/portfolio/02-performance.md)** — 병렬화, TTS 로드밸런서, MongoDB 인덱스, 토큰 추적
+→ **[성능 최적화 상세 문서](https://github.com/ImGdevel/MIYOU_ai-voice-chat/wiki/성능-최적화)** — 병렬화, TTS 로드밸런서, MongoDB 인덱스, 토큰 추적
 
 ---
 
@@ -144,7 +144,7 @@ flowchart LR
 
 `PersonaId` 기반으로 사용자·캐릭터별 메모리를 독립 관리.
 
-→ **[메모리 & RAG 상세 문서](docs/portfolio/03-memory-and-rag.md)** — 벡터 검색, 메모리 추출, 중요도 스코어링
+→ **[메모리 & RAG 상세 문서](https://github.com/ImGdevel/MIYOU_ai-voice-chat/wiki/메모리-관리-&-RAG-시스템)** — 벡터 검색, 메모리 추출, 중요도 스코어링
 
 ---
 
@@ -159,7 +159,7 @@ graph LR
     DB --> Grafana["Grafana 대시보드"]
 ```
 
-→ **[모니터링 상세 문서](docs/portfolio/04-monitoring.md)** — AOP 계측, Prometheus/Grafana, 비용 추적
+→ **[모니터링 상세 문서](https://github.com/ImGdevel/MIYOU_ai-voice-chat/wiki/모니터링-&-관찰-가능성)** — AOP 계측, Prometheus/Grafana, 비용 추적
 
 ---
 
@@ -175,7 +175,7 @@ graph LR
 
 Nginx upstream 전환으로 다운타임 없이 배포. 시크릿은 AWS SSM Parameter Store에서 주입.
 
-→ **[배포 & 인프라 상세 문서](docs/portfolio/05-deployment.md)** — Blue-Green 배포 절차, Docker 멀티 스테이지, AWS SSM
+→ **[배포 & 인프라 상세 문서](https://github.com/ImGdevel/MIYOU_ai-voice-chat/wiki/배포-&-인프라)** — Blue-Green 배포 절차, Docker 멀티 스테이지, AWS SSM
 
 ---
 
@@ -207,19 +207,17 @@ API:
 
 | 문서 | 내용 |
 |------|------|
-| [01 아키텍처 설계](docs/portfolio/01-architecture.md) | 헥사고날 아키텍처, 파이프라인 흐름, SOLID 원칙 적용 |
-| [02 성능 최적화](docs/portfolio/02-performance.md) | 병렬화, TTS 로드밸런서, MongoDB 인덱스, 토큰 추적 |
-| [03 메모리 & RAG](docs/portfolio/03-memory-and-rag.md) | 벡터 검색, 장기 메모리 추출·저장, 중요도 스코어링 |
-| [04 모니터링](docs/portfolio/04-monitoring.md) | AOP 계측, Prometheus/Grafana, 비용 추적 |
-| [05 배포 & 인프라](docs/portfolio/05-deployment.md) | Blue-Green 배포, Docker 멀티 스테이지, AWS SSM |
+| [01 아키텍처 설계](https://github.com/ImGdevel/MIYOU_ai-voice-chat/wiki/아키텍처-설계) | 헥사고날 아키텍처, 파이프라인 흐름, SOLID 원칙 적용 |
+| [02 성능 최적화](https://github.com/ImGdevel/MIYOU_ai-voice-chat/wiki/성능-최적화) | 병렬화, TTS 로드밸런서, MongoDB 인덱스, 토큰 추적 |
+| [03 메모리 & RAG](https://github.com/ImGdevel/MIYOU_ai-voice-chat/wiki/메모리-관리-&-RAG-시스템) | 벡터 검색, 장기 메모리 추출·저장, 중요도 스코어링 |
+| [04 모니터링](https://github.com/ImGdevel/MIYOU_ai-voice-chat/wiki/모니터링-&-관찰-가능성) | AOP 계측, Prometheus/Grafana, 비용 추적 |
+| [05 배포 & 인프라](https://github.com/ImGdevel/MIYOU_ai-voice-chat/wiki/배포-&-인프라) | Blue-Green 배포, Docker 멀티 스테이지, AWS SSM |
 
-### 원본 기술 문서
+### 기술 문서 (Wiki)
 
 | 문서 | 내용 |
 |------|------|
-| [아키텍처 Before/After 비교](docs/architecture/ARCHITECTURE_COMPARISON.md) | 리팩토링 전후 구조 상세 비교 |
-| [성능 분석](docs/performance/PERFORMANCE_ANALYSIS.md) | 병목 분석, 안티패턴, 최적화 근거 |
-| [성능 최적화 포트폴리오](docs/performance/PERFORMANCE_OPTIMIZATION_PORTFOLIO.md) | 최적화 사례 + 면접 Q&A |
-| [TTS 로드밸런싱](docs/tts-api/LOAD_BALANCING.md) | Circuit Breaker 설계, 취약점 분석 |
-| [모니터링 통합 가이드](docs/monitoring/MONITORING_INTEGRATION.md) | 외부 모니터링 서비스 비교·선택 근거 |
-| [AWS 배포 가이드](docs/deployment/AWS_DEPLOYMENT_GUIDE.md) | EC2 설정, 보안 그룹, 배포 스크립트 |
+| [위키 홈](https://github.com/ImGdevel/MIYOU_ai-voice-chat/wiki) | 프로젝트 기술 문서 전체 인덱스 |
+| [로드 밸런서 구축기](https://github.com/ImGdevel/MIYOU_ai-voice-chat/wiki/로드-밸런서-구축기) | 로드밸런서/Circuit Breaker 설계와 장애 대응 |
+| [아키텍처 설계](https://github.com/ImGdevel/MIYOU_ai-voice-chat/wiki/아키텍처-설계) | 헥사고날 구조와 리팩토링 배경 |
+| [운영 필수 로컬 문서](docs/README.md) | 배포 런북/테스트 가이드/배포 스펙 |
