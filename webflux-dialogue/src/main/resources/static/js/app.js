@@ -303,14 +303,32 @@ async function sendAudioForTranscription(audioBlob, mimeType) {
 
         const formData = new FormData();
         formData.append('audio', audioBlob, `recording.${extension}`);
-        formData.append('sessionId', currentSessionId);
-        formData.append('language', 'ko');
+
+        console.log('Sending STT request:', {
+            voiceEnabled,
+            sessionId: currentSessionId,
+            language: 'ko',
+            blobSize: audioBlob.size,
+            mimeType: mimeType,
+            extension: extension
+        });
 
         const endpoint = voiceEnabled ? '/rag/dialogue/stt/text' : '/rag/dialogue/stt';
-        const response = await fetch(endpoint, {
+        const url = new URL(endpoint, window.location.origin);
+
+        if (voiceEnabled) {
+            url.searchParams.append('sessionId', currentSessionId);
+        }
+        url.searchParams.append('language', 'ko');
+
+        console.log('Request URL:', url.toString());
+
+        const response = await fetch(url, {
             method: 'POST',
             body: formData
         });
+
+        console.log('STT response status:', response.status);
 
         if (!response.ok) {
             throw new Error(`HTTP error! status: ${response.status}`);
