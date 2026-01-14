@@ -2,8 +2,8 @@ package com.study.webflux.rag.fixture;
 
 import java.time.Instant;
 
+import com.study.webflux.rag.domain.dialogue.model.ConversationSessionId;
 import com.study.webflux.rag.domain.dialogue.model.ConversationTurn;
-import com.study.webflux.rag.domain.dialogue.model.UserId;
 
 public final class ConversationTurnFixture {
 
@@ -14,29 +14,31 @@ public final class ConversationTurnFixture {
 	}
 
 	public static ConversationTurn create() {
-		return ConversationTurn.create(UserIdFixture.create(), DEFAULT_QUERY);
+		return ConversationTurn.create(ConversationSessionFixture.createId(), DEFAULT_QUERY);
 	}
 
-	public static ConversationTurn create(UserId userId) {
-		return ConversationTurn.create(userId, DEFAULT_QUERY);
+	public static ConversationTurn create(ConversationSessionId sessionId) {
+		return ConversationTurn.create(sessionId, DEFAULT_QUERY);
 	}
 
 	public static ConversationTurn create(String query) {
-		return ConversationTurn.create(UserIdFixture.create(), query);
+		return ConversationTurn.create(ConversationSessionFixture.createId(), query);
 	}
 
 	public static ConversationTurn createWithResponse() {
-		return ConversationTurn.create(UserIdFixture.create(), DEFAULT_QUERY)
+		return ConversationTurn.create(ConversationSessionFixture.createId(), DEFAULT_QUERY)
 			.withResponse(DEFAULT_RESPONSE);
 	}
 
-	public static ConversationTurn createWithResponse(UserId userId) {
-		return ConversationTurn.create(userId, DEFAULT_QUERY)
-			.withResponse(DEFAULT_RESPONSE);
+	public static ConversationTurn createWithResponse(ConversationSessionId sessionId) {
+		return ConversationTurn.create(sessionId, DEFAULT_QUERY).withResponse(DEFAULT_RESPONSE);
 	}
 
 	public static ConversationTurn createWithId(String id) {
-		return ConversationTurn
-			.withId(id, UserIdFixture.create(), DEFAULT_QUERY, DEFAULT_RESPONSE, Instant.now());
+		return ConversationTurn.withId(id,
+			ConversationSessionFixture.createId(),
+			DEFAULT_QUERY,
+			DEFAULT_RESPONSE,
+			Instant.now());
 	}
 }
