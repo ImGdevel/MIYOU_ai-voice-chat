@@ -384,11 +384,12 @@ async function sendAudioForTranscription(audioBlob, mimeType) {
         updateStatusText(transcription);
         document.getElementById('queryText').value = transcription;
 
+        updateStatusText('AI가 생각 중...');
+
         if (voiceEnabled) {
-            updateStatusText('AI가 생각 중...');
             await streamWithVoice(transcription, sendBtn);
         } else {
-            sendBtn.disabled = false;
+            await streamTextOnly(transcription, sendBtn);
         }
 
     } catch (error) {
