@@ -284,7 +284,10 @@ async function startRecording() {
     } catch (error) {
         isRecording = false;
         console.error('Recording error:', error);
-        updateStatusText('마이크 접근 권한이 필요합니다');
+        const msg = error.name === 'NotAllowedError'
+            ? '마이크 접근 권한이 필요합니다'
+            : '녹음을 시작할 수 없습니다: ' + error.message;
+        updateStatusText(msg);
     }
 }
 
