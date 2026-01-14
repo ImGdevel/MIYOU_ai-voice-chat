@@ -107,8 +107,46 @@ body {
     color: white;
 }
 
+.voice-btn.recording {
+    background: #e74c3c;
+    animation: pulse 1.5s ease-in-out infinite;
+}
+
+@keyframes pulse {
+    0%, 100% {
+        opacity: 1;
+    }
+    50% {
+        opacity: 0.6;
+    }
+}
+
 .voice-btn:hover {
     opacity: 0.8;
+}
+
+.record-btn {
+    flex-shrink: 0;
+    width: 40px;
+    height: 40px;
+    padding: 0;
+    background: #e74c3c;
+    color: white;
+    border: none;
+    border-radius: 50%;
+    cursor: pointer;
+    transition: all 0.2s;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+}
+
+.record-btn:hover:not(:disabled) {
+    background: #c0392b;
+}
+
+.record-btn.recording {
+    animation: pulse 1.5s ease-in-out infinite;
 }
 
 textarea {

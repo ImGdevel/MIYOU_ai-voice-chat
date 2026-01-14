@@ -12,6 +12,9 @@ let shuffledIndices = [];
 let isPlaying = false;
 let currentSessionId = null;
 let currentPersonaId = null;
+let mediaRecorder = null;
+let audioChunks = [];
+let isRecording = false;
 
 function getOrCreateUserId() {
     const storageKey = 'miyou-user-id';
@@ -230,6 +233,99 @@ function toggleVoice() {
     voiceBtn.classList.toggle('active');
 }
 
+async function startRecording() {
+    if (!currentSessionId) {
+        updateStatusText('세션이 없습니다. 페르소나를 선택하세요.');
+        showPersonaModal();
+        return;
+    }
+
+    try {
+        const stream = await navigator.mediaDevices.getUserMedia({ audio: true });
+        mediaRecorder = new MediaRecorder(stream, { mimeType: 'audio/webm' });
+        audioChunks = [];
+
+        mediaRecorder.addEventListener('dataavailable', event => {
+            audioChunks.push(event.data);
+        });
+
+        mediaRecorder.addEventListener('stop', async () => {
+            const audioBlob = new Blob(audioChunks, { type: 'audio/webm' });
+            await sendAudioForTranscription(audioBlob);
+
+            stream.getTracks().forEach(track => track.stop());
+        });
+
+        mediaRecorder.start();
+        isRecording = true;
+        updateStatusText('녹음 중... (버튼을 떼면 전송됩니다)');
+
+        const recordBtn = document.getElementById('recordBtn');
+        recordBtn.classList.add('recording');
+    } catch (error) {
+        console.error('Recording error:', error);
+        updateStatusText('마이크 접근 권한이 필요합니다');
+    }
+}
+
+function stopRecording() {
+    if (mediaRecorder && isRecording) {
+        mediaRecorder.stop();
+        isRecording = false;
+
+        const recordBtn = document.getElementById('recordBtn');
+        recordBtn.classList.remove('recording');
+        updateStatusText('음성 변환 중...');
+    }
+}
+
+async function sendAudioForTranscription(audioBlob) {
+    const voiceEnabled = document.getElementById('voiceBtn').classList.contains('active');
+    const sendBtn = document.getElementById('sendBtn');
+
+    try {
+        sendBtn.disabled = true;
+
+        const formData = new FormData();
+        formData.append('audioFile', audioBlob, 'recording.webm');
+        formData.append('sessionId', currentSessionId);
+        formData.append('language', 'ko');
+
+        const endpoint = voiceEnabled ? '/rag/dialogue/stt/text' : '/rag/dialogue/stt';
+        const response = await fetch(endpoint, {
+            method: 'POST',
+            body: formData
+        });
+
+        if (!response.ok) {
+            throw new Error(`HTTP error! status: ${response.status}`);
+        }
+
+        const result = await response.json();
+
+        if (voiceEnabled && result.response) {
+            updateStatusText(result.transcription);
+            document.getElementById('queryText').value = result.transcription;
+
+            await playTextResponse(result.response);
+        } else {
+            const transcription = result.transcription || result;
+            updateStatusText(transcription);
+            document.getElementById('queryText').value = transcription;
+        }
+
+    } catch (error) {
+        console.error('Transcription error:', error);
+        updateStatusText('음성 변환 실패');
+    } finally {
+        sendBtn.disabled = false;
+    }
+}
+
+async function playTextResponse(text) {
+    updateStatusText(text);
+}
+
 async function streamAudio() {
     const queryText = document.getElementById('queryText').value.trim();
     const voiceEnabled = document.getElementById('voiceBtn').classList.contains('active');
@@ -445,5 +541,33 @@ document.addEventListener('DOMContentLoaded', () => {
             e.preventDefault();
             streamAudio();
         }
+    });
+
+    const recordBtn = document.getElementById('recordBtn');
+
+    recordBtn.addEventListener('mousedown', (e) => {
+        e.preventDefault();
+        startRecording();
+    });
+
+    recordBtn.addEventListener('mouseup', (e) => {
+        e.preventDefault();
+        stopRecording();
+    });
+
+    recordBtn.addEventListener('mouseleave', () => {
+        if (isRecording) {
+            stopRecording();
+        }
+    });
+
+    recordBtn.addEventListener('touchstart', (e) => {
+        e.preventDefault();
+        startRecording();
+    });
+
+    recordBtn.addEventListener('touchend', (e) => {
+        e.preventDefault();
+        stopRecording();
     });
 });
