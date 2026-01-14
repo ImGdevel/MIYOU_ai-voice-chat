@@ -63,7 +63,7 @@ class DialoguePipelineServiceTest {
 		when(ttsStreamService.prepareTtsWarmup()).thenReturn(Mono.empty());
 		when(llmStreamService.buildLlmTokenStream(any())).thenReturn(Flux.just("a", "b"));
 		when(ttsStreamService.assembleSentences(any())).thenReturn(Flux.just("ab"));
-		when(ttsStreamService.buildAudioStream(any(), any(), any()))
+		when(ttsStreamService.buildAudioStream(any(), any(), any(), any()))
 			.thenReturn(Flux.just("audio".getBytes()));
 		when(ttsStreamService.traceTtsSynthesis(any()))
 			.thenReturn(Flux.just("audio".getBytes()));
