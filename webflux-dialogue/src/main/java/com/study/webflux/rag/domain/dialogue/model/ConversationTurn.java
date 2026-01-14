@@ -4,18 +4,14 @@ import java.time.Instant;
 
 public record ConversationTurn(
 	String id,
-	PersonaId personaId,
-	UserId userId,
+	ConversationSessionId sessionId,
 	String query,
 	String response,
 	Instant createdAt
 ) {
 	public ConversationTurn {
-		if (personaId == null) {
-			personaId = PersonaId.defaultPersona();
-		}
-		if (userId == null) {
-			throw new IllegalArgumentException("userId cannot be null");
+		if (sessionId == null) {
+			throw new IllegalArgumentException("sessionId cannot be null");
 		}
 		if (query == null || query.isBlank()) {
 			throw new IllegalArgumentException("query cannot be null or blank");
@@ -25,44 +21,19 @@ public record ConversationTurn(
 		}
 	}
 
-	public static ConversationTurn create(PersonaId personaId, UserId userId, String query) {
-		return new ConversationTurn(null, personaId, userId, query, null, Instant.now());
-	}
-
-	public static ConversationTurn create(UserId userId, String query) {
-		return create(PersonaId.defaultPersona(), userId, query);
-	}
-
-	public static ConversationTurn create(String query) {
-		return create(UserId.generate(), query);
+	public static ConversationTurn create(ConversationSessionId sessionId, String query) {
+		return new ConversationTurn(null, sessionId, query, null, Instant.now());
 	}
 
 	public static ConversationTurn withId(String id,
-		PersonaId personaId,
-		UserId userId,
+		ConversationSessionId sessionId,
 		String query,
 		String response,
 		Instant createdAt) {
-		return new ConversationTurn(id, personaId, userId, query, response, createdAt);
-	}
-
-	public static ConversationTurn withId(String id,
-		UserId userId,
-		String query,
-		String response,
-		Instant createdAt) {
-		return withId(id, PersonaId.defaultPersona(), userId, query, response, createdAt);
-	}
-
-	public static ConversationTurn withId(String id,
-		String query,
-		String response,
-		Instant createdAt) {
-		return withId(id, UserId.generate(), query, response, createdAt);
+		return new ConversationTurn(id, sessionId, query, response, createdAt);
 	}
 
 	public ConversationTurn withResponse(String response) {
-		return new ConversationTurn(this.id, this.personaId, this.userId, this.query, response,
-			this.createdAt);
+		return new ConversationTurn(this.id, this.sessionId, this.query, response, this.createdAt);
 	}
 }

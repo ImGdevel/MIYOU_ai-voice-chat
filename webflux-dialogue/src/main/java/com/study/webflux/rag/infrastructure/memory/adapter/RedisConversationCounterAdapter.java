@@ -5,8 +5,7 @@ import lombok.RequiredArgsConstructor;
 import org.springframework.data.redis.core.ReactiveRedisTemplate;
 import org.springframework.stereotype.Component;
 
-import com.study.webflux.rag.domain.dialogue.model.PersonaId;
-import com.study.webflux.rag.domain.dialogue.model.UserId;
+import com.study.webflux.rag.domain.dialogue.model.ConversationSessionId;
 import com.study.webflux.rag.domain.memory.port.ConversationCounterPort;
 import reactor.core.publisher.Mono;
 
@@ -19,24 +18,22 @@ public class RedisConversationCounterAdapter implements ConversationCounterPort 
 
 	private final ReactiveRedisTemplate<String, Long> redisTemplate;
 
-	private String keyFor(PersonaId personaId, UserId userId) {
-		return COUNTER_KEY_PREFIX + personaId.value() + ":" + userId.value();
+	private String keyFor(ConversationSessionId sessionId) {
+		return COUNTER_KEY_PREFIX + sessionId.value();
 	}
 
 	@Override
-	public Mono<Long> increment(PersonaId personaId, UserId userId) {
-		return redisTemplate.opsForValue().increment(keyFor(personaId, userId));
+	public Mono<Long> increment(ConversationSessionId sessionId) {
+		return redisTemplate.opsForValue().increment(keyFor(sessionId));
 	}
 
-	/** 현재 카운터 값을 조회합니다. */
 	@Override
-	public Mono<Long> get(PersonaId personaId, UserId userId) {
-		return redisTemplate.opsForValue().get(keyFor(personaId, userId)).defaultIfEmpty(0L);
+	public Mono<Long> get(ConversationSessionId sessionId) {
+		return redisTemplate.opsForValue().get(keyFor(sessionId)).defaultIfEmpty(0L);
 	}
 
-	/** Redis 키를 삭제하여 카운터를 초기화합니다. */
 	@Override
-	public Mono<Void> reset(PersonaId personaId, UserId userId) {
-		return redisTemplate.delete(keyFor(personaId, userId)).then();
+	public Mono<Void> reset(ConversationSessionId sessionId) {
+		return redisTemplate.delete(keyFor(sessionId)).then();
 	}
 }

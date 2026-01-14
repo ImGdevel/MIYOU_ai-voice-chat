@@ -24,8 +24,8 @@ import com.study.webflux.rag.application.dialogue.dto.RagDialogueRequest;
 import com.study.webflux.rag.application.dialogue.dto.SttDialogueResponse;
 import com.study.webflux.rag.application.dialogue.dto.SttTranscriptionResponse;
 import com.study.webflux.rag.application.dialogue.service.DialogueSpeechService;
-import com.study.webflux.rag.domain.dialogue.model.PersonaId;
-import com.study.webflux.rag.domain.dialogue.model.UserId;
+import com.study.webflux.rag.domain.dialogue.model.ConversationSessionId;
+import com.study.webflux.rag.domain.dialogue.port.ConversationSessionRepository;
 import com.study.webflux.rag.domain.dialogue.port.DialoguePipelineUseCase;
 import com.study.webflux.rag.domain.voice.model.AudioFormat;
 import jakarta.validation.Valid;
@@ -41,6 +41,7 @@ import reactor.core.publisher.Mono;
 public class DialogueController implements DialogueApi {
 
 	private final DialoguePipelineUseCase dialoguePipelineUseCase;
+	private final ConversationSessionRepository sessionRepository;
 	private final DialogueSpeechService dialogueSpeechService;
 	private final DataBufferFactory bufferFactory = new DefaultDataBufferFactory();
 
@@ -60,10 +61,13 @@ public class DialogueController implements DialogueApi {
 
 		response.getHeaders().setContentType(MediaType.valueOf(targetFormat.getMediaType()));
 
-		PersonaId personaId = request.getPersonaIdOrDefault();
-		UserId userId = UserId.of(request.userId());
-		return dialoguePipelineUseCase
-			.executeAudioStreaming(personaId, userId, request.text(), targetFormat)
+		ConversationSessionId sessionId = ConversationSessionId.of(request.sessionId());
+		final AudioFormat finalFormat = targetFormat;
+		return sessionRepository.findById(sessionId)
+			.switchIfEmpty(Mono.error(new ResponseStatusException(HttpStatus.NOT_FOUND,
+				"세션을 찾을 수 없습니다: " + request.sessionId())))
+			.flatMapMany(session -> dialoguePipelineUseCase
+				.executeAudioStreaming(session, request.text(), finalFormat))
 			.map(bufferFactory::wrap);
 	}
 
@@ -71,9 +75,12 @@ public class DialogueController implements DialogueApi {
 	@PostMapping(path = "/text", produces = MediaType.TEXT_EVENT_STREAM_VALUE)
 	public Flux<String> ragDialogueText(
 		@Valid @RequestBody RagDialogueRequest request) {
-		PersonaId personaId = request.getPersonaIdOrDefault();
-		UserId userId = UserId.of(request.userId());
-		return dialoguePipelineUseCase.executeTextOnly(personaId, userId, request.text());
+		ConversationSessionId sessionId = ConversationSessionId.of(request.sessionId());
+		return sessionRepository.findById(sessionId)
+			.switchIfEmpty(Mono.error(new ResponseStatusException(HttpStatus.NOT_FOUND,
+				"세션을 찾을 수 없습니다: " + request.sessionId())))
+			.flatMapMany(
+				session -> dialoguePipelineUseCase.executeTextOnly(session, request.text()));
 	}
 
 	/** 업로드한 음성 파일을 Whisper STT로 텍스트 변환합니다. */
@@ -90,12 +97,13 @@ public class DialogueController implements DialogueApi {
 	public Mono<SttDialogueResponse> ragDialogueSttText(
 		@RequestPart("audio") FilePart audioFile,
 		@RequestParam(required = false) String language,
-		@RequestParam(required = false) String userId) {
-		UserId targetUserId = (userId == null || userId.isBlank())
-			? UserId.generate()
-			: UserId.of(
-				userId);
-		return dialogueSpeechService.transcribeAndRespond(targetUserId, audioFile, language)
-			.map(result -> new SttDialogueResponse(result.transcription(), result.response()));
+		@RequestParam @jakarta.validation.constraints.NotBlank String sessionId) {
+		ConversationSessionId sid = ConversationSessionId.of(sessionId);
+		return sessionRepository.findById(sid)
+			.switchIfEmpty(Mono.error(new ResponseStatusException(HttpStatus.NOT_FOUND,
+				"세션을 찾을 수 없습니다: " + sessionId)))
+			.flatMap(session -> dialogueSpeechService
+				.transcribeAndRespond(session, audioFile, language)
+				.map(result -> new SttDialogueResponse(result.transcription(), result.response())));
 	}
 }

@@ -10,14 +10,8 @@ public interface ConversationMongoRepository
 	extends
 		ReactiveMongoRepository<ConversationEntity, String> {
 
-	Flux<ConversationEntity> findByUserIdOrderByCreatedAtDesc(String userId, Pageable pageable);
-
-	Flux<ConversationEntity> findAllByUserId(String userId);
-
-	Flux<ConversationEntity> findByPersonaIdAndUserIdOrderByCreatedAtDesc(
-		String personaId,
-		String userId,
+	Flux<ConversationEntity> findBySessionIdOrderByCreatedAtDesc(String sessionId,
 		Pageable pageable);
 
-	Flux<ConversationEntity> findAllByPersonaIdAndUserId(String personaId, String userId);
+	Flux<ConversationEntity> findAllBySessionId(String sessionId);
 }
