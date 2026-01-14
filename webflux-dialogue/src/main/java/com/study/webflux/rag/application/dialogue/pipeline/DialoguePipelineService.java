@@ -38,7 +38,7 @@ public class DialoguePipelineService implements DialoguePipelineUseCase {
 		Flux<String> llmTokens = llmStreamService.buildLlmTokenStream(inputsMono);
 		Flux<String> sentences = ttsStreamService.assembleSentences(llmTokens).cache();
 		Flux<byte[]> audioFlux = ttsStreamService
-			.buildAudioStream(sentences, ttsWarmup, targetFormat);
+			.buildAudioStream(sentences, ttsWarmup, targetFormat, session.personaId());
 		Mono<Void> postProcessing = postProcessingService.persistAndExtract(inputsMono, sentences);
 		Flux<byte[]> audioStream = ttsStreamService.traceTtsSynthesis(audioFlux);
 
