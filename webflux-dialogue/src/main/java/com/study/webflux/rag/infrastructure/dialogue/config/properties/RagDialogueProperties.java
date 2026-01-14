@@ -9,6 +9,7 @@ import org.springframework.boot.context.properties.ConfigurationProperties;
 import org.springframework.stereotype.Component;
 
 import com.study.webflux.rag.infrastructure.common.constants.DialogueConstants;
+import jakarta.validation.constraints.NotBlank;
 
 @Component
 @ConfigurationProperties(prefix = "rag.dialogue")
@@ -379,6 +380,7 @@ public class RagDialogueProperties {
 	}
 
 	public static class PersonaVoiceConfig {
+		@NotBlank
 		private String voiceId;
 		private String language = DialogueConstants.Supertone.Language.KOREAN;
 		private String style = DialogueConstants.Supertone.Style.NEUTRAL;
