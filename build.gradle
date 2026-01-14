@@ -43,7 +43,7 @@ subprojects {
 			removeUnusedImports()
 
 			// 2단계: 코드 스타일 포맷팅
-			eclipse().configFile(rootProject.file('config/formatter/eclipse-formatter.xml'))
+			eclipse().configFile(rootProject.file('gradle/formatter/eclipse-formatter.xml'))
 
 			// 3단계: 후처리
 			trimTrailingWhitespace()
