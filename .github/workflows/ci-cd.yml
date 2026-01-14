@@ -179,9 +179,9 @@ jobs:
         shell: bash
         run: |
           if [[ "${{ github.event.inputs.deploy_strategy }}" == "rolling" ]]; then
-            ./scripts/aws/deploy_remote_compose.sh "deploy-target"
+            ./deploy/aws/deploy_remote_compose.sh "deploy-target"
           else
-            ./scripts/aws/deploy_remote_blue_green.sh "deploy-target"
+            ./deploy/aws/deploy_remote_blue_green.sh "deploy-target"
           fi
 
   deploy_nginx:
@@ -225,7 +225,7 @@ jobs:
       - name: Nginx 설정 배포 실행
         shell: bash
         run: |
-          bash ./scripts/aws/deploy_remote_nginx.sh "deploy-target"
+          bash ./deploy/aws/deploy_remote_nginx.sh "deploy-target"
 
   notify:
     runs-on: ubuntu-latest
