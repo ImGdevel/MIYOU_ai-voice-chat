@@ -12,6 +12,10 @@ public record PersonaId(
 		if (value.length() > 64) {
 			throw new IllegalArgumentException("personaId too long");
 		}
+		if (!value.matches("^[a-zA-Z0-9_-]+$")) {
+			throw new IllegalArgumentException(
+				"personaId must contain only alphanumeric characters, hyphens, and underscores");
+		}
 	}
 
 	public static PersonaId of(String value) {
