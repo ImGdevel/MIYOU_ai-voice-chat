@@ -240,8 +240,16 @@ async function startRecording() {
         return;
     }
 
+    if (isRecording) return;
+    isRecording = true;
+
     try {
         const stream = await navigator.mediaDevices.getUserMedia({ audio: true });
+
+        if (!isRecording) {
+            stream.getTracks().forEach(track => track.stop());
+            return;
+        }
 
         let mimeType = 'audio/webm';
         if (!MediaRecorder.isTypeSupported('audio/webm')) {
@@ -269,25 +277,27 @@ async function startRecording() {
         });
 
         mediaRecorder.start();
-        isRecording = true;
         updateStatusText('녹음 중... (버튼을 떼면 전송됩니다)');
 
         const recordBtn = document.getElementById('recordBtn');
         recordBtn.classList.add('recording');
     } catch (error) {
+        isRecording = false;
         console.error('Recording error:', error);
         updateStatusText('마이크 접근 권한이 필요합니다');
     }
 }
 
 function stopRecording() {
-    if (mediaRecorder && isRecording) {
-        mediaRecorder.stop();
+    if (isRecording) {
         isRecording = false;
-
         const recordBtn = document.getElementById('recordBtn');
         recordBtn.classList.remove('recording');
-        updateStatusText('음성 변환 중...');
+
+        if (mediaRecorder && mediaRecorder.state !== 'inactive') {
+            mediaRecorder.stop();
+            updateStatusText('음성 변환 중...');
+        }
     }
 }
 
