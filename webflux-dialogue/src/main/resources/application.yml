@@ -51,6 +51,23 @@ rag:
         pitch-shift: 0
         pitch-variance: 1.0
         speed: 1.1
+    personas:
+      maid:
+        voice-id: 2c5f135cb33f49a2c8882d
+        language: ko
+        style: neutral
+        voice-settings:
+          pitch-shift: 0
+          pitch-variance: 1.0
+          speed: 1.1
+      interviewer:
+        voice-id: 4653d63d07d5340656b6bc
+        language: ko
+        style: neutral
+        voice-settings:
+          pitch-shift: 0
+          pitch-variance: 1.0
+          speed: 1.0
     stt:
       model: ${OPENAI_STT_MODEL:whisper-1}
       language: ${OPENAI_STT_LANGUAGE:ko}
