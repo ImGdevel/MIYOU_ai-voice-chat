@@ -17,6 +17,7 @@
 트리거:
 - `workflow_dispatch` (수동 실행)
   - 입력값:
+    - `deploy_scope`: `full | nginx_only` (기본 `full`)
     - `deploy_strategy`: `blue_green | rolling` (기본 `blue_green`)
     - `deploy_nginx`: boolean (기본 `false`)
 
@@ -45,10 +46,9 @@
 - `scripts/aws/deploy_remote_nginx.sh`
   - nginx conf 동기화
   - 현재 활성 색상 기준 proxy 대상 반영
-  - `nginx -t` 후 `nginx -s reload` (컨테이너 존재 시)
-  - 미존재 시 nginx 컨테이너 최초 생성
+  - nginx 컨테이너 `--force-recreate`로 설정 반영 일관성 확보
   - active 슬롯 미실행 시 fallback 슬롯 자동 전환
-  - blue/green 둘 다 미실행 시 active 슬롯 선기동 후 reload
+  - blue/green 둘 다 미실행 시 active 슬롯 선기동 후 nginx 재생성
 - `scripts/aws/deploy_remote_blue_green.sh`
   - 비활성 슬롯(blue/green) 이미지 pull/up
   - 후보 슬롯 health check(`/actuator/health`) 통과 시 Nginx 스위치
@@ -108,10 +108,13 @@
 ## 8. 실행 방법
 1) GitHub Actions > `CI-CD` > `Run workflow`
 2) 브랜치 선택 (`develop` 권장)
-3) `deploy_strategy` 선택
+3) `deploy_scope` 선택
+   - `full`: 앱 + 조건부 Nginx 배포
+   - `nginx_only`: 앱 빌드/배포 생략, Nginx만 배포
+4) `deploy_strategy` 선택
    - `blue_green` (권장): 무중단에 가까운 전환
    - `rolling`: 단순 롤링 방식
-4) `deploy_nginx` 선택
+5) `deploy_nginx` 선택
    - `false`: Nginx 변경 시에만 Nginx 배포
    - `true`: 변경 감지와 무관하게 Nginx 배포 강제
 

@@ -3,6 +3,14 @@ name: CI-CD
 on:
   workflow_dispatch:
     inputs:
+      deploy_scope:
+        description: "배포 범위"
+        type: choice
+        required: false
+        default: full
+        options:
+          - full
+          - nginx_only
       deploy_strategy:
         description: "앱 배포 전략"
         type: choice
@@ -56,6 +64,7 @@ jobs:
 
   gradle-build:
     runs-on: ubuntu-latest
+    if: ${{ github.event.inputs.deploy_scope != 'nginx_only' }}
     steps:
       - name: 체크아웃
         uses: actions/checkout@v4
@@ -78,6 +87,7 @@ jobs:
   build-and-push:
     runs-on: ubuntu-latest
     needs: gradle-build
+    if: ${{ github.event.inputs.deploy_scope != 'nginx_only' }}
     outputs:
       image_ref: ${{ steps.meta.outputs.image_ref }}
     steps:
@@ -122,6 +132,7 @@ jobs:
   deploy:
     runs-on: ubuntu-latest
     needs: build-and-push
+    if: ${{ github.event.inputs.deploy_scope != 'nginx_only' }}
     steps:
       - name: 체크아웃
         uses: actions/checkout@v4
@@ -178,7 +189,7 @@ jobs:
     needs:
       - deploy
       - detect-nginx-changes
-    if: ${{ github.event.inputs.deploy_nginx == 'true' || needs['detect-nginx-changes'].outputs.nginx_changed == 'true' }}
+    if: ${{ always() && (github.event.inputs.deploy_scope == 'nginx_only' || github.event.inputs.deploy_nginx == 'true' || needs['detect-nginx-changes'].outputs.nginx_changed == 'true') && (needs.deploy.result == 'success' || needs.deploy.result == 'skipped') }}
     steps:
       - name: 체크아웃
         uses: actions/checkout@v4
@@ -227,6 +238,7 @@ jobs:
     steps:
       - name: 디스코드 웹훅 알림
         env:
+          DEPLOY_SCOPE: ${{ github.event.inputs.deploy_scope }}
           DISCORD_WEBHOOK_URL: ${{ secrets.DISCORD_WEBHOOK_URL }}
           RESULT_GRADLE: ${{ needs.gradle-build.result }}
           RESULT_BUILD_PUSH: ${{ needs.build-and-push.result }}
@@ -239,7 +251,17 @@ jobs:
             exit 0
           fi
 
-          if [[ "${RESULT_GRADLE}" == "success" && "${RESULT_BUILD_PUSH}" == "success" && "${RESULT_DEPLOY}" == "success" && ( "${RESULT_DEPLOY_NGINX}" == "success" || "${RESULT_DEPLOY_NGINX}" == "skipped" ) ]]; then
+          if [[ "${DEPLOY_SCOPE}" == "nginx_only" ]]; then
+            if [[ "${RESULT_DEPLOY_NGINX}" == "success" ]]; then
+              STATUS_TEXT="성공"
+              ICON="✅"
+              COLOR=3066993
+            else
+              STATUS_TEXT="실패"
+              ICON="❌"
+              COLOR=15158332
+            fi
+          elif [[ "${RESULT_GRADLE}" == "success" && "${RESULT_BUILD_PUSH}" == "success" && "${RESULT_DEPLOY}" == "success" && ( "${RESULT_DEPLOY_NGINX}" == "success" || "${RESULT_DEPLOY_NGINX}" == "skipped" ) ]]; then
             STATUS_TEXT="성공"
             ICON="✅"
             COLOR=3066993
