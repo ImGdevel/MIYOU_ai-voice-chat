@@ -14,7 +14,7 @@ import org.springframework.ai.vectorstore.VectorStore;
 import org.springframework.context.annotation.Primary;
 import org.springframework.stereotype.Component;
 
-import com.study.webflux.rag.domain.dialogue.model.UserId;
+import com.study.webflux.rag.domain.dialogue.model.ConversationSessionId;
 import com.study.webflux.rag.domain.memory.model.Memory;
 import com.study.webflux.rag.domain.memory.model.MemoryType;
 import com.study.webflux.rag.domain.memory.port.VectorMemoryPort;
@@ -48,21 +48,13 @@ public class SpringAiVectorDbAdapter implements VectorMemoryPort {
 		this.collectionName = properties.getQdrant().getCollectionName();
 	}
 
-	private List<Float> toFloatList(double[] doubleArray) {
-		List<Float> result = new java.util.ArrayList<>(doubleArray.length);
-		for (double v : doubleArray) {
-			result.add((float) v);
-		}
-		return result;
-	}
-
 	@Override
 	public Mono<Memory> upsert(Memory memory, List<Float> embedding) {
 		return Mono.fromCallable(() -> {
 			String id = memory.id() != null ? memory.id() : UUID.randomUUID().toString();
 
 			Map<String, Object> metadata = new HashMap<>();
-			metadata.put("userId", memory.userId().value());
+			metadata.put("sessionId", memory.sessionId().value());
 			metadata.put("type", memory.type().name());
 			if (memory.importance() != null) {
 				metadata.put("importance", memory.importance());
@@ -78,7 +70,6 @@ public class SpringAiVectorDbAdapter implements VectorMemoryPort {
 			}
 
 			Document document = new Document(id, memory.content(), metadata);
-
 			vectorStore.add(List.of(document));
 
 			return memory.withId(id);
@@ -86,7 +77,7 @@ public class SpringAiVectorDbAdapter implements VectorMemoryPort {
 	}
 
 	@Override
-	public Flux<Memory> search(UserId userId,
+	public Flux<Memory> search(ConversationSessionId sessionId,
 		List<Float> queryEmbedding,
 		List<MemoryType> types,
 		float importanceThreshold,
@@ -96,8 +87,8 @@ public class SpringAiVectorDbAdapter implements VectorMemoryPort {
 
 			filterBuilder.addMust(Condition.newBuilder()
 				.setField(FieldCondition.newBuilder()
-					.setKey("userId")
-					.setMatch(Match.newBuilder().setKeyword(userId.value()).build())
+					.setKey("sessionId")
+					.setMatch(Match.newBuilder().setKeyword(sessionId.value()).build())
 					.build())
 				.build());
 
@@ -120,15 +111,20 @@ public class SpringAiVectorDbAdapter implements VectorMemoryPort {
 					.addMust(Condition.newBuilder().setFilter(typeFilterBuilder.build()).build());
 			}
 
-			SearchPoints searchPoints = SearchPoints.newBuilder().setCollectionName(collectionName)
-				.addAllVector(queryEmbedding).setLimit(topK)
-				.setWithPayload(io.qdrant.client.grpc.Points.WithPayloadSelector.newBuilder()
-					.setEnable(true).build())
-				.setFilter(filterBuilder.build()).build();
+			SearchPoints searchPoints = SearchPoints.newBuilder()
+				.setCollectionName(collectionName)
+				.addAllVector(queryEmbedding)
+				.setLimit(topK)
+				.setWithPayload(
+					io.qdrant.client.grpc.Points.WithPayloadSelector.newBuilder().setEnable(true)
+						.build())
+				.setFilter(filterBuilder.build())
+				.build();
 
 			List<ScoredPoint> results = qdrantClient.searchAsync(searchPoints).get();
 
-			return results.stream().map(point -> toMemoryFromScoredPoint(point, userId))
+			return results.stream()
+				.map(point -> toMemoryFromScoredPoint(point, sessionId))
 				.collect(Collectors.toList());
 		}).subscribeOn(Schedulers.boundedElastic()).flatMapMany(Flux::fromIterable);
 	}
@@ -143,59 +139,7 @@ public class SpringAiVectorDbAdapter implements VectorMemoryPort {
 		}).subscribeOn(Schedulers.boundedElastic()).then();
 	}
 
-	private Memory toMemory(Document document) {
-		Map<String, Object> metadata = document.getMetadata();
-
-		String type = (String) metadata.get("type");
-		if (type == null) {
-			throw new IllegalStateException(
-				"Document " + document.getId() + " has no type metadata");
-		}
-
-		Float importance = null;
-		Object importanceObj = metadata.get("importance");
-		if (importanceObj instanceof Number) {
-			importance = ((Number) importanceObj).floatValue();
-		}
-
-		Instant createdAt = null;
-		Object createdAtObj = metadata.get("createdAt");
-		if (createdAtObj instanceof Number) {
-			createdAt = Instant.ofEpochMilli(((Number) createdAtObj).longValue());
-		}
-
-		Instant lastAccessedAt = null;
-		Object lastAccessedAtObj = metadata.get("lastAccessedAt");
-		if (lastAccessedAtObj instanceof Number) {
-			lastAccessedAt = Instant.ofEpochMilli(((Number) lastAccessedAtObj).longValue());
-		}
-
-		Integer accessCount = null;
-		Object accessCountObj = metadata.get("accessCount");
-		if (accessCountObj instanceof Number) {
-			accessCount = ((Number) accessCountObj).intValue();
-		}
-
-		Object userIdObj = metadata.get("userId");
-		if (!(userIdObj instanceof String) || ((String) userIdObj).isBlank()) {
-			throw new IllegalStateException(
-				"Document " + document.getId() + " has no userId metadata");
-		}
-		UserId userId = UserId.of((String) userIdObj);
-
-		MemoryType memoryType;
-		try {
-			memoryType = MemoryType.valueOf(type);
-		} catch (IllegalArgumentException e) {
-			throw new IllegalStateException(
-				"Document " + document.getId() + " has invalid type: " + type, e);
-		}
-
-		return new Memory(document.getId(), userId, memoryType, document.getContent(), importance,
-			createdAt, lastAccessedAt, accessCount);
-	}
-
-	private Memory toMemoryFromScoredPoint(ScoredPoint point, UserId userId) {
+	private Memory toMemoryFromScoredPoint(ScoredPoint point, ConversationSessionId sessionId) {
 		Map<String, io.qdrant.client.grpc.JsonWithInt.Value> payload = point.getPayloadMap();
 
 		String id = point.getId().hasNum()
@@ -230,7 +174,7 @@ public class SpringAiVectorDbAdapter implements VectorMemoryPort {
 			? (int) payload.get("accessCount").getDoubleValue()
 			: null;
 
-		return new Memory(id, userId, type, content, importance, createdAt, lastAccessedAt,
+		return new Memory(id, sessionId, type, content, importance, createdAt, lastAccessedAt,
 			accessCount);
 	}
 }

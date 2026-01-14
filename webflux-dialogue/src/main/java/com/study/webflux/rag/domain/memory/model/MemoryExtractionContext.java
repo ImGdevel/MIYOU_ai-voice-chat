@@ -2,17 +2,17 @@ package com.study.webflux.rag.domain.memory.model;
 
 import java.util.List;
 
+import com.study.webflux.rag.domain.dialogue.model.ConversationSessionId;
 import com.study.webflux.rag.domain.dialogue.model.ConversationTurn;
-import com.study.webflux.rag.domain.dialogue.model.UserId;
 
 public record MemoryExtractionContext(
-	UserId userId,
+	ConversationSessionId sessionId,
 	List<ConversationTurn> recentConversations,
 	List<Memory> existingMemories
 ) {
 	public MemoryExtractionContext {
-		if (userId == null) {
-			throw new IllegalArgumentException("userId cannot be null");
+		if (sessionId == null) {
+			throw new IllegalArgumentException("sessionId cannot be null");
 		}
 		if (recentConversations == null) {
 			recentConversations = List.of();
@@ -22,9 +22,9 @@ public record MemoryExtractionContext(
 		}
 	}
 
-	public static MemoryExtractionContext of(UserId userId,
+	public static MemoryExtractionContext of(ConversationSessionId sessionId,
 		List<ConversationTurn> conversations,
 		List<Memory> memories) {
-		return new MemoryExtractionContext(userId, conversations, memories);
+		return new MemoryExtractionContext(sessionId, conversations, memories);
 	}
 }

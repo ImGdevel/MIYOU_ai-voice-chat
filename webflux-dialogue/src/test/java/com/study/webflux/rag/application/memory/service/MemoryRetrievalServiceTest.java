@@ -3,12 +3,13 @@ package com.study.webflux.rag.application.memory.service;
 import java.time.Instant;
 import java.util.List;
 
-import com.study.webflux.rag.domain.dialogue.model.UserId;
+import com.study.webflux.rag.domain.dialogue.model.ConversationSessionId;
 import com.study.webflux.rag.domain.memory.model.Memory;
 import com.study.webflux.rag.domain.memory.model.MemoryEmbedding;
 import com.study.webflux.rag.domain.memory.model.MemoryType;
 import com.study.webflux.rag.domain.memory.port.EmbeddingPort;
 import com.study.webflux.rag.domain.memory.port.VectorMemoryPort;
+import com.study.webflux.rag.fixture.ConversationSessionFixture;
 import com.study.webflux.rag.infrastructure.memory.adapter.MemoryExtractionConfig;
 import com.study.webflux.rag.infrastructure.monitoring.config.RagQualityMetricsConfiguration;
 import org.junit.jupiter.api.BeforeEach;
@@ -53,10 +54,10 @@ class MemoryRetrievalServiceTest {
 	@Test
 	@DisplayName("메모리 검색 시 랭킹, 제한, 접근 메트릭 업데이트를 수행한다")
 	void retrieveMemories_shouldRankLimitAndUpdateAccessMetrics() {
-		UserId userId = UserId.of("user-1");
+		ConversationSessionId sessionId = ConversationSessionFixture.createId();
 		Instant now = Instant.now();
 		Memory top = new Memory("m-top",
-			userId,
+			sessionId,
 			MemoryType.EXPERIENTIAL,
 			"사용자는 러닝을 좋아한다",
 			0.95f,
@@ -64,7 +65,7 @@ class MemoryRetrievalServiceTest {
 			now,
 			3);
 		Memory second = new Memory("m-second",
-			userId,
+			sessionId,
 			MemoryType.FACTUAL,
 			"사용자는 개발자다",
 			0.70f,
@@ -72,7 +73,7 @@ class MemoryRetrievalServiceTest {
 			now,
 			2);
 		Memory dropped = new Memory("m-dropped",
-			userId,
+			sessionId,
 			MemoryType.FACTUAL,
 			"사용자는 고양이를 키운다",
 			0.10f,
@@ -82,7 +83,7 @@ class MemoryRetrievalServiceTest {
 
 		when(embeddingPort.embed("query")).thenReturn(
 			Mono.just(MemoryEmbedding.of("query", List.of(0.1f, 0.2f))));
-		when(vectorMemoryPort.search(userId,
+		when(vectorMemoryPort.search(sessionId,
 			List.of(0.1f, 0.2f),
 			List.of(MemoryType.EXPERIENTIAL, MemoryType.FACTUAL),
 			0.3f,
@@ -92,7 +93,7 @@ class MemoryRetrievalServiceTest {
 			ArgumentMatchers.any(),
 			ArgumentMatchers.anyInt())).thenReturn(Mono.empty());
 
-		StepVerifier.create(service.retrieveMemories(userId, "query", 2)).assertNext(result -> {
+		StepVerifier.create(service.retrieveMemories(sessionId, "query", 2)).assertNext(result -> {
 			assertThat(result.experientialMemories()).hasSize(1);
 			assertThat(result.experientialMemories().get(0).id()).isEqualTo("m-top");
 			assertThat(result.factualMemories()).hasSize(1);
@@ -116,16 +117,16 @@ class MemoryRetrievalServiceTest {
 	@Test
 	@DisplayName("검색 결과가 없으면 빈 결과를 반환한다")
 	void retrieveMemories_shouldReturnEmptyWithoutUpdateWhenSearchIsEmpty() {
-		UserId userId = UserId.of("user-1");
+		ConversationSessionId sessionId = ConversationSessionFixture.createId();
 		when(embeddingPort.embed("query")).thenReturn(
 			Mono.just(MemoryEmbedding.of("query", List.of(0.1f, 0.2f))));
-		when(vectorMemoryPort.search(ArgumentMatchers.eq(userId),
+		when(vectorMemoryPort.search(ArgumentMatchers.eq(sessionId),
 			ArgumentMatchers.anyList(),
 			ArgumentMatchers.anyList(),
 			ArgumentMatchers.anyFloat(),
 			ArgumentMatchers.anyInt())).thenReturn(Flux.empty());
 
-		StepVerifier.create(service.retrieveMemories(userId, "query", 3)).assertNext(result -> {
+		StepVerifier.create(service.retrieveMemories(sessionId, "query", 3)).assertNext(result -> {
 			assertThat(result.isEmpty()).isTrue();
 		}).verifyComplete();
 

@@ -76,21 +76,19 @@ public class DialoguePostProcessingService {
 	private Mono<Void> persistConversationAndMaybeExtract(Mono<PipelineInputs> inputsMono,
 		Mono<String> responseMono) {
 		return inputsMono.flatMap(inputs -> {
-			var userId = inputs.userId();
+			var sessionId = inputs.session().sessionId();
 			return responseMono.flatMap(response -> {
-				// 질의 길이와 응답 길이 기록
 				conversationMetrics.recordQueryLength(inputs.currentTurn().query().length());
 				conversationMetrics.recordResponseLength(response.length());
 				return persistConversation(inputsMono, response);
 			})
-				.flatMap(turn -> conversationCounterPort.increment(userId))
+				.flatMap(turn -> conversationCounterPort.increment(sessionId))
 				.doOnNext(count -> {
-					// 대화 카운트 증가 및 분포 기록
 					conversationMetrics.recordConversationIncrement();
 					conversationMetrics.recordConversationCount(count);
 				})
 				.filter(count -> count % conversationThreshold == 0)
-				.flatMap(count -> memoryExtractionService.checkAndExtract(userId));
+				.flatMap(count -> memoryExtractionService.checkAndExtract(sessionId));
 		}).subscribeOn(Schedulers.boundedElastic()).then();
 	}
 
