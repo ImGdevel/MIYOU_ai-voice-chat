@@ -15,6 +15,7 @@ let currentPersonaId = null;
 let mediaRecorder = null;
 let audioChunks = [];
 let isRecording = false;
+let isVoiceInputMode = false;
 
 function getOrCreateUserId() {
     const storageKey = 'miyou-user-id';
@@ -210,27 +211,56 @@ function stopVisualizer() {
 }
 
 function updateStatusText(message) {
-    const statusText = document.getElementById('statusText');
-    statusText.textContent = message;
+    const currentMsg = document.getElementById('currentMessage');
+    const previousMsg = document.getElementById('previousMessage');
+
+    if (!currentMsg || !previousMsg) return;
+
+    const oldContent = previousMsg.textContent;
+
+    previousMsg.textContent = currentMsg.textContent;
+    previousMsg.classList.remove('fade-out');
+    previousMsg.classList.add('previous');
+
+    currentMsg.textContent = message;
+    currentMsg.classList.add('current');
+
+    if (oldContent) {
+        setTimeout(() => {
+            const tempPrev = previousMsg.cloneNode(true);
+            tempPrev.classList.add('fade-out');
+            tempPrev.classList.remove('previous');
+        }, 50);
+    }
 }
 
 function toggleInputOverlay() {
     const overlay = document.getElementById('inputOverlay');
-    const isActive = overlay.classList.toggle('active');
+    overlay.classList.toggle('active');
+}
 
-    if (isActive) {
-        updateStatusText('');
+function toggleInputMode() {
+    isVoiceInputMode = !isVoiceInputMode;
+    const inputContainer = document.querySelector('.input-container');
+    const inputModeBtn = document.getElementById('inputModeBtn');
+    const inputModeIcon = document.getElementById('inputModeIcon');
+
+    if (isVoiceInputMode) {
+        inputContainer.classList.add('voice-mode');
+        inputContainer.classList.remove('text-mode');
+        inputModeBtn.classList.add('active');
+        inputModeIcon.innerHTML = '<circle cx="12" cy="12" r="8" fill="currentColor"></circle>';
     } else {
-        const audioElement = document.getElementById('audio');
-        if (!audioElement.src || audioElement.ended) {
-            updateStatusText('대화를 시작하려면 화면을 탭하세요');
-        }
+        inputContainer.classList.add('text-mode');
+        inputContainer.classList.remove('voice-mode');
+        inputModeBtn.classList.remove('active');
+        inputModeIcon.innerHTML = '<circle cx="12" cy="12" r="8"></circle>';
     }
 }
 
-function toggleVoice() {
-    const voiceBtn = document.getElementById('voiceBtn');
-    voiceBtn.classList.toggle('active');
+function toggleVoiceOutput() {
+    const voiceOutputBtn = document.getElementById('voiceOutputBtn');
+    voiceOutputBtn.classList.toggle('active');
 }
 
 async function startRecording() {
@@ -305,7 +335,7 @@ function stopRecording() {
 }
 
 async function sendAudioForTranscription(audioBlob, mimeType) {
-    const voiceEnabled = document.getElementById('voiceBtn').classList.contains('active');
+    const voiceEnabled = document.getElementById('voiceOutputBtn').classList.contains('active');
     const sendBtn = document.getElementById('sendBtn');
 
     try {
@@ -355,7 +385,10 @@ async function sendAudioForTranscription(audioBlob, mimeType) {
         document.getElementById('queryText').value = transcription;
 
         if (voiceEnabled) {
+            updateStatusText('AI가 생각 중...');
             await streamWithVoice(transcription, sendBtn);
+        } else {
+            sendBtn.disabled = false;
         }
 
     } catch (error) {
@@ -371,7 +404,7 @@ async function playTextResponse(text) {
 
 async function streamAudio() {
     const queryText = document.getElementById('queryText').value.trim();
-    const voiceEnabled = document.getElementById('voiceBtn').classList.contains('active');
+    const voiceEnabled = document.getElementById('voiceOutputBtn').classList.contains('active');
 
     if (!queryText) {
         return;
@@ -383,10 +416,14 @@ async function streamAudio() {
         return;
     }
 
-    updateStatusText(queryText);
-
     const overlay = document.getElementById('inputOverlay');
     overlay.classList.remove('active');
+
+    updateStatusText(queryText);
+
+    setTimeout(() => {
+        updateStatusText('AI가 생각 중...');
+    }, 100);
 
     const sendBtn = document.getElementById('sendBtn');
     sendBtn.disabled = true;
@@ -537,6 +574,9 @@ document.addEventListener('DOMContentLoaded', () => {
 
     animationId = 1;
     drawVisualizer();
+
+    const inputContainer = document.querySelector('.input-container');
+    inputContainer.classList.add('text-mode');
 
     // Persona card click events
     document.querySelectorAll('.persona-card').forEach(card => {
