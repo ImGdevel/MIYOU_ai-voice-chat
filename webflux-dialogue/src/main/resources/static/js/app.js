@@ -604,6 +604,12 @@ document.addEventListener('DOMContentLoaded', () => {
         stopRecording();
     });
 
+    recordBtn.addEventListener('touchcancel', () => {
+        if (isRecording) {
+            stopRecording();
+        }
+    });
+
     recordBtn.addEventListener('keydown', (e) => {
         if (e.key === ' ' || e.key === 'Enter') {
             e.preventDefault();
