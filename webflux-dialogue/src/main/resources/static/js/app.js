@@ -242,16 +242,28 @@ async function startRecording() {
 
     try {
         const stream = await navigator.mediaDevices.getUserMedia({ audio: true });
-        mediaRecorder = new MediaRecorder(stream, { mimeType: 'audio/webm' });
+
+        let mimeType = 'audio/webm';
+        if (!MediaRecorder.isTypeSupported('audio/webm')) {
+            if (MediaRecorder.isTypeSupported('audio/mp4')) {
+                mimeType = 'audio/mp4';
+            } else if (MediaRecorder.isTypeSupported('audio/wav')) {
+                mimeType = 'audio/wav';
+            }
+        }
+
+        mediaRecorder = new MediaRecorder(stream, { mimeType: mimeType });
         audioChunks = [];
+
+        let recordedMimeType = mimeType;
 
         mediaRecorder.addEventListener('dataavailable', event => {
             audioChunks.push(event.data);
         });
 
         mediaRecorder.addEventListener('stop', async () => {
-            const audioBlob = new Blob(audioChunks, { type: 'audio/webm' });
-            await sendAudioForTranscription(audioBlob);
+            const audioBlob = new Blob(audioChunks, { type: recordedMimeType });
+            await sendAudioForTranscription(audioBlob, recordedMimeType);
 
             stream.getTracks().forEach(track => track.stop());
         });
@@ -279,15 +291,18 @@ function stopRecording() {
     }
 }
 
-async function sendAudioForTranscription(audioBlob) {
+async function sendAudioForTranscription(audioBlob, mimeType) {
     const voiceEnabled = document.getElementById('voiceBtn').classList.contains('active');
     const sendBtn = document.getElementById('sendBtn');
 
     try {
         sendBtn.disabled = true;
 
+        const extension = mimeType.includes('mp4') ? 'mp4' :
+                         mimeType.includes('wav') ? 'wav' : 'webm';
+
         const formData = new FormData();
-        formData.append('audioFile', audioBlob, 'recording.webm');
+        formData.append('audioFile', audioBlob, `recording.${extension}`);
         formData.append('sessionId', currentSessionId);
         formData.append('language', 'ko');
 
