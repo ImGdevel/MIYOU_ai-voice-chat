@@ -7,10 +7,13 @@ import org.springframework.stereotype.Service;
 
 import com.study.webflux.rag.application.monitoring.context.PipelineContext;
 import com.study.webflux.rag.application.monitoring.service.PipelineTracer;
+import com.study.webflux.rag.domain.dialogue.model.PersonaId;
 import com.study.webflux.rag.domain.dialogue.port.TtsPort;
 import com.study.webflux.rag.domain.dialogue.service.SentenceAssembler;
 import com.study.webflux.rag.domain.monitoring.model.DialoguePipelineStage;
 import com.study.webflux.rag.domain.voice.model.AudioFormat;
+import com.study.webflux.rag.domain.voice.model.Voice;
+import com.study.webflux.rag.infrastructure.dialogue.config.PersonaVoiceProvider;
 import reactor.core.publisher.Flux;
 import reactor.core.publisher.Mono;
 import reactor.core.scheduler.Schedulers;
@@ -23,6 +26,7 @@ public class DialogueTtsStreamService {
 	private final TtsPort ttsPort;
 	private final SentenceAssembler sentenceAssembler;
 	private final PipelineTracer pipelineTracer;
+	private final PersonaVoiceProvider voiceProvider;
 
 	/**
 	 * 현재 파이프라인 요청 범위에서 TTS 준비 작업을 최대 1회 수행하도록 warm-up Mono를 생성합니다.
@@ -59,6 +63,20 @@ public class DialogueTtsStreamService {
 		return sentences.publishOn(Schedulers.boundedElastic())
 			.concatMap(sentence -> ttsWarmup.thenMany(ttsPort.streamSynthesize(sentence,
 				targetFormat)));
+	}
+
+	/**
+	 * 페르소나에 맞는 보이스로 문장 스트림을 순차적으로 TTS 합성해 오디오 청크 스트림으로 변환합니다.
+	 */
+	public Flux<byte[]> buildAudioStream(Flux<String> sentences,
+		Mono<Void> ttsWarmup,
+		AudioFormat targetFormat,
+		PersonaId personaId) {
+		Voice voice = voiceProvider.getVoiceForPersona(personaId);
+		return sentences.publishOn(Schedulers.boundedElastic())
+			.concatMap(sentence -> ttsWarmup.thenMany(ttsPort.streamSynthesize(sentence,
+				targetFormat,
+				voice)));
 	}
 
 	/**
