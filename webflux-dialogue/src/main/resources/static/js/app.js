@@ -342,7 +342,12 @@ async function sendAudioForTranscription(audioBlob, mimeType) {
 
             await playTextResponse(result.response);
         } else {
-            const transcription = result.transcription || result;
+            const transcription = typeof result === 'string'
+                ? result
+                : result.transcription;
+            if (!transcription) {
+                throw new Error('응답에서 transcription을 찾을 수 없습니다');
+            }
             updateStatusText(transcription);
             document.getElementById('queryText').value = transcription;
         }
