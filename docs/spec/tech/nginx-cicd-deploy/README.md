@@ -2,7 +2,7 @@
 
 ## 1) Background and objective
 - 목적: GitHub Actions 기반 배포 파이프라인과 EC2 Nginx/Blue-Green 운영 절차를 코드 기준으로 문서화
-- 범위: `.github/workflows/ci-cd.yml`, `scripts/aws/deploy_remote_*.sh`, `deploy/nginx/default.conf`, `docker-compose.app.yml`
+- 범위: `.github/workflows/ci-cd.yml`, `deploy/aws/deploy_remote_*.sh`, `deploy/nginx/default.conf`, `docker-compose.app.yml`
 - 목표:
   - 배포 성공/실패 경로를 운영자가 예측 가능하도록 명확화
   - 장애 시 자동 복구 경로(롤백, self-heal) 정의
@@ -12,10 +12,10 @@
 | 구성 요소 | 파일 | 책임 |
 | --- | --- | --- |
 | CI 오케스트레이션 | `.github/workflows/ci-cd.yml` | test/build/push/deploy/nginx-deploy/notify 잡 실행 |
-| Blue-Green 배포 | `scripts/aws/deploy_remote_blue_green.sh` | candidate 기동/헬스체크/트래픽 전환/롤백/드레인 |
-| Rolling 배포 | `scripts/aws/deploy_remote_compose.sh` | active 슬롯 기준 pull/up 배포 |
-| Nginx 단독 배포 | `scripts/aws/deploy_remote_nginx.sh` | nginx conf 반영, active 슬롯 정합성 보정 |
-| Self-heal watchdog | `scripts/aws/remote_app_self_heal.sh` | blue/green 둘 다 down 시 active 슬롯 자동 복구 |
+| Blue-Green 배포 | `deploy/aws/deploy_remote_blue_green.sh` | candidate 기동/헬스체크/트래픽 전환/롤백/드레인 |
+| Rolling 배포 | `deploy/aws/deploy_remote_compose.sh` | active 슬롯 기준 pull/up 배포 |
+| Nginx 단독 배포 | `deploy/aws/deploy_remote_nginx.sh` | nginx conf 반영, active 슬롯 정합성 보정 |
+| Self-heal watchdog | `deploy/aws/remote_app_self_heal.sh` | blue/green 둘 다 down 시 active 슬롯 자동 복구 |
 | Nginx 라우팅 | `deploy/nginx/default.conf` | `$app_upstream` 기반 프록시, 모니터링 경로 프록시 |
 | 런타임 토폴로지 | `docker-compose.app.yml` | `app_blue/app_green/nginx/mongodb/redis/qdrant` 컨테이너 정의 |
 
@@ -133,4 +133,3 @@ sequenceDiagram
 - [ ] `remote_app_self_heal.sh`와 cron 설치 절차가 반영되어 있는가
 - [ ] `deploy/nginx/default.conf`가 `$app_upstream` 기반인지 확인했는가
 - [ ] 캐시 정책(Gradle/Buildx/Dockerfile) 변경 시 본 문서를 갱신했는가
-
