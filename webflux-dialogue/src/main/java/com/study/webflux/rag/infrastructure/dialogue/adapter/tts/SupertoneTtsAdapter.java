@@ -36,6 +36,11 @@ public class SupertoneTtsAdapter implements TtsPort {
 
 	@Override
 	public Flux<byte[]> streamSynthesize(String text, AudioFormat format) {
+		return streamSynthesize(text, format, this.voice);
+	}
+
+	@Override
+	public Flux<byte[]> streamSynthesize(String text, AudioFormat format, Voice voice) {
 		AudioFormat outputFormat = format != null ? format : voice.getOutputFormat();
 		var settings = voice.getSettings();
 		var voiceSettings = Map.of("pitch_shift",
@@ -66,7 +71,12 @@ public class SupertoneTtsAdapter implements TtsPort {
 
 	@Override
 	public Mono<byte[]> synthesize(String text, AudioFormat format) {
-		return streamSynthesize(text, format).collectList().map(byteArrays -> {
+		return synthesize(text, format, this.voice);
+	}
+
+	@Override
+	public Mono<byte[]> synthesize(String text, AudioFormat format, Voice voice) {
+		return streamSynthesize(text, format, voice).collectList().map(byteArrays -> {
 			int totalSize = byteArrays.stream().mapToInt(arr -> arr.length).sum();
 			byte[] result = new byte[totalSize];
 			int offset = 0;
