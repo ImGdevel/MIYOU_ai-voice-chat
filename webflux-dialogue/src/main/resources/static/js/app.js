@@ -570,4 +570,20 @@ document.addEventListener('DOMContentLoaded', () => {
         e.preventDefault();
         stopRecording();
     });
+
+    recordBtn.addEventListener('keydown', (e) => {
+        if (e.key === ' ' || e.key === 'Enter') {
+            e.preventDefault();
+            if (!isRecording) {
+                startRecording();
+            }
+        }
+    });
+
+    recordBtn.addEventListener('keyup', (e) => {
+        if (e.key === ' ' || e.key === 'Enter') {
+            e.preventDefault();
+            stopRecording();
+        }
+    });
 });
