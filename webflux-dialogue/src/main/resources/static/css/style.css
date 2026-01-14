@@ -216,12 +216,16 @@ button:disabled {
     text-align: center;
     cursor: pointer;
     transition: all 0.2s ease;
+    width: 100%;
+    font-family: inherit;
 }
 
-.persona-card:hover {
+.persona-card:hover,
+.persona-card:focus {
     background: #f0f2f5;
     border-color: #666;
     transform: translateY(-2px);
+    outline: none;
 }
 
 .persona-icon {
