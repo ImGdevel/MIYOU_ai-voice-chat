@@ -32,18 +32,33 @@
             <canvas id="visualizer" width="300" height="300"></canvas>
         </div>
 
-        <div class="status-text" id="statusText">페르소나를 선택하세요</div>
+        <div class="message-display">
+            <div class="message current" id="currentMessage">페르소나를 선택하세요</div>
+            <div class="message previous" id="previousMessage"></div>
+        </div>
     </div>
 
     <div class="input-overlay" id="inputOverlay">
         <div class="input-panel" id="inputPanel">
-            <div class="input-container">
-                <button id="voiceBtn" class="voice-btn active" onclick="toggleVoice()">
+            <div class="input-controls">
+                <button id="inputModeBtn" class="mode-btn" onclick="toggleInputMode()" title="입력 모드 전환">
+                    <svg id="inputModeIcon" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                        <circle cx="12" cy="12" r="8"></circle>
+                    </svg>
+                </button>
+                <button id="voiceOutputBtn" class="mode-btn active" onclick="toggleVoiceOutput()" title="음성 출력 토글">
                     <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5">
                         <path d="M12 1a3 3 0 0 0-3 3v8a3 3 0 0 0 6 0V4a3 3 0 0 0-3-3z"></path>
                         <path d="M19 10v2a7 7 0 0 1-14 0v-2"></path>
                         <line x1="12" y1="19" x2="12" y2="23"></line>
                         <line x1="8" y1="23" x2="16" y2="23"></line>
+                    </svg>
+                </button>
+            </div>
+            <div class="input-container">
+                <button id="recordBtn" class="record-btn" title="길게 눌러 녹음">
+                    <svg width="18" height="18" viewBox="0 0 24 24" fill="currentColor">
+                        <circle cx="12" cy="12" r="8"></circle>
                     </svg>
                 </button>
                 <textarea id="queryText" placeholder="메시지 입력..."></textarea>
