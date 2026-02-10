@@ -43,31 +43,16 @@ public class MetricsRollupScheduler {
 		this.clock = clock;
 	}
 
+	/**
+	 * 직전 1분 버킷의 사용량/스테이지 성능 데이터를 롤업해 저장합니다.
+	 */
 	@Scheduled(cron = "0 * * * * *")
 	public void rollupMinuteMetrics() {
-		Instant now = clock.instant();
-		Instant bucketStart = now.truncatedTo(ChronoUnit.MINUTES).minus(1, ChronoUnit.MINUTES);
+		Instant bucketStart = previousMinuteBucketStart();
 		Instant bucketEnd = bucketStart.plus(1, ChronoUnit.MINUTES);
 
-		Mono<Void> usageRollup = usageAnalyticsRepository
-			.findByTimeRange(bucketStart, bucketEnd)
-			.reduce(new UsageAggregate(), UsageAggregate::add)
-			.defaultIfEmpty(new UsageAggregate())
-			.map(aggregate -> toMetricsRollup(bucketStart, aggregate))
-			.flatMap(metricsRollupRepository::save)
-			.then();
-
-		Flux<StagePerformanceRollup> stageRollups = performanceMetricsRepository
-			.findByTimeRange(bucketStart, bucketEnd)
-			.flatMapIterable(
-				metrics -> metrics.stages() == null ? java.util.List.of() : metrics.stages())
-			.groupBy(PerformanceMetrics.StagePerformance::stageName)
-			.flatMap(group -> group.reduce(new StageAggregate(group.key()), StageAggregate::add))
-			.map(aggregate -> aggregate.toRollup(bucketStart));
-
-		Mono<Void> stageRollupSave = stagePerformanceRollupRepository.saveAll(stageRollups).then();
-
-		Mono.when(usageRollup, stageRollupSave)
+		Mono.when(buildUsageRollup(bucketStart, bucketEnd),
+			buildStageRollup(bucketStart, bucketEnd))
 			.doOnSuccess(v -> log.debug("분 단위 롤업 완료: bucketStart={}", bucketStart))
 			.doOnError(error -> log.error("분 단위 롤업 실패 bucketStart={}, 이유={}",
 				bucketStart,
@@ -77,6 +62,37 @@ public class MetricsRollupScheduler {
 			.subscribe();
 	}
 
+	private Instant previousMinuteBucketStart() {
+		return clock.instant()
+			.truncatedTo(ChronoUnit.MINUTES)
+			.minus(1, ChronoUnit.MINUTES);
+	}
+
+	private Mono<Void> buildUsageRollup(Instant bucketStart, Instant bucketEnd) {
+		return usageAnalyticsRepository.findByTimeRange(bucketStart, bucketEnd)
+			.reduce(new UsageAggregate(), UsageAggregate::add)
+			.defaultIfEmpty(new UsageAggregate())
+			.map(aggregate -> toMetricsRollup(bucketStart, aggregate))
+			.flatMap(metricsRollupRepository::save)
+			.then();
+	}
+
+	private Mono<Void> buildStageRollup(Instant bucketStart, Instant bucketEnd) {
+		Flux<StagePerformanceRollup> rollups = performanceMetricsRepository
+			.findByTimeRange(bucketStart, bucketEnd)
+			.flatMapIterable(metrics -> metrics.stages() == null
+				? java.util.List.of()
+				: metrics.stages())
+			.groupBy(PerformanceMetrics.StagePerformance::stageName)
+			.flatMap(group -> group.reduce(new StageAggregate(group.key()), StageAggregate::add))
+			.map(aggregate -> aggregate.toRollup(bucketStart));
+
+		return stagePerformanceRollupRepository.saveAll(rollups).then();
+	}
+
+	/**
+	 * 사용량 집계값을 분 단위 롤업 모델로 변환합니다.
+	 */
 	private MetricsRollup toMetricsRollup(Instant bucketStart, UsageAggregate aggregate) {
 		double avg = aggregate.requestCount == 0
 			? 0
