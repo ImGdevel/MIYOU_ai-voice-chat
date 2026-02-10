@@ -25,7 +25,7 @@ public class DialogueTtsStreamService {
 	private final PipelineTracer pipelineTracer;
 
 	/**
-	 * TTS 준비 작업을 사전에 실행해 첫 응답 지연을 줄입니다.
+	 * 현재 파이프라인 요청 범위에서 TTS 준비 작업을 최대 1회 수행하도록 warm-up Mono를 생성합니다.
 	 */
 	public Mono<Void> prepareTtsWarmup() {
 		return Mono.deferContextual(contextView -> {
@@ -34,9 +34,8 @@ public class DialogueTtsStreamService {
 			return pipelineTracer.traceTtsPreparation(
 				() -> ttsPort.prepare().doOnError(error -> log
 					.warn("파이프라인 {}의 TTS 준비 실패: {}", pipelineId, error.getMessage()))
-					.onErrorResume(error -> Mono.empty()))
-				.cache();
-		});
+					.onErrorResume(error -> Mono.empty()));
+		}).cache();
 	}
 
 	/**
@@ -52,7 +51,7 @@ public class DialogueTtsStreamService {
 	}
 
 	/**
-	 * 문장 스트림을 받아 TTS 오디오 스트림을 생성합니다.
+	 * 문장 스트림을 순차적으로 TTS 합성해 오디오 청크 스트림으로 변환합니다.
 	 */
 	public Flux<byte[]> buildAudioStream(Flux<String> sentences,
 		Mono<Void> ttsWarmup,
@@ -63,7 +62,7 @@ public class DialogueTtsStreamService {
 	}
 
 	/**
-	 * TTS 합성 단계를 모니터링하며 스트림을 래핑합니다.
+	 * TTS 합성 스트림을 모니터링하며 오디오 청크 수와 응답 시점을 기록합니다.
 	 */
 	public Flux<byte[]> traceTtsSynthesis(Flux<byte[]> audioFlux) {
 		return pipelineTracer

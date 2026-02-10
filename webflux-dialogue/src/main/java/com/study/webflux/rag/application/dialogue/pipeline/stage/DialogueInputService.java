@@ -23,7 +23,11 @@ public class DialogueInputService {
 	private final PipelineTracer pipelineTracer;
 
 	/**
-	 * 현재 쿼리에 대한 컨텍스트(대화 히스토리, 검색 결과, 메모리, 현재 턴)를 준비해 Mono로 반환합니다.
+	 * 현재 질의를 기준으로 검색 컨텍스트, 메모리, 대화 이력, 현재 턴을 병렬로 준비합니다.
+	 *
+	 * @param text
+	 *            사용자 입력 질의
+	 * @return 파이프라인 실행에 필요한 입력 집합
 	 */
 	public Mono<PipelineInputs> prepareInputs(String text) {
 		Mono<ConversationTurn> currentTurn = Mono.fromCallable(() -> ConversationTurn.create(text))
@@ -45,6 +49,9 @@ public class DialogueInputService {
 				tuple.getT4()));
 	}
 
+	/**
+	 * 최근 대화 이력을 조회해 컨텍스트 객체로 변환합니다.
+	 */
 	private Mono<ConversationContext> loadConversationHistory() {
 		return conversationRepository.findRecent(10)
 			.collectList()

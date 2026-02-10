@@ -18,9 +18,6 @@ import reactor.core.publisher.Mono;
 @RequiredArgsConstructor
 public class DialoguePipelineService implements DialoguePipelineUseCase {
 
-	/**
-	 * 리액티브 대화 파이프라인을 총괄합니다. 입력 텍스트를 받아 메모리/검색 컨텍스트를 준비하고, 시스템 프롬프트를 구성한 뒤 LLM 토큰 스트리밍과 TTS 스트리밍까지 이어지는 전체 흐름을 관리합니다.
-	 */
 	private final DialogueInputService inputService;
 	private final DialogueLlmStreamService llmStreamService;
 	private final DialogueTtsStreamService ttsStreamService;
@@ -35,7 +32,7 @@ public class DialoguePipelineService implements DialoguePipelineUseCase {
 	public Flux<byte[]> executeAudioStreaming(String text, AudioFormat format) {
 		AudioFormat targetFormat = format != null ? format : defaultAudioFormat;
 
-		Mono<PipelineInputs> inputsMono = inputService.prepareInputs(text).cache();
+		Mono<PipelineInputs> inputsMono = prepareCachedInputs(text);
 		Mono<Void> ttsWarmup = ttsStreamService.prepareTtsWarmup();
 
 		Flux<String> llmTokens = llmStreamService.buildLlmTokenStream(inputsMono);
@@ -45,7 +42,7 @@ public class DialoguePipelineService implements DialoguePipelineUseCase {
 		Mono<Void> postProcessing = postProcessingService.persistAndExtract(inputsMono, sentences);
 		Flux<byte[]> audioStream = ttsStreamService.traceTtsSynthesis(audioFlux);
 
-		return audioStream.concatWith(postProcessing.thenMany(Flux.empty()));
+		return appendPostProcessing(audioStream, postProcessing);
 	}
 
 	/**
@@ -54,14 +51,27 @@ public class DialoguePipelineService implements DialoguePipelineUseCase {
 	@Override
 	@MonitoredPipeline
 	public Flux<String> executeTextOnly(String text) {
-		Mono<PipelineInputs> inputsMono = inputService.prepareInputs(text).cache();
+		Mono<PipelineInputs> inputsMono = prepareCachedInputs(text);
 
 		Flux<String> llmTokens = llmStreamService.buildLlmTokenStream(inputsMono);
 		Flux<String> textStream = llmTokens.cache();
 		Mono<Void> postProcessing = postProcessingService.persistAndExtractText(inputsMono,
 			textStream);
 
-		return textStream.concatWith(postProcessing.thenMany(Flux.empty()));
+		return appendPostProcessing(textStream, postProcessing);
 	}
 
+	/**
+	 * 입력 텍스트로부터 파이프라인 공통 입력 객체를 생성하고 같은 요청 내 재사용을 위해 캐시합니다.
+	 */
+	private Mono<PipelineInputs> prepareCachedInputs(String text) {
+		return inputService.prepareInputs(text).cache();
+	}
+
+	/**
+	 * 메인 스트림 완료 후 후처리 Mono를 이어붙여 저장/메모리추출이 누락되지 않도록 보장합니다.
+	 */
+	private <T> Flux<T> appendPostProcessing(Flux<T> mainStream, Mono<Void> postProcessing) {
+		return mainStream.concatWith(postProcessing.thenMany(Flux.empty()));
+	}
 }

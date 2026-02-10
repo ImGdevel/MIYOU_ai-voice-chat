@@ -35,7 +35,11 @@ public class DialogueLlmStreamService {
 	}
 
 	/**
-	 * 준비된 입력을 사용해 LLM 토큰 스트림을 생성합니다.
+	 * 준비된 파이프라인 입력으로 LLM 토큰 스트림을 구성하고 모니터링 계측을 적용합니다.
+	 *
+	 * @param inputsMono
+	 *            검색/메모리/이력을 포함한 파이프라인 입력 Mono
+	 * @return LLM이 생성한 토큰 Flux
 	 */
 	public Flux<String> buildLlmTokenStream(Mono<PipelineInputs> inputsMono) {
 		return streamLlmTokens(inputsMono)
@@ -43,6 +47,9 @@ public class DialogueLlmStreamService {
 			.transform(this::trackLlmTokens);
 	}
 
+	/**
+	 * 컨텍스트에서 추적 정보를 읽어 메시지/요청을 구성한 뒤 LLM 스트림을 호출합니다.
+	 */
 	private Flux<String> streamLlmTokens(Mono<PipelineInputs> inputsMono) {
 		return Flux.deferContextual(contextView -> {
 			var tracker = PipelineContext.findTracker(contextView);
@@ -66,6 +73,9 @@ public class DialogueLlmStreamService {
 		});
 	}
 
+	/**
+	 * 토큰 단위 카운터를 누적하고 디버그 로깅을 추가합니다.
+	 */
 	private Flux<String> trackLlmTokens(Flux<String> llmTokens) {
 		return pipelineTracer.incrementOnNext(llmTokens,
 			DialoguePipelineStage.LLM_COMPLETION,
