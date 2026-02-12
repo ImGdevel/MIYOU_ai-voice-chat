@@ -24,6 +24,7 @@ import com.study.webflux.rag.domain.voice.model.AudioFormat;
 import jakarta.validation.Valid;
 import reactor.core.publisher.Flux;
 
+/** RAG 대화 파이프라인 REST 엔드포인트. */
 @Validated
 @Slf4j
 @RestController
@@ -34,6 +35,7 @@ public class DialogueController implements DialogueApi {
 	private final DialoguePipelineUseCase dialoguePipelineUseCase;
 	private final DataBufferFactory bufferFactory = new DefaultDataBufferFactory();
 
+	/** TTS 포함 RAG 파이프라인을 실행하고 요청 포맷으로 오디오를 스트리밍. */
 	@PostMapping(path = "/audio", produces = {"audio/wav", "audio/mpeg"})
 	public Flux<DataBuffer> ragDialogueAudio(
 		@Valid @RequestBody RagDialogueRequest request,
@@ -53,6 +55,7 @@ public class DialogueController implements DialogueApi {
 			.map(bufferFactory::wrap);
 	}
 
+	/** 텍스트 전용 RAG 파이프라인을 SSE로 스트리밍. */
 	@PostMapping(path = "/text", produces = MediaType.TEXT_EVENT_STREAM_VALUE)
 	public Flux<String> ragDialogueText(
 		@Valid @RequestBody RagDialogueRequest request) {

@@ -11,9 +11,11 @@ import org.springframework.data.redis.serializer.StringRedisSerializer;
 import com.study.webflux.rag.infrastructure.dialogue.config.properties.RagDialogueProperties;
 import com.study.webflux.rag.infrastructure.memory.adapter.MemoryExtractionConfig;
 
+/** 기억 추출 및 조회 설정을 제공합니다. */
 @Configuration
 public class MemoryConfiguration {
 
+	/** 기억 추출 설정을 생성합니다. */
 	@Bean
 	public MemoryExtractionConfig memoryExtractionConfig(RagDialogueProperties properties) {
 		var memory = properties.getMemory();
@@ -22,11 +24,13 @@ public class MemoryConfiguration {
 			memory.getImportanceThreshold());
 	}
 
+	/** 대화 수 기준을 빈으로 노출합니다. */
 	@Bean
 	public int conversationThreshold(RagDialogueProperties properties) {
 		return properties.getMemory().getConversationThreshold();
 	}
 
+	/** Long 값을 위한 ReactiveRedisTemplate을 생성합니다. */
 	@Bean
 	public ReactiveRedisTemplate<String, Long> reactiveRedisLongTemplate(
 		ReactiveRedisConnectionFactory connectionFactory) {

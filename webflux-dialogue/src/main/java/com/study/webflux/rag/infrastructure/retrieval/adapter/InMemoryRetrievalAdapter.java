@@ -10,15 +10,14 @@ import com.study.webflux.rag.domain.retrieval.model.RetrievalContext;
 import com.study.webflux.rag.domain.retrieval.port.RetrievalPort;
 import reactor.core.publisher.Mono;
 
+/** 키워드 유사도 기반 인메모리 대화 검색 어댑터입니다. */
 @Component
 @RequiredArgsConstructor
 public class InMemoryRetrievalAdapter implements RetrievalPort {
 
 	private final ConversationRepository conversationRepository;
 
-	/**
-	 * 저장된 대화 이력을 대상으로 키워드 유사도 기반 상위 문서를 검색합니다.
-	 */
+	/** 전체 대화를 메모리에서 로드하고 키워드 유사도로 문서를 검색합니다. */
 	@Override
 	public Mono<RetrievalContext> retrieve(String query, int topK) {
 		return conversationRepository.findAll()
@@ -27,9 +26,7 @@ public class InMemoryRetrievalAdapter implements RetrievalPort {
 			.map(documents -> RetrievalContext.of(query, documents));
 	}
 
-	/**
-	 * 인메모리 어댑터는 메모리 검색을 지원하지 않아 빈 결과를 반환합니다.
-	 */
+	/** 메모리 검색은 지원하지 않습니다. */
 	@Override
 	public Mono<MemoryRetrievalResult> retrieveMemories(String query, int topK) {
 		return Mono.just(MemoryRetrievalResult.empty());
