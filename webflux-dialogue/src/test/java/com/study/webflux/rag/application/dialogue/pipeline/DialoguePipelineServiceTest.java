@@ -6,6 +6,7 @@ import com.study.webflux.rag.application.dialogue.pipeline.stage.DialogueInputSe
 import com.study.webflux.rag.application.dialogue.pipeline.stage.DialogueLlmStreamService;
 import com.study.webflux.rag.application.dialogue.pipeline.stage.DialoguePostProcessingService;
 import com.study.webflux.rag.application.dialogue.pipeline.stage.DialogueTtsStreamService;
+import com.study.webflux.rag.domain.dialogue.model.UserId;
 import com.study.webflux.rag.domain.voice.model.AudioFormat;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
@@ -49,11 +50,12 @@ class DialoguePipelineServiceTest {
 
 	@Test
 	void executeAudioStreaming_shouldUseDelegatedFlows() {
+		UserId userId = UserId.of("user-1");
 		String testText = "test";
-		PipelineInputs inputs = new PipelineInputs(null, null, null,
-			com.study.webflux.rag.domain.dialogue.model.ConversationTurn.create(testText));
+		PipelineInputs inputs = new PipelineInputs(userId, null, null, null,
+			com.study.webflux.rag.domain.dialogue.model.ConversationTurn.create(userId, testText));
 
-		when(inputService.prepareInputs(eq(testText))).thenReturn(Mono.just(inputs));
+		when(inputService.prepareInputs(eq(userId), eq(testText))).thenReturn(Mono.just(inputs));
 		when(ttsStreamService.prepareTtsWarmup()).thenReturn(Mono.empty());
 		when(llmStreamService.buildLlmTokenStream(any())).thenReturn(Flux.just("a", "b"));
 		when(ttsStreamService.assembleSentences(any())).thenReturn(Flux.just("ab"));
@@ -63,26 +65,28 @@ class DialoguePipelineServiceTest {
 			.thenReturn(Flux.just("audio".getBytes()));
 		when(postProcessingService.persistAndExtract(any(), any())).thenReturn(Mono.empty());
 
-		StepVerifier.create(service.executeAudioStreaming(testText, AudioFormat.MP3))
+		StepVerifier.create(service.executeAudioStreaming(userId, testText, AudioFormat.MP3))
 			.expectNextMatches(bytes -> Arrays.equals(bytes, "audio".getBytes()))
 			.verifyComplete();
 
-		verify(inputService).prepareInputs(testText);
+		verify(inputService).prepareInputs(userId, testText);
 		verify(postProcessingService).persistAndExtract(any(), any());
 	}
 
 	@Test
 	void executeTextOnly_shouldDelegateToUseCase() {
+		UserId userId = UserId.of("user-1");
 		String testText = "hello";
-		PipelineInputs inputs = new PipelineInputs(null, null, null,
-			com.study.webflux.rag.domain.dialogue.model.ConversationTurn.create(testText));
+		PipelineInputs inputs = new PipelineInputs(userId, null, null, null,
+			com.study.webflux.rag.domain.dialogue.model.ConversationTurn.create(userId, testText));
 
-		when(inputService.prepareInputs(eq(testText))).thenReturn(Mono.just(inputs));
+		when(inputService.prepareInputs(eq(userId), eq(testText))).thenReturn(Mono.just(inputs));
 		when(llmStreamService.buildLlmTokenStream(any())).thenReturn(Flux.just("hi"));
 		when(postProcessingService.persistAndExtractText(any(), any())).thenReturn(Mono.empty());
 
-		StepVerifier.create(service.executeTextOnly(testText)).expectNext("hi").verifyComplete();
+		StepVerifier.create(service.executeTextOnly(userId, testText)).expectNext("hi")
+			.verifyComplete();
 
-		verify(inputService, times(1)).prepareInputs(testText);
+		verify(inputService, times(1)).prepareInputs(userId, testText);
 	}
 }
