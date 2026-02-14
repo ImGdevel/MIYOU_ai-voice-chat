@@ -9,6 +9,7 @@ import com.study.webflux.rag.application.dialogue.pipeline.stage.DialogueLlmStre
 import com.study.webflux.rag.application.dialogue.pipeline.stage.DialoguePostProcessingService;
 import com.study.webflux.rag.application.dialogue.pipeline.stage.DialogueTtsStreamService;
 import com.study.webflux.rag.application.monitoring.aop.MonitoredPipeline;
+import com.study.webflux.rag.domain.dialogue.model.UserId;
 import com.study.webflux.rag.domain.dialogue.port.DialoguePipelineUseCase;
 import com.study.webflux.rag.domain.voice.model.AudioFormat;
 import reactor.core.publisher.Flux;
@@ -29,10 +30,10 @@ public class DialoguePipelineService implements DialoguePipelineUseCase {
 	 */
 	@Override
 	@MonitoredPipeline
-	public Flux<byte[]> executeAudioStreaming(String text, AudioFormat format) {
+	public Flux<byte[]> executeAudioStreaming(UserId userId, String text, AudioFormat format) {
 		AudioFormat targetFormat = format != null ? format : defaultAudioFormat;
 
-		Mono<PipelineInputs> inputsMono = prepareCachedInputs(text);
+		Mono<PipelineInputs> inputsMono = prepareCachedInputs(userId, text);
 		Mono<Void> ttsWarmup = ttsStreamService.prepareTtsWarmup();
 
 		Flux<String> llmTokens = llmStreamService.buildLlmTokenStream(inputsMono);
@@ -50,8 +51,8 @@ public class DialoguePipelineService implements DialoguePipelineUseCase {
 	 */
 	@Override
 	@MonitoredPipeline
-	public Flux<String> executeTextOnly(String text) {
-		Mono<PipelineInputs> inputsMono = prepareCachedInputs(text);
+	public Flux<String> executeTextOnly(UserId userId, String text) {
+		Mono<PipelineInputs> inputsMono = prepareCachedInputs(userId, text);
 
 		Flux<String> llmTokens = llmStreamService.buildLlmTokenStream(inputsMono);
 		Flux<String> textStream = llmTokens.cache();
@@ -61,11 +62,8 @@ public class DialoguePipelineService implements DialoguePipelineUseCase {
 		return appendPostProcessing(textStream, postProcessing);
 	}
 
-	/**
-	 * 입력 텍스트로부터 파이프라인 공통 입력 객체를 생성하고 같은 요청 내 재사용을 위해 캐시합니다.
-	 */
-	private Mono<PipelineInputs> prepareCachedInputs(String text) {
-		return inputService.prepareInputs(text).cache();
+	private Mono<PipelineInputs> prepareCachedInputs(UserId userId, String text) {
+		return inputService.prepareInputs(userId, text).cache();
 	}
 
 	/**

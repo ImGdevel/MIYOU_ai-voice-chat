@@ -5,6 +5,7 @@ import java.util.List;
 
 import org.springframework.stereotype.Service;
 
+import com.study.webflux.rag.domain.dialogue.model.UserId;
 import com.study.webflux.rag.domain.memory.model.Memory;
 import com.study.webflux.rag.domain.memory.model.MemoryRetrievalResult;
 import com.study.webflux.rag.domain.memory.model.MemoryType;
@@ -45,9 +46,9 @@ public class MemoryRetrievalService {
 	 *            반환할 상위 메모리 수
 	 * @return 유형별(경험/사실)로 그룹화된 메모리 결과
 	 */
-	public Mono<MemoryRetrievalResult> retrieveMemories(String query, int topK) {
+	public Mono<MemoryRetrievalResult> retrieveMemories(UserId userId, String query, int topK) {
 		return embeddingPort.embed(query)
-			.flatMap(embedding -> searchCandidateMemories(embedding.vector(), topK))
+			.flatMap(embedding -> searchCandidateMemories(userId, embedding.vector(), topK))
 			.map(memories -> rankAndLimit(memories, topK))
 			.map(this::groupByType)
 			.flatMap(this::updateAccessMetrics);
@@ -56,9 +57,12 @@ public class MemoryRetrievalService {
 	/**
 	 * 벡터 저장소에서 중요도 임계값을 만족하는 후보 메모리를 조회합니다.
 	 */
-	private Mono<List<Memory>> searchCandidateMemories(List<Float> queryEmbedding, int topK) {
+	private Mono<List<Memory>> searchCandidateMemories(UserId userId,
+		List<Float> queryEmbedding,
+		int topK) {
 		List<MemoryType> types = List.of(MemoryType.EXPERIENTIAL, MemoryType.FACTUAL);
-		return vectorMemoryPort.search(queryEmbedding,
+		return vectorMemoryPort.search(userId,
+			queryEmbedding,
 			types,
 			importanceThreshold,
 			topK * CANDIDATE_MULTIPLIER).collectList();

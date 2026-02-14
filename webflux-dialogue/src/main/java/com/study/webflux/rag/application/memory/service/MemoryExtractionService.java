@@ -8,6 +8,7 @@ import lombok.extern.slf4j.Slf4j;
 import org.springframework.stereotype.Service;
 
 import com.study.webflux.rag.domain.dialogue.model.ConversationTurn;
+import com.study.webflux.rag.domain.dialogue.model.UserId;
 import com.study.webflux.rag.domain.dialogue.port.ConversationRepository;
 import com.study.webflux.rag.domain.memory.model.ExtractedMemory;
 import com.study.webflux.rag.domain.memory.model.Memory;
@@ -37,12 +38,12 @@ public class MemoryExtractionService {
 	/**
 	 * 누적 대화 수가 임계값 배수인 경우에만 메모리 추출 파이프라인을 실행합니다.
 	 */
-	public Mono<Void> checkAndExtract() {
-		return counterPort.get()
+	public Mono<Void> checkAndExtract(UserId userId) {
+		return counterPort.get(userId)
 			.filter(this::isExtractionTurn)
 			.flatMap(count -> {
 				log.info("메모리 추출 트리거: 대화 횟수={}", count);
-				return performExtraction();
+				return performExtraction(userId);
 			})
 			.then();
 	}
@@ -50,9 +51,9 @@ public class MemoryExtractionService {
 	/**
 	 * 최근 대화를 기준으로 메모리 추출 컨텍스트를 구성하고 추출 결과를 저장합니다.
 	 */
-	private Mono<Void> performExtraction() {
-		return loadRecentConversations()
-			.flatMap(this::buildExtractionContext)
+	private Mono<Void> performExtraction(UserId userId) {
+		return loadRecentConversations(userId)
+			.flatMap(conversations -> buildExtractionContext(userId, conversations))
 			.flatMapMany(extractionPort::extractMemories)
 			.flatMap(this::saveExtractedMemory)
 			.doOnNext(memory -> log.info("추출 및 저장된 메모리: type={}, importance={}, content={}",
@@ -79,18 +80,18 @@ public class MemoryExtractionService {
 	/**
 	 * 임계 대화 수만큼 최근 대화 이력을 불러옵니다.
 	 */
-	private Mono<List<ConversationTurn>> loadRecentConversations() {
-		return conversationRepository.findRecent(conversationThreshold).collectList();
+	private Mono<List<ConversationTurn>> loadRecentConversations(UserId userId) {
+		return conversationRepository.findRecent(userId, conversationThreshold).collectList();
 	}
 
 	/**
 	 * 대화 이력과 관련 메모리를 결합해 추출 컨텍스트를 구성합니다.
 	 */
-	private Mono<MemoryExtractionContext> buildExtractionContext(
+	private Mono<MemoryExtractionContext> buildExtractionContext(UserId userId,
 		List<ConversationTurn> conversations) {
 		String combinedQuery = mergeQueries(conversations);
-		return retrievalService.retrieveMemories(combinedQuery, 10)
-			.map(result -> MemoryExtractionContext.of(conversations, result.allMemories()));
+		return retrievalService.retrieveMemories(userId, combinedQuery, 10)
+			.map(result -> MemoryExtractionContext.of(userId, conversations, result.allMemories()));
 	}
 
 	private String mergeQueries(List<ConversationTurn> conversations) {
