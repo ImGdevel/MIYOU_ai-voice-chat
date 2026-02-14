@@ -115,7 +115,8 @@ public class LlmMemoryExtractionAdapter implements MemoryExtractionPort {
 				new TypeReference<List<MemoryExtractionDto>>() {
 				});
 
-			return Flux.fromIterable(dtos).map(MemoryExtractionDto::toExtractedMemory);
+			return Flux.fromIterable(dtos)
+				.map(dto -> dto.toExtractedMemory(context.userId()));
 		} catch (Exception e) {
 			log.warn("메모리 추출 응답 파싱 실패: {}", jsonResponse, e);
 			return Flux.empty();

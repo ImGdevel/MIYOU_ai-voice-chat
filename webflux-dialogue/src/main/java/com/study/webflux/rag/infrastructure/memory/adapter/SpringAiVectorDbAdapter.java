@@ -14,6 +14,7 @@ import org.springframework.ai.vectorstore.VectorStore;
 import org.springframework.context.annotation.Primary;
 import org.springframework.stereotype.Component;
 
+import com.study.webflux.rag.domain.dialogue.model.UserId;
 import com.study.webflux.rag.domain.memory.model.Memory;
 import com.study.webflux.rag.domain.memory.model.MemoryType;
 import com.study.webflux.rag.domain.memory.port.VectorMemoryPort;
@@ -61,6 +62,7 @@ public class SpringAiVectorDbAdapter implements VectorMemoryPort {
 			String id = memory.id() != null ? memory.id() : UUID.randomUUID().toString();
 
 			Map<String, Object> metadata = new HashMap<>();
+			metadata.put("userId", memory.userId().value());
 			metadata.put("type", memory.type().name());
 			if (memory.importance() != null) {
 				metadata.put("importance", memory.importance());
@@ -84,12 +86,20 @@ public class SpringAiVectorDbAdapter implements VectorMemoryPort {
 	}
 
 	@Override
-	public Flux<Memory> search(List<Float> queryEmbedding,
+	public Flux<Memory> search(UserId userId,
+		List<Float> queryEmbedding,
 		List<MemoryType> types,
 		float importanceThreshold,
 		int topK) {
 		return Mono.fromCallable(() -> {
 			Filter.Builder filterBuilder = Filter.newBuilder();
+
+			filterBuilder.addMust(Condition.newBuilder()
+				.setField(FieldCondition.newBuilder()
+					.setKey("userId")
+					.setMatch(Match.newBuilder().setKeyword(userId.value()).build())
+					.build())
+				.build());
 
 			if (importanceThreshold > 0) {
 				filterBuilder.addMust(Condition.newBuilder()
@@ -118,7 +128,8 @@ public class SpringAiVectorDbAdapter implements VectorMemoryPort {
 
 			List<ScoredPoint> results = qdrantClient.searchAsync(searchPoints).get();
 
-			return results.stream().map(this::toMemoryFromScoredPoint).collect(Collectors.toList());
+			return results.stream().map(point -> toMemoryFromScoredPoint(point, userId))
+				.collect(Collectors.toList());
 		}).subscribeOn(Schedulers.boundedElastic()).flatMapMany(Flux::fromIterable);
 	}
 
@@ -177,7 +188,7 @@ public class SpringAiVectorDbAdapter implements VectorMemoryPort {
 			createdAt, lastAccessedAt, accessCount);
 	}
 
-	private Memory toMemoryFromScoredPoint(ScoredPoint point) {
+	private Memory toMemoryFromScoredPoint(ScoredPoint point, UserId userId) {
 		Map<String, io.qdrant.client.grpc.JsonWithInt.Value> payload = point.getPayloadMap();
 
 		String id = point.getId().hasNum()
@@ -212,6 +223,7 @@ public class SpringAiVectorDbAdapter implements VectorMemoryPort {
 			? (int) payload.get("accessCount").getDoubleValue()
 			: null;
 
-		return new Memory(id, type, content, importance, createdAt, lastAccessedAt, accessCount);
+		return new Memory(id, userId, type, content, importance, createdAt, lastAccessedAt,
+			accessCount);
 	}
 }
