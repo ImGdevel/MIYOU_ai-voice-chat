@@ -509,21 +509,23 @@
       "gridPos": { "h": 6, "w": 6, "x": 18, "y": 23 },
       "id": 14,
       "options": {
-        "colorMode": "value",
-        "graphMode": "area",
-        "justifyMode": "center",
-        "orientation": "auto",
-        "reduceOptions": { "calcs": ["lastNotNull"], "fields": "", "values": false },
-        "textMode": "value"
+        "legend": { "displayMode": "list", "placement": "bottom" },
+        "tooltip": { "mode": "multi" }
       },
       "targets": [
         {
           "expr": "sum(reactor_netty_connection_provider_active_connections{job=~\"$job\",instance=~\"$instance\"})",
+          "legendFormat": "활성 연결(Active Connections)",
           "refId": "A"
+        },
+        {
+          "expr": "sum(reactor_netty_eventloop_pending_tasks{job=~\"$job\",instance=~\"$instance\"})",
+          "legendFormat": "대기 작업(Pending Tasks)",
+          "refId": "B"
         }
       ],
-      "title": "활성 HTTP 연결(Connections)",
-      "type": "stat"
+      "title": "Reactor Netty - 연결 & 작업",
+      "type": "timeseries"
     },
     {
       "collapsed": false,
