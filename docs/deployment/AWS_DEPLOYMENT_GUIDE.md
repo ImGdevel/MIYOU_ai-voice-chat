@@ -93,6 +93,26 @@ sudo usermod -aG docker ubuntu
 newgrp docker
 ```
 
+### 5.4 스크립트 기반 일관 세팅 (권장)
+매번 동일한 방식으로 세팅하기 위해 레포에 준비된 스크립트를 사용한다.
+
+로컬에서 원격 서버에 직접 실행:
+```bash
+./scripts/aws/run_bootstrap_remote.sh miyou-dev
+```
+
+원격 서버에서 수동 실행:
+```bash
+scp scripts/aws/bootstrap_base.sh miyou-dev:/tmp/bootstrap_base.sh
+ssh miyou-dev "sudo bash /tmp/bootstrap_base.sh"
+```
+
+주요 환경 변수(선택):
+- `APP_DIR` (기본: `/opt/app`)
+- `APP_USER` (기본: `ubuntu`)
+- `INSTALL_SSM_AGENT` (기본: `true`)
+- `RUN_UPGRADE` (기본: `false`)
+
 ---
 
 ## 6. 배포 구성 방식 (권장)
