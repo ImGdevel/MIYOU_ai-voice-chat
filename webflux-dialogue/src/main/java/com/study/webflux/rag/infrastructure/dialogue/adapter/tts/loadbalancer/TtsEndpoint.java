@@ -10,8 +10,9 @@ public class TtsEndpoint {
 	private final String id;
 	private final String apiKey;
 	private final String baseUrl;
-	private volatile EndpointHealth health;
 	private final AtomicInteger activeRequests;
+	private final Object healthLock = new Object();
+	private volatile EndpointHealth health;
 	private volatile Instant circuitOpenedAt;
 
 	public TtsEndpoint(String id, String apiKey, String baseUrl) {
@@ -40,12 +41,14 @@ public class TtsEndpoint {
 	}
 
 	public void setHealth(EndpointHealth health) {
-		this.health = health;
-		if (health == EndpointHealth.TEMPORARY_FAILURE
-			|| health == EndpointHealth.PERMANENT_FAILURE) {
-			this.circuitOpenedAt = Instant.now();
-		} else if (health == EndpointHealth.HEALTHY) {
-			this.circuitOpenedAt = null;
+		synchronized (healthLock) {
+			this.health = health;
+			if (health == EndpointHealth.TEMPORARY_FAILURE
+				|| health == EndpointHealth.PERMANENT_FAILURE) {
+				this.circuitOpenedAt = Instant.now();
+			} else if (health == EndpointHealth.HEALTHY) {
+				this.circuitOpenedAt = null;
+			}
 		}
 	}
 
