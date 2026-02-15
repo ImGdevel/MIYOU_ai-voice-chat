@@ -1,0 +1,11 @@
+[
+  {
+    "labels": {
+      "service": "miyou-app",
+      "env": "prod"
+    },
+    "targets": [
+      "172.31.62.169:80"
+    ]
+  }
+]
