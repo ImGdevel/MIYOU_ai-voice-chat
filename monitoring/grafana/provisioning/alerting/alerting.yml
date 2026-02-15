@@ -1,0 +1,35 @@
+apiVersion: 1
+
+contactPoints:
+  - orgId: 1
+    name: discord-ops
+    receivers:
+      - uid: discord-webhook
+        type: discord
+        settings:
+          url: ${DISCORD_WEBHOOK_URL}
+          message: |
+            **{{ .Status | toUpper }}{{ if eq .Status "firing" }} 🔥{{ else }} ✅{{ end }}**
+            {{ range .Alerts }}
+            **{{ .Labels.alertname }}**
+            {{ .Annotations.summary }}
+            {{ if .Annotations.description }}📝 {{ .Annotations.description }}{{ end }}
+            {{ end }}
+        disableResolveMessage: false
+
+policies:
+  - orgId: 1
+    receiver: discord-ops
+    group_by: ['alertname', 'severity']
+    group_wait: 30s
+    group_interval: 5m
+    repeat_interval: 4h
+    routes:
+      - receiver: discord-ops
+        matchers:
+          - severity = critical
+        continue: false
+      - receiver: discord-ops
+        matchers:
+          - severity = warning
+        continue: false
