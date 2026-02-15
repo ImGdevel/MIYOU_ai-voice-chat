@@ -1,0 +1,52 @@
+logging {
+  level  = "info"
+  format = "logfmt"
+}
+
+discovery.docker "containers" {
+  host = "unix:///var/run/docker.sock"
+}
+
+discovery.relabel "containers" {
+  targets = discovery.docker.containers.targets
+
+  rule {
+    source_labels = ["__meta_docker_container_name"]
+    regex         = "/(.*)"
+    target_label  = "container"
+    replacement   = "$1"
+  }
+
+  rule {
+    target_label = "job"
+    replacement  = "docker-logs"
+  }
+
+  rule {
+    target_label = "instance"
+    replacement  = env("ALLOY_INSTANCE")
+  }
+}
+
+loki.source.docker "containers" {
+  host       = "unix:///var/run/docker.sock"
+  targets    = discovery.relabel.containers.output
+  forward_to = [loki.process.containers.receiver]
+}
+
+loki.process "containers" {
+  stage.static_labels {
+    values = {
+      source = "alloy",
+      env    = "prod",
+    }
+  }
+
+  forward_to = [loki.write.default.receiver]
+}
+
+loki.write "default" {
+  endpoint {
+    url = env("LOKI_WRITE_URL")
+  }
+}
