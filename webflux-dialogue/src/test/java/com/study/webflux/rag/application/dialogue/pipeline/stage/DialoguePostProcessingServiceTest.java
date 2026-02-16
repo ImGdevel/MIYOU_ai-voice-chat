@@ -9,6 +9,7 @@ import com.study.webflux.rag.domain.dialogue.port.ConversationRepository;
 import com.study.webflux.rag.domain.dialogue.port.LlmPort;
 import com.study.webflux.rag.domain.memory.port.ConversationCounterPort;
 import com.study.webflux.rag.infrastructure.dialogue.config.properties.RagDialogueProperties;
+import com.study.webflux.rag.infrastructure.monitoring.config.ConversationMetricsConfiguration;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Test;
@@ -43,6 +44,9 @@ class DialoguePostProcessingServiceTest {
 	@Mock
 	private PipelineTracer pipelineTracer;
 
+	@Mock
+	private ConversationMetricsConfiguration conversationMetricsConfiguration;
+
 	private DialoguePostProcessingService service;
 
 	@BeforeEach
@@ -58,6 +62,7 @@ class DialoguePostProcessingServiceTest {
 			memoryExtractionService,
 			llmPort,
 			pipelineTracer,
+			conversationMetricsConfiguration,
 			properties);
 	}
 
@@ -151,6 +156,7 @@ class DialoguePostProcessingServiceTest {
 			memoryExtractionService,
 			llmPort,
 			pipelineTracer,
+			conversationMetricsConfiguration,
 			properties))
 			.isInstanceOf(IllegalArgumentException.class)
 			.hasMessageContaining("conversationThreshold");
