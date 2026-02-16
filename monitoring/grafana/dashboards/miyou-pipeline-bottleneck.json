@@ -1,0 +1,568 @@
+{
+  "annotations": {
+    "list": []
+  },
+  "editable": true,
+  "fiscalYearStartMonth": 0,
+  "graphTooltip": 1,
+  "id": null,
+  "links": [],
+  "liveNow": false,
+  "panels": [
+    {
+      "collapsed": false,
+      "gridPos": { "h": 1, "w": 24, "x": 0, "y": 0 },
+      "id": 100,
+      "title": "Stage Gap 분석 (Stage Transition Analysis)",
+      "type": "row"
+    },
+    {
+      "datasource": { "uid": "prometheus" },
+      "description": "Stage 간 전환 시간의 p95 값을 표시합니다. 가장 느린 전환 구간을 식별하여 병목을 파악할 수 있습니다.",
+      "fieldConfig": {
+        "defaults": {
+          "color": { "mode": "palette-classic" },
+          "custom": {
+            "axisLabel": "Duration (s)",
+            "axisPlacement": "auto",
+            "fillOpacity": 20,
+            "lineWidth": 2,
+            "spanNulls": false
+          },
+          "thresholds": {
+            "mode": "absolute",
+            "steps": [
+              { "color": "green", "value": null },
+              { "color": "yellow", "value": 0.5 },
+              { "color": "red", "value": 1 }
+            ]
+          },
+          "unit": "s"
+        }
+      },
+      "gridPos": { "h": 8, "w": 12, "x": 0, "y": 1 },
+      "id": 1,
+      "options": {
+        "legend": { "calcs": ["mean", "max"], "displayMode": "table", "placement": "bottom" },
+        "tooltip": { "mode": "multi", "sort": "desc" }
+      },
+      "targets": [
+        {
+          "expr": "histogram_quantile(0.95, sum(rate(dialogue_pipeline_stage_gap_seconds_bucket{job=~\"$job\", instance=~\"$instance\"}[5m])) by (le, from_stage, to_stage))",
+          "legendFormat": "{{from_stage}} → {{to_stage}}",
+          "refId": "A"
+        }
+      ],
+      "title": "Stage 전환 시간 p95 (Stage Gap p95)",
+      "type": "timeseries"
+    },
+    {
+      "datasource": { "uid": "prometheus" },
+      "description": "상위 5개 병목 Stage 전환을 표시합니다. 평균 전환 시간이 가장 긴 구간을 빠르게 식별할 수 있습니다.",
+      "fieldConfig": {
+        "defaults": {
+          "color": { "mode": "thresholds" },
+          "custom": { "align": "left", "displayMode": "auto" },
+          "thresholds": {
+            "mode": "absolute",
+            "steps": [
+              { "color": "green", "value": null },
+              { "color": "yellow", "value": 0.3 },
+              { "color": "red", "value": 0.8 }
+            ]
+          },
+          "unit": "s"
+        }
+      },
+      "gridPos": { "h": 8, "w": 12, "x": 12, "y": 1 },
+      "id": 2,
+      "options": {
+        "showHeader": true,
+        "sortBy": [{ "desc": true, "displayName": "Gap Duration" }]
+      },
+      "targets": [
+        {
+          "expr": "topk(5, avg(dialogue_pipeline_stage_gap_seconds_sum / dialogue_pipeline_stage_gap_seconds_count) by (from_stage, to_stage))",
+          "format": "table",
+          "instant": true,
+          "refId": "A"
+        }
+      ],
+      "title": "Top 5 병목 Stage 전환 (Top Bottleneck Transitions)",
+      "transformations": [
+        {
+          "id": "organize",
+          "options": {
+            "excludeByName": { "Time": true },
+            "renameByName": {
+              "from_stage": "From Stage",
+              "to_stage": "To Stage",
+              "Value": "Gap Duration"
+            }
+          }
+        }
+      ],
+      "type": "table"
+    },
+    {
+      "collapsed": false,
+      "gridPos": { "h": 1, "w": 24, "x": 0, "y": 9 },
+      "id": 101,
+      "title": "TTS Backpressure 분석 (TTS Backpressure Analysis)",
+      "type": "row"
+    },
+    {
+      "datasource": { "uid": "prometheus" },
+      "description": "각 TTS 엔드포인트의 활성 요청 수를 실시간으로 표시합니다. 값이 높을수록 해당 엔드포인트에 부하가 집중되고 있음을 의미합니다.",
+      "fieldConfig": {
+        "defaults": {
+          "color": { "mode": "palette-classic" },
+          "custom": {
+            "axisLabel": "Active Requests",
+            "axisPlacement": "auto",
+            "fillOpacity": 30,
+            "lineWidth": 2,
+            "spanNulls": false
+          },
+          "thresholds": {
+            "mode": "absolute",
+            "steps": [
+              { "color": "green", "value": null },
+              { "color": "yellow", "value": 5 },
+              { "color": "red", "value": 10 }
+            ]
+          },
+          "unit": "short"
+        }
+      },
+      "gridPos": { "h": 8, "w": 12, "x": 0, "y": 10 },
+      "id": 3,
+      "options": {
+        "legend": { "calcs": ["mean", "max"], "displayMode": "table", "placement": "bottom" },
+        "tooltip": { "mode": "multi" }
+      },
+      "targets": [
+        {
+          "expr": "tts_endpoint_active_requests{job=~\"$job\", instance=~\"$instance\"}",
+          "legendFormat": "{{endpoint}}",
+          "refId": "A"
+        }
+      ],
+      "title": "TTS 엔드포인트별 활성 요청 (Active Requests per Endpoint)",
+      "type": "timeseries"
+    },
+    {
+      "datasource": { "uid": "prometheus" },
+      "description": "TTS 엔드포인트별 상태를 표시합니다. 0=HEALTHY(정상), 1=TEMP_FAIL(일시적 장애), 2=PERM_FAIL(영구 장애), 3=CLIENT_ERROR(클라이언트 에러)를 의미합니다.",
+      "fieldConfig": {
+        "defaults": {
+          "color": { "mode": "thresholds" },
+          "mappings": [
+            { "type": "value", "options": { "0": { "text": "HEALTHY", "color": "green" } } },
+            { "type": "value", "options": { "1": { "text": "TEMP_FAIL", "color": "yellow" } } },
+            { "type": "value", "options": { "2": { "text": "PERM_FAIL", "color": "red" } } },
+            { "type": "value", "options": { "3": { "text": "CLIENT_ERROR", "color": "orange" } } }
+          ],
+          "thresholds": {
+            "mode": "absolute",
+            "steps": [
+              { "color": "green", "value": null },
+              { "color": "yellow", "value": 1 },
+              { "color": "orange", "value": 2 },
+              { "color": "red", "value": 3 }
+            ]
+          },
+          "unit": "short"
+        }
+      },
+      "gridPos": { "h": 8, "w": 12, "x": 12, "y": 10 },
+      "id": 4,
+      "options": {
+        "colorMode": "background",
+        "graphMode": "none",
+        "justifyMode": "center",
+        "orientation": "auto",
+        "reduceOptions": {
+          "calcs": ["lastNotNull"],
+          "fields": "",
+          "values": false
+        },
+        "textMode": "value_and_name"
+      },
+      "targets": [
+        {
+          "expr": "tts_endpoint_health{job=~\"$job\", instance=~\"$instance\"}",
+          "legendFormat": "{{endpoint}}",
+          "refId": "A"
+        }
+      ],
+      "title": "TTS 엔드포인트 상태 (Endpoint Health Status)",
+      "type": "stat"
+    },
+    {
+      "datasource": { "uid": "prometheus" },
+      "description": "각 TTS 엔드포인트의 대기 중인 요청 수(Queue Size)를 표시합니다. 값이 증가하면 백프레셔가 발생하고 있음을 의미합니다.",
+      "fieldConfig": {
+        "defaults": {
+          "color": { "mode": "palette-classic" },
+          "custom": {
+            "axisLabel": "Queue Size",
+            "axisPlacement": "auto",
+            "fillOpacity": 40,
+            "lineWidth": 2,
+            "spanNulls": false,
+            "stacking": { "group": "A", "mode": "normal" }
+          },
+          "thresholds": {
+            "mode": "absolute",
+            "steps": [
+              { "color": "green", "value": null },
+              { "color": "yellow", "value": 3 },
+              { "color": "red", "value": 7 }
+            ]
+          },
+          "unit": "short"
+        }
+      },
+      "gridPos": { "h": 7, "w": 12, "x": 0, "y": 18 },
+      "id": 5,
+      "options": {
+        "legend": { "calcs": ["mean", "max"], "displayMode": "table", "placement": "bottom" },
+        "tooltip": { "mode": "multi" }
+      },
+      "targets": [
+        {
+          "expr": "tts_endpoint_queue_size{job=~\"$job\", instance=~\"$instance\"}",
+          "legendFormat": "{{endpoint}}",
+          "refId": "A"
+        }
+      ],
+      "title": "TTS Queue 크기 (TTS Queue Size)",
+      "type": "timeseries"
+    },
+    {
+      "datasource": { "uid": "prometheus" },
+      "description": "정상(HEALTHY) 상태인 TTS 엔드포인트의 개수를 표시합니다. 5개 미만이면 가용성에 영향을 줄 수 있습니다.",
+      "fieldConfig": {
+        "defaults": {
+          "color": { "mode": "thresholds" },
+          "thresholds": {
+            "mode": "absolute",
+            "steps": [
+              { "color": "red", "value": null },
+              { "color": "orange", "value": 3 },
+              { "color": "green", "value": 5 }
+            ]
+          },
+          "unit": "short"
+        }
+      },
+      "gridPos": { "h": 7, "w": 12, "x": 12, "y": 18 },
+      "id": 6,
+      "options": {
+        "colorMode": "background",
+        "graphMode": "area",
+        "justifyMode": "center",
+        "orientation": "auto",
+        "reduceOptions": {
+          "calcs": ["lastNotNull"],
+          "fields": "",
+          "values": false
+        },
+        "textMode": "value"
+      },
+      "targets": [
+        {
+          "expr": "count(tts_endpoint_health{job=~\"$job\", instance=~\"$instance\"} == 0)",
+          "refId": "A"
+        }
+      ],
+      "title": "정상 TTS 엔드포인트 수 (Healthy Endpoints Count)",
+      "type": "stat"
+    },
+    {
+      "collapsed": false,
+      "gridPos": { "h": 1, "w": 24, "x": 0, "y": 25 },
+      "id": 102,
+      "title": "Pipeline Backpressure 분석 (Pipeline Backpressure Analysis)",
+      "type": "row"
+    },
+    {
+      "datasource": { "uid": "prometheus" },
+      "description": "Sentence Buffer의 크기를 실시간으로 표시합니다. 값이 증가하면 다운스트림 처리가 느려져 백프레셔가 발생하고 있음을 의미합니다.",
+      "fieldConfig": {
+        "defaults": {
+          "color": { "mode": "palette-classic" },
+          "custom": {
+            "axisLabel": "Buffer Size",
+            "axisPlacement": "auto",
+            "fillOpacity": 30,
+            "lineWidth": 2,
+            "spanNulls": false
+          },
+          "thresholds": {
+            "mode": "absolute",
+            "steps": [
+              { "color": "green", "value": null },
+              { "color": "yellow", "value": 50 },
+              { "color": "red", "value": 100 }
+            ]
+          },
+          "unit": "short"
+        }
+      },
+      "gridPos": { "h": 8, "w": 12, "x": 0, "y": 26 },
+      "id": 7,
+      "options": {
+        "legend": { "calcs": ["mean", "max"], "displayMode": "list", "placement": "bottom" },
+        "tooltip": { "mode": "single" }
+      },
+      "targets": [
+        {
+          "expr": "pipeline_sentence_buffer_size{job=~\"$job\", instance=~\"$instance\"}",
+          "legendFormat": "Buffer Size",
+          "refId": "A"
+        }
+      ],
+      "title": "Sentence Buffer 크기 (Sentence Buffer Size)",
+      "type": "timeseries"
+    },
+    {
+      "datasource": { "uid": "prometheus" },
+      "description": "각 Stage에서 처리하는 데이터의 평균 크기를 표시합니다. 데이터가 클수록 처리 시간이 증가하며 병목 원인이 될 수 있습니다.",
+      "fieldConfig": {
+        "defaults": {
+          "color": { "mode": "palette-classic" },
+          "custom": {
+            "axisLabel": "Data Size (bytes)",
+            "axisPlacement": "auto",
+            "fillOpacity": 20,
+            "lineWidth": 2,
+            "spanNulls": false
+          },
+          "unit": "bytes"
+        }
+      },
+      "gridPos": { "h": 8, "w": 12, "x": 12, "y": 26 },
+      "id": 8,
+      "options": {
+        "legend": { "calcs": ["mean", "max"], "displayMode": "table", "placement": "bottom" },
+        "tooltip": { "mode": "multi" }
+      },
+      "targets": [
+        {
+          "expr": "avg(pipeline_stage_data_size_bytes{job=~\"$job\", instance=~\"$instance\"}) by (stage, data_type)",
+          "legendFormat": "{{stage}} - {{data_type}}",
+          "refId": "A"
+        }
+      ],
+      "title": "Stage별 데이터 크기 (Stage Data Size)",
+      "type": "timeseries"
+    },
+    {
+      "collapsed": false,
+      "gridPos": { "h": 1, "w": 24, "x": 0, "y": 34 },
+      "id": 103,
+      "title": "전체 파이프라인 흐름 (Overall Pipeline Flow)",
+      "type": "row"
+    },
+    {
+      "datasource": { "uid": "prometheus" },
+      "description": "전체 Stage의 평균 실행 시간을 표시합니다. 각 Stage가 전체 파이프라인 레이턴시에 기여하는 비중을 파악할 수 있습니다.",
+      "fieldConfig": {
+        "defaults": {
+          "color": { "mode": "palette-classic" },
+          "custom": {
+            "axisLabel": "Duration (ms)",
+            "axisPlacement": "auto",
+            "fillOpacity": 30,
+            "lineWidth": 2,
+            "spanNulls": false,
+            "stacking": { "group": "A", "mode": "normal" }
+          },
+          "unit": "ms"
+        }
+      },
+      "gridPos": { "h": 8, "w": 16, "x": 0, "y": 35 },
+      "id": 9,
+      "options": {
+        "legend": { "calcs": ["mean"], "displayMode": "table", "placement": "right" },
+        "tooltip": { "mode": "multi" }
+      },
+      "targets": [
+        {
+          "expr": "avg(rate(dialogue_pipeline_stage_duration_seconds_sum{job=~\"$job\", instance=~\"$instance\"}[5m]) / rate(dialogue_pipeline_stage_duration_seconds_count{job=~\"$job\", instance=~\"$instance\"}[5m])) by (stage) * 1000",
+          "legendFormat": "{{stage}}",
+          "refId": "A"
+        }
+      ],
+      "title": "Stage별 평균 실행 시간 (Average Stage Duration)",
+      "type": "timeseries"
+    },
+    {
+      "datasource": { "uid": "prometheus" },
+      "description": "전체 파이프라인 처리량(초당 완료된 대화 수)을 표시합니다. 시스템의 전반적인 처리 능력을 나타냅니다.",
+      "fieldConfig": {
+        "defaults": {
+          "color": { "mode": "palette-classic" },
+          "thresholds": {
+            "mode": "absolute",
+            "steps": [
+              { "color": "green", "value": null }
+            ]
+          },
+          "unit": "reqps"
+        }
+      },
+      "gridPos": { "h": 8, "w": 8, "x": 16, "y": 35 },
+      "id": 10,
+      "options": {
+        "colorMode": "value",
+        "graphMode": "area",
+        "justifyMode": "center",
+        "orientation": "auto",
+        "reduceOptions": {
+          "calcs": ["lastNotNull"],
+          "fields": "",
+          "values": false
+        },
+        "textMode": "value"
+      },
+      "targets": [
+        {
+          "expr": "sum(rate(dialogue_pipeline_total{job=~\"$job\", instance=~\"$instance\"}[1m]))",
+          "refId": "A"
+        }
+      ],
+      "title": "파이프라인 처리량 (Pipeline Throughput)",
+      "type": "stat"
+    },
+    {
+      "collapsed": false,
+      "gridPos": { "h": 1, "w": 24, "x": 0, "y": 43 },
+      "id": 104,
+      "title": "Reactor Netty 백프레셔 (Reactor Netty Backpressure)",
+      "type": "row"
+    },
+    {
+      "datasource": { "uid": "prometheus" },
+      "description": "Event Loop에 대기 중인 작업 수를 표시합니다. 값이 증가하면 Event Loop가 과부하 상태이며 백프레셔가 발생하고 있음을 의미합니다.",
+      "fieldConfig": {
+        "defaults": {
+          "color": { "mode": "palette-classic" },
+          "custom": {
+            "axisLabel": "Pending Tasks",
+            "axisPlacement": "auto",
+            "fillOpacity": 30,
+            "lineWidth": 2,
+            "spanNulls": false
+          },
+          "thresholds": {
+            "mode": "absolute",
+            "steps": [
+              { "color": "green", "value": null },
+              { "color": "yellow", "value": 100 },
+              { "color": "red", "value": 500 }
+            ]
+          },
+          "unit": "short"
+        }
+      },
+      "gridPos": { "h": 7, "w": 12, "x": 0, "y": 44 },
+      "id": 11,
+      "options": {
+        "legend": { "calcs": ["mean", "max"], "displayMode": "list", "placement": "bottom" },
+        "tooltip": { "mode": "single" }
+      },
+      "targets": [
+        {
+          "expr": "sum(reactor_netty_eventloop_pending_tasks{job=~\"$job\", instance=~\"$instance\"}) or vector(0)",
+          "legendFormat": "Pending Tasks",
+          "refId": "A"
+        }
+      ],
+      "title": "Event Loop 대기 작업 수 (Event Loop Pending Tasks)",
+      "type": "timeseries"
+    },
+    {
+      "datasource": { "uid": "prometheus" },
+      "description": "Reactor Netty의 활성 HTTP 연결 수를 표시합니다. 값이 높으면 동시 요청이 많아 백프레셔 가능성이 있습니다.",
+      "fieldConfig": {
+        "defaults": {
+          "color": { "mode": "palette-classic" },
+          "custom": {
+            "axisLabel": "Active Connections",
+            "axisPlacement": "auto",
+            "fillOpacity": 30,
+            "lineWidth": 2,
+            "spanNulls": false
+          },
+          "unit": "short"
+        }
+      },
+      "gridPos": { "h": 7, "w": 12, "x": 12, "y": 44 },
+      "id": 12,
+      "options": {
+        "legend": { "calcs": ["mean", "max"], "displayMode": "list", "placement": "bottom" },
+        "tooltip": { "mode": "single" }
+      },
+      "targets": [
+        {
+          "expr": "sum(reactor_netty_http_server_connections_active{job=~\"$job\", instance=~\"$instance\"}) or sum(reactor_netty_connection_provider_active_connections{job=~\"$job\", instance=~\"$instance\"}) or vector(0)",
+          "legendFormat": "Active Connections",
+          "refId": "A"
+        }
+      ],
+      "title": "활성 HTTP 연결 수 (Active HTTP Connections)",
+      "type": "timeseries"
+    }
+  ],
+  "refresh": "15s",
+  "schemaVersion": 38,
+  "style": "dark",
+  "tags": ["miyou", "pipeline", "bottleneck", "backpressure"],
+  "templating": {
+    "list": [
+      {
+        "current": { "selected": false, "text": "miyou-dialogue", "value": "miyou-dialogue" },
+        "datasource": { "type": "prometheus", "uid": "prometheus" },
+        "hide": 0,
+        "includeAll": false,
+        "label": "Job",
+        "multi": false,
+        "name": "job",
+        "options": [],
+        "query": "label_values(up, job)",
+        "refresh": 1,
+        "regex": "",
+        "skipUrlSync": false,
+        "sort": 0,
+        "type": "query"
+      },
+      {
+        "allValue": ".*",
+        "current": { "selected": true, "text": "All", "value": "$__all" },
+        "datasource": { "type": "prometheus", "uid": "prometheus" },
+        "hide": 0,
+        "includeAll": true,
+        "label": "Instance",
+        "multi": true,
+        "name": "instance",
+        "options": [],
+        "query": "label_values(up{job=~\"$job\"}, instance)",
+        "refresh": 1,
+        "regex": "",
+        "skipUrlSync": false,
+        "sort": 0,
+        "type": "query"
+      }
+    ]
+  },
+  "time": { "from": "now-1h", "to": "now" },
+  "timepicker": {},
+  "timezone": "browser",
+  "title": "MIYOU - Pipeline Bottleneck Analysis",
+  "uid": "miyou-pipeline-bottleneck",
+  "version": 1,
+  "weekStart": ""
+}
