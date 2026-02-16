@@ -3,6 +3,7 @@ package com.study.webflux.rag.infrastructure.dialogue.config;
 import java.util.List;
 import java.util.stream.Collectors;
 
+import org.springframework.context.ApplicationEventPublisher;
 import org.springframework.context.annotation.Bean;
 import org.springframework.context.annotation.Configuration;
 import org.springframework.context.annotation.Primary;
@@ -15,7 +16,6 @@ import com.study.webflux.rag.infrastructure.dialogue.adapter.tts.SupertoneConfig
 import com.study.webflux.rag.infrastructure.dialogue.adapter.tts.loadbalancer.TtsEndpoint;
 import com.study.webflux.rag.infrastructure.dialogue.adapter.tts.loadbalancer.TtsLoadBalancer;
 import com.study.webflux.rag.infrastructure.dialogue.config.properties.RagDialogueProperties;
-import com.study.webflux.rag.infrastructure.monitoring.config.TtsBackpressureMetrics;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
@@ -39,7 +39,7 @@ public class TtsConfiguration {
 	/** 모든 엔드포인트를 활용하는 TTS 로드 밸런서를 생성합니다. */
 	@Bean
 	public TtsLoadBalancer ttsLoadBalancer(RagDialogueProperties properties,
-		TtsBackpressureMetrics ttsBackpressureMetrics) {
+		ApplicationEventPublisher eventPublisher) {
 		var supertone = properties.getSupertone();
 		List<TtsEndpoint> endpoints = supertone.getEndpoints().stream()
 			.map(config -> new TtsEndpoint(config.getId(), config.getApiKey(), config.getBaseUrl()))
@@ -47,9 +47,7 @@ public class TtsConfiguration {
 
 		TtsLoadBalancer loadBalancer = new TtsLoadBalancer(endpoints);
 		loadBalancer.setFailureEventPublisher(event -> {
-			ttsBackpressureMetrics.recordEndpointFailure(event.getEndpointId(),
-				event.getErrorType(),
-				event.getErrorMessage());
+			eventPublisher.publishEvent(event);
 			if ("PERMANENT_FAILURE".equals(event.getErrorType())) {
 				log.error("TTS 엔드포인트 영구 장애 발생: {}", event);
 				return;
@@ -65,9 +63,7 @@ public class TtsConfiguration {
 	@Primary
 	public TtsPort ttsPort(WebClient.Builder webClientBuilder,
 		TtsLoadBalancer loadBalancer,
-		Voice voice,
-		TtsBackpressureMetrics ttsBackpressureMetrics) {
-		return new LoadBalancedSupertoneTtsAdapter(webClientBuilder, loadBalancer, voice,
-			ttsBackpressureMetrics);
+		Voice voice) {
+		return new LoadBalancedSupertoneTtsAdapter(webClientBuilder, loadBalancer, voice);
 	}
 }
