@@ -8,6 +8,7 @@ import com.study.webflux.rag.application.monitoring.monitor.DialoguePipelineTrac
 import com.study.webflux.rag.application.monitoring.monitor.DialoguePipelineTracker.StageSnapshot;
 import com.study.webflux.rag.application.monitoring.monitor.PipelineMetricsReporter;
 import com.study.webflux.rag.domain.monitoring.model.DialoguePipelineStage;
+import com.study.webflux.rag.infrastructure.monitoring.config.LlmMetricsConfiguration;
 import io.micrometer.core.instrument.Counter;
 import io.micrometer.core.instrument.MeterRegistry;
 import io.micrometer.core.instrument.Timer;
@@ -21,9 +22,12 @@ public class MicrometerPipelineMetricsReporter implements PipelineMetricsReporte
 	private static final String METRIC_PREFIX = "dialogue.pipeline";
 
 	private final MeterRegistry meterRegistry;
+	private final LlmMetricsConfiguration llmMetrics;
 
-	public MicrometerPipelineMetricsReporter(MeterRegistry meterRegistry) {
+	public MicrometerPipelineMetricsReporter(MeterRegistry meterRegistry,
+		LlmMetricsConfiguration llmMetrics) {
 		this.meterRegistry = meterRegistry;
+		this.llmMetrics = llmMetrics;
 	}
 
 	@Override
@@ -160,10 +164,41 @@ public class MicrometerPipelineMetricsReporter implements PipelineMetricsReporte
 			Object model = stage.attributes().get("model");
 			String modelTag = model != null ? model.toString() : "unknown";
 
+			// LLM 요청 기록
+			llmMetrics.recordLlmRequest();
+
+			// 스테이지 상태에 따라 성공/실패 기록
+			if (stage
+				.status() == com.study.webflux.rag.domain.monitoring.model.StageStatus.COMPLETED) {
+				llmMetrics.recordLlmSuccess(modelTag);
+			} else if (stage
+				.status() == com.study.webflux.rag.domain.monitoring.model.StageStatus.FAILED) {
+				Object error = stage.attributes().get("error.type");
+				String errorType = error != null ? error.toString() : "unknown";
+				llmMetrics.recordLlmFailure(modelTag, errorType);
+			}
+
 			// 토큰 사용량
 			recordTokenCounter(stage, "prompt.tokens", "prompt", modelTag);
 			recordTokenCounter(stage, "completion.tokens", "completion", modelTag);
 			recordTokenCounter(stage, "total.tokens", "total", modelTag);
+
+			// 프롬프트 및 완성 길이 분포 기록
+			Object promptTokens = stage.attributes().get("prompt.tokens");
+			if (promptTokens instanceof Number) {
+				llmMetrics.recordPromptLength(((Number) promptTokens).intValue());
+			}
+
+			Object completionTokens = stage.attributes().get("completion.tokens");
+			if (completionTokens instanceof Number) {
+				llmMetrics.recordCompletionLength(((Number) completionTokens).intValue());
+			}
+
+			// LLM 응답 시간 기록
+			if (stage.durationMillis() >= 0) {
+				llmMetrics.recordResponseTime(stage.durationMillis());
+				llmMetrics.recordResponseTimeByModel(modelTag, stage.durationMillis());
+			}
 
 			// 비용 (있는 경우)
 			Object cost = stage.attributes().get("cost.usd");
