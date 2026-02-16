@@ -1,0 +1,430 @@
+{
+  "annotations": {
+    "list": []
+  },
+  "editable": true,
+  "fiscalYearStartMonth": 0,
+  "graphTooltip": 1,
+  "id": null,
+  "links": [],
+  "liveNow": false,
+  "panels": [
+    {
+      "collapsed": false,
+      "gridPos": { "h": 1, "w": 24, "x": 0, "y": 0 },
+      "id": 100,
+      "title": "UX KPI",
+      "type": "row"
+    },
+    {
+      "datasource": { "uid": "prometheus" },
+      "description": "첫 응답까지 걸리는 시간 (Time To First Byte) 중앙값",
+      "fieldConfig": {
+        "defaults": {
+          "color": { "mode": "thresholds" },
+          "thresholds": {
+            "mode": "absolute",
+            "steps": [
+              { "color": "green", "value": null },
+              { "color": "yellow", "value": 1000 },
+              { "color": "orange", "value": 2000 },
+              { "color": "red", "value": 4000 }
+            ]
+          },
+          "unit": "ms"
+        }
+      },
+      "gridPos": { "h": 6, "w": 8, "x": 0, "y": 1 },
+      "id": 1,
+      "options": {
+        "colorMode": "background",
+        "graphMode": "area",
+        "justifyMode": "center",
+        "orientation": "auto",
+        "reduceOptions": {
+          "calcs": ["lastNotNull"],
+          "fields": "",
+          "values": false
+        },
+        "textMode": "value"
+      },
+      "targets": [
+        {
+          "expr": "ux_response_latency_first{job=~\"$job\", instance=~\"$instance\", quantile=\"0.5\"}",
+          "refId": "A"
+        }
+      ],
+      "title": "평균 TTFB (Median Time To First Byte)",
+      "type": "stat"
+    },
+    {
+      "datasource": { "uid": "prometheus" },
+      "description": "사용자 만족도 점수 (Apdex). 0.95 이상: Excellent, 0.85+: Good, 0.70+: Fair, 0.50+: Poor, <0.50: Unacceptable",
+      "fieldConfig": {
+        "defaults": {
+          "color": { "mode": "thresholds" },
+          "thresholds": {
+            "mode": "absolute",
+            "steps": [
+              { "color": "red", "value": null },
+              { "color": "orange", "value": 0.5 },
+              { "color": "yellow", "value": 0.7 },
+              { "color": "light-green", "value": 0.85 },
+              { "color": "green", "value": 0.95 }
+            ]
+          },
+          "unit": "percentunit",
+          "min": 0,
+          "max": 1
+        }
+      },
+      "gridPos": { "h": 6, "w": 8, "x": 8, "y": 1 },
+      "id": 2,
+      "options": {
+        "orientation": "auto",
+        "reduceOptions": {
+          "calcs": ["lastNotNull"],
+          "fields": "",
+          "values": false
+        },
+        "showThresholdLabels": false,
+        "showThresholdMarkers": true
+      },
+      "targets": [
+        {
+          "expr": "ux_satisfaction_score{job=~\"$job\", instance=~\"$instance\"}",
+          "refId": "A"
+        }
+      ],
+      "title": "Apdex 점수 (Apdex Score)",
+      "type": "gauge"
+    },
+    {
+      "datasource": { "uid": "prometheus" },
+      "description": "사용자가 경험하는 에러 발생률 (초당)",
+      "fieldConfig": {
+        "defaults": {
+          "color": { "mode": "thresholds" },
+          "decimals": 2,
+          "thresholds": {
+            "mode": "absolute",
+            "steps": [
+              { "color": "green", "value": null },
+              { "color": "yellow", "value": 0.01 },
+              { "color": "orange", "value": 0.05 },
+              { "color": "red", "value": 0.1 }
+            ]
+          },
+          "unit": "reqps"
+        }
+      },
+      "gridPos": { "h": 6, "w": 8, "x": 16, "y": 1 },
+      "id": 3,
+      "options": {
+        "colorMode": "background",
+        "graphMode": "area",
+        "justifyMode": "center",
+        "orientation": "auto",
+        "reduceOptions": {
+          "calcs": ["lastNotNull"],
+          "fields": "",
+          "values": false
+        },
+        "textMode": "value"
+      },
+      "targets": [
+        {
+          "expr": "sum(rate(ux_error_rate{job=~\"$job\", instance=~\"$instance\"}[5m]))",
+          "refId": "A"
+        }
+      ],
+      "title": "에러율 (Error Rate)",
+      "type": "stat"
+    },
+    {
+      "collapsed": false,
+      "gridPos": { "h": 1, "w": 24, "x": 0, "y": 7 },
+      "id": 101,
+      "title": "응답 시간 분석 (Response Time Analysis)",
+      "type": "row"
+    },
+    {
+      "datasource": { "uid": "prometheus" },
+      "description": "첫 응답 시간(TTFB) 백분위수 분포 (p50, p75, p90, p95, p99)",
+      "fieldConfig": {
+        "defaults": {
+          "color": { "mode": "palette-classic" },
+          "custom": {
+            "axisLabel": "Latency (ms)",
+            "axisPlacement": "auto",
+            "fillOpacity": 20,
+            "lineWidth": 2,
+            "spanNulls": false
+          },
+          "unit": "ms"
+        }
+      },
+      "gridPos": { "h": 8, "w": 12, "x": 0, "y": 8 },
+      "id": 4,
+      "options": {
+        "legend": { "calcs": ["mean", "lastNotNull"], "displayMode": "table", "placement": "bottom" },
+        "tooltip": { "mode": "multi" }
+      },
+      "targets": [
+        {
+          "expr": "ux_response_latency_first{job=~\"$job\", instance=~\"$instance\", quantile=\"0.5\"}",
+          "legendFormat": "p50",
+          "refId": "A"
+        },
+        {
+          "expr": "ux_response_latency_first{job=~\"$job\", instance=~\"$instance\", quantile=\"0.75\"}",
+          "legendFormat": "p75",
+          "refId": "B"
+        },
+        {
+          "expr": "ux_response_latency_first{job=~\"$job\", instance=~\"$instance\", quantile=\"0.9\"}",
+          "legendFormat": "p90",
+          "refId": "C"
+        },
+        {
+          "expr": "ux_response_latency_first{job=~\"$job\", instance=~\"$instance\", quantile=\"0.95\"}",
+          "legendFormat": "p95",
+          "refId": "D"
+        },
+        {
+          "expr": "ux_response_latency_first{job=~\"$job\", instance=~\"$instance\", quantile=\"0.99\"}",
+          "legendFormat": "p99",
+          "refId": "E"
+        }
+      ],
+      "title": "TTFB 분포 (TTFB Distribution)",
+      "type": "timeseries"
+    },
+    {
+      "datasource": { "uid": "prometheus" },
+      "description": "전체 응답 완료 시간 백분위수 분포 (p50, p75, p90, p95, p99)",
+      "fieldConfig": {
+        "defaults": {
+          "color": { "mode": "palette-classic" },
+          "custom": {
+            "axisLabel": "Latency (ms)",
+            "axisPlacement": "auto",
+            "fillOpacity": 20,
+            "lineWidth": 2,
+            "spanNulls": false
+          },
+          "unit": "ms"
+        }
+      },
+      "gridPos": { "h": 8, "w": 12, "x": 12, "y": 8 },
+      "id": 5,
+      "options": {
+        "legend": { "calcs": ["mean", "lastNotNull"], "displayMode": "table", "placement": "bottom" },
+        "tooltip": { "mode": "multi" }
+      },
+      "targets": [
+        {
+          "expr": "ux_response_latency_complete{job=~\"$job\", instance=~\"$instance\", quantile=\"0.5\"}",
+          "legendFormat": "p50",
+          "refId": "A"
+        },
+        {
+          "expr": "ux_response_latency_complete{job=~\"$job\", instance=~\"$instance\", quantile=\"0.75\"}",
+          "legendFormat": "p75",
+          "refId": "B"
+        },
+        {
+          "expr": "ux_response_latency_complete{job=~\"$job\", instance=~\"$instance\", quantile=\"0.9\"}",
+          "legendFormat": "p90",
+          "refId": "C"
+        },
+        {
+          "expr": "ux_response_latency_complete{job=~\"$job\", instance=~\"$instance\", quantile=\"0.95\"}",
+          "legendFormat": "p95",
+          "refId": "D"
+        },
+        {
+          "expr": "ux_response_latency_complete{job=~\"$job\", instance=~\"$instance\", quantile=\"0.99\"}",
+          "legendFormat": "p99",
+          "refId": "E"
+        }
+      ],
+      "title": "전체 응답 시간 분포 (Complete Response Time Distribution)",
+      "type": "timeseries"
+    },
+    {
+      "datasource": { "uid": "prometheus" },
+      "description": "전체 응답 시간의 히트맵으로 응답 시간 패턴과 이상치를 쉽게 파악할 수 있습니다",
+      "fieldConfig": {
+        "defaults": {
+          "custom": {
+            "hideFrom": {
+              "tooltip": false,
+              "viz": false,
+              "legend": false
+            }
+          }
+        }
+      },
+      "gridPos": { "h": 8, "w": 24, "x": 0, "y": 16 },
+      "id": 6,
+      "options": {
+        "calculate": false,
+        "cellGap": 2,
+        "color": {
+          "mode": "scheme",
+          "scheme": "Spectral",
+          "exponent": 0.5
+        },
+        "exemplars": {
+          "color": "rgba(255,0,255,0.7)"
+        },
+        "filterValues": {
+          "le": 1E-9
+        },
+        "legend": {
+          "show": true
+        },
+        "rowsFrame": {
+          "layout": "auto"
+        },
+        "tooltip": {
+          "show": true,
+          "yHistogram": false
+        },
+        "yAxis": {
+          "axisPlacement": "left",
+          "reverse": false,
+          "unit": "ms"
+        }
+      },
+      "targets": [
+        {
+          "expr": "sum(increase(ux_response_latency_complete_bucket{job=~\"$job\", instance=~\"$instance\"}[$__interval])) by (le)",
+          "format": "heatmap",
+          "legendFormat": "{{le}}",
+          "refId": "A"
+        }
+      ],
+      "title": "응답 시간 히트맵 (Response Time Heatmap)",
+      "type": "heatmap"
+    },
+    {
+      "collapsed": false,
+      "gridPos": { "h": 1, "w": 24, "x": 0, "y": 24 },
+      "id": 102,
+      "title": "에러 & 중단 분석 (Error & Abandonment Analysis)",
+      "type": "row"
+    },
+    {
+      "datasource": { "uid": "prometheus" },
+      "description": "에러 타입별 발생 빈도",
+      "fieldConfig": {
+        "defaults": {
+          "color": { "mode": "palette-classic" },
+          "custom": {
+            "axisLabel": "Error Rate (per second)",
+            "axisPlacement": "auto",
+            "fillOpacity": 70,
+            "lineWidth": 2,
+            "spanNulls": false,
+            "stacking": { "group": "A", "mode": "normal" }
+          },
+          "unit": "reqps"
+        }
+      },
+      "gridPos": { "h": 8, "w": 12, "x": 0, "y": 25 },
+      "id": 7,
+      "options": {
+        "legend": { "calcs": ["sum"], "displayMode": "table", "placement": "bottom" },
+        "tooltip": { "mode": "multi" }
+      },
+      "targets": [
+        {
+          "expr": "sum(rate(ux_error_by_type{job=~\"$job\", instance=~\"$instance\"}[5m])) by (error_type)",
+          "legendFormat": "{{error_type}}",
+          "refId": "A"
+        }
+      ],
+      "title": "에러 타입별 발생률 (Error Rate by Type)",
+      "type": "timeseries"
+    },
+    {
+      "datasource": { "uid": "prometheus" },
+      "description": "대화 중단이 발생하는 Stage별 비율",
+      "fieldConfig": {
+        "defaults": {
+          "color": { "mode": "palette-classic" },
+          "custom": { "hideFrom": { "legend": false, "tooltip": false, "viz": false } },
+          "unit": "short"
+        }
+      },
+      "gridPos": { "h": 8, "w": 12, "x": 12, "y": 25 },
+      "id": 8,
+      "options": {
+        "displayLabels": ["name", "percent"],
+        "legend": { "displayMode": "table", "placement": "right", "values": ["value", "percent"] },
+        "pieType": "donut",
+        "reduceOptions": { "calcs": ["sum"], "fields": "", "values": false },
+        "tooltip": { "mode": "single" }
+      },
+      "targets": [
+        {
+          "expr": "sum(ux_abandonment_by_stage{job=~\"$job\", instance=~\"$instance\"}) by (stage)",
+          "legendFormat": "{{stage}}",
+          "refId": "A"
+        }
+      ],
+      "title": "Stage별 중단율 (Abandonment by Stage)",
+      "type": "piechart"
+    }
+  ],
+  "refresh": "15s",
+  "schemaVersion": 38,
+  "style": "dark",
+  "tags": ["miyou", "ux", "user-experience", "apdex"],
+  "templating": {
+    "list": [
+      {
+        "current": { "selected": false, "text": "miyou-dialogue", "value": "miyou-dialogue" },
+        "datasource": { "type": "prometheus", "uid": "prometheus" },
+        "hide": 0,
+        "includeAll": false,
+        "label": "Job",
+        "multi": false,
+        "name": "job",
+        "options": [],
+        "query": "label_values(up, job)",
+        "refresh": 1,
+        "regex": "",
+        "skipUrlSync": false,
+        "sort": 0,
+        "type": "query"
+      },
+      {
+        "allValue": ".*",
+        "current": { "selected": true, "text": "All", "value": "$__all" },
+        "datasource": { "type": "prometheus", "uid": "prometheus" },
+        "hide": 0,
+        "includeAll": true,
+        "label": "Instance",
+        "multi": true,
+        "name": "instance",
+        "options": [],
+        "query": "label_values(up{job=~\"$job\"}, instance)",
+        "refresh": 1,
+        "regex": "",
+        "skipUrlSync": false,
+        "sort": 0,
+        "type": "query"
+      }
+    ]
+  },
+  "time": { "from": "now-1h", "to": "now" },
+  "timepicker": {},
+  "timezone": "browser",
+  "title": "MIYOU - User Experience (UX)",
+  "uid": "miyou-ux",
+  "version": 1,
+  "weekStart": ""
+}
