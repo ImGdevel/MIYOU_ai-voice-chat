@@ -11,72 +11,144 @@
   "panels": [
     {
       "collapsed": false,
-      "gridPos": { "h": 1, "w": 24, "x": 0, "y": 0 },
+      "gridPos": {
+        "h": 1,
+        "w": 24,
+        "x": 0,
+        "y": 0
+      },
       "id": 100,
       "title": "골든 시그널(Golden Signals) - 핵심 지표(Critical KPIs)",
       "type": "row"
     },
     {
-      "datasource": { "uid": "prometheus" },
+      "datasource": {
+        "uid": "prometheus"
+      },
       "description": "애플리케이션 인스턴스의 Up/Down 상태를 표시합니다. Prometheus의 up 메트릭을 사용하며, 1=UP(정상), 0=DOWN(장애)을 의미합니다.",
       "fieldConfig": {
         "defaults": {
-          "color": { "mode": "thresholds" },
+          "color": {
+            "mode": "thresholds"
+          },
           "mappings": [
-            { "type": "value", "options": { "0": { "text": "DOWN", "color": "red" } } },
-            { "type": "value", "options": { "1": { "text": "UP", "color": "green" } } }
+            {
+              "type": "value",
+              "options": {
+                "0": {
+                  "text": "DOWN",
+                  "color": "red"
+                }
+              }
+            },
+            {
+              "type": "value",
+              "options": {
+                "1": {
+                  "text": "UP",
+                  "color": "green"
+                }
+              }
+            }
           ],
           "thresholds": {
             "mode": "absolute",
             "steps": [
-              { "color": "red", "value": null },
-              { "color": "green", "value": 1 }
+              {
+                "color": "red",
+                "value": null
+              },
+              {
+                "color": "green",
+                "value": 1
+              }
             ]
           }
         }
       },
-      "gridPos": { "h": 4, "w": 4, "x": 0, "y": 1 },
+      "gridPos": {
+        "h": 4,
+        "w": 4,
+        "x": 0,
+        "y": 1
+      },
       "id": 1,
       "options": {
         "colorMode": "background",
         "graphMode": "none",
         "justifyMode": "center",
         "orientation": "auto",
-        "reduceOptions": { "calcs": ["lastNotNull"], "fields": "", "values": false },
+        "reduceOptions": {
+          "calcs": [
+            "lastNotNull"
+          ],
+          "fields": "",
+          "values": false
+        },
         "textMode": "value_and_name"
       },
       "targets": [
-        { "expr": "max(up{job=~\"$job\",instance=~\"$instance\"})", "refId": "A" }
+        {
+          "expr": "max(up{job=~\"$job\",instance=~\"$instance\"})",
+          "refId": "A"
+        }
       ],
       "title": "서비스 상태(Service Health)",
       "type": "stat"
     },
     {
-      "datasource": { "uid": "prometheus" },
+      "datasource": {
+        "uid": "prometheus"
+      },
       "description": "전체 HTTP 요청 중 4xx, 5xx 에러의 비율을 표시합니다. 5분 이동평균 기준이며, 임계값: 1%(yellow), 5%(orange), 10%(red)입니다.",
       "fieldConfig": {
         "defaults": {
-          "color": { "mode": "thresholds" },
+          "color": {
+            "mode": "thresholds"
+          },
           "thresholds": {
             "mode": "absolute",
             "steps": [
-              { "color": "green", "value": null },
-              { "color": "yellow", "value": 0.01 },
-              { "color": "orange", "value": 0.05 },
-              { "color": "red", "value": 0.1 }
+              {
+                "color": "green",
+                "value": null
+              },
+              {
+                "color": "yellow",
+                "value": 0.01
+              },
+              {
+                "color": "orange",
+                "value": 0.05
+              },
+              {
+                "color": "red",
+                "value": 0.1
+              }
             ]
           },
           "unit": "percentunit"
         }
       },
-      "gridPos": { "h": 4, "w": 4, "x": 4, "y": 1 },
+      "gridPos": {
+        "h": 4,
+        "w": 4,
+        "x": 4,
+        "y": 1
+      },
       "id": 2,
       "options": {
         "colorMode": "background",
         "graphMode": "area",
         "justifyMode": "center",
         "orientation": "auto",
-        "reduceOptions": { "calcs": ["lastNotNull"], "fields": "", "values": false },
+        "reduceOptions": {
+          "calcs": [
+            "lastNotNull"
+          ],
+          "fields": "",
+          "values": false
+        },
         "textMode": "value"
       },
       "targets": [
@@ -89,31 +161,58 @@
       "type": "stat"
     },
     {
-      "datasource": { "uid": "prometheus" },
+      "datasource": {
+        "uid": "prometheus"
+      },
       "description": "HTTP 요청의 95 백분위수 응답시간입니다. 95%의 요청이 이 값 이하의 시간에 완료됩니다. 임계값: 0.5초(yellow), 1초(orange), 2초(red)입니다.",
       "fieldConfig": {
         "defaults": {
-          "color": { "mode": "thresholds" },
+          "color": {
+            "mode": "thresholds"
+          },
           "thresholds": {
             "mode": "absolute",
             "steps": [
-              { "color": "green", "value": null },
-              { "color": "yellow", "value": 0.5 },
-              { "color": "orange", "value": 1 },
-              { "color": "red", "value": 2 }
+              {
+                "color": "green",
+                "value": null
+              },
+              {
+                "color": "yellow",
+                "value": 0.5
+              },
+              {
+                "color": "orange",
+                "value": 1
+              },
+              {
+                "color": "red",
+                "value": 2
+              }
             ]
           },
           "unit": "s"
         }
       },
-      "gridPos": { "h": 4, "w": 4, "x": 8, "y": 1 },
+      "gridPos": {
+        "h": 4,
+        "w": 4,
+        "x": 8,
+        "y": 1
+      },
       "id": 3,
       "options": {
         "colorMode": "background",
         "graphMode": "area",
         "justifyMode": "center",
         "orientation": "auto",
-        "reduceOptions": { "calcs": ["lastNotNull"], "fields": "", "values": false },
+        "reduceOptions": {
+          "calcs": [
+            "lastNotNull"
+          ],
+          "fields": "",
+          "values": false
+        },
         "textMode": "value"
       },
       "targets": [
@@ -126,22 +225,37 @@
       "type": "stat"
     },
     {
-      "datasource": { "uid": "prometheus" },
+      "datasource": {
+        "uid": "prometheus"
+      },
       "description": "초당 처리하는 HTTP 요청 수(Requests Per Second)입니다. 1분 이동평균으로 계산되며, 애플리케이션의 현재 트래픽 부하를 나타냅니다.",
       "fieldConfig": {
         "defaults": {
-          "color": { "mode": "palette-classic" },
+          "color": {
+            "mode": "palette-classic"
+          },
           "unit": "reqps"
         }
       },
-      "gridPos": { "h": 4, "w": 4, "x": 12, "y": 1 },
+      "gridPos": {
+        "h": 4,
+        "w": 4,
+        "x": 12,
+        "y": 1
+      },
       "id": 4,
       "options": {
         "colorMode": "value",
         "graphMode": "area",
         "justifyMode": "center",
         "orientation": "auto",
-        "reduceOptions": { "calcs": ["lastNotNull"], "fields": "", "values": false },
+        "reduceOptions": {
+          "calcs": [
+            "lastNotNull"
+          ],
+          "fields": "",
+          "values": false
+        },
         "textMode": "value"
       },
       "targets": [
@@ -154,18 +268,34 @@
       "type": "stat"
     },
     {
-      "datasource": { "uid": "prometheus" },
+      "datasource": {
+        "uid": "prometheus"
+      },
       "description": "JVM Heap 메모리의 사용 비율입니다. 최대 Heap 대비 현재 사용 중인 메모리 비율을 나타내며, 높을 경우 GC 빈도가 증가하고 성능이 저하될 수 있습니다. 임계값: 60%(yellow), 75%(orange), 85%(red)입니다.",
       "fieldConfig": {
         "defaults": {
-          "color": { "mode": "thresholds" },
+          "color": {
+            "mode": "thresholds"
+          },
           "thresholds": {
             "mode": "percentage",
             "steps": [
-              { "color": "green", "value": null },
-              { "color": "yellow", "value": 60 },
-              { "color": "orange", "value": 75 },
-              { "color": "red", "value": 85 }
+              {
+                "color": "green",
+                "value": null
+              },
+              {
+                "color": "yellow",
+                "value": 60
+              },
+              {
+                "color": "orange",
+                "value": 75
+              },
+              {
+                "color": "red",
+                "value": 85
+              }
             ]
           },
           "unit": "percentunit",
@@ -173,11 +303,22 @@
           "max": 1
         }
       },
-      "gridPos": { "h": 4, "w": 4, "x": 16, "y": 1 },
+      "gridPos": {
+        "h": 4,
+        "w": 4,
+        "x": 16,
+        "y": 1
+      },
       "id": 5,
       "options": {
         "orientation": "auto",
-        "reduceOptions": { "calcs": ["lastNotNull"], "fields": "", "values": false },
+        "reduceOptions": {
+          "calcs": [
+            "lastNotNull"
+          ],
+          "fields": "",
+          "values": false
+        },
         "showThresholdLabels": false,
         "showThresholdMarkers": true
       },
@@ -191,17 +332,30 @@
       "type": "gauge"
     },
     {
-      "datasource": { "uid": "prometheus" },
+      "datasource": {
+        "uid": "prometheus"
+      },
       "description": "Application Performance Index: 사용자 만족도를 0~1 사이 값으로 표시합니다. 0.5초 이하 응답은 만족(Satisfied), 5xx 에러는 불만족(Frustrated)으로 계산합니다. 0.95 이상이 목표입니다.",
       "fieldConfig": {
         "defaults": {
-          "color": { "mode": "thresholds" },
+          "color": {
+            "mode": "thresholds"
+          },
           "thresholds": {
             "mode": "absolute",
             "steps": [
-              { "color": "red", "value": null },
-              { "color": "yellow", "value": 0.7 },
-              { "color": "green", "value": 0.95 }
+              {
+                "color": "red",
+                "value": null
+              },
+              {
+                "color": "yellow",
+                "value": 0.7
+              },
+              {
+                "color": "green",
+                "value": 0.95
+              }
             ]
           },
           "unit": "percentunit",
@@ -209,14 +363,25 @@
           "max": 1
         }
       },
-      "gridPos": { "h": 4, "w": 4, "x": 20, "y": 1 },
+      "gridPos": {
+        "h": 4,
+        "w": 4,
+        "x": 20,
+        "y": 1
+      },
       "id": 6,
       "options": {
         "colorMode": "background",
         "graphMode": "area",
         "justifyMode": "center",
         "orientation": "auto",
-        "reduceOptions": { "calcs": ["lastNotNull"], "fields": "", "values": false },
+        "reduceOptions": {
+          "calcs": [
+            "lastNotNull"
+          ],
+          "fields": "",
+          "values": false
+        },
         "textMode": "value"
       },
       "targets": [
@@ -230,37 +395,115 @@
     },
     {
       "collapsed": false,
-      "gridPos": { "h": 1, "w": 24, "x": 0, "y": 5 },
+      "gridPos": {
+        "h": 1,
+        "w": 24,
+        "x": 0,
+        "y": 5
+      },
       "id": 101,
       "title": "트래픽(Traffic) & 지연시간(Latency) 분석",
       "type": "row"
     },
     {
-      "datasource": { "uid": "prometheus" },
+      "datasource": {
+        "uid": "prometheus"
+      },
       "description": "HTTP 상태 코드별 초당 요청 수를 적층형 차트로 표시합니다. 2xx(성공-녹색), 3xx(리다이렉트-파란색), 4xx(클라이언트 에러-주황색), 5xx(서버 에러-빨간색)로 구분됩니다.",
       "fieldConfig": {
         "defaults": {
-          "color": { "mode": "palette-classic" },
+          "color": {
+            "mode": "palette-classic"
+          },
           "custom": {
             "fillOpacity": 80,
             "lineWidth": 0,
             "spanNulls": false,
-            "stacking": { "mode": "normal", "group": "A" }
+            "stacking": {
+              "mode": "normal",
+              "group": "A"
+            }
           },
           "unit": "reqps"
         },
         "overrides": [
-          { "matcher": { "id": "byName", "options": "2xx" }, "properties": [{ "id": "color", "value": { "fixedColor": "green", "mode": "fixed" } }] },
-          { "matcher": { "id": "byName", "options": "3xx" }, "properties": [{ "id": "color", "value": { "fixedColor": "blue", "mode": "fixed" } }] },
-          { "matcher": { "id": "byName", "options": "4xx" }, "properties": [{ "id": "color", "value": { "fixedColor": "orange", "mode": "fixed" } }] },
-          { "matcher": { "id": "byName", "options": "5xx" }, "properties": [{ "id": "color", "value": { "fixedColor": "red", "mode": "fixed" } }] }
+          {
+            "matcher": {
+              "id": "byName",
+              "options": "2xx"
+            },
+            "properties": [
+              {
+                "id": "color",
+                "value": {
+                  "fixedColor": "green",
+                  "mode": "fixed"
+                }
+              }
+            ]
+          },
+          {
+            "matcher": {
+              "id": "byName",
+              "options": "3xx"
+            },
+            "properties": [
+              {
+                "id": "color",
+                "value": {
+                  "fixedColor": "blue",
+                  "mode": "fixed"
+                }
+              }
+            ]
+          },
+          {
+            "matcher": {
+              "id": "byName",
+              "options": "4xx"
+            },
+            "properties": [
+              {
+                "id": "color",
+                "value": {
+                  "fixedColor": "orange",
+                  "mode": "fixed"
+                }
+              }
+            ]
+          },
+          {
+            "matcher": {
+              "id": "byName",
+              "options": "5xx"
+            },
+            "properties": [
+              {
+                "id": "color",
+                "value": {
+                  "fixedColor": "red",
+                  "mode": "fixed"
+                }
+              }
+            ]
+          }
         ]
       },
-      "gridPos": { "h": 8, "w": 12, "x": 0, "y": 6 },
+      "gridPos": {
+        "h": 8,
+        "w": 12,
+        "x": 0,
+        "y": 6
+      },
       "id": 7,
       "options": {
-        "legend": { "displayMode": "list", "placement": "bottom" },
-        "tooltip": { "mode": "multi" }
+        "legend": {
+          "displayMode": "list",
+          "placement": "bottom"
+        },
+        "tooltip": {
+          "mode": "multi"
+        }
       },
       "targets": [
         {
@@ -288,27 +531,57 @@
       "type": "timeseries"
     },
     {
-      "datasource": { "uid": "prometheus" },
+      "datasource": {
+        "uid": "prometheus"
+      },
       "description": "HTTP 요청의 응답시간 분포를 히트맵으로 시각화합니다. 가로축=시간, 세로축=응답시간(초), 색상 진하기=요청 빈도를 나타냅니다. 이상치나 지연 패턴을 파악하기 용이합니다.",
       "fieldConfig": {
         "defaults": {
           "custom": {
-            "hideFrom": { "tooltip": false, "viz": false, "legend": false }
+            "hideFrom": {
+              "tooltip": false,
+              "viz": false,
+              "legend": false
+            }
           }
         }
       },
-      "gridPos": { "h": 8, "w": 12, "x": 12, "y": 6 },
+      "gridPos": {
+        "h": 8,
+        "w": 12,
+        "x": 12,
+        "y": 6
+      },
       "id": 8,
       "options": {
         "calculate": false,
         "cellGap": 2,
-        "color": { "mode": "scheme", "scheme": "Spectral", "exponent": 0.5 },
-        "exemplars": { "color": "rgba(255,0,255,0.7)" },
-        "filterValues": { "le": 1e-9 },
-        "legend": { "show": true },
-        "rowsFrame": { "layout": "auto" },
-        "tooltip": { "show": true, "yHistogram": false },
-        "yAxis": { "axisPlacement": "left", "reverse": false, "unit": "s" }
+        "color": {
+          "mode": "scheme",
+          "scheme": "Spectral",
+          "exponent": 0.5
+        },
+        "exemplars": {
+          "color": "rgba(255,0,255,0.7)"
+        },
+        "filterValues": {
+          "le": 1E-9
+        },
+        "legend": {
+          "show": true
+        },
+        "rowsFrame": {
+          "layout": "auto"
+        },
+        "tooltip": {
+          "show": true,
+          "yHistogram": false
+        },
+        "yAxis": {
+          "axisPlacement": "left",
+          "reverse": false,
+          "unit": "s"
+        }
       },
       "targets": [
         {
@@ -323,31 +596,53 @@
     },
     {
       "collapsed": false,
-      "gridPos": { "h": 1, "w": 24, "x": 0, "y": 14 },
+      "gridPos": {
+        "h": 1,
+        "w": 24,
+        "x": 0,
+        "y": 14
+      },
       "id": 102,
       "title": "에러 분석(Error Analysis)",
       "type": "row"
     },
     {
-      "datasource": { "uid": "prometheus" },
+      "datasource": {
+        "uid": "prometheus"
+      },
       "description": "4xx(클라이언트 에러)와 5xx(서버 에러)의 초당 발생 빈도를 시계열로 표시합니다. 5분 이동평균 기준이며, 에러 급증 시점과 패턴을 파악할 수 있습니다.",
       "fieldConfig": {
         "defaults": {
-          "color": { "mode": "palette-classic" },
+          "color": {
+            "mode": "palette-classic"
+          },
           "custom": {
             "fillOpacity": 70,
             "lineWidth": 2,
             "spanNulls": false,
-            "stacking": { "mode": "normal", "group": "A" }
+            "stacking": {
+              "mode": "normal",
+              "group": "A"
+            }
           },
           "unit": "reqps"
         }
       },
-      "gridPos": { "h": 7, "w": 12, "x": 0, "y": 15 },
+      "gridPos": {
+        "h": 7,
+        "w": 12,
+        "x": 0,
+        "y": 15
+      },
       "id": 9,
       "options": {
-        "legend": { "displayMode": "table", "placement": "right" },
-        "tooltip": { "mode": "multi" }
+        "legend": {
+          "displayMode": "table",
+          "placement": "right"
+        },
+        "tooltip": {
+          "mode": "multi"
+        }
       },
       "targets": [
         {
@@ -365,7 +660,9 @@
       "type": "timeseries"
     },
     {
-      "datasource": { "uid": "prometheus" },
+      "datasource": {
+        "uid": "prometheus"
+      },
       "description": "에러가 가장 많이 발생하는 상위 10개 엔드포인트를 테이블로 표시합니다. URI, 상태 코드, 초당 에러 발생률을 보여주며, 문제 엔드포인트를 빠르게 식별할 수 있습니다.",
       "fieldConfig": {
         "defaults": {
@@ -375,7 +672,12 @@
           }
         }
       },
-      "gridPos": { "h": 7, "w": 12, "x": 12, "y": 15 },
+      "gridPos": {
+        "h": 7,
+        "w": 12,
+        "x": 12,
+        "y": 15
+      },
       "id": 10,
       "options": {
         "showHeader": true,
@@ -391,30 +693,63 @@
       ],
       "title": "엔드포인트(Endpoint)별 주요 에러",
       "transformations": [
-        { "id": "organize", "options": { "excludeByName": { "Time": true }, "renameByName": { "uri": "엔드포인트(Endpoint)", "status": "상태(Status)", "Value": "에러율(Error Rate)" } } }
+        {
+          "id": "organize",
+          "options": {
+            "excludeByName": {
+              "Time": true
+            },
+            "renameByName": {
+              "uri": "엔드포인트(Endpoint)",
+              "status": "상태(Status)",
+              "Value": "에러율(Error Rate)"
+            }
+          }
+        }
       ],
       "type": "table"
     },
     {
       "collapsed": false,
-      "gridPos": { "h": 1, "w": 24, "x": 0, "y": 22 },
+      "gridPos": {
+        "h": 1,
+        "w": 24,
+        "x": 0,
+        "y": 22
+      },
       "id": 103,
       "title": "리소스 포화도(Resource Saturation)",
       "type": "row"
     },
     {
-      "datasource": { "uid": "prometheus" },
+      "datasource": {
+        "uid": "prometheus"
+      },
       "description": "전체 스레드 중 실제로 CPU에서 실행 중인(RUNNABLE 상태) 스레드의 비율입니다. WebFlux는 소수의 Event Loop 스레드를 사용하므로 높은 값이 실제 부하를 의미합니다. 임계값: 50%(yellow), 70%(orange), 85%(red)입니다.",
       "fieldConfig": {
         "defaults": {
-          "color": { "mode": "thresholds" },
+          "color": {
+            "mode": "thresholds"
+          },
           "thresholds": {
             "mode": "percentage",
             "steps": [
-              { "color": "green", "value": null },
-              { "color": "yellow", "value": 50 },
-              { "color": "orange", "value": 70 },
-              { "color": "red", "value": 85 }
+              {
+                "color": "green",
+                "value": null
+              },
+              {
+                "color": "yellow",
+                "value": 50
+              },
+              {
+                "color": "orange",
+                "value": 70
+              },
+              {
+                "color": "red",
+                "value": 85
+              }
             ]
           },
           "unit": "percentunit",
@@ -422,11 +757,22 @@
           "max": 1
         }
       },
-      "gridPos": { "h": 6, "w": 6, "x": 0, "y": 23 },
+      "gridPos": {
+        "h": 6,
+        "w": 6,
+        "x": 0,
+        "y": 23
+      },
       "id": 11,
       "options": {
         "orientation": "auto",
-        "reduceOptions": { "calcs": ["lastNotNull"], "fields": "", "values": false },
+        "reduceOptions": {
+          "calcs": [
+            "lastNotNull"
+          ],
+          "fields": "",
+          "values": false
+        },
         "showThresholdLabels": false,
         "showThresholdMarkers": true
       },
@@ -440,18 +786,34 @@
       "type": "gauge"
     },
     {
-      "datasource": { "uid": "prometheus" },
+      "datasource": {
+        "uid": "prometheus"
+      },
       "description": "JVM Heap 메모리의 사용 비율입니다(골든 시그널 패널과 동일 메트릭). 최대 Heap 대비 현재 사용 중인 메모리 비율을 나타내며, 85% 이상 시 GC 튜닝이나 Heap 크기 조정이 필요할 수 있습니다.",
       "fieldConfig": {
         "defaults": {
-          "color": { "mode": "thresholds" },
+          "color": {
+            "mode": "thresholds"
+          },
           "thresholds": {
             "mode": "percentage",
             "steps": [
-              { "color": "green", "value": null },
-              { "color": "yellow", "value": 60 },
-              { "color": "orange", "value": 75 },
-              { "color": "red", "value": 85 }
+              {
+                "color": "green",
+                "value": null
+              },
+              {
+                "color": "yellow",
+                "value": 60
+              },
+              {
+                "color": "orange",
+                "value": 75
+              },
+              {
+                "color": "red",
+                "value": 85
+              }
             ]
           },
           "unit": "percentunit",
@@ -459,11 +821,22 @@
           "max": 1
         }
       },
-      "gridPos": { "h": 6, "w": 6, "x": 6, "y": 23 },
+      "gridPos": {
+        "h": 6,
+        "w": 6,
+        "x": 6,
+        "y": 23
+      },
       "id": 12,
       "options": {
         "orientation": "auto",
-        "reduceOptions": { "calcs": ["lastNotNull"], "fields": "", "values": false },
+        "reduceOptions": {
+          "calcs": [
+            "lastNotNull"
+          ],
+          "fields": "",
+          "values": false
+        },
         "showThresholdLabels": false,
         "showThresholdMarkers": true
       },
@@ -477,28 +850,55 @@
       "type": "gauge"
     },
     {
-      "datasource": { "uid": "prometheus" },
+      "datasource": {
+        "uid": "prometheus"
+      },
       "description": "JVM 프로세스가 사용하는 CPU 사용률입니다. 시스템 전체가 아닌 해당 Java 애플리케이션 프로세스만의 CPU 사용량을 백분율로 표시합니다. 임계값: 60%(yellow), 80%(orange), 90%(red)입니다.",
       "fieldConfig": {
         "defaults": {
-          "color": { "mode": "thresholds" },
+          "color": {
+            "mode": "thresholds"
+          },
           "thresholds": {
             "mode": "absolute",
             "steps": [
-              { "color": "green", "value": null },
-              { "color": "yellow", "value": 0.6 },
-              { "color": "orange", "value": 0.8 },
-              { "color": "red", "value": 0.9 }
+              {
+                "color": "green",
+                "value": null
+              },
+              {
+                "color": "yellow",
+                "value": 0.6
+              },
+              {
+                "color": "orange",
+                "value": 0.8
+              },
+              {
+                "color": "red",
+                "value": 0.9
+              }
             ]
           },
           "unit": "percentunit"
         }
       },
-      "gridPos": { "h": 6, "w": 6, "x": 12, "y": 23 },
+      "gridPos": {
+        "h": 6,
+        "w": 6,
+        "x": 12,
+        "y": 23
+      },
       "id": 13,
       "options": {
         "orientation": "auto",
-        "reduceOptions": { "calcs": ["lastNotNull"], "fields": "", "values": false },
+        "reduceOptions": {
+          "calcs": [
+            "lastNotNull"
+          ],
+          "fields": "",
+          "values": false
+        },
         "showThresholdLabels": false,
         "showThresholdMarkers": true
       },
@@ -512,19 +912,33 @@
       "type": "gauge"
     },
     {
-      "datasource": { "uid": "prometheus" },
+      "datasource": {
+        "uid": "prometheus"
+      },
       "description": "Reactor Netty의 활성 HTTP 연결 수와 Event Loop에 대기 중인 작업 수를 표시합니다. Pending Tasks가 증가하면 백프레셔가 발생 중이며, 처리 능력 대비 요청이 많음을 의미합니다.",
       "fieldConfig": {
         "defaults": {
-          "color": { "mode": "palette-classic" },
+          "color": {
+            "mode": "palette-classic"
+          },
           "unit": "short"
         }
       },
-      "gridPos": { "h": 6, "w": 6, "x": 18, "y": 23 },
+      "gridPos": {
+        "h": 6,
+        "w": 6,
+        "x": 18,
+        "y": 23
+      },
       "id": 14,
       "options": {
-        "legend": { "displayMode": "list", "placement": "bottom" },
-        "tooltip": { "mode": "multi" }
+        "legend": {
+          "displayMode": "list",
+          "placement": "bottom"
+        },
+        "tooltip": {
+          "mode": "multi"
+        }
       },
       "targets": [
         {
@@ -543,36 +957,65 @@
     },
     {
       "collapsed": false,
-      "gridPos": { "h": 1, "w": 24, "x": 0, "y": 29 },
+      "gridPos": {
+        "h": 1,
+        "w": 24,
+        "x": 0,
+        "y": 29
+      },
       "id": 104,
       "title": "TTS 서비스 상태(Service Status)",
       "type": "row"
     },
     {
-      "datasource": { "uid": "prometheus" },
+      "datasource": {
+        "uid": "prometheus"
+      },
       "description": "TTS 로드밸런서에서 관리하는 엔드포인트 중 정상(HEALTHY) 상태인 개수를 표시합니다. 전체 5개 중 몇 개가 정상인지 나타내며, 3개 미만은 위험(orange), 5개는 정상(green)입니다.",
       "fieldConfig": {
         "defaults": {
-          "color": { "mode": "thresholds" },
+          "color": {
+            "mode": "thresholds"
+          },
           "thresholds": {
             "mode": "absolute",
             "steps": [
-              { "color": "red", "value": null },
-              { "color": "orange", "value": 3 },
-              { "color": "green", "value": 5 }
+              {
+                "color": "red",
+                "value": null
+              },
+              {
+                "color": "orange",
+                "value": 3
+              },
+              {
+                "color": "green",
+                "value": 5
+              }
             ]
           },
           "unit": "short"
         }
       },
-      "gridPos": { "h": 5, "w": 6, "x": 0, "y": 30 },
+      "gridPos": {
+        "h": 5,
+        "w": 6,
+        "x": 0,
+        "y": 30
+      },
       "id": 15,
       "options": {
         "colorMode": "background",
         "graphMode": "area",
         "justifyMode": "center",
         "orientation": "auto",
-        "reduceOptions": { "calcs": ["lastNotNull"], "fields": "", "values": false },
+        "reduceOptions": {
+          "calcs": [
+            "lastNotNull"
+          ],
+          "fields": "",
+          "values": false
+        },
         "textMode": "value"
       },
       "targets": [
@@ -585,20 +1028,34 @@
       "type": "stat"
     },
     {
-      "datasource": { "uid": "prometheus" },
+      "datasource": {
+        "uid": "prometheus"
+      },
       "description": "TTS 엔드포인트별 활성 요청 수의 분포를 파이 차트로 표시합니다. 로드밸런서가 요청을 고르게 분산하는지, 특정 엔드포인트에 부하가 집중되는지 확인할 수 있습니다.",
       "fieldConfig": {
         "defaults": {
-          "color": { "mode": "palette-classic" },
+          "color": {
+            "mode": "palette-classic"
+          },
           "unit": "short"
         }
       },
-      "gridPos": { "h": 5, "w": 9, "x": 6, "y": 30 },
+      "gridPos": {
+        "h": 5,
+        "w": 9,
+        "x": 6,
+        "y": 30
+      },
       "id": 16,
       "options": {
-        "legend": { "displayMode": "list", "placement": "right" },
+        "legend": {
+          "displayMode": "list",
+          "placement": "right"
+        },
         "pieType": "pie",
-        "tooltip": { "mode": "single" }
+        "tooltip": {
+          "mode": "single"
+        }
       },
       "targets": [
         {
@@ -611,19 +1068,33 @@
       "type": "piechart"
     },
     {
-      "datasource": { "uid": "prometheus" },
+      "datasource": {
+        "uid": "prometheus"
+      },
       "description": "각 TTS 엔드포인트의 활성 요청 수를 시계열로 표시합니다. 시간에 따른 부하 변화와 로드밸런서의 요청 분산 패턴을 파악할 수 있습니다.",
       "fieldConfig": {
         "defaults": {
-          "color": { "mode": "palette-classic" },
+          "color": {
+            "mode": "palette-classic"
+          },
           "unit": "short"
         }
       },
-      "gridPos": { "h": 5, "w": 9, "x": 15, "y": 30 },
+      "gridPos": {
+        "h": 5,
+        "w": 9,
+        "x": 15,
+        "y": 30
+      },
       "id": 17,
       "options": {
-        "legend": { "displayMode": "table", "placement": "right" },
-        "tooltip": { "mode": "multi" }
+        "legend": {
+          "displayMode": "table",
+          "placement": "right"
+        },
+        "tooltip": {
+          "mode": "multi"
+        }
       },
       "targets": [
         {
@@ -637,15 +1108,27 @@
     },
     {
       "collapsed": false,
-      "gridPos": { "h": 1, "w": 24, "x": 0, "y": 35 },
+      "gridPos": {
+        "h": 1,
+        "w": 24,
+        "x": 0,
+        "y": 35
+      },
       "id": 105,
       "title": "로그(Logs)",
       "type": "row"
     },
     {
-      "datasource": { "uid": "loki" },
+      "datasource": {
+        "uid": "loki"
+      },
       "description": "Loki에서 수집한 애플리케이션 에러 로그를 실시간으로 표시합니다. 'error', 'exception', 'failed' 키워드가 포함된 로그를 필터링하며, 최신 로그가 상단에 표시됩니다.",
-      "gridPos": { "h": 10, "w": 24, "x": 0, "y": 36 },
+      "gridPos": {
+        "h": 10,
+        "w": 24,
+        "x": 0,
+        "y": 36
+      },
       "id": 18,
       "options": {
         "dedupStrategy": "none",
@@ -665,17 +1148,186 @@
       ],
       "title": "에러 로그 (Loki)",
       "type": "logs"
+    },
+    {
+      "collapsed": false,
+      "gridPos": {
+        "h": 1,
+        "w": 24,
+        "x": 0,
+        "y": 46
+      },
+      "id": 106,
+      "title": "STT 서비스 상태(Service Status)",
+      "type": "row"
+    },
+    {
+      "datasource": {
+        "uid": "prometheus"
+      },
+      "description": "STT 엔드포인트(/rag/dialogue/stt, /rag/dialogue/stt/text)의 초당 요청 수입니다.",
+      "fieldConfig": {
+        "defaults": {
+          "color": {
+            "mode": "palette-classic"
+          },
+          "unit": "reqps"
+        }
+      },
+      "gridPos": {
+        "h": 6,
+        "w": 8,
+        "x": 0,
+        "y": 47
+      },
+      "id": 19,
+      "options": {
+        "colorMode": "value",
+        "graphMode": "area",
+        "justifyMode": "center",
+        "orientation": "auto",
+        "reduceOptions": {
+          "calcs": [
+            "lastNotNull"
+          ],
+          "fields": "",
+          "values": false
+        },
+        "textMode": "value"
+      },
+      "targets": [
+        {
+          "expr": "sum(rate(http_server_requests_seconds_count{job=~\"$job\",instance=~\"$instance\",method=\"POST\",uri=~\"/rag/dialogue/stt(/text)?\"}[1m]))",
+          "refId": "A"
+        }
+      ],
+      "title": "STT 처리량(Throughput) - RPS",
+      "type": "stat"
+    },
+    {
+      "datasource": {
+        "uid": "prometheus"
+      },
+      "description": "STT 엔드포인트의 p95 응답시간입니다.",
+      "fieldConfig": {
+        "defaults": {
+          "color": {
+            "mode": "palette-classic"
+          },
+          "unit": "ms"
+        }
+      },
+      "gridPos": {
+        "h": 6,
+        "w": 8,
+        "x": 8,
+        "y": 47
+      },
+      "id": 20,
+      "options": {
+        "colorMode": "value",
+        "graphMode": "area",
+        "justifyMode": "center",
+        "orientation": "auto",
+        "reduceOptions": {
+          "calcs": [
+            "lastNotNull"
+          ],
+          "fields": "",
+          "values": false
+        },
+        "textMode": "value"
+      },
+      "targets": [
+        {
+          "expr": "histogram_quantile(0.95, sum(rate(http_server_requests_seconds_bucket{job=~\"$job\",instance=~\"$instance\",method=\"POST\",uri=~\"/rag/dialogue/stt(/text)?\"}[5m])) by (le)) * 1000",
+          "refId": "A"
+        }
+      ],
+      "title": "STT 응답시간(Response Time) p95",
+      "type": "stat"
+    },
+    {
+      "datasource": {
+        "uid": "prometheus"
+      },
+      "description": "STT 엔드포인트의 4xx/5xx 에러율입니다.",
+      "fieldConfig": {
+        "defaults": {
+          "color": {
+            "mode": "thresholds"
+          },
+          "decimals": 2,
+          "thresholds": {
+            "mode": "absolute",
+            "steps": [
+              {
+                "color": "green",
+                "value": null
+              },
+              {
+                "color": "orange",
+                "value": 1
+              },
+              {
+                "color": "red",
+                "value": 5
+              }
+            ]
+          },
+          "unit": "percent"
+        }
+      },
+      "gridPos": {
+        "h": 6,
+        "w": 8,
+        "x": 16,
+        "y": 47
+      },
+      "id": 21,
+      "options": {
+        "colorMode": "value",
+        "graphMode": "area",
+        "justifyMode": "center",
+        "orientation": "auto",
+        "reduceOptions": {
+          "calcs": [
+            "lastNotNull"
+          ],
+          "fields": "",
+          "values": false
+        },
+        "textMode": "value"
+      },
+      "targets": [
+        {
+          "expr": "100 * sum(rate(http_server_requests_seconds_count{job=~\"$job\",instance=~\"$instance\",method=\"POST\",uri=~\"/rag/dialogue/stt(/text)?\",status=~\"[45]..\"}[5m])) / clamp_min(sum(rate(http_server_requests_seconds_count{job=~\"$job\",instance=~\"$instance\",method=\"POST\",uri=~\"/rag/dialogue/stt(/text)?\"}[5m])), 0.001)",
+          "refId": "A"
+        }
+      ],
+      "title": "STT 에러율(Error Rate)",
+      "type": "stat"
     }
   ],
   "refresh": "15s",
   "schemaVersion": 39,
   "style": "dark",
-  "tags": ["miyou", "overview", "apm"],
+  "tags": [
+    "miyou",
+    "overview",
+    "apm"
+  ],
   "templating": {
     "list": [
       {
-        "current": { "selected": false, "text": "miyou-app", "value": "miyou-app" },
-        "datasource": { "uid": "prometheus" },
+        "current": {
+          "selected": false,
+          "text": "miyou-app",
+          "value": "miyou-app"
+        },
+        "datasource": {
+          "uid": "prometheus"
+        },
         "definition": "label_values(up, job)",
         "hide": 0,
         "includeAll": false,
@@ -688,8 +1340,14 @@
         "type": "query"
       },
       {
-        "current": { "selected": true, "text": "All", "value": "$__all" },
-        "datasource": { "uid": "prometheus" },
+        "current": {
+          "selected": true,
+          "text": "All",
+          "value": "$__all"
+        },
+        "datasource": {
+          "uid": "prometheus"
+        },
         "definition": "label_values(up{job=~\"$job\"}, instance)",
         "hide": 0,
         "includeAll": true,
@@ -704,7 +1362,10 @@
       }
     ]
   },
-  "time": { "from": "now-1h", "to": "now" },
+  "time": {
+    "from": "now-1h",
+    "to": "now"
+  },
   "timepicker": {},
   "timezone": "",
   "title": "MIYOU APM 개요(Overview)",
