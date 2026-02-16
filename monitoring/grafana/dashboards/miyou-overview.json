@@ -18,6 +18,7 @@
     },
     {
       "datasource": { "uid": "prometheus" },
+      "description": "애플리케이션 인스턴스의 Up/Down 상태를 표시합니다. Prometheus의 up 메트릭을 사용하며, 1=UP(정상), 0=DOWN(장애)을 의미합니다.",
       "fieldConfig": {
         "defaults": {
           "color": { "mode": "thresholds" },
@@ -52,6 +53,7 @@
     },
     {
       "datasource": { "uid": "prometheus" },
+      "description": "전체 HTTP 요청 중 4xx, 5xx 에러의 비율을 표시합니다. 5분 이동평균 기준이며, 임계값: 1%(yellow), 5%(orange), 10%(red)입니다.",
       "fieldConfig": {
         "defaults": {
           "color": { "mode": "thresholds" },
@@ -88,6 +90,7 @@
     },
     {
       "datasource": { "uid": "prometheus" },
+      "description": "HTTP 요청의 95 백분위수 응답시간입니다. 95%의 요청이 이 값 이하의 시간에 완료됩니다. 임계값: 0.5초(yellow), 1초(orange), 2초(red)입니다.",
       "fieldConfig": {
         "defaults": {
           "color": { "mode": "thresholds" },
@@ -124,6 +127,7 @@
     },
     {
       "datasource": { "uid": "prometheus" },
+      "description": "초당 처리하는 HTTP 요청 수(Requests Per Second)입니다. 1분 이동평균으로 계산되며, 애플리케이션의 현재 트래픽 부하를 나타냅니다.",
       "fieldConfig": {
         "defaults": {
           "color": { "mode": "palette-classic" },
@@ -151,6 +155,7 @@
     },
     {
       "datasource": { "uid": "prometheus" },
+      "description": "JVM Heap 메모리의 사용 비율입니다. 최대 Heap 대비 현재 사용 중인 메모리 비율을 나타내며, 높을 경우 GC 빈도가 증가하고 성능이 저하될 수 있습니다. 임계값: 60%(yellow), 75%(orange), 85%(red)입니다.",
       "fieldConfig": {
         "defaults": {
           "color": { "mode": "thresholds" },
@@ -187,6 +192,7 @@
     },
     {
       "datasource": { "uid": "prometheus" },
+      "description": "Application Performance Index: 사용자 만족도를 0~1 사이 값으로 표시합니다. 0.5초 이하 응답은 만족(Satisfied), 5xx 에러는 불만족(Frustrated)으로 계산합니다. 0.95 이상이 목표입니다.",
       "fieldConfig": {
         "defaults": {
           "color": { "mode": "thresholds" },
@@ -231,6 +237,7 @@
     },
     {
       "datasource": { "uid": "prometheus" },
+      "description": "HTTP 상태 코드별 초당 요청 수를 적층형 차트로 표시합니다. 2xx(성공-녹색), 3xx(리다이렉트-파란색), 4xx(클라이언트 에러-주황색), 5xx(서버 에러-빨간색)로 구분됩니다.",
       "fieldConfig": {
         "defaults": {
           "color": { "mode": "palette-classic" },
@@ -282,6 +289,7 @@
     },
     {
       "datasource": { "uid": "prometheus" },
+      "description": "HTTP 요청의 응답시간 분포를 히트맵으로 시각화합니다. 가로축=시간, 세로축=응답시간(초), 색상 진하기=요청 빈도를 나타냅니다. 이상치나 지연 패턴을 파악하기 용이합니다.",
       "fieldConfig": {
         "defaults": {
           "custom": {
@@ -322,6 +330,7 @@
     },
     {
       "datasource": { "uid": "prometheus" },
+      "description": "4xx(클라이언트 에러)와 5xx(서버 에러)의 초당 발생 빈도를 시계열로 표시합니다. 5분 이동평균 기준이며, 에러 급증 시점과 패턴을 파악할 수 있습니다.",
       "fieldConfig": {
         "defaults": {
           "color": { "mode": "palette-classic" },
@@ -357,6 +366,7 @@
     },
     {
       "datasource": { "uid": "prometheus" },
+      "description": "에러가 가장 많이 발생하는 상위 10개 엔드포인트를 테이블로 표시합니다. URI, 상태 코드, 초당 에러 발생률을 보여주며, 문제 엔드포인트를 빠르게 식별할 수 있습니다.",
       "fieldConfig": {
         "defaults": {
           "custom": {
@@ -394,6 +404,7 @@
     },
     {
       "datasource": { "uid": "prometheus" },
+      "description": "전체 스레드 중 실제로 CPU에서 실행 중인(RUNNABLE 상태) 스레드의 비율입니다. WebFlux는 소수의 Event Loop 스레드를 사용하므로 높은 값이 실제 부하를 의미합니다. 임계값: 50%(yellow), 70%(orange), 85%(red)입니다.",
       "fieldConfig": {
         "defaults": {
           "color": { "mode": "thresholds" },
@@ -425,11 +436,12 @@
           "refId": "A"
         }
       ],
-      "title": "스레드 활성 비율(Runnable Threads)",
+      "title": "Runnable 스레드 비율(Thread Ratio)",
       "type": "gauge"
     },
     {
       "datasource": { "uid": "prometheus" },
+      "description": "JVM Heap 메모리의 사용 비율입니다(골든 시그널 패널과 동일 메트릭). 최대 Heap 대비 현재 사용 중인 메모리 비율을 나타내며, 85% 이상 시 GC 튜닝이나 Heap 크기 조정이 필요할 수 있습니다.",
       "fieldConfig": {
         "defaults": {
           "color": { "mode": "thresholds" },
@@ -466,6 +478,7 @@
     },
     {
       "datasource": { "uid": "prometheus" },
+      "description": "JVM 프로세스가 사용하는 CPU 사용률입니다. 시스템 전체가 아닌 해당 Java 애플리케이션 프로세스만의 CPU 사용량을 백분율로 표시합니다. 임계값: 60%(yellow), 80%(orange), 90%(red)입니다.",
       "fieldConfig": {
         "defaults": {
           "color": { "mode": "thresholds" },
@@ -500,6 +513,7 @@
     },
     {
       "datasource": { "uid": "prometheus" },
+      "description": "Reactor Netty의 활성 HTTP 연결 수와 Event Loop에 대기 중인 작업 수를 표시합니다. Pending Tasks가 증가하면 백프레셔가 발생 중이며, 처리 능력 대비 요청이 많음을 의미합니다.",
       "fieldConfig": {
         "defaults": {
           "color": { "mode": "palette-classic" },
@@ -514,17 +528,17 @@
       },
       "targets": [
         {
-          "expr": "sum(reactor_netty_connection_provider_active_connections{job=~\"$job\",instance=~\"$instance\"})",
+          "expr": "sum(reactor_netty_http_server_connections_active{job=~\"$job\",instance=~\"$instance\"}) or sum(reactor_netty_connection_provider_active_connections{job=~\"$job\",instance=~\"$instance\"}) or vector(0)",
           "legendFormat": "활성 연결(Active Connections)",
           "refId": "A"
         },
         {
-          "expr": "sum(reactor_netty_eventloop_pending_tasks{job=~\"$job\",instance=~\"$instance\"})",
+          "expr": "sum(reactor_netty_eventloop_pending_tasks{job=~\"$job\",instance=~\"$instance\"}) or vector(0)",
           "legendFormat": "대기 작업(Pending Tasks)",
           "refId": "B"
         }
       ],
-      "title": "Reactor Netty - 연결 & 작업",
+      "title": "Reactor Netty 연결/이벤트루프 지표",
       "type": "timeseries"
     },
     {
@@ -536,6 +550,7 @@
     },
     {
       "datasource": { "uid": "prometheus" },
+      "description": "TTS 로드밸런서에서 관리하는 엔드포인트 중 정상(HEALTHY) 상태인 개수를 표시합니다. 전체 5개 중 몇 개가 정상인지 나타내며, 3개 미만은 위험(orange), 5개는 정상(green)입니다.",
       "fieldConfig": {
         "defaults": {
           "color": { "mode": "thresholds" },
@@ -571,6 +586,7 @@
     },
     {
       "datasource": { "uid": "prometheus" },
+      "description": "TTS 엔드포인트별 활성 요청 수의 분포를 파이 차트로 표시합니다. 로드밸런서가 요청을 고르게 분산하는지, 특정 엔드포인트에 부하가 집중되는지 확인할 수 있습니다.",
       "fieldConfig": {
         "defaults": {
           "color": { "mode": "palette-classic" },
@@ -596,6 +612,7 @@
     },
     {
       "datasource": { "uid": "prometheus" },
+      "description": "각 TTS 엔드포인트의 활성 요청 수를 시계열로 표시합니다. 시간에 따른 부하 변화와 로드밸런서의 요청 분산 패턴을 파악할 수 있습니다.",
       "fieldConfig": {
         "defaults": {
           "color": { "mode": "palette-classic" },
@@ -627,6 +644,7 @@
     },
     {
       "datasource": { "uid": "loki" },
+      "description": "Loki에서 수집한 애플리케이션 에러 로그를 실시간으로 표시합니다. 'error', 'exception', 'failed' 키워드가 포함된 로그를 필터링하며, 최신 로그가 상단에 표시됩니다.",
       "gridPos": { "h": 10, "w": 24, "x": 0, "y": 36 },
       "id": 18,
       "options": {

@@ -18,6 +18,7 @@
     },
     {
       "datasource": { "uid": "prometheus" },
+      "description": "JVM Heap 메모리의 현재 사용량을 바이트 단위로 표시합니다. 객체 인스턴스가 할당되는 메모리 영역이며, 70% 이상(orange), 85% 이상(red) 시 주의가 필요합니다.",
       "fieldConfig": {
         "defaults": {
           "color": { "mode": "thresholds" },
@@ -52,6 +53,7 @@
     },
     {
       "datasource": { "uid": "prometheus" },
+      "description": "JVM Heap 메모리의 최대 할당 가능 크기입니다. JVM 시작 시 -Xmx 옵션으로 설정한 값이며, 이 값을 초과하면 OutOfMemoryError가 발생합니다.",
       "fieldConfig": {
         "defaults": {
           "color": { "mode": "thresholds" },
@@ -85,6 +87,7 @@
     },
     {
       "datasource": { "uid": "prometheus" },
+      "description": "JVM Non-Heap 메모리의 사용량입니다. Metaspace, Code Cache, Compressed Class Space 등이 포함되며, 클래스 메타데이터와 JIT 컴파일된 코드가 저장됩니다.",
       "fieldConfig": {
         "defaults": {
           "color": { "mode": "thresholds" },
@@ -118,6 +121,7 @@
     },
     {
       "datasource": { "uid": "prometheus" },
+      "description": "Direct ByteBuffer와 Mapped ByteBuffer의 사용량입니다. NIO 기반 I/O 작업(파일, 네트워크)에서 사용되는 off-heap 메모리 영역입니다.",
       "fieldConfig": {
         "defaults": {
           "color": { "mode": "thresholds" },
@@ -151,6 +155,7 @@
     },
     {
       "datasource": { "uid": "prometheus" },
+      "description": "Heap 내부의 세부 메모리 풀별 사용량 추이입니다. G1 GC 기준으로 Eden, Survivor, Old Generation 영역의 메모리 사용 패턴을 확인할 수 있습니다.",
       "fieldConfig": {
         "defaults": {
           "color": { "mode": "palette-classic" },
@@ -175,6 +180,7 @@
     },
     {
       "datasource": { "uid": "prometheus" },
+      "description": "Heap 메모리 사용률의 시간에 따른 변화를 백분율로 표시합니다. GC 발생 시 톱니 모양 패턴이 나타나며, 지속적인 상승 추세는 메모리 누수를 의미할 수 있습니다.",
       "fieldConfig": {
         "defaults": {
           "color": { "mode": "palette-classic" },
@@ -206,6 +212,7 @@
     },
     {
       "datasource": { "uid": "prometheus" },
+      "description": "분당 발생하는 가비지 컬렉션의 횟수를 GC 타입별(Minor/Major)과 원인별로 표시합니다. 빈번한 GC는 메모리 부족 또는 할당 속도 과다를 나타냅니다.",
       "fieldConfig": {
         "defaults": {
           "color": { "mode": "palette-classic" },
@@ -230,6 +237,7 @@
     },
     {
       "datasource": { "uid": "prometheus" },
+      "description": "GC로 인해 애플리케이션이 일시정지된 시간의 비율(초/초)을 표시합니다. 5분 이동평균 기준이며, 값이 높을수록 GC에 소비되는 시간이 많아 성능 저하가 발생합니다.",
       "fieldConfig": {
         "defaults": {
           "color": { "mode": "palette-classic" },
@@ -254,6 +262,7 @@
     },
     {
       "datasource": { "uid": "prometheus" },
+      "description": "초당 Heap에 할당되는 메모리의 속도(바이트/초)입니다. 할당 속도가 높을수록 GC 빈도가 증가하며, 객체 생성 패턴과 메모리 압박 정도를 파악할 수 있습니다.",
       "fieldConfig": {
         "defaults": {
           "color": { "mode": "palette-classic" },
@@ -285,6 +294,7 @@
     },
     {
       "datasource": { "uid": "prometheus" },
+      "description": "현재 실행 중인 전체 스레드 수와 백그라운드에서 동작하는 데몬 스레드 수를 표시합니다. WebFlux는 소수의 Event Loop 스레드를 유지하므로 수십 개 수준이 정상입니다.",
       "fieldConfig": {
         "defaults": {
           "color": { "mode": "palette-classic" },
@@ -314,6 +324,7 @@
     },
     {
       "datasource": { "uid": "prometheus" },
+      "description": "JVM 시작 이후 동시에 실행된 스레드의 최대 개수입니다. WebFlux는 스레드를 재사용하므로 peak와 live가 거의 동일하게 유지됩니다.",
       "fieldConfig": {
         "defaults": {
           "color": { "mode": "palette-classic" },
@@ -338,6 +349,7 @@
     },
     {
       "datasource": { "uid": "prometheus" },
+      "description": "스레드의 상태별(RUNNABLE, WAITING, TIMED_WAITING 등) 분포를 표시합니다. RUNNABLE은 실제 CPU에서 실행 중이거나 실행 대기 중인 스레드이며, WAITING/TIMED_WAITING은 대기 상태입니다.",
       "fieldConfig": {
         "defaults": {
           "color": { "mode": "palette-classic" },
@@ -369,6 +381,7 @@
     },
     {
       "datasource": { "uid": "prometheus" },
+      "description": "JVM 프로세스와 전체 시스템의 CPU 사용률을 백분율로 표시합니다. 프로세스 CPU는 해당 JVM만의 사용량, 시스템 CPU는 호스트 전체의 사용량을 나타냅니다.",
       "fieldConfig": {
         "defaults": {
           "color": { "mode": "palette-classic" },
@@ -400,6 +413,7 @@
     },
     {
       "datasource": { "uid": "prometheus" },
+      "description": "시스템의 1분 평균 부하(Load Average)와 CPU 코어 개수를 표시합니다. Load Average가 CPU 개수를 초과하면 대기 중인 프로세스가 있음을 의미합니다.",
       "fieldConfig": {
         "defaults": {
           "color": { "mode": "palette-classic" },
@@ -436,6 +450,7 @@
     },
     {
       "datasource": { "uid": "prometheus" },
+      "description": "현재 JVM에 로드되어 있는 클래스의 개수입니다. 애플리케이션이 사용하는 클래스와 라이브러리 의존성에 따라 결정되며, 급격한 증가는 동적 클래스 생성을 의미할 수 있습니다.",
       "fieldConfig": {
         "defaults": {
           "color": { "mode": "palette-classic" },
@@ -460,6 +475,7 @@
     },
     {
       "datasource": { "uid": "prometheus" },
+      "description": "JVM 시작 이후 언로드된 클래스의 누적 개수입니다. 클래스 로더 GC에 의해 더 이상 사용되지 않는 클래스가 메모리에서 제거될 때 증가합니다.",
       "fieldConfig": {
         "defaults": {
           "color": { "mode": "palette-classic" },
