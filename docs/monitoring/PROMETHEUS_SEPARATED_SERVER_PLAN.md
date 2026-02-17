@@ -8,7 +8,7 @@
 - 모니터링 서버(EC2) 분리 운영
 - 앱-모니터링 통신은 private IP 사용
 - 모니터링 서버 private IP: `172.31.44.177`
-- 모니터링 서버 public IP: `15.164.50.54` (임시, 이후 제거 예정)
+- 모니터링 서버 public IP: `13.124.219.63`
 
 ## 작업 단계
 1. 앱 메트릭 노출 준비
@@ -29,13 +29,30 @@
 ## 실행 명령 (로컬 -> 모니터링 서버)
 ```bash
 APP_METRICS_TARGET=<APP_PRIVATE_IP>:8081 \
-./scripts/aws/deploy_remote_prometheus.sh ubuntu@15.164.50.54
+./scripts/aws/deploy_remote_prometheus.sh ubuntu@13.124.219.63
 ```
 
 예시:
 ```bash
 APP_METRICS_TARGET=172.31.62.169:80 \
-./scripts/aws/deploy_remote_prometheus.sh ubuntu@15.164.50.54
+./scripts/aws/deploy_remote_prometheus.sh ubuntu@13.124.219.63
+```
+
+## SSM 기반 타깃 주입 (권장)
+- Prometheus app target은 SSM 파라미터로 관리:
+  - 기본 경로: `/miyou/prod/APP_METRICS_TARGETS`
+  - 값 예시: `172.31.62.169:80` 또는 `app1.internal:80,app2.internal:80`
+- 배포 스크립트 우선순위:
+  1. `APP_METRICS_TARGET` / `APP_METRICS_TARGETS`
+  2. `USE_SSM_TARGETS=true`일 때 SSM에서 조회
+
+실행 예시:
+```bash
+SSH_OPTS='-i /path/to/key.pem -o StrictHostKeyChecking=no' \
+USE_SSM_TARGETS=true \
+SSM_TARGETS_PARAM=/miyou/prod/APP_METRICS_TARGETS \
+AWS_REGION=ap-northeast-2 \
+bash ./scripts/aws/deploy_remote_prometheus.sh ubuntu@13.124.219.63
 ```
 
 ## 지금 필요한 정보
