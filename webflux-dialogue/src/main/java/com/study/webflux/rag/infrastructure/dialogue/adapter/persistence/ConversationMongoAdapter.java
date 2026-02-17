@@ -5,6 +5,7 @@ import org.springframework.stereotype.Component;
 
 import com.study.webflux.rag.domain.dialogue.entity.ConversationEntity;
 import com.study.webflux.rag.domain.dialogue.model.ConversationTurn;
+import com.study.webflux.rag.domain.dialogue.model.PersonaId;
 import com.study.webflux.rag.domain.dialogue.model.UserId;
 import com.study.webflux.rag.domain.dialogue.port.ConversationRepository;
 import com.study.webflux.rag.infrastructure.dialogue.repository.ConversationMongoRepository;
@@ -26,24 +27,22 @@ public class ConversationMongoAdapter implements ConversationRepository {
 	public Mono<ConversationTurn> save(ConversationTurn turn) {
 		ConversationEntity entity = new ConversationEntity(
 			turn.id(),
+			turn.personaId().value(),
 			turn.userId().value(),
 			turn.query(),
 			turn.response(),
 			turn.createdAt());
 		return mongoRepository.save(entity)
-			.map(saved -> ConversationTurn.withId(
-				saved.id(),
-				UserId.of(saved.userId()),
-				saved.query(),
-				saved.response(),
-				saved.createdAt()));
+			.map(this::toConversationTurn);
 	}
 
 	/** 최근 대화들을 생성 순서대로 조회합니다. */
 	@Override
-	public Flux<ConversationTurn> findRecent(UserId userId, int limit) {
+	public Flux<ConversationTurn> findRecent(PersonaId personaId, UserId userId, int limit) {
 		return mongoRepository
-			.findByUserIdOrderByCreatedAtDesc(userId.value(), PageRequest.of(0, limit))
+			.findByPersonaIdAndUserIdOrderByCreatedAtDesc(personaId.value(),
+				userId.value(),
+				PageRequest.of(0, limit))
 			.map(this::toConversationTurn)
 			.collectList()
 			.flatMapMany(list -> {
@@ -54,14 +53,15 @@ public class ConversationMongoAdapter implements ConversationRepository {
 
 	/** 전체 대화 기록을 스트리밍으로 조회합니다. */
 	@Override
-	public Flux<ConversationTurn> findAll(UserId userId) {
-		return mongoRepository.findAllByUserId(userId.value())
+	public Flux<ConversationTurn> findAll(PersonaId personaId, UserId userId) {
+		return mongoRepository.findAllByPersonaIdAndUserId(personaId.value(), userId.value())
 			.map(this::toConversationTurn);
 	}
 
 	private ConversationTurn toConversationTurn(ConversationEntity entity) {
 		return ConversationTurn.withId(
 			entity.id(),
+			PersonaId.ofNullable(entity.personaId()),
 			UserId.of(entity.userId()),
 			entity.query(),
 			entity.response(),
