@@ -1,6 +1,7 @@
 package com.study.webflux.rag.domain.dialogue.port;
 
 import com.study.webflux.rag.domain.dialogue.model.ConversationTurn;
+import com.study.webflux.rag.domain.dialogue.model.PersonaId;
 import com.study.webflux.rag.domain.dialogue.model.UserId;
 import reactor.core.publisher.Flux;
 import reactor.core.publisher.Mono;
@@ -8,7 +9,15 @@ import reactor.core.publisher.Mono;
 public interface ConversationRepository {
 	Mono<ConversationTurn> save(ConversationTurn turn);
 
-	Flux<ConversationTurn> findRecent(UserId userId, int limit);
+	Flux<ConversationTurn> findRecent(PersonaId personaId, UserId userId, int limit);
 
-	Flux<ConversationTurn> findAll(UserId userId);
+	Flux<ConversationTurn> findAll(PersonaId personaId, UserId userId);
+
+	default Flux<ConversationTurn> findRecent(UserId userId, int limit) {
+		return findRecent(PersonaId.defaultPersona(), userId, limit);
+	}
+
+	default Flux<ConversationTurn> findAll(UserId userId) {
+		return findAll(PersonaId.defaultPersona(), userId);
+	}
 }

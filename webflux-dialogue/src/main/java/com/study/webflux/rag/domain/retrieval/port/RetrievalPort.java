@@ -1,5 +1,6 @@
 package com.study.webflux.rag.domain.retrieval.port;
 
+import com.study.webflux.rag.domain.dialogue.model.PersonaId;
 import com.study.webflux.rag.domain.dialogue.model.UserId;
 import com.study.webflux.rag.domain.memory.model.MemoryRetrievalResult;
 import com.study.webflux.rag.domain.retrieval.model.RetrievalContext;
@@ -13,22 +14,41 @@ public interface RetrievalPort {
 	/**
 	 * 주어진 쿼리에 대해 상위 K개의 관련 문서를 검색합니다.
 	 *
+	 * @param personaId
+	 *            페르소나 ID
+	 * @param userId
+	 *            사용자 ID
 	 * @param query
 	 *            검색 쿼리
 	 * @param topK
 	 *            검색할 상위 문서 수
 	 * @return 검색 결과 컨텍스트
 	 */
-	Mono<RetrievalContext> retrieve(UserId userId, String query, int topK);
+	Mono<RetrievalContext> retrieve(PersonaId personaId, UserId userId, String query, int topK);
+
+	default Mono<RetrievalContext> retrieve(UserId userId, String query, int topK) {
+		return retrieve(PersonaId.defaultPersona(), userId, query, topK);
+	}
 
 	/**
 	 * 벡터 메모리에서 상위 K개의 관련 항목을 검색합니다.
 	 *
+	 * @param personaId
+	 *            페르소나 ID
+	 * @param userId
+	 *            사용자 ID
 	 * @param query
 	 *            검색 쿼리
 	 * @param topK
 	 *            검색할 상위 메모리 수
 	 * @return 검색된 메모리 결과
 	 */
-	Mono<MemoryRetrievalResult> retrieveMemories(UserId userId, String query, int topK);
+	Mono<MemoryRetrievalResult> retrieveMemories(PersonaId personaId,
+		UserId userId,
+		String query,
+		int topK);
+
+	default Mono<MemoryRetrievalResult> retrieveMemories(UserId userId, String query, int topK) {
+		return retrieveMemories(PersonaId.defaultPersona(), userId, query, topK);
+	}
 }

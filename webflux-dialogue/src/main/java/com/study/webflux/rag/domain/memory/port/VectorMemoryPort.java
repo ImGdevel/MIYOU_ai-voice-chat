@@ -3,6 +3,7 @@ package com.study.webflux.rag.domain.memory.port;
 import java.time.Instant;
 import java.util.List;
 
+import com.study.webflux.rag.domain.dialogue.model.PersonaId;
 import com.study.webflux.rag.domain.dialogue.model.UserId;
 import com.study.webflux.rag.domain.memory.model.Memory;
 import com.study.webflux.rag.domain.memory.model.MemoryType;
@@ -28,6 +29,10 @@ public interface VectorMemoryPort {
 	/**
 	 * 벡터 임베딩을 기반으로 메모리를 검색합니다.
 	 *
+	 * @param personaId
+	 *            페르소나 ID
+	 * @param userId
+	 *            사용자 ID
 	 * @param queryEmbedding
 	 *            검색 쿼리의 벡터 임베딩
 	 * @param types
@@ -38,11 +43,21 @@ public interface VectorMemoryPort {
 	 *            검색할 상위 메모리 개수
 	 * @return 검색된 메모리 항목들의 Flux 스트림
 	 */
-	Flux<Memory> search(UserId userId,
+	Flux<Memory> search(PersonaId personaId,
+		UserId userId,
 		List<Float> queryEmbedding,
 		List<MemoryType> types,
 		float importanceThreshold,
 		int topK);
+
+	default Flux<Memory> search(UserId userId,
+		List<Float> queryEmbedding,
+		List<MemoryType> types,
+		float importanceThreshold,
+		int topK) {
+		return search(PersonaId
+			.defaultPersona(), userId, queryEmbedding, types, importanceThreshold, topK);
+	}
 
 	/**
 	 * 메모리의 중요도를 업데이트합니다.
