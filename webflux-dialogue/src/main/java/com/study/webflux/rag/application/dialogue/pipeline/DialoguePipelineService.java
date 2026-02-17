@@ -9,6 +9,7 @@ import com.study.webflux.rag.application.dialogue.pipeline.stage.DialogueLlmStre
 import com.study.webflux.rag.application.dialogue.pipeline.stage.DialoguePostProcessingService;
 import com.study.webflux.rag.application.dialogue.pipeline.stage.DialogueTtsStreamService;
 import com.study.webflux.rag.application.monitoring.aop.MonitoredPipeline;
+import com.study.webflux.rag.domain.dialogue.model.PersonaId;
 import com.study.webflux.rag.domain.dialogue.model.UserId;
 import com.study.webflux.rag.domain.dialogue.port.DialoguePipelineUseCase;
 import com.study.webflux.rag.domain.voice.model.AudioFormat;
@@ -30,10 +31,13 @@ public class DialoguePipelineService implements DialoguePipelineUseCase {
 	 */
 	@Override
 	@MonitoredPipeline
-	public Flux<byte[]> executeAudioStreaming(UserId userId, String text, AudioFormat format) {
+	public Flux<byte[]> executeAudioStreaming(PersonaId personaId,
+		UserId userId,
+		String text,
+		AudioFormat format) {
 		AudioFormat targetFormat = format != null ? format : defaultAudioFormat;
 
-		Mono<PipelineInputs> inputsMono = prepareCachedInputs(userId, text);
+		Mono<PipelineInputs> inputsMono = prepareCachedInputs(personaId, userId, text);
 		Mono<Void> ttsWarmup = ttsStreamService.prepareTtsWarmup();
 
 		Flux<String> llmTokens = llmStreamService.buildLlmTokenStream(inputsMono);
@@ -51,8 +55,8 @@ public class DialoguePipelineService implements DialoguePipelineUseCase {
 	 */
 	@Override
 	@MonitoredPipeline
-	public Flux<String> executeTextOnly(UserId userId, String text) {
-		Mono<PipelineInputs> inputsMono = prepareCachedInputs(userId, text);
+	public Flux<String> executeTextOnly(PersonaId personaId, UserId userId, String text) {
+		Mono<PipelineInputs> inputsMono = prepareCachedInputs(personaId, userId, text);
 
 		Flux<String> llmTokens = llmStreamService.buildLlmTokenStream(inputsMono);
 		Flux<String> textStream = llmTokens.cache();
@@ -62,8 +66,10 @@ public class DialoguePipelineService implements DialoguePipelineUseCase {
 		return appendPostProcessing(textStream, postProcessing);
 	}
 
-	private Mono<PipelineInputs> prepareCachedInputs(UserId userId, String text) {
-		return inputService.prepareInputs(userId, text).cache();
+	private Mono<PipelineInputs> prepareCachedInputs(PersonaId personaId,
+		UserId userId,
+		String text) {
+		return inputService.prepareInputs(personaId, userId, text).cache();
 	}
 
 	/**
