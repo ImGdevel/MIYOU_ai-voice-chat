@@ -238,6 +238,12 @@ async function streamAudio() {
         return;
     }
 
+    if (!currentSessionId) {
+        updateStatusText('세션이 없습니다. 페르소나를 선택하세요.');
+        showPersonaModal();
+        return;
+    }
+
     updateStatusText(queryText);
 
     const overlay = document.getElementById('inputOverlay');
@@ -254,12 +260,6 @@ async function streamAudio() {
 }
 
 async function streamTextOnly(queryText, sendBtn) {
-    if (!currentSessionId) {
-        updateStatusText('세션이 없습니다. 페르소나를 선택하세요.');
-        showPersonaModal();
-        return;
-    }
-
     try {
         const response = await fetch('/rag/dialogue/text', {
             method: 'POST',
@@ -316,12 +316,6 @@ async function streamTextOnly(queryText, sendBtn) {
 }
 
 async function streamWithVoice(queryText, sendBtn) {
-    if (!currentSessionId) {
-        updateStatusText('세션이 없습니다. 페르소나를 선택하세요.');
-        showPersonaModal();
-        return;
-    }
-
     startVisualizer();
 
     const audioElement = document.getElementById('audio');
