@@ -177,8 +177,7 @@ rollback() {
 
   # 트래픽을 active로 복구
   sed -i -E "s/app_(blue|green):8081/${active_service}:8081/g" deploy/nginx/default.conf
-  docker exec miyou-nginx nginx -t >/dev/null 2>&1 || true
-  docker exec miyou-nginx nginx -s reload >/dev/null 2>&1 || true
+  APP_IMAGE="${app_image}" docker compose -f docker-compose.app.yml up -d --no-deps --force-recreate nginx >/dev/null 2>&1 || true
 
   # candidate 비정상 상태 정리 (실패 중 재시작 루프 방지)
   APP_IMAGE="${app_image}" docker compose -f docker-compose.app.yml stop "${candidate_service}" >/dev/null 2>&1 || true
@@ -212,8 +211,7 @@ fi
 
 sed -i -E "s/app_(blue|green):8081/${candidate_service}:8081/g" deploy/nginx/default.conf
 
-docker exec miyou-nginx nginx -t
-docker exec miyou-nginx nginx -s reload
+APP_IMAGE="${app_image}" docker compose -f docker-compose.app.yml up -d --no-deps --force-recreate nginx
 switched="true"
 
 if ! curl -fsS http://127.0.0.1/actuator/health | grep -q '"status":"UP"'; then
