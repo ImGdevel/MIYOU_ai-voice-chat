@@ -37,19 +37,19 @@
 6. `notify`: Discord Embed 알림 전송
 
 ## 3. 배포 스크립트 역할
-- `scripts/aws/deploy_remote_compose.sh`
+- `deploy/aws/deploy_remote_compose.sh`
   - compose, env, nginx conf 동기화
   - SSM에서 `.env.deploy` 생성
   - 현재 활성 색상(`.active_color`) 기준 서비스 pull/up
   - self-heal watchdog cron(1분 주기) 설치
   - 마지막 배포 이미지 `.app_image` 기록
-- `scripts/aws/deploy_remote_nginx.sh`
+- `deploy/aws/deploy_remote_nginx.sh`
   - nginx conf 동기화
   - 현재 활성 색상 기준 proxy 대상 반영
   - nginx 컨테이너 `--force-recreate`로 설정 반영 일관성 확보
   - active 슬롯 미실행 시 fallback 슬롯 자동 전환
   - blue/green 둘 다 미실행 시 active 슬롯 선기동 후 nginx 재생성
-- `scripts/aws/deploy_remote_blue_green.sh`
+- `deploy/aws/deploy_remote_blue_green.sh`
   - 비활성 슬롯(blue/green) 이미지 pull/up
   - 후보 슬롯 health check(`/actuator/health`) 통과 시 Nginx 스위치
   - 스위치 후 health 재검증 실패 시 즉시 롤백

@@ -125,13 +125,13 @@ jobs:
           USE_SSM: "false"
         shell: bash
         run: |
-          bash ./scripts/aws/deploy_remote_prometheus.sh "monitoring-target"
+          bash ./deploy/aws/deploy_remote_prometheus.sh "monitoring-target"
 
       - name: Alloy 배포 (옵션)
         if: ${{ github.event.inputs.deploy_alloy == 'true' }}
         shell: bash
         run: |
-          bash ./scripts/aws/deploy_remote_alloy.sh "app-target"
+          bash ./deploy/aws/deploy_remote_alloy.sh "app-target"
 
   deploy-private-runner:
     if: ${{ github.event.inputs.deploy_mode == 'private_runner' }}
@@ -230,10 +230,10 @@ jobs:
           USE_SSM: "false"
         shell: bash
         run: |
-          bash ./scripts/aws/deploy_remote_prometheus.sh "monitoring-target"
+          bash ./deploy/aws/deploy_remote_prometheus.sh "monitoring-target"
 
       - name: Alloy 배포 (옵션)
         if: ${{ github.event.inputs.deploy_alloy == 'true' }}
         shell: bash
         run: |
-          bash ./scripts/aws/deploy_remote_alloy.sh "app-target"
+          bash ./deploy/aws/deploy_remote_alloy.sh "app-target"
