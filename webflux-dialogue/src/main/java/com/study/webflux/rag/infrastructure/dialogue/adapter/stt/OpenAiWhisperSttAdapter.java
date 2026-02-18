@@ -33,6 +33,11 @@ public class OpenAiWhisperSttAdapter implements SttPort {
 
 	@Override
 	public Mono<String> transcribe(AudioTranscriptionInput input) {
+		log.info("STT 변환 요청 - fileName: {}, contentType: {}, size: {} bytes",
+			input.fileName(),
+			input.contentType(),
+			input.audioBytes().length);
+
 		MultipartBodyBuilder builder = new MultipartBodyBuilder();
 		builder.part("model", model);
 		if (input.language() != null && !input.language().isBlank()) {
@@ -55,10 +60,17 @@ public class OpenAiWhisperSttAdapter implements SttPort {
 			.contentType(MediaType.MULTIPART_FORM_DATA)
 			.body(BodyInserters.fromMultipartData(builder.build()))
 			.retrieve()
+			.onStatus(status -> status.is4xxClientError() || status.is5xxServerError(),
+				response -> response.bodyToMono(String.class)
+					.doOnNext(body -> log.error("OpenAI API 에러 - status: {}, body: {}",
+						response.statusCode(),
+						body))
+					.then(Mono.error(new RuntimeException(
+						"OpenAI API 에러: " + response.statusCode()))))
 			.bodyToMono(OpenAiTranscriptionResponse.class)
 			.map(OpenAiTranscriptionResponse::text)
 			.doOnSuccess(
-				text -> log.debug("STT 변환 완료: {} chars", text != null ? text.length() : 0));
+				text -> log.info("STT 변환 완료: {} chars", text != null ? text.length() : 0));
 	}
 
 	private String normalizeBaseUrl(String baseUrl) {
