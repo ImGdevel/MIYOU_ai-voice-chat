@@ -10,6 +10,8 @@ let canvas;
 let canvasCtx;
 let shuffledIndices = [];
 let isPlaying = false;
+let currentSessionId = null;
+let currentPersonaId = null;
 
 function getOrCreateUserId() {
     const storageKey = 'miyou-user-id';
@@ -25,6 +27,58 @@ function getOrCreateUserId() {
 
     localStorage.setItem(storageKey, newUserId);
     return newUserId;
+}
+
+async function createSession(personaId) {
+    try {
+        const response = await fetch('/rag/dialogue/session', {
+            method: 'POST',
+            headers: {
+                'Content-Type': 'application/json',
+            },
+            body: JSON.stringify({
+                userId: getOrCreateUserId(),
+                personaId: personaId
+            })
+        });
+
+        if (!response.ok) {
+            throw new Error(`HTTP error! status: ${response.status}`);
+        }
+
+        const sessionData = await response.json();
+        currentSessionId = sessionData.sessionId;
+        currentPersonaId = sessionData.personaId;
+
+        console.log('Session created:', sessionData);
+        return sessionData;
+    } catch (error) {
+        console.error('Error creating session:', error);
+        updateStatusText('세션 생성 실패');
+        throw error;
+    }
+}
+
+function showPersonaModal() {
+    const modal = document.getElementById('personaModal');
+    modal.classList.remove('hidden');
+}
+
+function hidePersonaModal() {
+    const modal = document.getElementById('personaModal');
+    modal.classList.add('hidden');
+}
+
+async function selectPersona(personaId) {
+    hidePersonaModal();
+    updateStatusText('세션 생성 중...');
+
+    try {
+        await createSession(personaId);
+        updateStatusText('대화를 시작하려면 화면을 탭하세요');
+    } catch (error) {
+        showPersonaModal();
+    }
 }
 
 function shuffleArray(array) {
@@ -200,6 +254,12 @@ async function streamAudio() {
 }
 
 async function streamTextOnly(queryText, sendBtn) {
+    if (!currentSessionId) {
+        updateStatusText('세션이 없습니다. 페르소나를 선택하세요.');
+        showPersonaModal();
+        return;
+    }
+
     try {
         const response = await fetch('/rag/dialogue/text', {
             method: 'POST',
@@ -207,7 +267,7 @@ async function streamTextOnly(queryText, sendBtn) {
                 'Content-Type': 'application/json',
             },
             body: JSON.stringify({
-                userId: getOrCreateUserId(),
+                sessionId: currentSessionId,
                 text: queryText,
                 requestedAt: new Date().toISOString()
             })
@@ -256,6 +316,12 @@ async function streamTextOnly(queryText, sendBtn) {
 }
 
 async function streamWithVoice(queryText, sendBtn) {
+    if (!currentSessionId) {
+        updateStatusText('세션이 없습니다. 페르소나를 선택하세요.');
+        showPersonaModal();
+        return;
+    }
+
     startVisualizer();
 
     const audioElement = document.getElementById('audio');
@@ -276,7 +342,7 @@ async function streamWithVoice(queryText, sendBtn) {
                         'Content-Type': 'application/json',
                     },
                     body: JSON.stringify({
-                        userId: getOrCreateUserId(),
+                        sessionId: currentSessionId,
                         text: queryText,
                         requestedAt: new Date().toISOString()
                     })
@@ -339,7 +405,19 @@ document.addEventListener('DOMContentLoaded', () => {
     animationId = 1;
     drawVisualizer();
 
+    // Persona card click events
+    document.querySelectorAll('.persona-card').forEach(card => {
+        card.addEventListener('click', () => {
+            const personaId = card.getAttribute('data-persona');
+            selectPersona(personaId);
+        });
+    });
+
     document.querySelector('.voice-container').addEventListener('click', (e) => {
+        if (!currentSessionId) {
+            showPersonaModal();
+            return;
+        }
         const clickY = e.clientY;
         const windowHeight = window.innerHeight;
 
