@@ -81,6 +81,6 @@ public interface DialogueApi {
 	Mono<SttDialogueResponse> ragDialogueSttText(
 		@Parameter(description = "전사할 오디오 파일") @RequestPart("audio") FilePart audioFile,
 		@Parameter(description = "언어 코드(예: ko, en). 생략 시 기본 언어 사용", example = "ko") @RequestParam(required = false) String language,
-		@Parameter(description = "사용자 ID. 생략 시 서버에서 임의 생성", example = "550e8400-e29b-41d4-a716-446655440000") @RequestParam(required = false) String userId
+		@Parameter(description = "세션 ID", example = "550e8400-e29b-41d4-a716-446655440000") @RequestParam @jakarta.validation.constraints.NotBlank String sessionId
 	);
 }
