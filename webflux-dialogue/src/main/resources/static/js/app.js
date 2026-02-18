@@ -326,12 +326,7 @@ async function sendAudioForTranscription(audioBlob, mimeType) {
             extension: extension
         });
 
-        const endpoint = voiceEnabled ? '/rag/dialogue/stt/text' : '/rag/dialogue/stt';
-        const url = new URL(endpoint, window.location.origin);
-
-        if (voiceEnabled) {
-            url.searchParams.append('sessionId', currentSessionId);
-        }
+        const url = new URL('/rag/dialogue/stt', window.location.origin);
         url.searchParams.append('language', 'ko');
 
         console.log('Request URL:', url.toString());
@@ -348,27 +343,24 @@ async function sendAudioForTranscription(audioBlob, mimeType) {
         }
 
         const result = await response.json();
+        const transcription = typeof result === 'string'
+            ? result
+            : result.transcription;
 
-        if (voiceEnabled && result.response) {
-            updateStatusText(result.transcription);
-            document.getElementById('queryText').value = result.transcription;
+        if (!transcription) {
+            throw new Error('응답에서 transcription을 찾을 수 없습니다');
+        }
 
-            await playTextResponse(result.response);
-        } else {
-            const transcription = typeof result === 'string'
-                ? result
-                : result.transcription;
-            if (!transcription) {
-                throw new Error('응답에서 transcription을 찾을 수 없습니다');
-            }
-            updateStatusText(transcription);
-            document.getElementById('queryText').value = transcription;
+        updateStatusText(transcription);
+        document.getElementById('queryText').value = transcription;
+
+        if (voiceEnabled) {
+            await streamWithVoice(transcription, sendBtn);
         }
 
     } catch (error) {
         console.error('Transcription error:', error);
         updateStatusText('음성 변환 실패');
-    } finally {
         sendBtn.disabled = false;
     }
 }
