@@ -9,8 +9,7 @@ import com.study.webflux.rag.application.dialogue.pipeline.stage.DialogueLlmStre
 import com.study.webflux.rag.application.dialogue.pipeline.stage.DialoguePostProcessingService;
 import com.study.webflux.rag.application.dialogue.pipeline.stage.DialogueTtsStreamService;
 import com.study.webflux.rag.application.monitoring.aop.MonitoredPipeline;
-import com.study.webflux.rag.domain.dialogue.model.PersonaId;
-import com.study.webflux.rag.domain.dialogue.model.UserId;
+import com.study.webflux.rag.domain.dialogue.model.ConversationSession;
 import com.study.webflux.rag.domain.dialogue.port.DialoguePipelineUseCase;
 import com.study.webflux.rag.domain.voice.model.AudioFormat;
 import reactor.core.publisher.Flux;
@@ -26,18 +25,14 @@ public class DialoguePipelineService implements DialoguePipelineUseCase {
 	private final DialoguePostProcessingService postProcessingService;
 	private final AudioFormat defaultAudioFormat = AudioFormat.MP3;
 
-	/**
-	 * 텍스트 입력을 오디오 스트림으로 변환합니다. LLM → 문장 조립 → TTS → 저장/메모리 추출까지 한 번에 실행합니다.
-	 */
 	@Override
 	@MonitoredPipeline
-	public Flux<byte[]> executeAudioStreaming(PersonaId personaId,
-		UserId userId,
+	public Flux<byte[]> executeAudioStreaming(ConversationSession session,
 		String text,
 		AudioFormat format) {
 		AudioFormat targetFormat = format != null ? format : defaultAudioFormat;
 
-		Mono<PipelineInputs> inputsMono = prepareCachedInputs(personaId, userId, text);
+		Mono<PipelineInputs> inputsMono = inputService.prepareInputs(session, text).cache();
 		Mono<Void> ttsWarmup = ttsStreamService.prepareTtsWarmup();
 
 		Flux<String> llmTokens = llmStreamService.buildLlmTokenStream(inputsMono);
@@ -50,13 +45,10 @@ public class DialoguePipelineService implements DialoguePipelineUseCase {
 		return appendPostProcessing(audioStream, postProcessing);
 	}
 
-	/**
-	 * 텍스트 입력을 받아 오디오 변환 없이 LLM 텍스트 스트림을 반환합니다.
-	 */
 	@Override
 	@MonitoredPipeline
-	public Flux<String> executeTextOnly(PersonaId personaId, UserId userId, String text) {
-		Mono<PipelineInputs> inputsMono = prepareCachedInputs(personaId, userId, text);
+	public Flux<String> executeTextOnly(ConversationSession session, String text) {
+		Mono<PipelineInputs> inputsMono = inputService.prepareInputs(session, text).cache();
 
 		Flux<String> llmTokens = llmStreamService.buildLlmTokenStream(inputsMono);
 		Flux<String> textStream = llmTokens.cache();
@@ -66,15 +58,6 @@ public class DialoguePipelineService implements DialoguePipelineUseCase {
 		return appendPostProcessing(textStream, postProcessing);
 	}
 
-	private Mono<PipelineInputs> prepareCachedInputs(PersonaId personaId,
-		UserId userId,
-		String text) {
-		return inputService.prepareInputs(personaId, userId, text).cache();
-	}
-
-	/**
-	 * 메인 스트림 완료 후 후처리 Mono를 이어붙여 저장/메모리추출이 누락되지 않도록 보장합니다.
-	 */
 	private <T> Flux<T> appendPostProcessing(Flux<T> mainStream, Mono<Void> postProcessing) {
 		return mainStream.concatWith(postProcessing.thenMany(Flux.empty()));
 	}

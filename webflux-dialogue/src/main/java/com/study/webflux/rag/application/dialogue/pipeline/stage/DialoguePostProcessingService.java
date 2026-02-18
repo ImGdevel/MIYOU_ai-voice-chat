@@ -76,20 +76,19 @@ public class DialoguePostProcessingService {
 	private Mono<Void> persistConversationAndMaybeExtract(Mono<PipelineInputs> inputsMono,
 		Mono<String> responseMono) {
 		return inputsMono.flatMap(inputs -> {
-			var personaId = inputs.personaId();
-			var userId = inputs.userId();
+			var sessionId = inputs.session().sessionId();
 			return responseMono.flatMap(response -> {
 				conversationMetrics.recordQueryLength(inputs.currentTurn().query().length());
 				conversationMetrics.recordResponseLength(response.length());
 				return persistConversation(inputsMono, response);
 			})
-				.flatMap(turn -> conversationCounterPort.increment(personaId, userId))
+				.flatMap(turn -> conversationCounterPort.increment(sessionId))
 				.doOnNext(count -> {
 					conversationMetrics.recordConversationIncrement();
 					conversationMetrics.recordConversationCount(count);
 				})
 				.filter(count -> count % conversationThreshold == 0)
-				.flatMap(count -> memoryExtractionService.checkAndExtract(personaId, userId));
+				.flatMap(count -> memoryExtractionService.checkAndExtract(sessionId));
 		}).subscribeOn(Schedulers.boundedElastic()).then();
 	}
 
