@@ -12,22 +12,26 @@ public final class RagDialogueRequestFixture {
 	}
 
 	public static RagDialogueRequest create() {
-		return new RagDialogueRequest(UserIdFixture.DEFAULT_USER_ID, DEFAULT_TEXT, Instant.now());
+		return new RagDialogueRequest(ConversationSessionFixture.DEFAULT_SESSION_ID, DEFAULT_TEXT,
+			Instant.now());
 	}
 
 	public static RagDialogueRequest createWithText(String text) {
-		return new RagDialogueRequest(UserIdFixture.DEFAULT_USER_ID, text, Instant.now());
+		return new RagDialogueRequest(ConversationSessionFixture.DEFAULT_SESSION_ID, text,
+			Instant.now());
 	}
 
-	public static RagDialogueRequest createWithUserId(String userId) {
-		return new RagDialogueRequest(userId, DEFAULT_TEXT, Instant.now());
+	public static RagDialogueRequest createWithSessionId(String sessionId) {
+		return new RagDialogueRequest(sessionId, DEFAULT_TEXT, Instant.now());
 	}
 
 	public static RagDialogueRequest createWithBlankText() {
-		return new RagDialogueRequest(UserIdFixture.DEFAULT_USER_ID, "", Instant.now());
+		return new RagDialogueRequest(ConversationSessionFixture.DEFAULT_SESSION_ID, "",
+			Instant.now());
 	}
 
 	public static RagDialogueRequest createWithNullTimestamp() {
-		return new RagDialogueRequest(UserIdFixture.DEFAULT_USER_ID, DEFAULT_TEXT, null);
+		return new RagDialogueRequest(ConversationSessionFixture.DEFAULT_SESSION_ID, DEFAULT_TEXT,
+			null);
 	}
 }
