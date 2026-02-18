@@ -6,8 +6,10 @@ import com.study.webflux.rag.application.dialogue.pipeline.stage.DialogueInputSe
 import com.study.webflux.rag.application.dialogue.pipeline.stage.DialogueLlmStreamService;
 import com.study.webflux.rag.application.dialogue.pipeline.stage.DialoguePostProcessingService;
 import com.study.webflux.rag.application.dialogue.pipeline.stage.DialogueTtsStreamService;
-import com.study.webflux.rag.domain.dialogue.model.UserId;
+import com.study.webflux.rag.domain.dialogue.model.ConversationSession;
+import com.study.webflux.rag.domain.dialogue.model.ConversationTurn;
 import com.study.webflux.rag.domain.voice.model.AudioFormat;
+import com.study.webflux.rag.fixture.ConversationSessionFixture;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Test;
@@ -52,12 +54,12 @@ class DialoguePipelineServiceTest {
 	@Test
 	@DisplayName("오디오 스트리밍 실행 시 전체 파이프라인 스테이지를 순차 호출한다")
 	void executeAudioStreaming_shouldUseDelegatedFlows() {
-		UserId userId = UserId.of("user-1");
+		ConversationSession session = ConversationSessionFixture.create();
 		String testText = "test";
-		PipelineInputs inputs = new PipelineInputs(userId, null, null, null,
-			com.study.webflux.rag.domain.dialogue.model.ConversationTurn.create(userId, testText));
+		PipelineInputs inputs = new PipelineInputs(session, null, null, null,
+			ConversationTurn.create(session.sessionId(), testText));
 
-		when(inputService.prepareInputs(eq(userId), eq(testText))).thenReturn(Mono.just(inputs));
+		when(inputService.prepareInputs(eq(session), eq(testText))).thenReturn(Mono.just(inputs));
 		when(ttsStreamService.prepareTtsWarmup()).thenReturn(Mono.empty());
 		when(llmStreamService.buildLlmTokenStream(any())).thenReturn(Flux.just("a", "b"));
 		when(ttsStreamService.assembleSentences(any())).thenReturn(Flux.just("ab"));
@@ -67,29 +69,29 @@ class DialoguePipelineServiceTest {
 			.thenReturn(Flux.just("audio".getBytes()));
 		when(postProcessingService.persistAndExtract(any(), any())).thenReturn(Mono.empty());
 
-		StepVerifier.create(service.executeAudioStreaming(userId, testText, AudioFormat.MP3))
+		StepVerifier.create(service.executeAudioStreaming(session, testText, AudioFormat.MP3))
 			.expectNextMatches(bytes -> Arrays.equals(bytes, "audio".getBytes()))
 			.verifyComplete();
 
-		verify(inputService).prepareInputs(userId, testText);
+		verify(inputService).prepareInputs(session, testText);
 		verify(postProcessingService).persistAndExtract(any(), any());
 	}
 
 	@Test
 	@DisplayName("텍스트 전용 실행 시 LLM 토큰 스트림을 반환한다")
 	void executeTextOnly_shouldDelegateToUseCase() {
-		UserId userId = UserId.of("user-1");
+		ConversationSession session = ConversationSessionFixture.create();
 		String testText = "hello";
-		PipelineInputs inputs = new PipelineInputs(userId, null, null, null,
-			com.study.webflux.rag.domain.dialogue.model.ConversationTurn.create(userId, testText));
+		PipelineInputs inputs = new PipelineInputs(session, null, null, null,
+			ConversationTurn.create(session.sessionId(), testText));
 
-		when(inputService.prepareInputs(eq(userId), eq(testText))).thenReturn(Mono.just(inputs));
+		when(inputService.prepareInputs(eq(session), eq(testText))).thenReturn(Mono.just(inputs));
 		when(llmStreamService.buildLlmTokenStream(any())).thenReturn(Flux.just("hi"));
 		when(postProcessingService.persistAndExtractText(any(), any())).thenReturn(Mono.empty());
 
-		StepVerifier.create(service.executeTextOnly(userId, testText)).expectNext("hi")
+		StepVerifier.create(service.executeTextOnly(session, testText)).expectNext("hi")
 			.verifyComplete();
 
-		verify(inputService, times(1)).prepareInputs(userId, testText);
+		verify(inputService, times(1)).prepareInputs(session, testText);
 	}
 }

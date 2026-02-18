@@ -2,12 +2,13 @@ package com.study.webflux.rag.application.dialogue.pipeline.stage;
 
 import java.util.List;
 
-import com.study.webflux.rag.domain.dialogue.model.UserId;
+import com.study.webflux.rag.domain.dialogue.model.ConversationSessionId;
 import com.study.webflux.rag.domain.memory.model.Memory;
 import com.study.webflux.rag.domain.memory.model.MemoryRetrievalResult;
 import com.study.webflux.rag.domain.memory.model.MemoryType;
 import com.study.webflux.rag.domain.retrieval.model.RetrievalContext;
 import com.study.webflux.rag.domain.retrieval.model.RetrievalDocument;
+import com.study.webflux.rag.fixture.ConversationSessionFixture;
 import com.study.webflux.rag.infrastructure.common.template.FileBasedPromptTemplate;
 import com.study.webflux.rag.infrastructure.dialogue.config.properties.RagDialogueProperties;
 import org.junit.jupiter.api.BeforeEach;
@@ -43,10 +44,10 @@ class SystemPromptServiceTest {
 
 		SystemPromptService service = new SystemPromptService(promptTemplate, properties);
 
-		UserId userId = UserId.of("user-1");
-		Memory experiential = Memory.create(userId, MemoryType.EXPERIENTIAL, "사용자는 러닝을 좋아한다.",
+		ConversationSessionId sessionId = ConversationSessionFixture.createId();
+		Memory experiential = Memory.create(sessionId, MemoryType.EXPERIENTIAL, "사용자는 러닝을 좋아한다.",
 			0.8f);
-		Memory factual = Memory.create(userId, MemoryType.FACTUAL, "사용자의 직업은 개발자다.", 0.9f);
+		Memory factual = Memory.create(sessionId, MemoryType.FACTUAL, "사용자의 직업은 개발자다.", 0.9f);
 		MemoryRetrievalResult memories = MemoryRetrievalResult.of(List.of(experiential),
 			List.of(factual));
 		RetrievalContext context = RetrievalContext.of("사용자 취미",
