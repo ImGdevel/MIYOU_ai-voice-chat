@@ -44,11 +44,17 @@ public class LoadBalancedSupertoneTtsAdapter implements TtsPort {
 
 	@Override
 	public Flux<byte[]> streamSynthesize(String text, AudioFormat format) {
-		return streamSynthesizeWithRetry(text, format, 0);
+		return streamSynthesize(text, format, this.voice);
+	}
+
+	@Override
+	public Flux<byte[]> streamSynthesize(String text, AudioFormat format, Voice voice) {
+		return streamSynthesizeWithRetry(text, format, voice, 0);
 	}
 
 	private Flux<byte[]> streamSynthesizeWithRetry(String text,
 		AudioFormat format,
+		Voice voice,
 		int attemptCount) {
 		if (attemptCount >= 2) {
 			return Flux.error(new RuntimeException("모든 TTS 엔드포인트 요청 실패: 최대 재시도 횟수 초과"));
@@ -62,7 +68,7 @@ public class LoadBalancedSupertoneTtsAdapter implements TtsPort {
 			endpoint.getActiveRequests(),
 			attemptCount + 1);
 
-		return synthesizeWithEndpoint(endpoint, text, format)
+		return synthesizeWithEndpoint(endpoint, text, format, voice)
 			// 클라이언트가 요청을 취소해도 activeRequests 카운트가 정확히 유지되도록 doOnCancel 추가
 			.doOnCancel(() -> {
 				endpoint.decrementActiveRequests();
@@ -88,13 +94,14 @@ public class LoadBalancedSupertoneTtsAdapter implements TtsPort {
 				log.warn("엔드포인트 {} 장애로 다른 엔드포인트로 재시도 ({}회차)",
 					endpoint.getId(),
 					attemptCount + 2);
-				return streamSynthesizeWithRetry(text, format, attemptCount + 1);
+				return streamSynthesizeWithRetry(text, format, voice, attemptCount + 1);
 			});
 	}
 
 	private Flux<byte[]> synthesizeWithEndpoint(TtsEndpoint endpoint,
 		String text,
-		AudioFormat format) {
+		AudioFormat format,
+		Voice voice) {
 		AudioFormat outputFormat = format != null ? format : voice.getOutputFormat();
 		var settings = voice.getSettings();
 		var voiceSettings = Map.of("pitch_shift",
@@ -133,7 +140,12 @@ public class LoadBalancedSupertoneTtsAdapter implements TtsPort {
 
 	@Override
 	public Mono<byte[]> synthesize(String text, AudioFormat format) {
-		return streamSynthesize(text, format).collectList().map(byteArrays -> {
+		return synthesize(text, format, this.voice);
+	}
+
+	@Override
+	public Mono<byte[]> synthesize(String text, AudioFormat format, Voice voice) {
+		return streamSynthesize(text, format, voice).collectList().map(byteArrays -> {
 			int totalSize = byteArrays.stream().mapToInt(arr -> arr.length).sum();
 			byte[] result = new byte[totalSize];
 			int offset = 0;
