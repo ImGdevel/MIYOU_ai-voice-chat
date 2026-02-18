@@ -14,5 +14,5 @@
 SSH_OPTS='-i /path/to/key.pem -o StrictHostKeyChecking=no' \
 USE_SSM_TARGETS=true \
 SSM_TARGETS_PARAM=/miyou/prod/APP_METRICS_TARGETS \
-bash ./scripts/aws/deploy_remote_prometheus.sh ubuntu@13.124.219.63
+bash ./scripts/aws/deploy_remote_prometheus.sh ubuntu@<MONITORING_SERVER_IP>
 ```
