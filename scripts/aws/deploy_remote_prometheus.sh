@@ -53,7 +53,7 @@ cat > "${TMP_TARGET_FILE}" <<EOF
 [
   {
     "labels": {
-      "service": "miyou-app",
+      "service": "miyou-dialogue",
       "env": "prod"
     },
     "targets": [
