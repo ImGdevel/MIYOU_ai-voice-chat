@@ -16,15 +16,15 @@ SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
 PROJECT_ROOT="$(cd "${SCRIPT_DIR}/../.." && pwd)"
 
 echo "[alloy] Prepare remote dir: ${REMOTE_DIR}/monitoring/alloy"
-ssh ${SSH_OPTS} "${HOST_ALIAS}" "mkdir -p '${REMOTE_DIR}/monitoring/alloy'"
+ssh ${SSH_OPTS} "${HOST_ALIAS}" "mkdir -p '${REMOTE_DIR}/deploy' '${REMOTE_DIR}/monitoring/alloy'"
 
 echo "[alloy] Upload compose and config"
-scp ${SSH_OPTS} "${PROJECT_ROOT}/docker-compose.alloy.yml" "${HOST_ALIAS}:${REMOTE_DIR}/docker-compose.alloy.yml"
+scp ${SSH_OPTS} "${PROJECT_ROOT}/deploy/docker-compose.alloy.yml" "${HOST_ALIAS}:${REMOTE_DIR}/deploy/docker-compose.alloy.yml"
 scp ${SSH_OPTS} "${PROJECT_ROOT}/monitoring/alloy/config.alloy" "${HOST_ALIAS}:${REMOTE_DIR}/monitoring/alloy/config.alloy"
 
 echo "[alloy] Start alloy container"
 ssh ${SSH_OPTS} "${HOST_ALIAS}" \
-  "cd '${REMOTE_DIR}' && LOKI_WRITE_URL='${LOKI_WRITE_URL}' ALLOY_INSTANCE='${ALLOY_INSTANCE}' docker compose -f docker-compose.alloy.yml up -d alloy"
+  "cd '${REMOTE_DIR}' && LOKI_WRITE_URL='${LOKI_WRITE_URL}' ALLOY_INSTANCE='${ALLOY_INSTANCE}' docker compose -f deploy/docker-compose.alloy.yml up -d alloy"
 
 echo "[alloy] Service status"
 ssh ${SSH_OPTS} "${HOST_ALIAS}" "docker ps --filter 'name=miyou-alloy' --format 'table {{.Names}}\t{{.Image}}\t{{.Status}}'"

@@ -17,7 +17,7 @@ echo "[blue-green] Prepare remote dir: ${REMOTE_DIR}"
 ssh "${HOST_ALIAS}" "mkdir -p '${REMOTE_DIR}/deploy/nginx'"
 
 echo "[blue-green] Upload compose files and nginx config"
-scp docker-compose.app.yml "${HOST_ALIAS}:${REMOTE_DIR}/docker-compose.app.yml"
+scp deploy/docker-compose.app.yml "${HOST_ALIAS}:${REMOTE_DIR}/deploy/docker-compose.app.yml"
 scp .env.deploy.example "${HOST_ALIAS}:${REMOTE_DIR}/.env.deploy.example"
 scp deploy/nginx/default.conf "${HOST_ALIAS}:${REMOTE_DIR}/deploy/nginx/default.conf"
 ssh "${HOST_ALIAS}" "mkdir -p '${REMOTE_DIR}/scripts' '${REMOTE_DIR}/logs'"
@@ -173,14 +173,14 @@ rollback() {
   echo "[blue-green] Rollback triggered"
 
   # active 슬롯이 내려갔을 수 있으므로 우선 재기동 시도
-  APP_IMAGE="${app_image}" docker compose -f docker-compose.app.yml up -d --no-deps "${active_service}" >/dev/null 2>&1 || true
+  APP_IMAGE="${app_image}" docker compose -f deploy/docker-compose.app.yml up -d --no-deps "${active_service}" >/dev/null 2>&1 || true
 
   # 트래픽을 active로 복구
   sed -i -E "s/app_(blue|green):8081/${active_service}:8081/g" deploy/nginx/default.conf
-  APP_IMAGE="${app_image}" docker compose -f docker-compose.app.yml up -d --no-deps --force-recreate nginx >/dev/null 2>&1 || true
+  APP_IMAGE="${app_image}" docker compose -f deploy/docker-compose.app.yml up -d --no-deps --force-recreate nginx >/dev/null 2>&1 || true
 
   # candidate 비정상 상태 정리 (실패 중 재시작 루프 방지)
-  APP_IMAGE="${app_image}" docker compose -f docker-compose.app.yml stop "${candidate_service}" >/dev/null 2>&1 || true
+  APP_IMAGE="${app_image}" docker compose -f deploy/docker-compose.app.yml stop "${candidate_service}" >/dev/null 2>&1 || true
   echo "[blue-green] Rollback finished (active=${active_service})"
 }
 
@@ -188,9 +188,9 @@ trap 'rollback' ERR
 
 sed -i -E "s/app_(blue|green):8081/${active_service}:8081/g" deploy/nginx/default.conf
 
-APP_IMAGE="${app_image}" docker compose -f docker-compose.app.yml pull "${candidate_service}"
-APP_IMAGE="${app_image}" docker compose -f docker-compose.app.yml up -d mongodb redis qdrant nginx
-APP_IMAGE="${app_image}" docker compose -f docker-compose.app.yml up -d --no-deps "${candidate_service}"
+APP_IMAGE="${app_image}" docker compose -f deploy/docker-compose.app.yml pull "${candidate_service}"
+APP_IMAGE="${app_image}" docker compose -f deploy/docker-compose.app.yml up -d mongodb redis qdrant nginx
+APP_IMAGE="${app_image}" docker compose -f deploy/docker-compose.app.yml up -d --no-deps "${candidate_service}"
 
 health_ok="false"
 for attempt in $(seq 1 "${health_retries}"); do
@@ -211,7 +211,7 @@ fi
 
 sed -i -E "s/app_(blue|green):8081/${candidate_service}:8081/g" deploy/nginx/default.conf
 
-APP_IMAGE="${app_image}" docker compose -f docker-compose.app.yml up -d --no-deps --force-recreate nginx
+APP_IMAGE="${app_image}" docker compose -f deploy/docker-compose.app.yml up -d --no-deps --force-recreate nginx
 switched="true"
 
 if ! curl -fsS http://127.0.0.1/actuator/health | grep -q '"status":"UP"'; then
@@ -242,9 +242,9 @@ fi
 if [[ "${stop_timeout_seconds}" =~ ^[0-9]+$ ]] && [[ "${stop_timeout_seconds}" -gt 0 ]]; then
   docker stop -t "${stop_timeout_seconds}" "miyou-dialogue-app-${active}" >/dev/null 2>&1 || true
 else
-  APP_IMAGE="${app_image}" docker compose -f docker-compose.app.yml stop "${active_service}" || true
+  APP_IMAGE="${app_image}" docker compose -f deploy/docker-compose.app.yml stop "${active_service}" || true
 fi
-APP_IMAGE="${app_image}" docker compose -f docker-compose.app.yml rm -f "${active_service}" || true
+APP_IMAGE="${app_image}" docker compose -f deploy/docker-compose.app.yml rm -f "${active_service}" || true
 docker rm -f miyou-dialogue-app >/dev/null 2>&1 || true
 echo "${candidate}" > .active_color
 echo "${app_image}" > .app_image

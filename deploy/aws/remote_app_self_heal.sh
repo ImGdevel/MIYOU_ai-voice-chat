@@ -9,7 +9,7 @@ fi
 
 cd "${REMOTE_DIR}"
 
-if [[ ! -f "docker-compose.app.yml" ]]; then
+if [[ ! -f "deploy/docker-compose.app.yml" ]]; then
   exit 0
 fi
 
@@ -43,7 +43,7 @@ if docker ps -a --format '{{.Names}}' | grep -q '^miyou-nginx$'; then
 fi
 
 if [[ -n "${app_image}" ]]; then
-  APP_IMAGE="${app_image}" docker compose -f docker-compose.app.yml up -d mongodb redis qdrant "${active_service}" nginx
+  APP_IMAGE="${app_image}" docker compose -f deploy/docker-compose.app.yml up -d mongodb redis qdrant "${active_service}" nginx
 else
-  docker compose -f docker-compose.app.yml up -d mongodb redis qdrant "${active_service}" nginx
+  docker compose -f deploy/docker-compose.app.yml up -d mongodb redis qdrant "${active_service}" nginx
 fi

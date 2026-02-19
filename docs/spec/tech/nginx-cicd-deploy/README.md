@@ -2,7 +2,7 @@
 
 ## 1) Background and objective
 - 목적: GitHub Actions 기반 배포 파이프라인과 EC2 Nginx/Blue-Green 운영 절차를 코드 기준으로 문서화
-- 범위: `.github/workflows/ci-cd.yml`, `deploy/aws/deploy_remote_*.sh`, `deploy/nginx/default.conf`, `docker-compose.app.yml`
+- 범위: `.github/workflows/ci-cd.yml`, `deploy/aws/deploy_remote_*.sh`, `deploy/nginx/default.conf`, `deploy/docker-compose.app.yml`
 - 목표:
   - 배포 성공/실패 경로를 운영자가 예측 가능하도록 명확화
   - 장애 시 자동 복구 경로(롤백, self-heal) 정의
@@ -17,7 +17,7 @@
 | Nginx 단독 배포 | `deploy/aws/deploy_remote_nginx.sh` | nginx conf 반영, active 슬롯 정합성 보정 |
 | Self-heal watchdog | `deploy/aws/remote_app_self_heal.sh` | blue/green 둘 다 down 시 active 슬롯 자동 복구 |
 | Nginx 라우팅 | `deploy/nginx/default.conf` | `$app_upstream` 기반 프록시, 모니터링 경로 프록시 |
-| 런타임 토폴로지 | `docker-compose.app.yml` | `app_blue/app_green/nginx/mongodb/redis/qdrant` 컨테이너 정의 |
+| 런타임 토폴로지 | `deploy/docker-compose.app.yml` | `app_blue/app_green/nginx/mongodb/redis/qdrant` 컨테이너 정의 |
 
 현재 상태(Implemented):
 - Blue-Green 전환 후 모니터링(`POST_SWITCH_MONITOR_SECONDS`) + `trap` 롤백
