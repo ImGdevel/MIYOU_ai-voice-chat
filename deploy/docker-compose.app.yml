@@ -83,9 +83,12 @@ services:
     restart: unless-stopped
     ports:
       - "80:80"
+      - "443:443"
     volumes:
       - ./deploy/nginx/default.conf:/etc/nginx/conf.d/default.conf:ro
       - ./deploy/nginx/.htpasswd:/etc/nginx/.htpasswd:ro
+      - ./deploy/certbot/www:/var/www/certbot:ro
+      - ./deploy/certbot/conf:/etc/letsencrypt:ro
     networks:
       - miyou-network
 
