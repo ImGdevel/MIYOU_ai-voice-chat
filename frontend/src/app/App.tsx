@@ -30,18 +30,6 @@ function buildApiUrl(path: string): string {
   return `${API_BASE_URL}${path.startsWith("/") ? path : `/${path}`}`;
 }
 
-function getOrCreateUserId() {
-  const storageKey = "miyou-user-id";
-  const existing = localStorage.getItem(storageKey);
-  if (existing) return existing;
-
-  const next = window.crypto?.randomUUID
-    ? window.crypto.randomUUID()
-    : `${Date.now()}-${Math.random().toString(16).slice(2)}`;
-
-  localStorage.setItem(storageKey, next);
-  return next;
-}
 
 function formatRoomDate(timestamp: number): string {
   const diff = Date.now() - timestamp;
@@ -64,7 +52,6 @@ async function createSession(personaId: string): Promise<SessionResponse> {
       "Content-Type": "application/json",
     },
     body: JSON.stringify({
-      userId: getOrCreateUserId(),
       personaId,
     }),
   });
@@ -73,7 +60,12 @@ async function createSession(personaId: string): Promise<SessionResponse> {
     throw new Error(`세션 생성 실패 (${response.status})`);
   }
 
-  return response.json();
+  const session: SessionResponse = await response.json();
+
+  // 백엔드가 생성한 userId를 로컬스토리지에 저장
+  localStorage.setItem("miyou-user-id", session.userId);
+
+  return session;
 }
 
 async function transcribeAudio(blob: Blob, mimeType: string): Promise<string> {
