@@ -24,17 +24,17 @@
 잡 순서:
 1. `detect-nginx-changes`: 직전 커밋 대비 Nginx 변경 감지
 2. `validate-deploy-contract`: 배포 스크립트 계약 정적 검증
-3. `gradle-build`: 테스트 + `bootJar`
+3. `deploy_nginx`: Nginx 선배포(게이트)
+   - `deploy_scope=full`/`nginx_only` 모두 실행
+   - 실패 시 이후 앱 배포(`deploy`) 차단
+4. `gradle-build`: 테스트 + `bootJar`
    - Gradle build cache 사용(`--build-cache`)
-4. `build-and-push`: Docker 이미지 빌드/푸시
+5. `build-and-push`: Docker 이미지 빌드/푸시
    - Buildx GHA cache scope 고정(`miyou-dialogue-image`)
    - `webflux-dialogue/Dockerfile` Gradle 캐시 마운트 적용
-5. `deploy`: 서버 앱/스토리지 스택 배포
+6. `deploy`: 서버 앱/스토리지 스택 배포
    - `blue_green`: `deploy_remote_blue_green.sh` 실행
    - `rolling`: `deploy_remote_compose.sh` 실행
-6. `deploy_nginx`: 조건부 Nginx 배포
-   - 조건 A: `deploy_nginx=true`
-   - 조건 B: `deploy/nginx/**` 또는 `deploy/docker-compose.app.yml` 변경 감지
 7. `notify`: Discord Embed 알림 전송
 
 ## 3. 배포 스크립트 역할
@@ -124,9 +124,12 @@
 4) `deploy_strategy` 선택
    - `blue_green` (권장): 무중단에 가까운 전환
    - `rolling`: 단순 롤링 방식
-5) `deploy_nginx` 선택
-   - `false`: Nginx 변경 시에만 Nginx 배포
-   - `true`: 변경 감지와 무관하게 Nginx 배포 강제
+5) `deploy_nginx` 입력값
+   - 현재 파이프라인에서는 `deploy_scope=full/nginx_only` 모두 Nginx 선배포를 수행하므로, 해당 입력값은 실질적으로 사용하지 않는다.
+
+슬롯 상태 확인(자동 판별):
+- 로컬/서버에서 실행: `bash scripts/check-active-slot.sh`
+- SSH 별칭으로 원격 확인: `bash scripts/check-active-slot.sh miyou-dev`
 
 ## 9. 트러블슈팅 이력(재발 방지)
 - 수동 실행 버튼 미노출:
@@ -152,6 +155,7 @@
   - 대응: `remote_compose_contract.sh`로 compose 경로 자동 감지/고정(`.compose_app_file`) 및 `.env.deploy` 동기화(`deploy/.env.deploy`) 적용
   - 검증 명령:
     - `bash scripts/validate-deploy-contract.sh`
+    - `bash scripts/check-active-slot.sh miyou-dev`
     - `docker inspect miyou-mongodb --format '{{ index .Config.Labels "com.docker.compose.project.config_files" }}'`
     - `ls -al /opt/app/miyou/.env.deploy /opt/app/miyou/deploy/.env.deploy /opt/app/miyou/.compose_app_file`
 

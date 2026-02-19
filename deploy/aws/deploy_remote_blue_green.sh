@@ -182,12 +182,44 @@ service_running() {
   docker ps --format '{{.Names}}' | grep -q "^miyou-dialogue-app-${color}$"
 }
 
+current_file_upstream_color() {
+  local color
+  color="$(grep -E 'set \$app_upstream app_(blue|green):8081;' deploy/nginx/default.conf \
+    | tail -n1 \
+    | sed -E 's/.*app_(blue|green):8081.*/\1/' || true)"
+  if [[ "${color}" == "blue" || "${color}" == "green" ]]; then
+    printf '%s\n' "${color}"
+  fi
+}
+
+current_runtime_upstream_color() {
+  local color
+  color="$(
+    docker exec miyou-nginx nginx -T 2>/dev/null \
+      | grep -E 'set \$app_upstream app_(blue|green):8081;' \
+      | tail -n1 \
+      | sed -E 's/.*app_(blue|green):8081.*/\1/' || true
+  )"
+  if [[ "${color}" == "blue" || "${color}" == "green" ]]; then
+    printf '%s\n' "${color}"
+  fi
+}
+
 if [[ "${active}" == "blue" ]] && ! service_running "blue" && service_running "green"; then
   echo "[blue-green] Active marker(blue) is stale, align active=green"
   active="green"
 elif [[ "${active}" == "green" ]] && ! service_running "green" && service_running "blue"; then
   echo "[blue-green] Active marker(green) is stale, align active=blue"
   active="blue"
+fi
+
+current_upstream="$(current_runtime_upstream_color)"
+if [[ -z "${current_upstream}" ]]; then
+  current_upstream="$(current_file_upstream_color)"
+fi
+if [[ -n "${current_upstream}" ]] && [[ "${current_upstream}" != "${active}" ]] && service_running "${current_upstream}"; then
+  echo "[blue-green] Active marker(${active}) differs from nginx upstream(${current_upstream}), align active=${current_upstream}"
+  active="${current_upstream}"
 fi
 
 if [[ "${active}" == "blue" ]]; then
@@ -200,7 +232,34 @@ active_service="app_${active}"
 
 echo "[blue-green] Active=${active_service}, Candidate=${candidate_service}"
 
-switched="false"
+fail_with_rollback() {
+  local message="$1"
+  echo "[blue-green] ${message}" >&2
+  false
+}
+
+reload_nginx_or_fail() {
+  if docker ps --format '{{.Names}}' | grep -q '^miyou-nginx$'; then
+    if ! docker exec miyou-nginx nginx -t >/dev/null 2>&1; then
+      fail_with_rollback "Nginx 설정 검증 실패"
+    fi
+    if ! docker exec miyou-nginx nginx -s reload >/dev/null 2>&1; then
+      fail_with_rollback "Nginx 리로드 실패"
+    fi
+  else
+    APP_IMAGE="${app_image}" docker compose -f "${compose_file}" up -d --no-deps nginx
+  fi
+}
+
+reload_nginx_best_effort() {
+  if docker ps --format '{{.Names}}' | grep -q '^miyou-nginx$'; then
+    docker exec miyou-nginx nginx -t >/dev/null 2>&1 || true
+    docker exec miyou-nginx nginx -s reload >/dev/null 2>&1 || true
+  else
+    APP_IMAGE="${app_image}" docker compose -f "${compose_file}" up -d --no-deps nginx >/dev/null 2>&1 || true
+  fi
+}
+
 rollback() {
   set +e
   echo "[blue-green] Rollback triggered"
@@ -210,7 +269,7 @@ rollback() {
 
   # 트래픽을 active로 복구
   sed -i -E "s/app_(blue|green):8081/${active_service}:8081/g" deploy/nginx/default.conf
-  APP_IMAGE="${app_image}" docker compose -f "${compose_file}" up -d --no-deps --force-recreate nginx >/dev/null 2>&1 || true
+  reload_nginx_best_effort
 
   # candidate 비정상 상태 정리 (실패 중 재시작 루프 방지)
   APP_IMAGE="${app_image}" docker compose -f "${compose_file}" stop "${candidate_service}" >/dev/null 2>&1 || true
@@ -237,19 +296,25 @@ for attempt in $(seq 1 "${health_retries}"); do
 done
 
 if [[ "${health_ok}" != "true" ]]; then
-  echo "[blue-green] Candidate health check failed: ${candidate_service}" >&2
   docker logs --tail 200 "miyou-dialogue-app-${candidate}" || true
-  exit 1
+  fail_with_rollback "Candidate health check failed: ${candidate_service}"
 fi
 
 sed -i -E "s/app_(blue|green):8081/${candidate_service}:8081/g" deploy/nginx/default.conf
 
-APP_IMAGE="${app_image}" docker compose -f "${compose_file}" up -d --no-deps --force-recreate nginx
-switched="true"
+reload_nginx_or_fail
 
-if ! curl -fsS http://127.0.0.1/actuator/health | grep -q '"status":"UP"'; then
-  echo "[blue-green] Post-switch health check failed" >&2
-  exit 1
+post_switch_ok="false"
+for attempt in $(seq 1 10); do
+  if curl -fsS http://127.0.0.1/actuator/health | grep -q '"status":"UP"'; then
+    post_switch_ok="true"
+    break
+  fi
+  echo "[blue-green] Post-switch health check retry ${attempt}/10"
+  sleep 2
+done
+if [[ "${post_switch_ok}" != "true" ]]; then
+  fail_with_rollback "Post-switch health check failed"
 fi
 
 run_smoke_checks
@@ -261,8 +326,7 @@ if [[ "${post_switch_monitor_seconds}" =~ ^[0-9]+$ ]] && [[ "${post_switch_monit
   while [[ "${monitor_elapsed}" -lt "${post_switch_monitor_seconds}" ]]; do
     if ! docker run --rm --network miyou_miyou-network curlimages/curl:8.10.1 -fsS \
         "http://${candidate_service}:8081/actuator/health" | grep -q '"status":"UP"'; then
-      echo "[blue-green] Candidate became unhealthy during monitor window" >&2
-      exit 1
+      fail_with_rollback "Candidate became unhealthy during monitor window"
     fi
     sleep 5
     monitor_elapsed=$((monitor_elapsed + 5))
