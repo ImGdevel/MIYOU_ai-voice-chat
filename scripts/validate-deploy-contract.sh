@@ -33,6 +33,24 @@ if rg -n --fixed-strings -- '--force-recreate nginx' deploy/aws/deploy_remote_bl
   exit 1
 fi
 
+echo "[validate-deploy-contract] nginx 파일 바인드 마운트 금지 검사"
+if rg -n --fixed-strings -- './deploy/nginx/default.conf:/etc/nginx/conf.d/default.conf' deploy/docker-compose.app.yml; then
+  echo "[validate-deploy-contract] 실패: default.conf 파일 단위 바인드 마운트는 inode 교체 시 컨테이너 반영이 누락될 수 있습니다." >&2
+  exit 1
+fi
+if rg -n --fixed-strings -- './deploy/nginx/.htpasswd:/etc/nginx/.htpasswd' deploy/docker-compose.app.yml; then
+  echo "[validate-deploy-contract] 실패: .htpasswd 파일 단위 바인드 마운트는 디렉터리 마운트로 대체해야 합니다." >&2
+  exit 1
+fi
+check_contains "deploy/docker-compose.app.yml" "./deploy/nginx:/etc/nginx/conf.d:ro" "nginx 디렉터리 마운트가 누락되었습니다."
+
+echo "[validate-deploy-contract] nginx conf.d 잔여 설정 검사"
+extra_nginx_conf="$(find deploy/nginx -maxdepth 1 -type f -name '*.conf' ! -name 'default.conf' -print -quit)"
+if [[ -n "${extra_nginx_conf}" ]]; then
+  echo "[validate-deploy-contract] 실패: conf.d에 기본 설정 외 파일이 존재합니다 (${extra_nginx_conf})." >&2
+  exit 1
+fi
+
 echo "[validate-deploy-contract] 공통 계약 스크립트 업로드 검사"
 check_contains "deploy/aws/deploy_remote_blue_green.sh" "scp deploy/aws/remote_compose_contract.sh" "blue-green 스크립트에서 계약 스크립트 업로드가 누락되었습니다."
 check_contains "deploy/aws/deploy_remote_compose.sh" "scp deploy/aws/remote_compose_contract.sh" "rolling 스크립트에서 계약 스크립트 업로드가 누락되었습니다."
