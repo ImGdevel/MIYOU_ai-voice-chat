@@ -53,7 +53,7 @@ jobs:
         shell: bash
         run: |
           if git rev-parse --verify HEAD^ >/dev/null 2>&1; then
-            if git diff --name-only HEAD^ HEAD | grep -Eq '^(deploy/nginx/|docker-compose\.app\.yml$)'; then
+            if git diff --name-only HEAD^ HEAD | grep -Eq '^(deploy/nginx/|deploy/docker-compose\.app\.yml$)'; then
               echo "nginx_changed=true" >> "$GITHUB_OUTPUT"
             else
               echo "nginx_changed=false" >> "$GITHUB_OUTPUT"

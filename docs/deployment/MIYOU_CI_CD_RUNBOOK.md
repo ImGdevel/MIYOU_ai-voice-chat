@@ -33,7 +33,7 @@
    - `rolling`: `deploy_remote_compose.sh` 실행
 5. `deploy_nginx`: 조건부 Nginx 배포
    - 조건 A: `deploy_nginx=true`
-   - 조건 B: `deploy/nginx/**` 또는 `docker-compose.app.yml` 변경 감지
+   - 조건 B: `deploy/nginx/**` 또는 `deploy/docker-compose.app.yml` 변경 감지
 6. `notify`: Discord Embed 알림 전송
 
 ## 3. 배포 스크립트 역할

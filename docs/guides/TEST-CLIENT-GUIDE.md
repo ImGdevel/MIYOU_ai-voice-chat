@@ -4,7 +4,7 @@
 
 ### 1. MongoDB & Redis 시작
 ```bash
-docker-compose up -d
+docker compose -f deploy/docker-compose.yml up -d
 ```
 
 ### 2. 환경변수 설정 (선택사항)
@@ -97,7 +97,7 @@ curl -X POST http://localhost:8081/rag/dialogue/audio \
 docker ps | grep mongodb
 
 # MongoDB 재시작
-docker-compose restart mongodb
+docker compose -f deploy/docker-compose.yml restart mongodb
 ```
 
 ### Redis 연결 실패
@@ -106,7 +106,7 @@ docker-compose restart mongodb
 docker ps | grep redis
 
 # Redis 재시작
-docker-compose restart redis
+docker compose -f deploy/docker-compose.yml restart redis
 ```
 
 ### API 키 오류

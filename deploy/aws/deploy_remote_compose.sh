@@ -9,12 +9,11 @@ AWS_REGION="${AWS_REGION:-ap-northeast-2}"
 APP_IMAGE="${APP_IMAGE:-ghcr.io/imgdevel/miyou-dialogue:latest}"
 
 echo "[deploy] Prepare remote dir: ${REMOTE_DIR}"
-ssh "${HOST_ALIAS}" "mkdir -p '${REMOTE_DIR}'"
+ssh "${HOST_ALIAS}" "mkdir -p '${REMOTE_DIR}/deploy/nginx'"
 
 echo "[deploy] Upload compose files"
-scp docker-compose.app.yml "${HOST_ALIAS}:${REMOTE_DIR}/docker-compose.app.yml"
+scp deploy/docker-compose.app.yml "${HOST_ALIAS}:${REMOTE_DIR}/deploy/docker-compose.app.yml"
 scp .env.deploy.example "${HOST_ALIAS}:${REMOTE_DIR}/.env.deploy.example"
-ssh "${HOST_ALIAS}" "mkdir -p '${REMOTE_DIR}/deploy/nginx'"
 scp deploy/nginx/default.conf "${HOST_ALIAS}:${REMOTE_DIR}/deploy/nginx/default.conf"
 ssh "${HOST_ALIAS}" "mkdir -p '${REMOTE_DIR}/scripts' '${REMOTE_DIR}/logs'"
 scp deploy/aws/remote_app_self_heal.sh "${HOST_ALIAS}:${REMOTE_DIR}/scripts/remote_app_self_heal.sh"
@@ -152,8 +151,8 @@ fi
 
 sed -i -E "s/app_(blue|green):8081/${active_service}:8081/g" deploy/nginx/default.conf
 
-APP_IMAGE="${app_image}" docker compose -f docker-compose.app.yml pull "${active_service}" nginx mongodb redis qdrant
-APP_IMAGE="${app_image}" docker compose -f docker-compose.app.yml up -d mongodb redis qdrant nginx "${active_service}"
+APP_IMAGE="${app_image}" docker compose -f deploy/docker-compose.app.yml pull "${active_service}" nginx mongodb redis qdrant
+APP_IMAGE="${app_image}" docker compose -f deploy/docker-compose.app.yml up -d mongodb redis qdrant nginx "${active_service}"
 echo "${app_image}" > .app_image
 EOF
 

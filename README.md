@@ -183,7 +183,7 @@ Nginx upstream 전환으로 다운타임 없이 배포. 시크릿은 AWS SSM Par
 
 ```bash
 # 인프라 기동 (MongoDB, Redis, Qdrant)
-docker-compose up -d
+docker compose -f deploy/docker-compose.yml up -d
 
 # 앱 실행
 ./gradlew :webflux-dialogue:bootRun

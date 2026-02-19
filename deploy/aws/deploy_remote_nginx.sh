@@ -8,7 +8,7 @@ echo "[nginx] Prepare remote dir: ${REMOTE_DIR}/deploy/nginx"
 ssh "${HOST_ALIAS}" "mkdir -p '${REMOTE_DIR}/deploy/nginx'"
 
 echo "[nginx] Upload compose and nginx config"
-scp docker-compose.app.yml "${HOST_ALIAS}:${REMOTE_DIR}/docker-compose.app.yml"
+scp deploy/docker-compose.app.yml "${HOST_ALIAS}:${REMOTE_DIR}/deploy/docker-compose.app.yml"
 scp deploy/nginx/default.conf "${HOST_ALIAS}:${REMOTE_DIR}/deploy/nginx/default.conf"
 
 echo "[nginx] Apply nginx config"
@@ -60,9 +60,9 @@ if ! service_running "${active_service}"; then
       app_image="$(cat .app_image)"
     fi
     if [[ -n "${app_image}" ]]; then
-      APP_IMAGE="${app_image}" docker compose -f docker-compose.app.yml up -d --no-deps "${active_service}"
+      APP_IMAGE="${app_image}" docker compose -f deploy/docker-compose.app.yml up -d --no-deps "${active_service}"
     else
-      docker compose -f docker-compose.app.yml up -d --no-deps "${active_service}"
+      docker compose -f deploy/docker-compose.app.yml up -d --no-deps "${active_service}"
     fi
   fi
 fi
@@ -74,7 +74,7 @@ fi
 
 sed -i -E "s/app_(blue|green):8081/${active_service}:8081/g" deploy/nginx/default.conf
 
-docker compose -f docker-compose.app.yml up -d --no-deps --force-recreate nginx
+docker compose -f deploy/docker-compose.app.yml up -d --no-deps --force-recreate nginx
 EOF
 
 echo "[nginx] Container status"

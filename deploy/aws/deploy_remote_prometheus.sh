@@ -64,6 +64,7 @@ cat > "${TMP_TARGET_FILE}" <<EOF
 EOF
 
 echo "[monitoring] Prepare remote dir: ${REMOTE_DIR}"
+ssh ${SSH_OPTS} "${HOST_ALIAS}" "mkdir -p '${REMOTE_DIR}/deploy'"
 ssh ${SSH_OPTS} "${HOST_ALIAS}" "mkdir -p '${REMOTE_DIR}/monitoring/prometheus/targets'"
 ssh ${SSH_OPTS} "${HOST_ALIAS}" "mkdir -p '${REMOTE_DIR}/monitoring/loki'"
 ssh ${SSH_OPTS} "${HOST_ALIAS}" "mkdir -p '${REMOTE_DIR}/monitoring/grafana/provisioning/datasources'"
@@ -72,7 +73,7 @@ ssh ${SSH_OPTS} "${HOST_ALIAS}" "mkdir -p '${REMOTE_DIR}/monitoring/grafana/prov
 ssh ${SSH_OPTS} "${HOST_ALIAS}" "mkdir -p '${REMOTE_DIR}/monitoring/grafana/dashboards'"
 
 echo "[monitoring] Upload compose and config"
-scp ${SSH_OPTS} "${PROJECT_ROOT}/docker-compose.monitoring.yml" "${HOST_ALIAS}:${REMOTE_DIR}/docker-compose.monitoring.yml"
+scp ${SSH_OPTS} "${PROJECT_ROOT}/deploy/docker-compose.monitoring.yml" "${HOST_ALIAS}:${REMOTE_DIR}/deploy/docker-compose.monitoring.yml"
 scp ${SSH_OPTS} "${PROJECT_ROOT}/monitoring/prometheus/prometheus.yml" "${HOST_ALIAS}:${REMOTE_DIR}/monitoring/prometheus/prometheus.yml"
 scp ${SSH_OPTS} "${TMP_TARGET_FILE}" "${HOST_ALIAS}:${REMOTE_DIR}/monitoring/prometheus/targets/app-targets.json"
 scp ${SSH_OPTS} "${PROJECT_ROOT}/monitoring/loki/loki-config.yml" "${HOST_ALIAS}:${REMOTE_DIR}/monitoring/loki/loki-config.yml"
@@ -126,7 +127,7 @@ else
 fi
 
 echo "[monitoring] Start services"
-ssh ${SSH_OPTS} "${HOST_ALIAS}" "cd '${REMOTE_DIR}' && docker compose --env-file .env.monitoring -f docker-compose.monitoring.yml up -d prometheus loki grafana"
+ssh ${SSH_OPTS} "${HOST_ALIAS}" "cd '${REMOTE_DIR}' && docker compose --env-file .env.monitoring -f deploy/docker-compose.monitoring.yml up -d prometheus loki grafana"
 
 echo "[monitoring] Service status"
 ssh ${SSH_OPTS} "${HOST_ALIAS}" "docker ps --filter 'name=miyou-' --format 'table {{.Names}}\t{{.Image}}\t{{.Status}}\t{{.Ports}}'"
