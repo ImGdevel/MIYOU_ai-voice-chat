@@ -15,14 +15,14 @@ public class DashboardController {
 	@GetMapping("/dashboard")
 	public Mono<Void> dashboard(ServerHttpResponse response) {
 		response.setStatusCode(HttpStatus.TEMPORARY_REDIRECT);
-		response.getHeaders().setLocation(URI.create("/dashboard.html"));
+		response.getHeaders().setLocation(URI.create("/admin/monitoring/grafana/"));
 		return response.setComplete();
 	}
 
 	@GetMapping("/monitoring")
 	public Mono<Void> monitoring(ServerHttpResponse response) {
 		response.setStatusCode(HttpStatus.TEMPORARY_REDIRECT);
-		response.getHeaders().setLocation(URI.create("/dashboard.html"));
+		response.getHeaders().setLocation(URI.create("/admin/monitoring/grafana/"));
 		return response.setComplete();
 	}
 }
