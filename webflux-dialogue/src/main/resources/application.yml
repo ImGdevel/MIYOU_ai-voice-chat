@@ -24,6 +24,12 @@ spring:
 server:
   port: 8081
 
+web:
+  cors:
+    # 실서비스는 기본적으로 Nginx 동일 오리진 프록시를 사용하므로 기본값은 비움.
+    # 프론트/백엔드 분리 배포 시에만 WEB_CORS_ALLOWED_ORIGINS를 지정한다.
+    allowed-origins: ${WEB_CORS_ALLOWED_ORIGINS:}
+
 rag:
   dialogue:
     supertone:
