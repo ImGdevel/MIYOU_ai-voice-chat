@@ -13,6 +13,7 @@
 | --- | --- | --- |
 | CI 오케스트레이션 | `.github/workflows/ci-cd.yml` | test/build/push/deploy/nginx-deploy/notify 잡 실행 |
 | 배포 계약 검증 | `scripts/validate-deploy-contract.sh` | compose 경로/공통 함수 연결 정적 검증 |
+| 슬롯 상태 점검 | `scripts/check-active-slot.sh` | marker/nginx-runtime/running 슬롯 기반 active 자동 판별 |
 | Compose 계약 공통화 | `deploy/aws/remote_compose_contract.sh` | compose 경로 자동 해석/고정, env 동기화, 계약 검증 |
 | Blue-Green 배포 | `deploy/aws/deploy_remote_blue_green.sh` | candidate 기동/헬스체크/트래픽 전환/롤백/드레인 |
 | Rolling 배포 | `deploy/aws/deploy_remote_compose.sh` | active 슬롯 기준 pull/up 배포 |
@@ -26,6 +27,7 @@
 - Nginx 배포 시 `.active_color`와 실제 실행 슬롯 불일치 자동 보정
 - `remote_app_self_heal.sh` + cron(1분 주기)로 이중 슬롯 다운 자동 복구
 - compose 경로 계약 파일(`.compose_app_file`)로 root/deploy 경로 자동 호환
+- blue-green/nginx 배포 시 nginx 컨테이너 재생성 대신 `nginx -s reload` 사용
 - CI에서 Gradle/Buildx 캐시 최적화 적용
 
 미래 상태(TODO):

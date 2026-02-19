@@ -82,7 +82,12 @@ fi
 
 sed -i -E "s/app_(blue|green):8081/${active_service}:8081/g" deploy/nginx/default.conf
 
-docker compose -f "${compose_file}" up -d --no-deps --force-recreate nginx
+if docker ps --format '{{.Names}}' | grep -q '^miyou-nginx$'; then
+  docker exec miyou-nginx nginx -t >/dev/null 2>&1
+  docker exec miyou-nginx nginx -s reload >/dev/null 2>&1
+else
+  docker compose -f "${compose_file}" up -d --no-deps nginx
+fi
 EOF
 
 echo "[nginx] Container status"
