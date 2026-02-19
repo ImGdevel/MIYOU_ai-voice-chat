@@ -9,15 +9,16 @@ AWS_REGION="${AWS_REGION:-ap-northeast-2}"
 APP_IMAGE="${APP_IMAGE:-ghcr.io/imgdevel/miyou-dialogue:latest}"
 
 echo "[deploy] Prepare remote dir: ${REMOTE_DIR}"
-ssh "${HOST_ALIAS}" "mkdir -p '${REMOTE_DIR}/deploy/nginx'"
+ssh "${HOST_ALIAS}" "mkdir -p '${REMOTE_DIR}/deploy/nginx' '${REMOTE_DIR}/scripts' '${REMOTE_DIR}/logs'"
 
 echo "[deploy] Upload compose files"
+scp deploy/docker-compose.app.yml "${HOST_ALIAS}:${REMOTE_DIR}/docker-compose.app.yml"
 scp deploy/docker-compose.app.yml "${HOST_ALIAS}:${REMOTE_DIR}/deploy/docker-compose.app.yml"
 scp .env.deploy.example "${HOST_ALIAS}:${REMOTE_DIR}/.env.deploy.example"
 scp deploy/nginx/default.conf "${HOST_ALIAS}:${REMOTE_DIR}/deploy/nginx/default.conf"
-ssh "${HOST_ALIAS}" "mkdir -p '${REMOTE_DIR}/scripts' '${REMOTE_DIR}/logs'"
 scp deploy/aws/remote_app_self_heal.sh "${HOST_ALIAS}:${REMOTE_DIR}/scripts/remote_app_self_heal.sh"
-ssh "${HOST_ALIAS}" "chmod +x '${REMOTE_DIR}/scripts/remote_app_self_heal.sh'"
+scp deploy/aws/remote_compose_contract.sh "${HOST_ALIAS}:${REMOTE_DIR}/scripts/remote_compose_contract.sh"
+ssh "${HOST_ALIAS}" "chmod +x '${REMOTE_DIR}/scripts/remote_app_self_heal.sh' '${REMOTE_DIR}/scripts/remote_compose_contract.sh'"
 
 if [[ "${USE_SSM}" == "true" ]]; then
   if [[ -z "${SSM_PATH}" ]]; then
@@ -88,6 +89,15 @@ else
   ssh "${HOST_ALIAS}" "cd '${REMOTE_DIR}' && if [ ! -f .env.deploy ]; then cp .env.deploy.example .env.deploy; fi"
 fi
 
+echo "[deploy] Sync env file contract"
+ssh "${HOST_ALIAS}" "bash -s" -- "${REMOTE_DIR}" <<'EOF'
+set -euo pipefail
+remote_dir="$1"
+
+source "${remote_dir}/scripts/remote_compose_contract.sh"
+sync_env_files "${remote_dir}"
+EOF
+
 echo "[deploy] Ensure self-heal watchdog cron job"
 ssh "${HOST_ALIAS}" "bash -s" -- "${REMOTE_DIR}" <<'EOF'
 set -euo pipefail
@@ -143,7 +153,31 @@ set -euo pipefail
 remote_dir="$1"
 app_image="$2"
 
+run_smoke_checks() {
+  if ! curl -fsS http://127.0.0.1/actuator/health | grep -q '"status":"UP"'; then
+    echo "[deploy] 앱 헬스체크 실패: /actuator/health" >&2
+    return 1
+  fi
+
+  if ! curl -fsS http://127.0.0.1/ | grep -q 'id="root"'; then
+    echo "[deploy] 루트 페이지 검증 실패: React 엔트리(id=\"root\")를 찾지 못했습니다." >&2
+    return 1
+  fi
+
+  dashboard_location="$(curl -fsS -o /dev/null -D - http://127.0.0.1/dashboard | tr -d '\r' | awk 'BEGIN{IGNORECASE=1} /^location:/{print $2; exit}')"
+  if [[ -z "${dashboard_location}" || "${dashboard_location}" != *"/admin/monitoring/grafana/"* ]]; then
+    echo "[deploy] 대시보드 리다이렉트 검증 실패: location=${dashboard_location}" >&2
+    return 1
+  fi
+}
+
 cd "${remote_dir}"
+source "${remote_dir}/scripts/remote_compose_contract.sh"
+sync_env_files "${remote_dir}"
+compose_file="$(resolve_app_compose_file "${remote_dir}")"
+verify_compose_contract "${remote_dir}" "${compose_file}"
+echo "[deploy] compose 파일: ${compose_file}"
+
 active_service="app_blue"
 if [[ -f ".active_color" ]] && grep -q '^green$' .active_color; then
   active_service="app_green"
@@ -151,8 +185,11 @@ fi
 
 sed -i -E "s/app_(blue|green):8081/${active_service}:8081/g" deploy/nginx/default.conf
 
-APP_IMAGE="${app_image}" docker compose -f deploy/docker-compose.app.yml pull "${active_service}" nginx mongodb redis qdrant
-APP_IMAGE="${app_image}" docker compose -f deploy/docker-compose.app.yml up -d mongodb redis qdrant nginx "${active_service}"
+APP_IMAGE="${app_image}" docker compose -f "${compose_file}" pull "${active_service}" nginx mongodb redis qdrant
+APP_IMAGE="${app_image}" docker compose -f "${compose_file}" up -d mongodb redis qdrant nginx "${active_service}"
+
+run_smoke_checks
+
 echo "${app_image}" > .app_image
 EOF
 
