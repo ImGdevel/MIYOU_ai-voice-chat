@@ -97,19 +97,12 @@ jobs:
           path: webflux-dialogue/src/main/resources/static/
           retention-days: 1
 
-  gradle-build:
+  gradle-test:
     runs-on: ubuntu-latest
-    needs: frontend-build
     if: ${{ github.event.inputs.deploy_scope != 'nginx_only' }}
     steps:
       - name: 체크아웃
         uses: actions/checkout@v4
-
-      - name: 프론트엔드 빌드 결과 다운로드
-        uses: actions/download-artifact@v4
-        with:
-          name: frontend-dist
-          path: webflux-dialogue/src/main/resources/static/
 
       - name: JDK 21 설정
         uses: actions/setup-java@v4
@@ -126,12 +119,33 @@ jobs:
       - name: 테스트 실행
         run: ./gradlew --no-daemon --build-cache :webflux-dialogue:test
 
-      - name: JAR 빌드
-        run: ./gradlew --no-daemon --build-cache :webflux-dialogue:bootJar -x test
+  gradle-compile:
+    runs-on: ubuntu-latest
+    if: ${{ github.event.inputs.deploy_scope != 'nginx_only' }}
+    steps:
+      - name: 체크아웃
+        uses: actions/checkout@v4
+
+      - name: JDK 21 설정
+        uses: actions/setup-java@v4
+        with:
+          distribution: temurin
+          java-version: '21'
+          cache: gradle
+
+      - name: Gradle 캐시 설정
+        uses: gradle/actions/setup-gradle@v4
+        with:
+          cache-read-only: false
+
+      - name: 컴파일 검증
+        run: ./gradlew --no-daemon --build-cache :webflux-dialogue:compileJava
 
   build-and-push:
     runs-on: ubuntu-latest
-    needs: frontend-build
+    needs:
+      - frontend-build
+      - gradle-compile
     if: ${{ github.event.inputs.deploy_scope != 'nginx_only' }}
     outputs:
       image_ref: ${{ steps.meta.outputs.image_ref }}
@@ -183,7 +197,7 @@ jobs:
   deploy:
     runs-on: ubuntu-latest
     needs:
-      - gradle-build
+      - gradle-test
       - build-and-push
       - validate-deploy-contract
       - deploy_nginx
@@ -285,7 +299,8 @@ jobs:
     runs-on: ubuntu-latest
     needs:
       - frontend-build
-      - gradle-build
+      - gradle-test
+      - gradle-compile
       - build-and-push
       - deploy
       - deploy_nginx
@@ -296,7 +311,8 @@ jobs:
           DEPLOY_SCOPE: ${{ github.event.inputs.deploy_scope }}
           DISCORD_WEBHOOK_URL: ${{ secrets.DISCORD_WEBHOOK_URL }}
           RESULT_FRONTEND: ${{ needs.frontend-build.result }}
-          RESULT_GRADLE: ${{ needs.gradle-build.result }}
+          RESULT_TEST: ${{ needs.gradle-test.result }}
+          RESULT_COMPILE: ${{ needs.gradle-compile.result }}
           RESULT_BUILD_PUSH: ${{ needs.build-and-push.result }}
           RESULT_DEPLOY: ${{ needs.deploy.result }}
           RESULT_DEPLOY_NGINX: ${{ needs.deploy_nginx.result }}
@@ -317,7 +333,7 @@ jobs:
               ICON="❌"
               COLOR=15158332
             fi
-          elif [[ "${RESULT_FRONTEND}" == "success" && "${RESULT_GRADLE}" == "success" && "${RESULT_BUILD_PUSH}" == "success" && "${RESULT_DEPLOY}" == "success" && ( "${RESULT_DEPLOY_NGINX}" == "success" || "${RESULT_DEPLOY_NGINX}" == "skipped" ) ]]; then
+          elif [[ "${RESULT_FRONTEND}" == "success" && "${RESULT_TEST}" == "success" && "${RESULT_COMPILE}" == "success" && "${RESULT_BUILD_PUSH}" == "success" && "${RESULT_DEPLOY}" == "success" && ( "${RESULT_DEPLOY_NGINX}" == "success" || "${RESULT_DEPLOY_NGINX}" == "skipped" ) ]]; then
             STATUS_TEXT="성공"
             ICON="✅"
             COLOR=3066993
@@ -337,7 +353,8 @@ jobs:
             --arg run_id "${GITHUB_RUN_ID}" \
             --arg run_url "${RUN_URL}" \
             --arg result_frontend "${RESULT_FRONTEND}" \
-            --arg result_gradle "${RESULT_GRADLE}" \
+            --arg result_test "${RESULT_TEST}" \
+            --arg result_compile "${RESULT_COMPILE}" \
             --arg result_build_push "${RESULT_BUILD_PUSH}" \
             --arg result_deploy "${RESULT_DEPLOY}" \
             --arg result_deploy_nginx "${RESULT_DEPLOY_NGINX}" \
@@ -353,7 +370,8 @@ jobs:
                     {name: "브랜치", value: $branch, inline: true},
                     {name: "실행자", value: $actor, inline: true},
                     {name: "frontend-build", value: ((if $result_frontend == "success" then "✅" else "❌" end) + " " + $result_frontend), inline: true},
-                    {name: "gradle-build", value: ((if $result_gradle == "success" then "✅" else "❌" end) + " " + $result_gradle), inline: true},
+                    {name: "gradle-test", value: ((if $result_test == "success" then "✅" else "❌" end) + " " + $result_test), inline: true},
+                    {name: "gradle-compile", value: ((if $result_compile == "success" then "✅" else "❌" end) + " " + $result_compile), inline: true},
                     {name: "build-and-push", value: ((if $result_build_push == "success" then "✅" else "❌" end) + " " + $result_build_push), inline: true},
                     {name: "deploy", value: ((if $result_deploy == "success" then "✅" else "❌" end) + " " + $result_deploy), inline: true},
                     {name: "deploy-nginx", value: ((if $result_deploy_nginx == "success" then "✅" else "❌" end) + " " + $result_deploy_nginx), inline: true},
