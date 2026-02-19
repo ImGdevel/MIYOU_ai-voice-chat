@@ -116,9 +116,12 @@ jobs:
         with:
           distribution: temurin
           java-version: '21'
+          cache: gradle
 
       - name: Gradle 캐시 설정
         uses: gradle/actions/setup-gradle@v4
+        with:
+          cache-read-only: false
 
       - name: 테스트 실행
         run: ./gradlew --no-daemon --build-cache :webflux-dialogue:test
