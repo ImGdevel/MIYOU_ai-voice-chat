@@ -8,8 +8,24 @@ if [[ ! -d "${REMOTE_DIR}" ]]; then
 fi
 
 cd "${REMOTE_DIR}"
+if [[ ! -f "${REMOTE_DIR}/scripts/remote_compose_contract.sh" ]]; then
+  echo "[self-heal] compose 계약 스크립트를 찾을 수 없어 복구를 건너뜁니다: ${REMOTE_DIR}/scripts/remote_compose_contract.sh" >&2
+  exit 0
+fi
+source "${REMOTE_DIR}/scripts/remote_compose_contract.sh"
 
-if [[ ! -f "deploy/docker-compose.app.yml" ]]; then
+if ! sync_env_files "${REMOTE_DIR}"; then
+  echo "[self-heal] env 계약 동기화에 실패해 복구를 중단합니다." >&2
+  exit 0
+fi
+
+if ! compose_file="$(resolve_app_compose_file "${REMOTE_DIR}")"; then
+  echo "[self-heal] compose 경로를 찾지 못해 복구를 중단합니다." >&2
+  exit 0
+fi
+
+if ! verify_compose_contract "${REMOTE_DIR}" "${compose_file}"; then
+  echo "[self-heal] compose 계약 검증 실패로 복구를 중단합니다." >&2
   exit 0
 fi
 
@@ -43,7 +59,7 @@ if docker ps -a --format '{{.Names}}' | grep -q '^miyou-nginx$'; then
 fi
 
 if [[ -n "${app_image}" ]]; then
-  APP_IMAGE="${app_image}" docker compose -f deploy/docker-compose.app.yml up -d mongodb redis qdrant "${active_service}" nginx
+  APP_IMAGE="${app_image}" docker compose -f "${compose_file}" up -d mongodb redis qdrant "${active_service}" nginx
 else
-  docker compose -f deploy/docker-compose.app.yml up -d mongodb redis qdrant "${active_service}" nginx
+  docker compose -f "${compose_file}" up -d mongodb redis qdrant "${active_service}" nginx
 fi

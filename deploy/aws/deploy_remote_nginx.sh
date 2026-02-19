@@ -5,11 +5,14 @@ HOST_ALIAS="${1:-miyou-dev}"
 REMOTE_DIR="${REMOTE_DIR:-/opt/app/miyou}"
 
 echo "[nginx] Prepare remote dir: ${REMOTE_DIR}/deploy/nginx"
-ssh "${HOST_ALIAS}" "mkdir -p '${REMOTE_DIR}/deploy/nginx'"
+ssh "${HOST_ALIAS}" "mkdir -p '${REMOTE_DIR}/deploy/nginx' '${REMOTE_DIR}/scripts'"
 
 echo "[nginx] Upload compose and nginx config"
+scp deploy/docker-compose.app.yml "${HOST_ALIAS}:${REMOTE_DIR}/docker-compose.app.yml"
 scp deploy/docker-compose.app.yml "${HOST_ALIAS}:${REMOTE_DIR}/deploy/docker-compose.app.yml"
 scp deploy/nginx/default.conf "${HOST_ALIAS}:${REMOTE_DIR}/deploy/nginx/default.conf"
+scp deploy/aws/remote_compose_contract.sh "${HOST_ALIAS}:${REMOTE_DIR}/scripts/remote_compose_contract.sh"
+ssh "${HOST_ALIAS}" "chmod +x '${REMOTE_DIR}/scripts/remote_compose_contract.sh'"
 
 echo "[nginx] Apply nginx config"
 ssh "${HOST_ALIAS}" "bash -s" -- "${REMOTE_DIR}" <<'EOF'
@@ -21,6 +24,11 @@ if [[ ! -f ".env.deploy" ]]; then
   echo "[nginx] .env.deploy is missing at ${remote_dir}" >&2
   exit 1
 fi
+source "${remote_dir}/scripts/remote_compose_contract.sh"
+sync_env_files "${remote_dir}"
+compose_file="$(resolve_app_compose_file "${remote_dir}")"
+verify_compose_contract "${remote_dir}" "${compose_file}"
+echo "[nginx] compose 파일: ${compose_file}"
 
 auth_user="$(grep -E '^NGINX_BASIC_AUTH_USER=' .env.deploy | tail -n1 | cut -d'=' -f2-)"
 auth_password="$(grep -E '^NGINX_BASIC_AUTH_PASSWORD=' .env.deploy | tail -n1 | cut -d'=' -f2-)"
@@ -60,9 +68,9 @@ if ! service_running "${active_service}"; then
       app_image="$(cat .app_image)"
     fi
     if [[ -n "${app_image}" ]]; then
-      APP_IMAGE="${app_image}" docker compose -f deploy/docker-compose.app.yml up -d --no-deps "${active_service}"
+      APP_IMAGE="${app_image}" docker compose -f "${compose_file}" up -d --no-deps "${active_service}"
     else
-      docker compose -f deploy/docker-compose.app.yml up -d --no-deps "${active_service}"
+      docker compose -f "${compose_file}" up -d --no-deps "${active_service}"
     fi
   fi
 fi
@@ -74,7 +82,7 @@ fi
 
 sed -i -E "s/app_(blue|green):8081/${active_service}:8081/g" deploy/nginx/default.conf
 
-docker compose -f deploy/docker-compose.app.yml up -d --no-deps --force-recreate nginx
+docker compose -f "${compose_file}" up -d --no-deps --force-recreate nginx
 EOF
 
 echo "[nginx] Container status"

@@ -14,15 +14,16 @@ STOP_TIMEOUT_SECONDS="${STOP_TIMEOUT_SECONDS:-30}"
 POST_SWITCH_MONITOR_SECONDS="${POST_SWITCH_MONITOR_SECONDS:-30}"
 
 echo "[blue-green] Prepare remote dir: ${REMOTE_DIR}"
-ssh "${HOST_ALIAS}" "mkdir -p '${REMOTE_DIR}/deploy/nginx'"
+ssh "${HOST_ALIAS}" "mkdir -p '${REMOTE_DIR}/deploy/nginx' '${REMOTE_DIR}/scripts' '${REMOTE_DIR}/logs'"
 
 echo "[blue-green] Upload compose files and nginx config"
+scp deploy/docker-compose.app.yml "${HOST_ALIAS}:${REMOTE_DIR}/docker-compose.app.yml"
 scp deploy/docker-compose.app.yml "${HOST_ALIAS}:${REMOTE_DIR}/deploy/docker-compose.app.yml"
 scp .env.deploy.example "${HOST_ALIAS}:${REMOTE_DIR}/.env.deploy.example"
 scp deploy/nginx/default.conf "${HOST_ALIAS}:${REMOTE_DIR}/deploy/nginx/default.conf"
-ssh "${HOST_ALIAS}" "mkdir -p '${REMOTE_DIR}/scripts' '${REMOTE_DIR}/logs'"
 scp deploy/aws/remote_app_self_heal.sh "${HOST_ALIAS}:${REMOTE_DIR}/scripts/remote_app_self_heal.sh"
-ssh "${HOST_ALIAS}" "chmod +x '${REMOTE_DIR}/scripts/remote_app_self_heal.sh'"
+scp deploy/aws/remote_compose_contract.sh "${HOST_ALIAS}:${REMOTE_DIR}/scripts/remote_compose_contract.sh"
+ssh "${HOST_ALIAS}" "chmod +x '${REMOTE_DIR}/scripts/remote_app_self_heal.sh' '${REMOTE_DIR}/scripts/remote_compose_contract.sh'"
 
 if [[ "${USE_SSM}" == "true" ]]; then
   if [[ -z "${SSM_PATH}" ]]; then
@@ -91,6 +92,15 @@ else
   ssh "${HOST_ALIAS}" "cd '${REMOTE_DIR}' && if [ ! -f .env.deploy ]; then cp .env.deploy.example .env.deploy; fi"
 fi
 
+echo "[blue-green] Sync env file contract"
+ssh "${HOST_ALIAS}" "bash -s" -- "${REMOTE_DIR}" <<'EOF'
+set -euo pipefail
+remote_dir="$1"
+
+source "${remote_dir}/scripts/remote_compose_contract.sh"
+sync_env_files "${remote_dir}"
+EOF
+
 echo "[blue-green] Ensure self-heal watchdog cron job"
 ssh "${HOST_ALIAS}" "bash -s" -- "${REMOTE_DIR}" <<'EOF'
 set -euo pipefail
@@ -126,7 +136,30 @@ drain_seconds="$5"
 stop_timeout_seconds="$6"
 post_switch_monitor_seconds="$7"
 
+run_smoke_checks() {
+  if ! curl -fsS http://127.0.0.1/actuator/health | grep -q '"status":"UP"'; then
+    echo "[blue-green] 앱 헬스체크 실패: /actuator/health" >&2
+    return 1
+  fi
+
+  if ! curl -fsS http://127.0.0.1/ | grep -q 'id="root"'; then
+    echo "[blue-green] 루트 페이지 검증 실패: React 엔트리(id=\"root\")를 찾지 못했습니다." >&2
+    return 1
+  fi
+
+  dashboard_location="$(curl -fsS -o /dev/null -D - http://127.0.0.1/dashboard | tr -d '\r' | awk 'BEGIN{IGNORECASE=1} /^location:/{print $2; exit}')"
+  if [[ -z "${dashboard_location}" || "${dashboard_location}" != *"/admin/monitoring/grafana/"* ]]; then
+    echo "[blue-green] 대시보드 리다이렉트 검증 실패: location=${dashboard_location}" >&2
+    return 1
+  fi
+}
+
 cd "${remote_dir}"
+source "${remote_dir}/scripts/remote_compose_contract.sh"
+sync_env_files "${remote_dir}"
+compose_file="$(resolve_app_compose_file "${remote_dir}")"
+verify_compose_contract "${remote_dir}" "${compose_file}"
+echo "[blue-green] compose 파일: ${compose_file}"
 
 auth_user="$(grep -E '^NGINX_BASIC_AUTH_USER=' .env.deploy | tail -n1 | cut -d'=' -f2-)"
 auth_password="$(grep -E '^NGINX_BASIC_AUTH_PASSWORD=' .env.deploy | tail -n1 | cut -d'=' -f2-)"
@@ -173,14 +206,14 @@ rollback() {
   echo "[blue-green] Rollback triggered"
 
   # active 슬롯이 내려갔을 수 있으므로 우선 재기동 시도
-  APP_IMAGE="${app_image}" docker compose -f deploy/docker-compose.app.yml up -d --no-deps "${active_service}" >/dev/null 2>&1 || true
+  APP_IMAGE="${app_image}" docker compose -f "${compose_file}" up -d --no-deps "${active_service}" >/dev/null 2>&1 || true
 
   # 트래픽을 active로 복구
   sed -i -E "s/app_(blue|green):8081/${active_service}:8081/g" deploy/nginx/default.conf
-  APP_IMAGE="${app_image}" docker compose -f deploy/docker-compose.app.yml up -d --no-deps --force-recreate nginx >/dev/null 2>&1 || true
+  APP_IMAGE="${app_image}" docker compose -f "${compose_file}" up -d --no-deps --force-recreate nginx >/dev/null 2>&1 || true
 
   # candidate 비정상 상태 정리 (실패 중 재시작 루프 방지)
-  APP_IMAGE="${app_image}" docker compose -f deploy/docker-compose.app.yml stop "${candidate_service}" >/dev/null 2>&1 || true
+  APP_IMAGE="${app_image}" docker compose -f "${compose_file}" stop "${candidate_service}" >/dev/null 2>&1 || true
   echo "[blue-green] Rollback finished (active=${active_service})"
 }
 
@@ -188,9 +221,9 @@ trap 'rollback' ERR
 
 sed -i -E "s/app_(blue|green):8081/${active_service}:8081/g" deploy/nginx/default.conf
 
-APP_IMAGE="${app_image}" docker compose -f deploy/docker-compose.app.yml pull "${candidate_service}"
-APP_IMAGE="${app_image}" docker compose -f deploy/docker-compose.app.yml up -d mongodb redis qdrant nginx
-APP_IMAGE="${app_image}" docker compose -f deploy/docker-compose.app.yml up -d --no-deps "${candidate_service}"
+APP_IMAGE="${app_image}" docker compose -f "${compose_file}" pull "${candidate_service}"
+APP_IMAGE="${app_image}" docker compose -f "${compose_file}" up -d mongodb redis qdrant nginx
+APP_IMAGE="${app_image}" docker compose -f "${compose_file}" up -d --no-deps "${candidate_service}"
 
 health_ok="false"
 for attempt in $(seq 1 "${health_retries}"); do
@@ -211,13 +244,15 @@ fi
 
 sed -i -E "s/app_(blue|green):8081/${candidate_service}:8081/g" deploy/nginx/default.conf
 
-APP_IMAGE="${app_image}" docker compose -f deploy/docker-compose.app.yml up -d --no-deps --force-recreate nginx
+APP_IMAGE="${app_image}" docker compose -f "${compose_file}" up -d --no-deps --force-recreate nginx
 switched="true"
 
 if ! curl -fsS http://127.0.0.1/actuator/health | grep -q '"status":"UP"'; then
   echo "[blue-green] Post-switch health check failed" >&2
   exit 1
 fi
+
+run_smoke_checks
 
 # 전환 직후 candidate 안정화 모니터링. 실패 시 ERR trap이 롤백 수행.
 if [[ "${post_switch_monitor_seconds}" =~ ^[0-9]+$ ]] && [[ "${post_switch_monitor_seconds}" -gt 0 ]]; then
@@ -242,9 +277,9 @@ fi
 if [[ "${stop_timeout_seconds}" =~ ^[0-9]+$ ]] && [[ "${stop_timeout_seconds}" -gt 0 ]]; then
   docker stop -t "${stop_timeout_seconds}" "miyou-dialogue-app-${active}" >/dev/null 2>&1 || true
 else
-  APP_IMAGE="${app_image}" docker compose -f deploy/docker-compose.app.yml stop "${active_service}" || true
+  APP_IMAGE="${app_image}" docker compose -f "${compose_file}" stop "${active_service}" || true
 fi
-APP_IMAGE="${app_image}" docker compose -f deploy/docker-compose.app.yml rm -f "${active_service}" || true
+APP_IMAGE="${app_image}" docker compose -f "${compose_file}" rm -f "${active_service}" || true
 docker rm -f miyou-dialogue-app >/dev/null 2>&1 || true
 echo "${candidate}" > .active_color
 echo "${app_image}" > .app_image
