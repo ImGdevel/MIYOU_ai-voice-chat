@@ -5,9 +5,10 @@ interface RecordingButtonProps {
   status: "idle" | "listening" | "processing" | "speaking";
   onStart: () => void;
   onEnd: () => void;
+  disabled?: boolean;
 }
 
-export function RecordingButton({ status, onStart, onEnd }: RecordingButtonProps) {
+export function RecordingButton({ status, onStart, onEnd, disabled = false }: RecordingButtonProps) {
   const isListening = status === "listening";
 
   return (
@@ -28,18 +29,19 @@ export function RecordingButton({ status, onStart, onEnd }: RecordingButtonProps
 
       {/* Button */}
       <motion.button
-        onMouseDown={onStart}
-        onMouseUp={onEnd}
-        onMouseLeave={onEnd}
-        onTouchStart={onStart}
-        onTouchEnd={onEnd}
+        onMouseDown={() => !disabled && onStart()}
+        onMouseUp={() => !disabled && onEnd()}
+        onMouseLeave={() => !disabled && onEnd()}
+        onTouchStart={() => !disabled && onStart()}
+        onTouchEnd={() => !disabled && onEnd()}
+        disabled={disabled}
         animate={{
           scale: isListening ? 0.9 : 1,
           backgroundColor: isListening ? "#ffffff" : "rgba(255,255,255,0.08)",
           borderColor: isListening ? "rgba(255,255,255,1)" : "rgba(255,255,255,0.1)",
         }}
         whileTap={{ scale: 0.95 }}
-        className={`z-20 w-16 h-16 rounded-full flex items-center justify-center border shadow-lg backdrop-blur-md transition-all duration-300 outline-none
+        className={`z-20 w-16 h-16 rounded-full flex items-center justify-center border shadow-lg backdrop-blur-md transition-all duration-300 outline-none disabled:opacity-40 disabled:cursor-not-allowed
           ${isListening ? "text-zinc-950 shadow-white/20" : "text-zinc-400 hover:bg-white/15 hover:text-white hover:border-white/30"}
         `}
       >
