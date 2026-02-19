@@ -15,17 +15,9 @@ export function RecordingButton({ status, onStart, onEnd, disabled = false }: Re
     <div className="relative flex flex-col items-center justify-center pointer-events-auto select-none touch-none">
       
       {/* Pulse Effect for Listening */}
-      <AnimatePresence>
-        {isListening && (
-          <motion.div
-            initial={{ scale: 1, opacity: 0.5 }}
-            animate={{ scale: 2, opacity: 0 }}
-            exit={{ opacity: 0 }}
-            transition={{ duration: 1.5, repeat: Infinity, ease: "easeOut" }}
-            className="absolute z-0 w-16 h-16 rounded-full bg-white/10 pointer-events-none"
-          />
-        )}
-      </AnimatePresence>
+      {isListening && (
+        <span className="absolute z-0 w-16 h-16 rounded-full bg-white/10 pointer-events-none animate-ping" />
+      )}
 
       {/* Button */}
       <motion.button
