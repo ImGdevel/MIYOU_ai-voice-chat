@@ -155,6 +155,18 @@ run_smoke_checks() {
 }
 
 cd "${remote_dir}"
+
+# 배포 락 획득 (최대 5분 대기)
+exec 200>/var/lock/miyou-deploy.lock
+if ! flock -x -w 300 200; then
+  echo "[blue-green] Another deployment is in progress, timeout after 5 minutes" >&2
+  exit 1
+fi
+echo "[blue-green] Deployment lock acquired"
+
+# 배포 중 플래그 설정 (self-heal 비활성화)
+touch .deploy_in_progress
+
 source "${remote_dir}/scripts/remote_compose_contract.sh"
 sync_env_files "${remote_dir}"
 compose_file="$(resolve_app_compose_file "${remote_dir}")"
@@ -273,12 +285,15 @@ rollback() {
 
   # candidate 비정상 상태 정리 (실패 중 재시작 루프 방지)
   APP_IMAGE="${app_image}" docker compose -f "${compose_file}" stop "${candidate_service}" >/dev/null 2>&1 || true
+
+  # 배포 플래그 및 락 해제
+  rm -f .deploy_in_progress
+  flock -u 200 2>/dev/null || true
+
   echo "[blue-green] Rollback finished (active=${active_service})"
 }
 
 trap 'rollback' ERR
-
-sed -i -E "s/app_(blue|green):8081/${active_service}:8081/g" deploy/nginx/default.conf
 
 APP_IMAGE="${app_image}" docker compose -f "${compose_file}" pull "${candidate_service}"
 APP_IMAGE="${app_image}" docker compose -f "${compose_file}" up -d mongodb redis qdrant nginx
@@ -347,7 +362,11 @@ APP_IMAGE="${app_image}" docker compose -f "${compose_file}" rm -f "${active_ser
 docker rm -f miyou-dialogue-app >/dev/null 2>&1 || true
 echo "${candidate}" > .active_color
 echo "${app_image}" > .app_image
+
+# 배포 완료 - 플래그 제거 및 락 해제
+rm -f .deploy_in_progress
 trap - ERR
+flock -u 200 || true
 
 echo "[blue-green] Switched active app to ${candidate_service}"
 EOF
