@@ -23,33 +23,43 @@
 
 잡 순서:
 1. `detect-nginx-changes`: 직전 커밋 대비 Nginx 변경 감지
-2. `gradle-build`: 테스트 + `bootJar`
+2. `validate-deploy-contract`: 배포 스크립트 계약 정적 검증
+3. `gradle-build`: 테스트 + `bootJar`
    - Gradle build cache 사용(`--build-cache`)
-3. `build-and-push`: Docker 이미지 빌드/푸시
+4. `build-and-push`: Docker 이미지 빌드/푸시
    - Buildx GHA cache scope 고정(`miyou-dialogue-image`)
    - `webflux-dialogue/Dockerfile` Gradle 캐시 마운트 적용
-4. `deploy`: 서버 앱/스토리지 스택 배포
+5. `deploy`: 서버 앱/스토리지 스택 배포
    - `blue_green`: `deploy_remote_blue_green.sh` 실행
    - `rolling`: `deploy_remote_compose.sh` 실행
-5. `deploy_nginx`: 조건부 Nginx 배포
+6. `deploy_nginx`: 조건부 Nginx 배포
    - 조건 A: `deploy_nginx=true`
    - 조건 B: `deploy/nginx/**` 또는 `deploy/docker-compose.app.yml` 변경 감지
-6. `notify`: Discord Embed 알림 전송
+7. `notify`: Discord Embed 알림 전송
 
 ## 3. 배포 스크립트 역할
+- `deploy/aws/remote_compose_contract.sh`
+  - app compose 경로를 자동 해석(`docker-compose.app.yml`/`deploy/docker-compose.app.yml`)
+  - 경로 해석 결과를 `.compose_app_file`에 저장
+  - `.env.deploy -> deploy/.env.deploy` 동기화
+  - compose/env 계약 검증 공통 함수 제공
 - `deploy/aws/deploy_remote_compose.sh`
-  - compose, env, nginx conf 동기화
+  - compose(root/deploy), env, nginx conf 동기화
   - SSM에서 `.env.deploy` 생성
+  - `remote_compose_contract.sh`로 compose/env 계약 검증
   - 현재 활성 색상(`.active_color`) 기준 서비스 pull/up
   - self-heal watchdog cron(1분 주기) 설치
   - 마지막 배포 이미지 `.app_image` 기록
 - `deploy/aws/deploy_remote_nginx.sh`
-  - nginx conf 동기화
+  - compose(root/deploy), nginx conf 동기화
+  - `remote_compose_contract.sh`로 compose/env 계약 검증
   - 현재 활성 색상 기준 proxy 대상 반영
   - nginx 컨테이너 `--force-recreate`로 설정 반영 일관성 확보
   - active 슬롯 미실행 시 fallback 슬롯 자동 전환
   - blue/green 둘 다 미실행 시 active 슬롯 선기동 후 nginx 재생성
 - `deploy/aws/deploy_remote_blue_green.sh`
+  - compose(root/deploy), env, nginx conf 동기화
+  - `remote_compose_contract.sh`로 compose/env 계약 검증
   - 비활성 슬롯(blue/green) 이미지 pull/up
   - 후보 슬롯 health check(`/actuator/health`) 통과 시 Nginx 스위치
   - 스위치 후 health 재검증 실패 시 즉시 롤백
@@ -137,6 +147,13 @@
 - `host not found in upstream app_blue`:
   - 원인: `.active_color`와 실제 실행 슬롯 불일치 상태에서 nginx reload
   - 대응: nginx 배포 스크립트가 실행 중 슬롯 기준 fallback/선기동 후 reload
+- `miyou-mongodb` 컨테이너 이름 충돌 + `.env.deploy not found`:
+  - 원인: 서버는 `/opt/app/miyou/docker-compose.app.yml` 기준으로 실행 중인데, 배포 스크립트가 `/opt/app/miyou/deploy/docker-compose.app.yml`를 사용해 compose 기준 경로가 분리됨
+  - 대응: `remote_compose_contract.sh`로 compose 경로 자동 감지/고정(`.compose_app_file`) 및 `.env.deploy` 동기화(`deploy/.env.deploy`) 적용
+  - 검증 명령:
+    - `bash scripts/validate-deploy-contract.sh`
+    - `docker inspect miyou-mongodb --format '{{ index .Config.Labels "com.docker.compose.project.config_files" }}'`
+    - `ls -al /opt/app/miyou/.env.deploy /opt/app/miyou/deploy/.env.deploy /opt/app/miyou/.compose_app_file`
 
 ## 10. 커밋 정책 (Nginx 관련)
 - 커밋 권장:
