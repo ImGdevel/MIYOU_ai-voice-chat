@@ -48,8 +48,8 @@ export function RecordingButton({ status, onStart, onEnd, disabled = false }: Re
         <Mic size={24} strokeWidth={2} className={`transition-transform duration-300 ${isListening ? "scale-110" : "scale-100"}`} />
       </motion.button>
 
-      {/* Helper Text - Moved closer to button */}
-      <div className="absolute -top-8 pointer-events-none opacity-50 text-[10px] tracking-[0.1em] uppercase font-semibold text-white/80 h-4 whitespace-nowrap">
+      {/* Helper Text */}
+      <div className="mt-3 pointer-events-none opacity-60 text-[10px] tracking-[0.1em] uppercase font-semibold text-white/80 h-4 whitespace-nowrap">
         <AnimatePresence mode="wait">
             {isListening ? (
                 <motion.span 

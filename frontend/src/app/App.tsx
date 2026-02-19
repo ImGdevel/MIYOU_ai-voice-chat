@@ -1,7 +1,7 @@
 import React, { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { Menu, Plus, Send, Loader2, Mic, MicOff } from "lucide-react";
 import { VoiceEqualizer } from "./components/VoiceEqualizer";
-import { ConversationDisplay, Message } from "./components/ConversationDisplay";
+import type { Message } from "./components/ConversationDisplay";
 import { Sidebar, ChatRoom } from "./components/Sidebar";
 import { RecordingButton } from "./components/RecordingButton";
 import { PersonaSelector, Persona } from "./components/PersonaSelector";
@@ -9,6 +9,7 @@ import { DeleteConfirmationModal } from "./components/DeleteConfirmationModal";
 import { motion, AnimatePresence } from "motion/react";
 
 type AppStatus = "idle" | "listening" | "processing" | "speaking";
+type ToastKind = "info" | "error";
 
 interface SessionResponse {
   sessionId: string;
@@ -157,7 +158,7 @@ async function streamAudioAndPlay(
   query: string,
   audioElement: HTMLAudioElement,
 ): Promise<void> {
-  if (!("MediaSource" in window)) {
+  if (!("MediaSource" in window) || !MediaSource.isTypeSupported("audio/mpeg")) {
     throw new Error("브라우저가 오디오 스트리밍을 지원하지 않습니다");
   }
 
@@ -167,19 +168,86 @@ async function streamAudioAndPlay(
 
   try {
     await new Promise<void>((resolve, reject) => {
-      const onSourceOpen = async () => {
+      let sourceBuffer: SourceBuffer | null = null;
+      const queue: Uint8Array[] = [];
+      let streamDone = false;
+      let hasAudioData = false;
+      let playbackStarted = false;
+      let settled = false;
+
+      const cleanup = () => {
+        if (sourceBuffer) {
+          sourceBuffer.removeEventListener("updateend", onUpdateEnd);
+        }
+        audioElement.removeEventListener("ended", onEnded);
+        audioElement.removeEventListener("error", onAudioError);
         mediaSource.removeEventListener("sourceopen", onSourceOpen);
+      };
 
+      const finish = () => {
+        if (settled) return;
+        settled = true;
+        cleanup();
+        resolve();
+      };
+
+      const fail = (error: unknown) => {
+        if (settled) return;
+        settled = true;
+        cleanup();
+        reject(error instanceof Error ? error : new Error("오디오 스트리밍 중 오류가 발생했습니다"));
+      };
+
+      const tryStartPlayback = () => {
+        if (playbackStarted) return;
+        playbackStarted = true;
+        audioElement.play().catch((error) => {
+          fail(error);
+        });
+      };
+
+      const tryAppendNext = () => {
+        if (!sourceBuffer || sourceBuffer.updating || queue.length === 0) return;
+        const next = queue.shift();
+        if (!next) return;
+        hasAudioData = true;
+        sourceBuffer.appendBuffer(next);
+        tryStartPlayback();
+      };
+
+      const maybeCompleteStream = () => {
+        if (!sourceBuffer) return;
+        if (!streamDone || sourceBuffer.updating || queue.length > 0) return;
+
+        if (!hasAudioData) {
+          fail(new Error("오디오 응답 데이터가 비어 있습니다."));
+          return;
+        }
+
+        if (mediaSource.readyState === "open") {
+          mediaSource.endOfStream();
+        }
+      };
+
+      const onEnded = () => finish();
+
+      const onAudioError = () => {
+        fail(new Error("오디오 재생 중 오류가 발생했습니다"));
+      };
+
+      const onUpdateEnd = () => {
         try {
-          const sourceBuffer = mediaSource.addSourceBuffer("audio/mpeg");
-          const queue: Uint8Array[] = [];
+          tryAppendNext();
+          maybeCompleteStream();
+        } catch (error) {
+          fail(error);
+        }
+      };
 
-          sourceBuffer.addEventListener("updateend", () => {
-            if (queue.length > 0 && !sourceBuffer.updating) {
-              const next = queue.shift();
-              if (next) sourceBuffer.appendBuffer(next);
-            }
-          });
+      const onSourceOpen = async () => {
+        try {
+          sourceBuffer = mediaSource.addSourceBuffer("audio/mpeg");
+          sourceBuffer.addEventListener("updateend", onUpdateEnd);
 
           const response = await fetch(buildApiUrl("/rag/dialogue/audio?format=mp3"), {
             method: "POST",
@@ -197,54 +265,28 @@ async function streamAudioAndPlay(
             throw new Error(`음성 응답 실패 (${response.status})`);
           }
 
-          await audioElement.play();
-
           const reader = response.body.getReader();
+
           while (true) {
             const { done, value } = await reader.read();
             if (done) {
-              if (!sourceBuffer.updating && queue.length === 0 && mediaSource.readyState === "open") {
-                mediaSource.endOfStream();
-              }
+              streamDone = true;
+              maybeCompleteStream();
               break;
             }
 
-            if (!value) continue;
-
-            if (sourceBuffer.updating || queue.length > 0) {
-              queue.push(value);
-            } else {
-              sourceBuffer.appendBuffer(value);
-            }
+            if (!value || value.byteLength === 0) continue;
+            queue.push(value);
+            tryAppendNext();
           }
-
-          await new Promise<void>((playResolve, playReject) => {
-            const onEnded = () => {
-              cleanup();
-              playResolve();
-            };
-
-            const onError = () => {
-              cleanup();
-              playReject(new Error("오디오 재생 중 오류가 발생했습니다"));
-            };
-
-            const cleanup = () => {
-              audioElement.removeEventListener("ended", onEnded);
-              audioElement.removeEventListener("error", onError);
-            };
-
-            audioElement.addEventListener("ended", onEnded, { once: true });
-            audioElement.addEventListener("error", onError, { once: true });
-          });
-
-          resolve();
         } catch (error) {
-          reject(error);
+          fail(error);
         }
       };
 
-      mediaSource.addEventListener("sourceopen", onSourceOpen);
+      audioElement.addEventListener("ended", onEnded, { once: true });
+      audioElement.addEventListener("error", onAudioError, { once: true });
+      mediaSource.addEventListener("sourceopen", onSourceOpen, { once: true });
     });
   } finally {
     URL.revokeObjectURL(objectUrl);
@@ -258,7 +300,7 @@ export default function App() {
   const [isDeleteModalOpen, setIsDeleteModalOpen] = useState(false);
   const [isVoiceOutputEnabled, setIsVoiceOutputEnabled] = useState(true);
   const [inputText, setInputText] = useState("");
-  const [statusMessage, setStatusMessage] = useState("대화를 시작하려면 새 페르소나를 선택하세요.");
+  const [toast, setToast] = useState<{ message: string; kind: ToastKind } | null>(null);
   const [isBusy, setIsBusy] = useState(false);
 
   const [rooms, setRooms] = useState<ChatRoomState[]>([]);
@@ -270,13 +312,25 @@ export default function App() {
   const mediaRecorderRef = useRef<MediaRecorder | null>(null);
   const recordStreamRef = useRef<MediaStream | null>(null);
   const recordedChunksRef = useRef<BlobPart[]>([]);
+  const toastTimerRef = useRef<number | null>(null);
 
   const activeRoom = useMemo(
     () => rooms.find((room) => room.id === activeRoomId),
     [rooms, activeRoomId],
   );
 
-  const messages = activeRoomId ? messagesByRoom[activeRoomId] || [] : [];
+  const showToast = useCallback((message: string, kind: ToastKind = "info", duration = 2200) => {
+    setToast({ message, kind });
+
+    if (toastTimerRef.current !== null) {
+      window.clearTimeout(toastTimerRef.current);
+    }
+
+    toastTimerRef.current = window.setTimeout(() => {
+      setToast(null);
+      toastTimerRef.current = null;
+    }, duration);
+  }, []);
 
   const pushMessage = useCallback((roomId: string, message: Message) => {
     setMessagesByRoom((prev) => ({
@@ -321,7 +375,7 @@ export default function App() {
   const runDialogue = useCallback(
     async (query: string, options?: { appendUser?: boolean }) => {
       if (!activeRoom) {
-        setStatusMessage("활성화된 대화방이 없습니다.");
+        showToast("활성화된 대화방이 없습니다.", "error");
         setIsPersonaSelectorOpen(true);
         return;
       }
@@ -345,7 +399,6 @@ export default function App() {
       touchRoom(roomId);
       setStatus("processing");
       setIsBusy(true);
-      setStatusMessage("AI가 생각 중...");
 
       try {
         if (isVoiceOutputEnabled) {
@@ -362,12 +415,10 @@ export default function App() {
           }
 
           setStatus("speaking");
-          setStatusMessage("음성 응답 재생 중...");
 
           await streamAudioAndPlay(sessionId, normalized, audioRef.current);
 
           patchMessage(roomId, speakingMessageId, "음성 응답 재생이 완료되었습니다.");
-          setStatusMessage("대화를 계속하려면 입력하거나 길게 눌러 말하세요.");
         } else {
           const aiMessageId = `${Date.now()}-ai`;
           pushMessage(roomId, {
@@ -382,25 +433,29 @@ export default function App() {
           });
 
           patchMessage(roomId, aiMessageId, fullText || "응답이 비어 있습니다.");
-          setStatusMessage("응답이 완료되었습니다.");
         }
       } catch (error) {
         console.error(error);
-        setStatusMessage(error instanceof Error ? error.message : "요청 처리 중 오류가 발생했습니다.");
+        showToast(error instanceof Error ? error.message : "요청 처리 중 오류가 발생했습니다.", "error");
       } finally {
         setStatus("idle");
         setIsBusy(false);
       }
     },
-    [activeRoom, isVoiceOutputEnabled, patchMessage, pushMessage, touchRoom],
+    [activeRoom, isVoiceOutputEnabled, patchMessage, pushMessage, showToast, touchRoom],
   );
 
   const startRecording = useCallback(async () => {
     if (isBusy || status !== "idle") return;
 
     if (!activeRoom) {
-      setStatusMessage("세션이 없습니다. 페르소나를 먼저 선택하세요.");
+      showToast("세션이 없습니다. 페르소나를 먼저 선택하세요.", "error");
       setIsPersonaSelectorOpen(true);
+      return;
+    }
+
+    if (!window.isSecureContext || !navigator.mediaDevices?.getUserMedia) {
+      showToast("마이크 기능은 HTTPS 환경의 지원 브라우저에서 사용할 수 있습니다.", "error");
       return;
     }
 
@@ -421,13 +476,12 @@ export default function App() {
         try {
           setStatus("processing");
           setIsBusy(true);
-          setStatusMessage("음성을 텍스트로 변환 중...");
 
           const blob = new Blob(recordedChunksRef.current, { type: mimeType });
           const transcription = await transcribeAudio(blob, mimeType);
 
           if (!activeRoomId) {
-            setStatusMessage("활성 대화방이 없어 요청을 취소했습니다.");
+            showToast("활성 대화방이 없어 요청을 취소했습니다.", "error");
             return;
           }
 
@@ -444,7 +498,7 @@ export default function App() {
           console.error(error);
           setStatus("idle");
           setIsBusy(false);
-          setStatusMessage(error instanceof Error ? error.message : "녹음 처리 중 오류가 발생했습니다.");
+          showToast(error instanceof Error ? error.message : "녹음 처리 중 오류가 발생했습니다.", "error");
         } finally {
           recordStreamRef.current?.getTracks().forEach((track) => track.stop());
           mediaRecorderRef.current = null;
@@ -455,13 +509,12 @@ export default function App() {
 
       mediaRecorder.start();
       setStatus("listening");
-      setStatusMessage("녹음 중... 버튼을 떼면 전송됩니다.");
     } catch (error) {
       console.error(error);
-      setStatusMessage("마이크 접근 권한이 필요합니다.");
+      showToast("마이크 접근 권한이 필요합니다.", "error");
       setStatus("idle");
     }
-  }, [activeRoom, activeRoomId, isBusy, pushMessage, runDialogue, status]);
+  }, [activeRoom, activeRoomId, isBusy, pushMessage, runDialogue, showToast, status]);
 
   const stopRecordingAndSend = useCallback(() => {
     const recorder = mediaRecorderRef.current;
@@ -479,7 +532,6 @@ export default function App() {
     setIsPersonaSelectorOpen(false);
     setStatus("processing");
     setIsBusy(true);
-    setStatusMessage("세션 생성 중...");
 
     try {
       const session = await createSession(persona.id);
@@ -511,16 +563,16 @@ export default function App() {
 
       setActiveRoomId(roomId);
       setStatus("idle");
-      setStatusMessage("대화를 시작하려면 입력하거나 길게 눌러 말하세요.");
+      showToast("대화를 시작하려면 길게 눌러 말하세요.");
     } catch (error) {
       console.error(error);
-      setStatusMessage(error instanceof Error ? error.message : "세션 생성 중 오류가 발생했습니다.");
+      showToast(error instanceof Error ? error.message : "세션 생성 중 오류가 발생했습니다.", "error");
       setStatus("idle");
       setIsPersonaSelectorOpen(true);
     } finally {
       setIsBusy(false);
     }
-  }, []);
+  }, [showToast]);
 
   const handleDeleteRoom = useCallback((roomId: string) => {
     setRoomToDelete(roomId);
@@ -557,6 +609,9 @@ export default function App() {
 
   useEffect(() => {
     return () => {
+      if (toastTimerRef.current !== null) {
+        window.clearTimeout(toastTimerRef.current);
+      }
       mediaRecorderRef.current?.stop();
       recordStreamRef.current?.getTracks().forEach((track) => track.stop());
     };
@@ -635,39 +690,19 @@ export default function App() {
           </AnimatePresence>
         </div>
 
-        <div className="h-12 flex items-center justify-center w-full px-4 text-center">
-          <AnimatePresence mode="wait">
-            <motion.div
-              key={`${status}-${statusMessage}`}
-              initial={{ opacity: 0, y: 8 }}
-              animate={{ opacity: 1, y: 0 }}
-              exit={{ opacity: 0, y: -8 }}
-              className="text-xs text-zinc-300 bg-zinc-900/80 border border-white/10 px-4 py-2 rounded-full max-w-[90%] truncate"
-            >
-              {statusMessage}
+        {!activeRoomId && (
+          <div className="w-full flex justify-center mb-4 px-4 relative z-20 min-h-[96px]">
+            <motion.div initial={{ opacity: 0 }} animate={{ opacity: 1 }} exit={{ opacity: 0 }} className="flex flex-col items-center justify-center h-full pb-4">
+              <button
+                onClick={() => setIsPersonaSelectorOpen(true)}
+                className="flex items-center gap-2 px-6 py-3 bg-blue-600 hover:bg-blue-500 text-white rounded-full font-semibold shadow-lg shadow-blue-900/20 transition-all active:scale-95 pointer-events-auto"
+              >
+                <Plus size={18} />
+                Start New Chat
+              </button>
             </motion.div>
-          </AnimatePresence>
-        </div>
-
-        <div className="w-full flex justify-center mb-4 px-4 relative z-20 min-h-[240px]">
-          <AnimatePresence mode="wait">
-            {activeRoomId ? (
-              <motion.div key="chat" initial={{ opacity: 0 }} animate={{ opacity: 1 }} exit={{ opacity: 0 }} className="w-full flex justify-center">
-                <ConversationDisplay messages={messages} />
-              </motion.div>
-            ) : (
-              <motion.div key="select" initial={{ opacity: 0 }} animate={{ opacity: 1 }} exit={{ opacity: 0 }} className="flex flex-col items-center justify-center h-full pb-8">
-                <button
-                  onClick={() => setIsPersonaSelectorOpen(true)}
-                  className="flex items-center gap-2 px-6 py-3 bg-blue-600 hover:bg-blue-500 text-white rounded-full font-semibold shadow-lg shadow-blue-900/20 transition-all active:scale-95 pointer-events-auto"
-                >
-                  <Plus size={18} />
-                  Start New Chat
-                </button>
-              </motion.div>
-            )}
-          </AnimatePresence>
-        </div>
+          </div>
+        )}
 
         <div className="w-full max-w-2xl px-4 md:px-6 space-y-3 mb-5 pointer-events-auto">
           <div className="flex items-center gap-2 bg-zinc-900/85 border border-white/10 rounded-2xl px-3 py-2 backdrop-blur">
@@ -744,6 +779,25 @@ export default function App() {
         onConfirm={confirmDeleteRoom}
         roomName={roomToDelete ? rooms.find((room) => room.id === roomToDelete)?.title || "이 채팅" : ""}
       />
+
+      <AnimatePresence>
+        {toast && (
+          <motion.div
+            key={`${toast.kind}-${toast.message}`}
+            initial={{ opacity: 0, y: 12, scale: 0.98 }}
+            animate={{ opacity: 1, y: 0, scale: 1 }}
+            exit={{ opacity: 0, y: 10, scale: 0.98 }}
+            transition={{ duration: 0.18 }}
+            className={`fixed left-1/2 -translate-x-1/2 bottom-36 z-[120] px-4 py-2 rounded-full text-xs md:text-sm border backdrop-blur-md shadow-lg pointer-events-none ${
+              toast.kind === "error"
+                ? "bg-red-500/15 border-red-400/40 text-red-100"
+                : "bg-zinc-900/90 border-white/15 text-zinc-100"
+            }`}
+          >
+            {toast.message}
+          </motion.div>
+        )}
+      </AnimatePresence>
 
       <audio ref={audioRef} style={{ display: "none" }} />
     </div>
