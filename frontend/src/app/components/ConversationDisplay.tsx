@@ -22,32 +22,25 @@ export function ConversationDisplay({ messages }: ConversationDisplayProps) {
       style={{ maskImage: "linear-gradient(to bottom, black 60%, transparent 100%)", WebkitMaskImage: "linear-gradient(to bottom, black 60%, transparent 100%)" }}
     >
       <div className="flex flex-col items-center w-full space-y-3 pt-2">
-        <AnimatePresence mode="popLayout" initial={false}>
+        <AnimatePresence initial={false}>
           {visibleMessages.map((msg, index) => {
             const isLatest = index === 0;
             const isPrevious = index === 1;
-            
+
             // Visual styles based on sender
             const isUser = msg.sender === "user";
-            
+
             return (
               <motion.div
                 key={msg.id}
-                layout
-                initial={{ opacity: 0, y: -10, scale: 0.95, filter: "blur(2px)" }}
+                initial={{ opacity: 0, y: -8, scale: 0.97 }}
                 animate={{
                   opacity: isLatest ? 1 : isPrevious ? 0.5 : 0.15,
                   y: 0,
                   scale: isLatest ? 1 : isPrevious ? 0.98 : 0.95,
-                  filter: isLatest ? "blur(0px)" : isPrevious ? "blur(0px)" : "blur(1.5px)",
                 }}
-                exit={{ opacity: 0, y: 10, filter: "blur(4px)" }}
-                transition={{
-                  type: "spring",
-                  stiffness: 350,
-                  damping: 30,
-                  opacity: { duration: 0.3 }
-                }}
+                exit={{ opacity: 0, y: 8 }}
+                transition={{ duration: 0.2, ease: "easeOut" }}
                 className={`w-full flex flex-col items-center text-center transition-all duration-300 relative
                   ${isUser ? "text-zinc-400" : "text-zinc-100"}
                 `}

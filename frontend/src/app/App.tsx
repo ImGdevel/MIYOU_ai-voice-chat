@@ -356,6 +356,25 @@ export default function App() {
     });
   }, []);
 
+  const rafPatchRef = useRef<{ rafId: number | null; latestArgs: [string, string, string] | null }>({
+    rafId: null,
+    latestArgs: null,
+  });
+
+  const patchMessageThrottled = useCallback(
+    (roomId: string, messageId: string, nextText: string) => {
+      rafPatchRef.current.latestArgs = [roomId, messageId, nextText];
+      if (rafPatchRef.current.rafId !== null) return;
+      rafPatchRef.current.rafId = requestAnimationFrame(() => {
+        const args = rafPatchRef.current.latestArgs;
+        rafPatchRef.current.rafId = null;
+        rafPatchRef.current.latestArgs = null;
+        if (args) patchMessage(...args);
+      });
+    },
+    [patchMessage],
+  );
+
   const touchRoom = useCallback((roomId: string) => {
     const now = Date.now();
     setRooms((prev) => {
@@ -429,7 +448,7 @@ export default function App() {
           });
 
           const fullText = await streamText(sessionId, normalized, (nextText) => {
-            patchMessage(roomId, aiMessageId, nextText);
+            patchMessageThrottled(roomId, aiMessageId, nextText);
           });
 
           patchMessage(roomId, aiMessageId, fullText || "응답이 비어 있습니다.");
@@ -442,7 +461,7 @@ export default function App() {
         setIsBusy(false);
       }
     },
-    [activeRoom, isVoiceOutputEnabled, patchMessage, pushMessage, showToast, touchRoom],
+    [activeRoom, isVoiceOutputEnabled, patchMessage, patchMessageThrottled, pushMessage, showToast, touchRoom],
   );
 
   const startRecording = useCallback(async () => {
