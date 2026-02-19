@@ -18,6 +18,11 @@ export function VoiceEqualizer({ status }: VoiceEqualizerProps) {
           scale: status === "listening" ? 1.1 : 1,
         }}
         transition={{ duration: 0.3 }}
+        style={
+          status === "processing"
+            ? { animation: "spin-slow 2.5s linear infinite, pulse-scale 2s ease-in-out infinite" }
+            : undefined
+        }
         className={`z-10 w-24 h-24 rounded-full backdrop-blur-md border border-white/10 transition-all duration-500 flex items-center justify-center
           ${status === "idle" ? "bg-white/5 shadow-[0_0_20px_rgba(255,255,255,0.05)]" : ""}
           ${status === "listening" ? "bg-white/20 shadow-[0_0_40px_rgba(255,255,255,0.2)] border-white/30" : ""}
