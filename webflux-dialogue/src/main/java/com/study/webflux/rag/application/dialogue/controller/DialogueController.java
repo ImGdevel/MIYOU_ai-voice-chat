@@ -58,7 +58,10 @@ public class DialogueController implements DialogueApi {
 			? PersonaId.of(request.personaId())
 			: PersonaId.defaultPersona();
 
-		UserId userId = UserId.of(request.userId());
+		UserId userId = request.userId() != null && !request.userId().isBlank()
+			? UserId.of(request.userId())
+			: UserId.generate();
+
 		ConversationSession session = ConversationSession.create(personaId, userId);
 
 		return sessionRepository.save(session)
