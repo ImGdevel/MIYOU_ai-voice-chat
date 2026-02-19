@@ -1,5 +1,5 @@
 import { motion, AnimatePresence } from "motion/react";
-import { User, Briefcase, Heart, Users, Sparkles, X } from "lucide-react";
+import { Briefcase, UserRound, X } from "lucide-react";
 
 export interface Persona {
   id: string;
@@ -13,40 +13,22 @@ export interface Persona {
 
 export const PERSONAS: Persona[] = [
   {
-    id: "friend",
-    name: "Best Friend",
-    role: "Casual & Friendly",
-    description: "Always there to listen and chat about anything.",
-    icon: <Users size={24} />,
-    initialMessage: "Hey! What's up? Tell me everything.",
+    id: "maid",
+    name: "메이드 리리아",
+    role: "친절한 메이드",
+    description: "따뜻하고 세심한 말투로 대화를 이어갑니다.",
+    icon: <UserRound size={24} />,
+    initialMessage: "안녕하세요, 주인님. 오늘은 어떤 이야기를 나눌까요?",
     color: "bg-blue-500",
   },
   {
     id: "interviewer",
-    name: "Interviewer",
-    role: "Professional & Sharp",
-    description: "Prepare for your job interview with tough questions.",
+    name: "기술 면접관",
+    role: "전문 면접 모드",
+    description: "실전 중심 질문으로 면접 답변을 점검합니다.",
     icon: <Briefcase size={24} />,
-    initialMessage: "Hello. Let's begin. Please introduce yourself briefly.",
+    initialMessage: "안녕하세요. 기술 면접을 시작하겠습니다. 간단히 자기소개해 주세요.",
     color: "bg-zinc-500",
-  },
-  {
-    id: "lover",
-    name: "Partner",
-    role: "Romantic & Caring",
-    description: "Sweet, supportive, and always on your side.",
-    icon: <Heart size={24} />,
-    initialMessage: "Hi my love, how was your day? I missed you.",
-    color: "bg-rose-500",
-  },
-  {
-    id: "mentor",
-    name: "Life Coach",
-    role: "Wise & Motivating",
-    description: "Guidance and motivation to reach your goals.",
-    icon: <Sparkles size={24} />,
-    initialMessage: "Greetings. What goal shall we conquer today?",
-    color: "bg-violet-500",
   },
 ];
 
