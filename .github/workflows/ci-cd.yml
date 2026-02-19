@@ -165,7 +165,6 @@ jobs:
     needs:
       - build-and-push
       - validate-deploy-contract
-      - deploy_nginx
     if: ${{ github.event.inputs.deploy_scope != 'nginx_only' }}
     steps:
       - name: 체크아웃

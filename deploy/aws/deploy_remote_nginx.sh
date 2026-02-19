@@ -80,14 +80,40 @@ if ! grep -q '\$app_upstream' deploy/nginx/default.conf; then
   exit 1
 fi
 
+backup_config() {
+  cp deploy/nginx/default.conf deploy/nginx/default.conf.backup
+}
+
+restore_config() {
+  if [[ -f deploy/nginx/default.conf.backup ]]; then
+    mv deploy/nginx/default.conf.backup deploy/nginx/default.conf
+    echo "[nginx] Rolled back nginx config to previous version" >&2
+  fi
+}
+
+backup_config
 sed -i -E "s/app_(blue|green):8081/${active_service}:8081/g" deploy/nginx/default.conf
 
-if docker ps --format '{{.Names}}' | grep -q '^miyou-nginx$'; then
-  docker exec miyou-nginx nginx -t >/dev/null 2>&1
-  docker exec miyou-nginx nginx -s reload >/dev/null 2>&1
-else
+# nginx-only 배포에서도 compose 변경(마운트/포트)이 반영되도록 reconcile을 항상 수행한다.
+docker compose -f "${compose_file}" up -d --no-deps nginx
+
+if ! docker exec miyou-nginx nginx -t >/dev/null 2>&1; then
+  echo "[nginx] Config validation failed, rolling back" >&2
+  restore_config
   docker compose -f "${compose_file}" up -d --no-deps nginx
+  docker exec miyou-nginx nginx -s reload >/dev/null 2>&1 || true
+  exit 1
 fi
+
+if ! docker exec miyou-nginx nginx -s reload >/dev/null 2>&1; then
+  echo "[nginx] Reload failed, rolling back" >&2
+  restore_config
+  docker compose -f "${compose_file}" up -d --no-deps nginx
+  docker exec miyou-nginx nginx -s reload >/dev/null 2>&1 || true
+  exit 1
+fi
+
+rm -f deploy/nginx/default.conf.backup
 EOF
 
 echo "[nginx] Container status"
