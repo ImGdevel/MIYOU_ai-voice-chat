@@ -316,11 +316,30 @@ jobs:
           RESULT_BUILD_PUSH: ${{ needs.build-and-push.result }}
           RESULT_DEPLOY: ${{ needs.deploy.result }}
           RESULT_DEPLOY_NGINX: ${{ needs.deploy_nginx.result }}
+          WORKFLOW_START_TIME: ${{ github.event.repository.updated_at }}
         shell: bash
         run: |
           if [[ -z "${DISCORD_WEBHOOK_URL}" ]]; then
             echo "DISCORD_WEBHOOK_URL 시크릿이 없어 알림을 건너뜁니다."
             exit 0
+          fi
+
+          # GitHub API로 워크플로우 실행 시간 조회
+          WORKFLOW_DATA=$(curl -sS -H "Authorization: Bearer ${{ github.token }}" \
+            "https://api.github.com/repos/${{ github.repository }}/actions/runs/${{ github.run_id }}")
+
+          CREATED_AT=$(echo "${WORKFLOW_DATA}" | jq -r '.created_at')
+          UPDATED_AT=$(echo "${WORKFLOW_DATA}" | jq -r '.updated_at')
+
+          if [[ "${CREATED_AT}" != "null" && "${UPDATED_AT}" != "null" ]]; then
+            START_TIME=$(date -u -d "${CREATED_AT}" +%s 2>/dev/null || date -u -j -f "%Y-%m-%dT%H:%M:%SZ" "${CREATED_AT}" +%s)
+            END_TIME=$(date -u -d "${UPDATED_AT}" +%s 2>/dev/null || date -u -j -f "%Y-%m-%dT%H:%M:%SZ" "${UPDATED_AT}" +%s)
+            DURATION=$((END_TIME - START_TIME))
+            MINUTES=$((DURATION / 60))
+            SECONDS=$((DURATION % 60))
+            DURATION_TEXT="${MINUTES}분 ${SECONDS}초"
+          else
+            DURATION_TEXT="계산 불가"
           fi
 
           if [[ "${DEPLOY_SCOPE}" == "nginx_only" ]]; then
@@ -352,6 +371,7 @@ jobs:
             --arg actor "${GITHUB_ACTOR}" \
             --arg run_id "${GITHUB_RUN_ID}" \
             --arg run_url "${RUN_URL}" \
+            --arg duration "${DURATION_TEXT}" \
             --arg result_frontend "${RESULT_FRONTEND}" \
             --arg result_test "${RESULT_TEST}" \
             --arg result_compile "${RESULT_COMPILE}" \
@@ -363,7 +383,7 @@ jobs:
               embeds: [
                 {
                   title: ($icon + " MIYOU CI-CD 결과: " + $status),
-                  description: "워크플로우 실행 결과 요약",
+                  description: ("워크플로우 실행 결과 요약 • 소요 시간: " + $duration),
                   color: $color,
                   fields: [
                     {name: "저장소", value: $repo, inline: true},
