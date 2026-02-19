@@ -73,7 +73,7 @@ jobs:
         run: |
           bash ./scripts/validate-deploy-contract.sh
 
-  gradle-build:
+  frontend-build:
     runs-on: ubuntu-latest
     if: ${{ github.event.inputs.deploy_scope != 'nginx_only' }}
     steps:
@@ -87,8 +87,29 @@ jobs:
           cache: npm
           cache-dependency-path: frontend/package-lock.json
 
-      - name: 프론트엔드 정적 리소스 동기화
+      - name: 프론트엔드 빌드
         run: ./scripts/sync_frontend_to_static.sh
+
+      - name: 빌드 결과 업로드
+        uses: actions/upload-artifact@v4
+        with:
+          name: frontend-dist
+          path: webflux-dialogue/src/main/resources/static/
+          retention-days: 1
+
+  gradle-build:
+    runs-on: ubuntu-latest
+    needs: frontend-build
+    if: ${{ github.event.inputs.deploy_scope != 'nginx_only' }}
+    steps:
+      - name: 체크아웃
+        uses: actions/checkout@v4
+
+      - name: 프론트엔드 빌드 결과 다운로드
+        uses: actions/download-artifact@v4
+        with:
+          name: frontend-dist
+          path: webflux-dialogue/src/main/resources/static/
 
       - name: JDK 21 설정
         uses: actions/setup-java@v4
@@ -107,7 +128,7 @@ jobs:
 
   build-and-push:
     runs-on: ubuntu-latest
-    needs: gradle-build
+    needs: frontend-build
     if: ${{ github.event.inputs.deploy_scope != 'nginx_only' }}
     outputs:
       image_ref: ${{ steps.meta.outputs.image_ref }}
@@ -115,15 +136,11 @@ jobs:
       - name: 체크아웃
         uses: actions/checkout@v4
 
-      - name: Node.js 20 설정
-        uses: actions/setup-node@v4
+      - name: 프론트엔드 빌드 결과 다운로드
+        uses: actions/download-artifact@v4
         with:
-          node-version: '20'
-          cache: npm
-          cache-dependency-path: frontend/package-lock.json
-
-      - name: 프론트엔드 정적 리소스 동기화
-        run: ./scripts/sync_frontend_to_static.sh
+          name: frontend-dist
+          path: webflux-dialogue/src/main/resources/static/
 
       - name: QEMU 설정
         uses: docker/setup-qemu-action@v3
@@ -163,6 +180,7 @@ jobs:
   deploy:
     runs-on: ubuntu-latest
     needs:
+      - gradle-build
       - build-and-push
       - validate-deploy-contract
       - deploy_nginx
@@ -263,6 +281,7 @@ jobs:
   notify:
     runs-on: ubuntu-latest
     needs:
+      - frontend-build
       - gradle-build
       - build-and-push
       - deploy
@@ -273,6 +292,7 @@ jobs:
         env:
           DEPLOY_SCOPE: ${{ github.event.inputs.deploy_scope }}
           DISCORD_WEBHOOK_URL: ${{ secrets.DISCORD_WEBHOOK_URL }}
+          RESULT_FRONTEND: ${{ needs.frontend-build.result }}
           RESULT_GRADLE: ${{ needs.gradle-build.result }}
           RESULT_BUILD_PUSH: ${{ needs.build-and-push.result }}
           RESULT_DEPLOY: ${{ needs.deploy.result }}
@@ -294,7 +314,7 @@ jobs:
               ICON="❌"
               COLOR=15158332
             fi
-          elif [[ "${RESULT_GRADLE}" == "success" && "${RESULT_BUILD_PUSH}" == "success" && "${RESULT_DEPLOY}" == "success" && ( "${RESULT_DEPLOY_NGINX}" == "success" || "${RESULT_DEPLOY_NGINX}" == "skipped" ) ]]; then
+          elif [[ "${RESULT_FRONTEND}" == "success" && "${RESULT_GRADLE}" == "success" && "${RESULT_BUILD_PUSH}" == "success" && "${RESULT_DEPLOY}" == "success" && ( "${RESULT_DEPLOY_NGINX}" == "success" || "${RESULT_DEPLOY_NGINX}" == "skipped" ) ]]; then
             STATUS_TEXT="성공"
             ICON="✅"
             COLOR=3066993
@@ -313,6 +333,7 @@ jobs:
             --arg actor "${GITHUB_ACTOR}" \
             --arg run_id "${GITHUB_RUN_ID}" \
             --arg run_url "${RUN_URL}" \
+            --arg result_frontend "${RESULT_FRONTEND}" \
             --arg result_gradle "${RESULT_GRADLE}" \
             --arg result_build_push "${RESULT_BUILD_PUSH}" \
             --arg result_deploy "${RESULT_DEPLOY}" \
@@ -328,6 +349,7 @@ jobs:
                     {name: "저장소", value: $repo, inline: true},
                     {name: "브랜치", value: $branch, inline: true},
                     {name: "실행자", value: $actor, inline: true},
+                    {name: "frontend-build", value: ((if $result_frontend == "success" then "✅" else "❌" end) + " " + $result_frontend), inline: true},
                     {name: "gradle-build", value: ((if $result_gradle == "success" then "✅" else "❌" end) + " " + $result_gradle), inline: true},
                     {name: "build-and-push", value: ((if $result_build_push == "success" then "✅" else "❌" end) + " " + $result_build_push), inline: true},
                     {name: "deploy", value: ((if $result_deploy == "success" then "✅" else "❌" end) + " " + $result_deploy), inline: true},
