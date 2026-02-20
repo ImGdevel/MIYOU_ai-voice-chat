@@ -37,18 +37,23 @@ rag:
         - id: endpoint-1
           api-key: ${SUPERTONE_API_KEY_1:${SUPERTONE_API_KEY:}}
           base-url: ${SUPERTONE_BASE_URL:https://supertoneapi.com}
+          max-concurrent-requests: ${SUPERTONE_MAX_CONCURRENT_1:10}
         - id: endpoint-2
           api-key: ${SUPERTONE_API_KEY_2:${SUPERTONE_API_KEY:}}
           base-url: ${SUPERTONE_BASE_URL:https://supertoneapi.com}
+          max-concurrent-requests: ${SUPERTONE_MAX_CONCURRENT_2:10}
         - id: endpoint-3
           api-key: ${SUPERTONE_API_KEY_3:${SUPERTONE_API_KEY:}}
           base-url: ${SUPERTONE_BASE_URL:https://supertoneapi.com}
+          max-concurrent-requests: ${SUPERTONE_MAX_CONCURRENT_3:10}
         - id: endpoint-4
           api-key: ${SUPERTONE_API_KEY_4:${SUPERTONE_API_KEY:}}
           base-url: ${SUPERTONE_BASE_URL:https://supertoneapi.com}
+          max-concurrent-requests: ${SUPERTONE_MAX_CONCURRENT_4:10}
         - id: endpoint-5
           api-key: ${SUPERTONE_API_KEY_5:${SUPERTONE_API_KEY:}}
           base-url: ${SUPERTONE_BASE_URL:https://supertoneapi.com}
+          max-concurrent-requests: ${SUPERTONE_MAX_CONCURRENT_5:10}
       voice-id: 2c5f135cb33f49a2c8882d
       language: ko
       style: neutral
@@ -57,6 +62,13 @@ rag:
         pitch-shift: 0
         pitch-variance: 1.0
         speed: 1.1
+      credit-monitor:
+        enabled: ${SUPERTONE_CREDIT_MONITOR_ENABLED:false}
+        poll-interval-seconds: ${SUPERTONE_CREDIT_POLL_INTERVAL:45}
+        low-credit-threshold: ${SUPERTONE_LOW_CREDIT_THRESHOLD:10.0}
+      circuit-breaker:
+        base-backoff-seconds: 5
+        max-backoff-seconds: 300
     personas:
       maid:
         voice-id: ${SUPERTONE_VOICE_ID_MAID:2c5f135cb33f49a2c8882d}
