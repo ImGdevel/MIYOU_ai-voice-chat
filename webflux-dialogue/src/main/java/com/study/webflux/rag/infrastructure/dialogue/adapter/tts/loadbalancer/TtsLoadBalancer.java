@@ -2,6 +2,7 @@ package com.study.webflux.rag.infrastructure.dialogue.adapter.tts.loadbalancer;
 
 import java.time.Duration;
 import java.time.Instant;
+import java.util.ArrayList;
 import java.util.List;
 import java.util.concurrent.atomic.AtomicInteger;
 import java.util.function.Consumer;
@@ -40,6 +41,22 @@ public class TtsLoadBalancer {
 		this.failureEventPublisher = publisher;
 	}
 
+	/**
+	 * 엔드포인트 선택 (크레딧 기반 로드 밸런싱)
+	 *
+	 * <p>
+	 * 선택 알고리즘:
+	 * <ol>
+	 * <li>HEALTHY + canAcceptRequest() 필터링 (health + rate limit + circuit breaker)</li>
+	 * <li>크레딧이 가장 낮은 엔드포인트 우선 선택</li>
+	 * <li>동일 크레딧이면 라운드로빈</li>
+	 * <li>사용 가능한 엔드포인트가 없으면 fallback</li>
+	 * </ol>
+	 *
+	 * @return 선택된 엔드포인트
+	 * @throws IllegalStateException
+	 *             사용 가능한 엔드포인트가 없을 때
+	 */
 	public TtsEndpoint selectEndpoint() {
 		long currentTime = System.nanoTime();
 		if (currentTime - lastRecoveryCheckTime > RECOVERY_CHECK_INTERVAL_NANOS) {
@@ -47,37 +64,45 @@ public class TtsLoadBalancer {
 			lastRecoveryCheckTime = currentTime;
 		}
 
-		TtsEndpoint bestEndpoint = null;
-		int minLoad = Integer.MAX_VALUE;
-		int countAtMinLoad = 0;
-
+		// 1. 사용 가능한 엔드포인트 필터링 (canAcceptRequest()를 한 번만 호출)
+		List<TtsEndpoint> eligible = new ArrayList<>();
 		for (TtsEndpoint endpoint : endpoints) {
-			if (!endpoint.isAvailable()) {
-				continue;
-			}
-
-			int load = endpoint.getActiveRequests();
-			if (load < minLoad) {
-				minLoad = load;
-				bestEndpoint = endpoint;
-				countAtMinLoad = 1;
-			} else if (load == minLoad) {
-				countAtMinLoad++;
+			if (endpoint.canAcceptRequest()) {
+				eligible.add(endpoint);
 			}
 		}
 
-		if (bestEndpoint == null) {
+		if (eligible.isEmpty()) {
 			return selectFallbackEndpoint();
 		}
 
-		if (countAtMinLoad == 1) {
+		// 2. 크레딧 기반 선택 (가장 낮은 크레딧 우선)
+		TtsEndpoint bestEndpoint = null;
+		double minCredits = Double.MAX_VALUE;
+		int countAtMinCredits = 0;
+
+		for (TtsEndpoint endpoint : eligible) {
+			double credits = endpoint.getCredits();
+			if (credits < minCredits) {
+				minCredits = credits;
+				bestEndpoint = endpoint;
+				countAtMinCredits = 1;
+			} else if (Math.abs(credits - minCredits) < 0.01) { // 부동소수점 오차 고려
+				countAtMinCredits++;
+			}
+		}
+
+		// 3. 동일 크레딧이 1개면 즉시 반환
+		if (countAtMinCredits == 1) {
 			return bestEndpoint;
 		}
 
-		int targetIndex = (roundRobinIndex.getAndIncrement() & Integer.MAX_VALUE) % countAtMinLoad;
+		// 4. 동일 크레딧이 여러 개면 라운드로빈
+		int targetIndex = (roundRobinIndex.getAndIncrement() & Integer.MAX_VALUE)
+			% countAtMinCredits;
 		int currentIndex = 0;
-		for (TtsEndpoint endpoint : endpoints) {
-			if (endpoint.isAvailable() && endpoint.getActiveRequests() == minLoad) {
+		for (TtsEndpoint endpoint : eligible) {
+			if (Math.abs(endpoint.getCredits() - minCredits) < 0.01) {
 				if (currentIndex == targetIndex) {
 					return endpoint;
 				}
@@ -117,6 +142,9 @@ public class TtsLoadBalancer {
 	}
 
 	public void reportSuccess(TtsEndpoint endpoint) {
+		// 서킷 브레이커에 성공 기록
+		endpoint.getCircuitBreaker().recordSuccess();
+
 		if (endpoint.getHealth() == TtsEndpoint.EndpointHealth.TEMPORARY_FAILURE) {
 			log.info("엔드포인트 {} 정상 상태로 복구", endpoint.getId());
 			endpoint.setHealth(TtsEndpoint.EndpointHealth.HEALTHY);
@@ -125,6 +153,9 @@ public class TtsLoadBalancer {
 
 	public void reportFailure(TtsEndpoint endpoint, Throwable error) {
 		TtsEndpoint.FailureType failureType = TtsErrorClassifier.classifyError(error);
+
+		// 서킷 브레이커에 실패 기록
+		endpoint.getCircuitBreaker().recordFailure(failureType);
 
 		switch (failureType) {
 			case TEMPORARY -> handleTemporaryFailure(endpoint, error);
