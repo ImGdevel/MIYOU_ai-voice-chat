@@ -4,6 +4,7 @@ import java.time.Duration;
 import java.time.Instant;
 import java.util.ArrayList;
 import java.util.List;
+import java.util.concurrent.ThreadLocalRandom;
 import java.util.concurrent.atomic.AtomicInteger;
 import java.util.function.Consumer;
 
@@ -25,6 +26,7 @@ public class TtsLoadBalancer {
 
 	private final List<TtsEndpoint> endpoints;
 	private final AtomicInteger roundRobinIndex;
+	private final EndpointWeightCalculator weightCalculator;
 	private volatile long lastRecoveryCheckTime;
 	private volatile Consumer<TtsEndpointFailureEvent> failureEventPublisher;
 
@@ -34,6 +36,7 @@ public class TtsLoadBalancer {
 		}
 		this.endpoints = endpoints;
 		this.roundRobinIndex = new AtomicInteger(0);
+		this.weightCalculator = new EndpointWeightCalculator();
 		this.lastRecoveryCheckTime = System.nanoTime();
 	}
 
@@ -42,14 +45,15 @@ public class TtsLoadBalancer {
 	}
 
 	/**
-	 * 엔드포인트 선택 (크레딧 기반 로드 밸런싱)
+	 * 엔드포인트 선택 (가중치 기반 로드 밸런싱)
 	 *
 	 * <p>
 	 * 선택 알고리즘:
 	 * <ol>
 	 * <li>HEALTHY + canAcceptRequest() 필터링 (health + rate limit + circuit breaker)</li>
-	 * <li>크레딧이 가장 낮은 엔드포인트 우선 선택</li>
-	 * <li>동일 크레딧이면 라운드로빈</li>
+	 * <li>EndpointWeightCalculator로 각 엔드포인트의 가중치 계산</li>
+	 * <li>가중치 비례 확률 선택 (크레딧 낮을수록, 트래픽 적을수록 선택 확률 높음)</li>
+	 * <li>전체 가중치 합 = 0이면 Round-Robin fallback (첫 폴링 전 등)</li>
 	 * <li>사용 가능한 엔드포인트가 없으면 fallback</li>
 	 * </ol>
 	 *
@@ -76,41 +80,37 @@ public class TtsLoadBalancer {
 			return selectFallbackEndpoint();
 		}
 
-		// 2. 크레딧 기반 선택 (가장 낮은 크레딧 우선)
-		TtsEndpoint bestEndpoint = null;
-		double minCredits = Double.MAX_VALUE;
-		int countAtMinCredits = 0;
+		// 2. 정규화 기준: 풀 내 최대 크레딧
+		double maxCredits = eligible.stream()
+			.mapToDouble(TtsEndpoint::getCredits)
+			.max()
+			.orElse(1.0);
 
-		for (TtsEndpoint endpoint : eligible) {
-			double credits = endpoint.getCredits();
-			if (credits < minCredits) {
-				minCredits = credits;
-				bestEndpoint = endpoint;
-				countAtMinCredits = 1;
-			} else if (Math.abs(credits - minCredits) < 0.01) { // 부동소수점 오차 고려
-				countAtMinCredits++;
+		// 3. 가중치 계산
+		double[] weights = new double[eligible.size()];
+		double totalWeight = 0.0;
+		for (int i = 0; i < eligible.size(); i++) {
+			weights[i] = weightCalculator.calculate(eligible.get(i), maxCredits);
+			totalWeight += weights[i];
+		}
+
+		// 4. 전체 weight = 0이면 (첫 폴링 전 등) fallback Round-Robin
+		if (totalWeight <= 0.0) {
+			int idx = (roundRobinIndex.getAndIncrement() & Integer.MAX_VALUE) % eligible.size();
+			return eligible.get(idx);
+		}
+
+		// 5. 가중치 확률 선택
+		double rand = ThreadLocalRandom.current().nextDouble() * totalWeight;
+		double cumulative = 0.0;
+		for (int i = 0; i < eligible.size(); i++) {
+			cumulative += weights[i];
+			if (rand <= cumulative) {
+				return eligible.get(i);
 			}
 		}
 
-		// 3. 동일 크레딧이 1개면 즉시 반환
-		if (countAtMinCredits == 1) {
-			return bestEndpoint;
-		}
-
-		// 4. 동일 크레딧이 여러 개면 라운드로빈
-		int targetIndex = (roundRobinIndex.getAndIncrement() & Integer.MAX_VALUE)
-			% countAtMinCredits;
-		int currentIndex = 0;
-		for (TtsEndpoint endpoint : eligible) {
-			if (Math.abs(endpoint.getCredits() - minCredits) < 0.01) {
-				if (currentIndex == targetIndex) {
-					return endpoint;
-				}
-				currentIndex++;
-			}
-		}
-
-		return bestEndpoint;
+		return eligible.get(eligible.size() - 1);
 	}
 
 	private TtsEndpoint selectFallbackEndpoint() {

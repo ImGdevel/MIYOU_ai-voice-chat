@@ -103,6 +103,10 @@ public class TtsEndpoint {
 		this.credits = credits;
 	}
 
+	public int getMaxConcurrentRequests() {
+		return maxConcurrentRequests;
+	}
+
 	public boolean isAvailable() {
 		return health == EndpointHealth.HEALTHY;
 	}
