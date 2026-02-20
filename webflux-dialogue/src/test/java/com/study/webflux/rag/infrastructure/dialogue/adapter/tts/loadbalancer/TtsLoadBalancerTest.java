@@ -74,8 +74,8 @@ class TtsLoadBalancerTest {
 			selectedIds.add(loadBalancer.selectEndpoint().getId());
 		}
 
-		// 동일 크레딧이므로 라운드로빈으로 분배
-		assertThat(selectedIds).containsExactlyInAnyOrder("endpoint-1",
+		// 동일 크레딧이므로 라운드로빈으로 순차 분배
+		assertThat(selectedIds).containsExactly("endpoint-1",
 			"endpoint-2",
 			"endpoint-3",
 			"endpoint-1",
