@@ -2,6 +2,7 @@ package com.study.webflux.rag.infrastructure.dialogue.adapter.tts.loadbalancer;
 
 import java.time.Duration;
 import java.time.Instant;
+import java.util.ArrayList;
 import java.util.List;
 import java.util.concurrent.atomic.AtomicInteger;
 import java.util.function.Consumer;
@@ -63,18 +64,24 @@ public class TtsLoadBalancer {
 			lastRecoveryCheckTime = currentTime;
 		}
 
-		// 1. 사용 가능한 엔드포인트 필터링
+		// 1. 사용 가능한 엔드포인트 필터링 (canAcceptRequest()를 한 번만 호출)
+		List<TtsEndpoint> eligible = new ArrayList<>();
+		for (TtsEndpoint endpoint : endpoints) {
+			if (endpoint.canAcceptRequest()) {
+				eligible.add(endpoint);
+			}
+		}
+
+		if (eligible.isEmpty()) {
+			return selectFallbackEndpoint();
+		}
+
+		// 2. 크레딧 기반 선택 (가장 낮은 크레딧 우선)
 		TtsEndpoint bestEndpoint = null;
 		double minCredits = Double.MAX_VALUE;
 		int countAtMinCredits = 0;
 
-		for (TtsEndpoint endpoint : endpoints) {
-			// canAcceptRequest() 체크: HEALTHY + rate limit + circuit breaker 확인
-			if (!endpoint.canAcceptRequest()) {
-				continue;
-			}
-
-			// 2. 크레딧 기반 선택 (가장 낮은 크레딧 우선)
+		for (TtsEndpoint endpoint : eligible) {
 			double credits = endpoint.getCredits();
 			if (credits < minCredits) {
 				minCredits = credits;
@@ -85,23 +92,17 @@ public class TtsLoadBalancer {
 			}
 		}
 
-		// 3. 사용 가능한 엔드포인트가 없으면 fallback
-		if (bestEndpoint == null) {
-			return selectFallbackEndpoint();
-		}
-
-		// 4. 동일 크레딧이 1개면 즉시 반환
+		// 3. 동일 크레딧이 1개면 즉시 반환
 		if (countAtMinCredits == 1) {
 			return bestEndpoint;
 		}
 
-		// 5. 동일 크레딧이 여러 개면 라운드로빈
+		// 4. 동일 크레딧이 여러 개면 라운드로빈
 		int targetIndex = (roundRobinIndex.getAndIncrement() & Integer.MAX_VALUE)
 			% countAtMinCredits;
 		int currentIndex = 0;
-		for (TtsEndpoint endpoint : endpoints) {
-			if (endpoint.canAcceptRequest()
-				&& Math.abs(endpoint.getCredits() - minCredits) < 0.01) {
+		for (TtsEndpoint endpoint : eligible) {
+			if (Math.abs(endpoint.getCredits() - minCredits) < 0.01) {
 				if (currentIndex == targetIndex) {
 					return endpoint;
 				}
