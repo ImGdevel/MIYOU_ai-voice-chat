@@ -7,6 +7,7 @@ import org.springframework.context.ApplicationEventPublisher;
 import org.springframework.context.annotation.Bean;
 import org.springframework.context.annotation.Configuration;
 import org.springframework.context.annotation.Primary;
+import org.springframework.scheduling.annotation.EnableScheduling;
 import org.springframework.web.reactive.function.client.WebClient;
 
 import com.study.webflux.rag.domain.dialogue.port.TtsPort;
@@ -21,6 +22,7 @@ import org.slf4j.LoggerFactory;
 
 /** Supertone 다중 엔드포인트 TTS 구성을 제공합니다. */
 @Configuration
+@EnableScheduling
 public class TtsConfiguration {
 
 	private static final Logger log = LoggerFactory.getLogger(TtsConfiguration.class);
@@ -42,7 +44,11 @@ public class TtsConfiguration {
 		ApplicationEventPublisher eventPublisher) {
 		var supertone = properties.getSupertone();
 		List<TtsEndpoint> endpoints = supertone.getEndpoints().stream()
-			.map(config -> new TtsEndpoint(config.getId(), config.getApiKey(), config.getBaseUrl()))
+			.map(config -> new TtsEndpoint(
+				config.getId(),
+				config.getApiKey(),
+				config.getBaseUrl(),
+				config.getMaxConcurrentRequests()))
 			.collect(Collectors.toList());
 
 		TtsLoadBalancer loadBalancer = new TtsLoadBalancer(endpoints);

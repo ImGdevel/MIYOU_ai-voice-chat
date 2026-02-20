@@ -143,6 +143,8 @@ public class RagDialogueProperties {
 		private String style = DialogueConstants.Supertone.Style.NEUTRAL;
 		private String outputFormat = DialogueConstants.Supertone.OutputFormat.WAV;
 		private VoiceSettings voiceSettings = new VoiceSettings();
+		private CreditMonitorConfig creditMonitor = new CreditMonitorConfig();
+		private CircuitBreakerConfig circuitBreaker = new CircuitBreakerConfig();
 
 		public List<TtsEndpointConfig> getEndpoints() {
 			return endpoints;
@@ -190,6 +192,22 @@ public class RagDialogueProperties {
 
 		public void setVoiceSettings(VoiceSettings voiceSettings) {
 			this.voiceSettings = voiceSettings;
+		}
+
+		public CreditMonitorConfig getCreditMonitor() {
+			return creditMonitor;
+		}
+
+		public void setCreditMonitor(CreditMonitorConfig creditMonitor) {
+			this.creditMonitor = creditMonitor;
+		}
+
+		public CircuitBreakerConfig getCircuitBreaker() {
+			return circuitBreaker;
+		}
+
+		public void setCircuitBreaker(CircuitBreakerConfig circuitBreaker) {
+			this.circuitBreaker = circuitBreaker;
 		}
 
 		public static class VoiceSettings {
@@ -353,6 +371,7 @@ public class RagDialogueProperties {
 		private String id;
 		private String apiKey;
 		private String baseUrl = DialogueConstants.Supertone.BASE_URL;
+		private int maxConcurrentRequests = 10;
 
 		public String getId() {
 			return id;
@@ -376,6 +395,14 @@ public class RagDialogueProperties {
 
 		public void setBaseUrl(String baseUrl) {
 			this.baseUrl = baseUrl;
+		}
+
+		public int getMaxConcurrentRequests() {
+			return maxConcurrentRequests;
+		}
+
+		public void setMaxConcurrentRequests(int maxConcurrentRequests) {
+			this.maxConcurrentRequests = maxConcurrentRequests;
 		}
 	}
 
@@ -416,6 +443,63 @@ public class RagDialogueProperties {
 
 		public void setVoiceSettings(Supertone.VoiceSettings voiceSettings) {
 			this.voiceSettings = voiceSettings;
+		}
+	}
+
+	/**
+	 * 크레딧 모니터 설정
+	 */
+	public static class CreditMonitorConfig {
+		private boolean enabled = true;
+		private int pollIntervalSeconds = 45;
+		private double lowCreditThreshold = 10.0;
+
+		public boolean isEnabled() {
+			return enabled;
+		}
+
+		public void setEnabled(boolean enabled) {
+			this.enabled = enabled;
+		}
+
+		public int getPollIntervalSeconds() {
+			return pollIntervalSeconds;
+		}
+
+		public void setPollIntervalSeconds(int pollIntervalSeconds) {
+			this.pollIntervalSeconds = pollIntervalSeconds;
+		}
+
+		public double getLowCreditThreshold() {
+			return lowCreditThreshold;
+		}
+
+		public void setLowCreditThreshold(double lowCreditThreshold) {
+			this.lowCreditThreshold = lowCreditThreshold;
+		}
+	}
+
+	/**
+	 * 서킷 브레이커 설정
+	 */
+	public static class CircuitBreakerConfig {
+		private int baseBackoffSeconds = 5;
+		private int maxBackoffSeconds = 300;
+
+		public int getBaseBackoffSeconds() {
+			return baseBackoffSeconds;
+		}
+
+		public void setBaseBackoffSeconds(int baseBackoffSeconds) {
+			this.baseBackoffSeconds = baseBackoffSeconds;
+		}
+
+		public int getMaxBackoffSeconds() {
+			return maxBackoffSeconds;
+		}
+
+		public void setMaxBackoffSeconds(int maxBackoffSeconds) {
+			this.maxBackoffSeconds = maxBackoffSeconds;
 		}
 	}
 }
