@@ -167,6 +167,13 @@ public class TtsCreditMonitor {
 		endpoint.updateCredits(credits);
 		log.debug("엔드포인트 {} 크레딧 업데이트: {}", endpoint.getId(), credits);
 
+		// 크레딧이 충분하면 PERMANENT_FAILURE에서 복구
+		if (credits >= config.getLowCreditThreshold()
+			&& endpoint.getHealth() == TtsEndpoint.EndpointHealth.PERMANENT_FAILURE) {
+			log.info("엔드포인트 {} 크레딧 충전으로 복구: {}", endpoint.getId(), credits);
+			endpoint.setHealth(TtsEndpoint.EndpointHealth.HEALTHY);
+		}
+
 		// 임계값 체크
 		if (credits < config.getLowCreditThreshold()) {
 			log.warn("엔드포인트 {} 크레딧 부족: {} < {}",
