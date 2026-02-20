@@ -10,6 +10,7 @@ import java.util.concurrent.atomic.AtomicInteger;
 
 import org.springframework.web.reactive.function.client.WebClientResponseException;
 
+import com.study.webflux.rag.infrastructure.dialogue.adapter.tts.loadbalancer.circuit.CircuitBreakerState;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Test;
@@ -28,6 +29,9 @@ class TtsLoadBalancerTest {
 			new TtsEndpoint("endpoint-2", "key-2", "http://localhost:8080"),
 			new TtsEndpoint("endpoint-3", "key-3", "http://localhost:8080"));
 		loadBalancer = new TtsLoadBalancer(new ArrayList<>(endpoints));
+
+		// 기본 크레딧을 동일하게 설정 (라운드로빈 동작 보장)
+		endpoints.forEach(e -> e.updateCredits(100.0));
 	}
 
 	@Test
@@ -43,27 +47,35 @@ class TtsLoadBalancerTest {
 	}
 
 	@Test
-	@DisplayName("Least-loaded: 활성 요청 수가 가장 적은 엔드포인트 선택")
-	void selectLeastLoadedEndpoint() {
-		endpoints.get(0).incrementActiveRequests();
-		endpoints.get(0).incrementActiveRequests();
-		endpoints.get(1).incrementActiveRequests();
+	@DisplayName("크레딧 기반: 크레딧이 가장 적은 엔드포인트 우선 선택")
+	void selectLowestCreditEndpoint() {
+		// 크레딧 설정: endpoint-1=100, endpoint-2=50, endpoint-3=200
+		endpoints.get(0).updateCredits(100.0);
+		endpoints.get(1).updateCredits(50.0);
+		endpoints.get(2).updateCredits(200.0);
 
 		TtsEndpoint selected = loadBalancer.selectEndpoint();
 
-		assertThat(selected.getId()).isEqualTo("endpoint-3");
-		assertThat(selected.getActiveRequests()).isEqualTo(0);
+		// 크레딧이 가장 적은 endpoint-2가 선택되어야 함
+		assertThat(selected.getId()).isEqualTo("endpoint-2");
+		assertThat(selected.getCredits()).isEqualTo(50.0);
 	}
 
 	@Test
-	@DisplayName("Round-robin: 동일 부하일 때 순차 분배")
-	void roundRobinWhenEqualLoad() {
+	@DisplayName("Round-robin: 동일 크레딧일 때 순차 분배")
+	void roundRobinWhenEqualCredits() {
+		// 모든 엔드포인트 동일 크레딧 설정
+		endpoints.get(0).updateCredits(100.0);
+		endpoints.get(1).updateCredits(100.0);
+		endpoints.get(2).updateCredits(100.0);
+
 		List<String> selectedIds = new ArrayList<>();
 		for (int i = 0; i < 6; i++) {
 			selectedIds.add(loadBalancer.selectEndpoint().getId());
 		}
 
-		assertThat(selectedIds).containsExactlyInAnyOrder("endpoint-1",
+		// 동일 크레딧이므로 라운드로빈으로 순차 분배
+		assertThat(selectedIds).containsExactly("endpoint-1",
 			"endpoint-2",
 			"endpoint-3",
 			"endpoint-1",
@@ -171,6 +183,9 @@ class TtsLoadBalancerTest {
 	@Test
 	@DisplayName("[수정됨] CLIENT_ERROR 발생 후에도 해당 엔드포인트가 정상 선택됨")
 	void clientError_endpointStillSelected() {
+		// Given: 모든 엔드포인트 동일 크레딧 설정
+		endpoints.forEach(e -> e.updateCredits(100.0));
+
 		// Given: endpoint-1에서 400 Bad Request 발생
 		TtsEndpoint endpoint1 = endpoints.get(0);
 		Exception badRequest = WebClientResponseException
@@ -187,7 +202,7 @@ class TtsLoadBalancerTest {
 			selectedIds.add(loadBalancer.selectEndpoint().getId());
 		}
 
-		// Then: endpoint-1도 정상적으로 선택됨
+		// Then: endpoint-1도 정상적으로 선택됨 (circuit breaker 상태 변경 없음)
 		assertThat(selectedIds).contains("endpoint-1");
 	}
 
@@ -373,18 +388,25 @@ class TtsLoadBalancerTest {
 	}
 
 	@Test
-	@DisplayName("[복구] PERMANENT_FAILURE 엔드포인트는 성공 보고해도 복구되지 않음")
-	void permanentFailureEndpoint_doesNotRecover() {
-		// Given: endpoint-1이 PERMANENT_FAILURE 상태
+	@DisplayName("[복구] PERMANENT_FAILURE 엔드포인트는 circuit breaker가 OPEN 상태라 선택 불가")
+	void permanentFailureEndpoint_cannotBeSelected() {
+		// Given: endpoint-1에 PERMANENT 에러 발생
 		TtsEndpoint endpoint1 = endpoints.get(0);
-		endpoint1.setHealth(TtsEndpoint.EndpointHealth.PERMANENT_FAILURE);
+		Exception error401 = WebClientResponseException
+			.create(401, "Unauthorized", null, null, null);
+		loadBalancer.reportFailure(endpoint1, error401);
 
-		// When: 성공 보고
-		loadBalancer.reportSuccess(endpoint1);
-
-		// Then: 여전히 PERMANENT_FAILURE 상태 (복구 안됨)
+		// Then: PERMANENT_FAILURE 상태 + circuit breaker OPEN
 		assertThat(endpoint1.getHealth()).isEqualTo(TtsEndpoint.EndpointHealth.PERMANENT_FAILURE);
 		assertThat(endpoint1.isAvailable()).isFalse();
+		assertThat(endpoint1.getCircuitBreaker().allowRequest()).isFalse();
+
+		// When: 엔드포인트 선택 시 endpoint-1은 선택되지 않음
+		List<String> selectedIds = new ArrayList<>();
+		for (int i = 0; i < 10; i++) {
+			selectedIds.add(loadBalancer.selectEndpoint().getId());
+		}
+		assertThat(selectedIds).doesNotContain("endpoint-1");
 	}
 
 	@Test
@@ -398,24 +420,24 @@ class TtsLoadBalancerTest {
 		loadBalancer.reportFailure(endpoints.get(0), error429);
 		assertThat(endpoints.get(0).getHealth())
 			.isEqualTo(TtsEndpoint.EndpointHealth.TEMPORARY_FAILURE);
+		assertThat(endpoints.get(0).getCircuitBreaker().getState())
+			.isEqualTo(CircuitBreakerState.OPEN);
 
-		// endpoint-2, endpoint-3만 선택됨
+		// circuit breaker OPEN 상태라 선택 불가
 		List<String> afterFirstFailure = new ArrayList<>();
 		for (int i = 0; i < 6; i++) {
 			afterFirstFailure.add(loadBalancer.selectEndpoint().getId());
 		}
 		assertThat(afterFirstFailure).doesNotContain("endpoint-1");
 
-		// endpoint-1 복구
+		// endpoint-1 health 복구
 		loadBalancer.reportSuccess(endpoints.get(0));
-		assertThat(endpoints.get(0).getHealth()).isEqualTo(TtsEndpoint.EndpointHealth.HEALTHY);
 
-		// endpoint-1도 다시 선택됨
-		List<String> afterRecovery = new ArrayList<>();
-		for (int i = 0; i < 9; i++) {
-			afterRecovery.add(loadBalancer.selectEndpoint().getId());
-		}
-		assertThat(afterRecovery).contains("endpoint-1", "endpoint-2", "endpoint-3");
+		// Health는 HEALTHY로 복구되지만, circuit breaker는 여전히 OPEN
+		// (실제로는 백오프 시간이 지나야 HALF_OPEN으로 전이)
+		assertThat(endpoints.get(0).getHealth()).isEqualTo(TtsEndpoint.EndpointHealth.HEALTHY);
+		assertThat(endpoints.get(0).getCircuitBreaker().getState())
+			.isEqualTo(CircuitBreakerState.OPEN);
 	}
 
 	@Test
@@ -426,34 +448,31 @@ class TtsLoadBalancerTest {
 			.create(503, "Service Unavailable", null, null, null);
 		endpoints.forEach(e -> loadBalancer.reportFailure(e, error503));
 
-		// Then: 모두 TEMPORARY_FAILURE
-		endpoints.forEach(
-			e -> assertThat(e.getHealth()).isEqualTo(TtsEndpoint.EndpointHealth.TEMPORARY_FAILURE));
+		// Then: 모두 TEMPORARY_FAILURE, circuit breaker OPEN
+		endpoints.forEach(e -> {
+			assertThat(e.getHealth()).isEqualTo(TtsEndpoint.EndpointHealth.TEMPORARY_FAILURE);
+			assertThat(e.getCircuitBreaker().getState()).isEqualTo(CircuitBreakerState.OPEN);
+		});
 
-		// When: endpoint-1 복구
+		// When: 모든 엔드포인트 장애 상태에서 selectEndpoint() 호출 시
+		// fallback으로 TEMPORARY_FAILURE 엔드포인트 중 하나를 반환
+		TtsEndpoint selected = loadBalancer.selectEndpoint();
+		assertThat(selected.getHealth()).isEqualTo(TtsEndpoint.EndpointHealth.TEMPORARY_FAILURE);
+
+		// When: endpoint-1을 reportSuccess()로 복구
 		loadBalancer.reportSuccess(endpoints.get(0));
 
-		// Then: endpoint-1만 HEALTHY, 다른 것들은 여전히 TEMPORARY_FAILURE
+		// Then: endpoint-1만 HEALTHY, circuit breaker는 여전히 OPEN
 		assertThat(endpoints.get(0).getHealth()).isEqualTo(TtsEndpoint.EndpointHealth.HEALTHY);
-		assertThat(endpoints.get(1).getHealth())
+		assertThat(endpoints.get(0).getCircuitBreaker().getState())
+			.isEqualTo(CircuitBreakerState.OPEN);
+
+		// Circuit breaker가 OPEN이라 canAcceptRequest() = false
+		assertThat(endpoints.get(0).canAcceptRequest()).isFalse();
+
+		// 여전히 fallback으로 TEMPORARY_FAILURE 엔드포인트 반환
+		TtsEndpoint afterRecovery = loadBalancer.selectEndpoint();
+		assertThat(afterRecovery.getHealth())
 			.isEqualTo(TtsEndpoint.EndpointHealth.TEMPORARY_FAILURE);
-		assertThat(endpoints.get(2).getHealth())
-			.isEqualTo(TtsEndpoint.EndpointHealth.TEMPORARY_FAILURE);
-
-		// endpoint-1만 선택됨
-		for (int i = 0; i < 5; i++) {
-			assertThat(loadBalancer.selectEndpoint().getId()).isEqualTo("endpoint-1");
-		}
-
-		// When: endpoint-2도 복구
-		loadBalancer.reportSuccess(endpoints.get(1));
-
-		// Then: endpoint-1, endpoint-2가 로드밸런싱됨
-		List<String> selectedIds = new ArrayList<>();
-		for (int i = 0; i < 10; i++) {
-			selectedIds.add(loadBalancer.selectEndpoint().getId());
-		}
-		assertThat(selectedIds).contains("endpoint-1", "endpoint-2");
-		assertThat(selectedIds).doesNotContain("endpoint-3");
 	}
 }

@@ -2,7 +2,9 @@ package com.study.webflux.rag.infrastructure.dialogue.adapter.tts.loadbalancer;
 
 import java.time.Duration;
 import java.time.Instant;
+import java.util.ArrayList;
 import java.util.List;
+import java.util.concurrent.ThreadLocalRandom;
 import java.util.concurrent.atomic.AtomicInteger;
 import java.util.function.Consumer;
 
@@ -24,6 +26,7 @@ public class TtsLoadBalancer {
 
 	private final List<TtsEndpoint> endpoints;
 	private final AtomicInteger roundRobinIndex;
+	private final EndpointWeightCalculator weightCalculator;
 	private volatile long lastRecoveryCheckTime;
 	private volatile Consumer<TtsEndpointFailureEvent> failureEventPublisher;
 
@@ -33,6 +36,7 @@ public class TtsLoadBalancer {
 		}
 		this.endpoints = endpoints;
 		this.roundRobinIndex = new AtomicInteger(0);
+		this.weightCalculator = new EndpointWeightCalculator();
 		this.lastRecoveryCheckTime = System.nanoTime();
 	}
 
@@ -40,6 +44,23 @@ public class TtsLoadBalancer {
 		this.failureEventPublisher = publisher;
 	}
 
+	/**
+	 * 엔드포인트 선택 (가중치 기반 로드 밸런싱)
+	 *
+	 * <p>
+	 * 선택 알고리즘:
+	 * <ol>
+	 * <li>HEALTHY + canAcceptRequest() 필터링 (health + rate limit + circuit breaker)</li>
+	 * <li>EndpointWeightCalculator로 각 엔드포인트의 가중치 계산</li>
+	 * <li>가중치 비례 확률 선택 (크레딧 낮을수록, 트래픽 적을수록 선택 확률 높음)</li>
+	 * <li>전체 가중치 합 = 0이면 Round-Robin fallback (첫 폴링 전 등)</li>
+	 * <li>사용 가능한 엔드포인트가 없으면 fallback</li>
+	 * </ol>
+	 *
+	 * @return 선택된 엔드포인트
+	 * @throws IllegalStateException
+	 *             사용 가능한 엔드포인트가 없을 때
+	 */
 	public TtsEndpoint selectEndpoint() {
 		long currentTime = System.nanoTime();
 		if (currentTime - lastRecoveryCheckTime > RECOVERY_CHECK_INTERVAL_NANOS) {
@@ -47,45 +68,49 @@ public class TtsLoadBalancer {
 			lastRecoveryCheckTime = currentTime;
 		}
 
-		TtsEndpoint bestEndpoint = null;
-		int minLoad = Integer.MAX_VALUE;
-		int countAtMinLoad = 0;
-
+		// 1. 사용 가능한 엔드포인트 필터링 (canAcceptRequest()를 한 번만 호출)
+		List<TtsEndpoint> eligible = new ArrayList<>();
 		for (TtsEndpoint endpoint : endpoints) {
-			if (!endpoint.isAvailable()) {
-				continue;
-			}
-
-			int load = endpoint.getActiveRequests();
-			if (load < minLoad) {
-				minLoad = load;
-				bestEndpoint = endpoint;
-				countAtMinLoad = 1;
-			} else if (load == minLoad) {
-				countAtMinLoad++;
+			if (endpoint.canAcceptRequest()) {
+				eligible.add(endpoint);
 			}
 		}
 
-		if (bestEndpoint == null) {
+		if (eligible.isEmpty()) {
 			return selectFallbackEndpoint();
 		}
 
-		if (countAtMinLoad == 1) {
-			return bestEndpoint;
+		// 2. 정규화 기준: 풀 내 최대 크레딧
+		double maxCredits = eligible.stream()
+			.mapToDouble(TtsEndpoint::getCredits)
+			.max()
+			.orElse(1.0);
+
+		// 3. 가중치 계산
+		double[] weights = new double[eligible.size()];
+		double totalWeight = 0.0;
+		for (int i = 0; i < eligible.size(); i++) {
+			weights[i] = weightCalculator.calculate(eligible.get(i), maxCredits);
+			totalWeight += weights[i];
 		}
 
-		int targetIndex = (roundRobinIndex.getAndIncrement() & Integer.MAX_VALUE) % countAtMinLoad;
-		int currentIndex = 0;
-		for (TtsEndpoint endpoint : endpoints) {
-			if (endpoint.isAvailable() && endpoint.getActiveRequests() == minLoad) {
-				if (currentIndex == targetIndex) {
-					return endpoint;
-				}
-				currentIndex++;
+		// 4. 전체 weight = 0이면 (첫 폴링 전 등) fallback Round-Robin
+		if (totalWeight <= 0.0) {
+			int idx = (roundRobinIndex.getAndIncrement() & Integer.MAX_VALUE) % eligible.size();
+			return eligible.get(idx);
+		}
+
+		// 5. 가중치 확률 선택
+		double rand = ThreadLocalRandom.current().nextDouble() * totalWeight;
+		double cumulative = 0.0;
+		for (int i = 0; i < eligible.size(); i++) {
+			cumulative += weights[i];
+			if (rand <= cumulative) {
+				return eligible.get(i);
 			}
 		}
 
-		return bestEndpoint;
+		return eligible.get(eligible.size() - 1);
 	}
 
 	private TtsEndpoint selectFallbackEndpoint() {
@@ -117,6 +142,9 @@ public class TtsLoadBalancer {
 	}
 
 	public void reportSuccess(TtsEndpoint endpoint) {
+		// 서킷 브레이커에 성공 기록
+		endpoint.getCircuitBreaker().recordSuccess();
+
 		if (endpoint.getHealth() == TtsEndpoint.EndpointHealth.TEMPORARY_FAILURE) {
 			log.info("엔드포인트 {} 정상 상태로 복구", endpoint.getId());
 			endpoint.setHealth(TtsEndpoint.EndpointHealth.HEALTHY);
@@ -125,6 +153,9 @@ public class TtsLoadBalancer {
 
 	public void reportFailure(TtsEndpoint endpoint, Throwable error) {
 		TtsEndpoint.FailureType failureType = TtsErrorClassifier.classifyError(error);
+
+		// 서킷 브레이커에 실패 기록
+		endpoint.getCircuitBreaker().recordFailure(failureType);
 
 		switch (failureType) {
 			case TEMPORARY -> handleTemporaryFailure(endpoint, error);
