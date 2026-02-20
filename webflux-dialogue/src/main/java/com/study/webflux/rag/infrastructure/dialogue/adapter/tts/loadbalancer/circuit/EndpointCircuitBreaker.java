@@ -64,6 +64,10 @@ public class EndpointCircuitBreaker {
 
 		// OPEN 상태: 백오프 시간 확인
 		if (currentState == CircuitBreakerState.OPEN) {
+			// PERMANENT 장애는 복구 불가
+			if (failureCount == Integer.MAX_VALUE) {
+				return false;
+			}
 			Duration backoffDuration = backoffStrategy.calculateDelay(failureCount);
 			Instant openedAt = this.circuitOpenedAt;
 
