@@ -47,9 +47,16 @@ class LoadBalancedSupertoneTtsAdapterTest {
 		fakeServer = new FakeSupertoneServer();
 		startFakeServer();
 
-		List<TtsEndpoint> endpoints = List.of(new TtsEndpoint("endpoint-1", "key-1", BASE_URL),
-			new TtsEndpoint("endpoint-2", "key-2", BASE_URL),
-			new TtsEndpoint("endpoint-3", "key-3", BASE_URL));
+		TtsEndpoint endpoint1 = new TtsEndpoint("endpoint-1", "key-1", BASE_URL);
+		TtsEndpoint endpoint2 = new TtsEndpoint("endpoint-2", "key-2", BASE_URL);
+		TtsEndpoint endpoint3 = new TtsEndpoint("endpoint-3", "key-3", BASE_URL);
+
+		// 테스트를 위해 크레딧 초기화 (동일하게 설정하여 라운드로빈 동작)
+		endpoint1.updateCredits(100.0);
+		endpoint2.updateCredits(100.0);
+		endpoint3.updateCredits(100.0);
+
+		List<TtsEndpoint> endpoints = List.of(endpoint1, endpoint2, endpoint3);
 
 		loadBalancer = new TtsLoadBalancer(endpoints);
 
