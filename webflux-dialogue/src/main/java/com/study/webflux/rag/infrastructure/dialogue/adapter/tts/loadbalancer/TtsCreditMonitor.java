@@ -104,11 +104,11 @@ public class TtsCreditMonitor {
 
 		for (TtsEndpoint endpoint : endpoints) {
 			pollEndpointCredits(endpoint)
-				.doOnSuccess(credits -> handleCreditUpdate(endpoint, credits))
-				.doOnError(error -> log.warn("엔드포인트 {} 크레딧 조회 실패: {}",
-					endpoint.getId(),
-					error.getMessage()))
-				.subscribe();
+				.subscribe(
+					credits -> handleCreditUpdate(endpoint, credits),
+					error -> log.warn("엔드포인트 {} 크레딧 조회 실패: {}",
+						endpoint.getId(),
+						error.getMessage()));
 		}
 	}
 
