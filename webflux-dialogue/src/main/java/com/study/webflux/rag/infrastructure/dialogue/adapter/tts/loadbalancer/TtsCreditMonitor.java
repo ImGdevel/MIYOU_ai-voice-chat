@@ -34,6 +34,7 @@ public class TtsCreditMonitor {
 	private final MeterRegistry meterRegistry;
 	private final ConcurrentHashMap<String, Gauge> creditGauges = new ConcurrentHashMap<>();
 	private final ConcurrentHashMap<String, Gauge> circuitStateGauges = new ConcurrentHashMap<>();
+	private final ConcurrentHashMap<String, WebClient> webClients = new ConcurrentHashMap<>();
 
 	public TtsCreditMonitor(
 		TtsLoadBalancer loadBalancer,
@@ -119,10 +120,7 @@ public class TtsCreditMonitor {
 	 * @return 남은 크레딧
 	 */
 	private Mono<Double> pollEndpointCredits(TtsEndpoint endpoint) {
-		WebClient webClient = webClientBuilder
-			.baseUrl(endpoint.getBaseUrl())
-			.defaultHeader("Authorization", "Bearer " + endpoint.getApiKey())
-			.build();
+		WebClient webClient = getWebClient(endpoint);
 
 		return webClient.get()
 			.uri("/v1/credits")
@@ -133,6 +131,24 @@ public class TtsCreditMonitor {
 			.doOnError(error -> log.debug("엔드포인트 {} 크레딧 조회 에러: {}",
 				endpoint.getId(),
 				error.getMessage()));
+	}
+
+	/**
+	 * 엔드포인트별 WebClient 조회 (캐싱)
+	 *
+	 * <p>
+	 * 공유된 WebClient.Builder의 동시성 문제를 방지하기 위해 엔드포인트별로 WebClient를 캐싱합니다.
+	 *
+	 * @param endpoint
+	 *            엔드포인트
+	 * @return 캐싱된 WebClient
+	 */
+	private WebClient getWebClient(TtsEndpoint endpoint) {
+		return webClients.computeIfAbsent(endpoint.getId(),
+			id -> webClientBuilder.clone()
+				.baseUrl(endpoint.getBaseUrl())
+				.defaultHeader("Authorization", "Bearer " + endpoint.getApiKey())
+				.build());
 	}
 
 	/**
