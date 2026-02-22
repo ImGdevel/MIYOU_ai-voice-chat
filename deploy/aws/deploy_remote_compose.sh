@@ -11,6 +11,15 @@ APP_IMAGE="${APP_IMAGE:-ghcr.io/imgdevel/miyou-dialogue:latest}"
 echo "[deploy] Prepare remote dir: ${REMOTE_DIR}"
 ssh "${HOST_ALIAS}" "mkdir -p '${REMOTE_DIR}/deploy/nginx' '${REMOTE_DIR}/scripts' '${REMOTE_DIR}/logs'"
 
+echo "[deploy] Cleanup unused Docker resources before deploy"
+ssh "${HOST_ALIAS}" "bash -s" <<'EOF'
+set -euo pipefail
+echo "[deploy] Disk usage before cleanup: $(df / | tail -1 | awk '{print $5}')"
+docker image prune -a -f --filter "until=1h" 2>/dev/null || true
+docker system prune -f 2>/dev/null || true
+echo "[deploy] Disk usage after cleanup: $(df / | tail -1 | awk '{print $5}')"
+EOF
+
 echo "[deploy] Upload compose files"
 scp deploy/docker-compose.app.yml "${HOST_ALIAS}:${REMOTE_DIR}/docker-compose.app.yml"
 scp deploy/docker-compose.app.yml "${HOST_ALIAS}:${REMOTE_DIR}/deploy/docker-compose.app.yml"

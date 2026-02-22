@@ -16,6 +16,15 @@ POST_SWITCH_MONITOR_SECONDS="${POST_SWITCH_MONITOR_SECONDS:-30}"
 echo "[blue-green] Prepare remote dir: ${REMOTE_DIR}"
 ssh "${HOST_ALIAS}" "mkdir -p '${REMOTE_DIR}/deploy/nginx' '${REMOTE_DIR}/scripts' '${REMOTE_DIR}/logs'"
 
+echo "[blue-green] Cleanup unused Docker resources before deploy"
+ssh "${HOST_ALIAS}" "bash -s" <<'EOF'
+set -euo pipefail
+echo "[blue-green] Disk usage before cleanup: $(df / | tail -1 | awk '{print $5}')"
+docker image prune -a -f --filter "until=1h" 2>/dev/null || true
+docker system prune -f 2>/dev/null || true
+echo "[blue-green] Disk usage after cleanup: $(df / | tail -1 | awk '{print $5}')"
+EOF
+
 echo "[blue-green] Upload compose files and nginx config"
 scp deploy/docker-compose.app.yml "${HOST_ALIAS}:${REMOTE_DIR}/docker-compose.app.yml"
 scp deploy/docker-compose.app.yml "${HOST_ALIAS}:${REMOTE_DIR}/deploy/docker-compose.app.yml"
