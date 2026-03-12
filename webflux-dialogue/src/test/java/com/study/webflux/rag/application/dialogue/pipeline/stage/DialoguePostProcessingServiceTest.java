@@ -1,7 +1,9 @@
 package com.study.webflux.rag.application.dialogue.pipeline.stage;
 
 import com.study.webflux.rag.application.dialogue.pipeline.PipelineInputs;
+import com.study.webflux.rag.application.memory.policy.MemoryExtractionPolicy;
 import com.study.webflux.rag.application.memory.service.MemoryExtractionService;
+import com.study.webflux.rag.application.monitoring.port.ConversationMetricsPort;
 import com.study.webflux.rag.application.monitoring.service.PipelineTracer;
 import com.study.webflux.rag.domain.dialogue.model.ConversationSession;
 import com.study.webflux.rag.domain.dialogue.model.ConversationSessionId;
@@ -10,8 +12,6 @@ import com.study.webflux.rag.domain.dialogue.port.ConversationRepository;
 import com.study.webflux.rag.domain.dialogue.port.LlmPort;
 import com.study.webflux.rag.domain.memory.port.ConversationCounterPort;
 import com.study.webflux.rag.fixture.ConversationSessionFixture;
-import com.study.webflux.rag.infrastructure.dialogue.config.properties.RagDialogueProperties;
-import com.study.webflux.rag.infrastructure.monitoring.config.ConversationMetricsConfiguration;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Test;
@@ -47,17 +47,12 @@ class DialoguePostProcessingServiceTest {
 	private PipelineTracer pipelineTracer;
 
 	@Mock
-	private ConversationMetricsConfiguration conversationMetricsConfiguration;
+	private ConversationMetricsPort conversationMetricsConfiguration;
 
 	private DialoguePostProcessingService service;
 
 	@BeforeEach
 	void setUp() {
-		RagDialogueProperties properties = new RagDialogueProperties();
-		RagDialogueProperties.Memory memoryProps = new RagDialogueProperties.Memory();
-		memoryProps.setConversationThreshold(5);
-		properties.setMemory(memoryProps);
-
 		service = new DialoguePostProcessingService(
 			conversationRepository,
 			conversationCounterPort,
@@ -65,7 +60,7 @@ class DialoguePostProcessingServiceTest {
 			llmPort,
 			pipelineTracer,
 			conversationMetricsConfiguration,
-			properties);
+			new MemoryExtractionPolicy(5));
 	}
 
 	@Test
@@ -146,11 +141,6 @@ class DialoguePostProcessingServiceTest {
 	@Test
 	@DisplayName("conversationThreshold가 0 이하면 예외를 발생시킨다")
 	void constructor_withInvalidThreshold_shouldThrowException() {
-		RagDialogueProperties properties = new RagDialogueProperties();
-		RagDialogueProperties.Memory memoryProps = new RagDialogueProperties.Memory();
-		memoryProps.setConversationThreshold(0);
-		properties.setMemory(memoryProps);
-
 		assertThatThrownBy(() -> new DialoguePostProcessingService(
 			conversationRepository,
 			conversationCounterPort,
@@ -158,7 +148,7 @@ class DialoguePostProcessingServiceTest {
 			llmPort,
 			pipelineTracer,
 			conversationMetricsConfiguration,
-			properties))
+			new MemoryExtractionPolicy(0)))
 			.isInstanceOf(IllegalArgumentException.class)
 			.hasMessageContaining("conversationThreshold");
 	}

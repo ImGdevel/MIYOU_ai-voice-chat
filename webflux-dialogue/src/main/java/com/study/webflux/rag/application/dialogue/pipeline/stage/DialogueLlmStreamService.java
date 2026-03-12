@@ -5,12 +5,12 @@ import lombok.extern.slf4j.Slf4j;
 import org.springframework.stereotype.Service;
 
 import com.study.webflux.rag.application.dialogue.pipeline.PipelineInputs;
+import com.study.webflux.rag.application.dialogue.policy.DialogueExecutionPolicy;
 import com.study.webflux.rag.application.monitoring.context.PipelineContext;
 import com.study.webflux.rag.application.monitoring.service.PipelineTracer;
 import com.study.webflux.rag.domain.dialogue.model.CompletionRequest;
 import com.study.webflux.rag.domain.dialogue.port.LlmPort;
 import com.study.webflux.rag.domain.monitoring.model.DialoguePipelineStage;
-import com.study.webflux.rag.infrastructure.dialogue.config.properties.RagDialogueProperties;
 import reactor.core.publisher.Flux;
 import reactor.core.publisher.Mono;
 import reactor.core.scheduler.Schedulers;
@@ -27,11 +27,11 @@ public class DialogueLlmStreamService {
 	public DialogueLlmStreamService(LlmPort llmPort,
 		PipelineTracer pipelineTracer,
 		DialogueMessageService messageService,
-		RagDialogueProperties properties) {
+		DialogueExecutionPolicy policy) {
 		this.llmPort = llmPort;
 		this.pipelineTracer = pipelineTracer;
 		this.messageService = messageService;
-		this.llmModel = properties.getOpenai().getModel();
+		this.llmModel = policy.llmModel();
 	}
 
 	/**

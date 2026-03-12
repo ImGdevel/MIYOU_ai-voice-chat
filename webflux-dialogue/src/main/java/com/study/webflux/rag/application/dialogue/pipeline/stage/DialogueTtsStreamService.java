@@ -13,7 +13,7 @@ import com.study.webflux.rag.domain.dialogue.service.SentenceAssembler;
 import com.study.webflux.rag.domain.monitoring.model.DialoguePipelineStage;
 import com.study.webflux.rag.domain.voice.model.AudioFormat;
 import com.study.webflux.rag.domain.voice.model.Voice;
-import com.study.webflux.rag.infrastructure.dialogue.config.PersonaVoiceProvider;
+import com.study.webflux.rag.domain.voice.port.VoiceSelectionPort;
 import reactor.core.publisher.Flux;
 import reactor.core.publisher.Mono;
 import reactor.core.scheduler.Schedulers;
@@ -26,7 +26,7 @@ public class DialogueTtsStreamService {
 	private final TtsPort ttsPort;
 	private final SentenceAssembler sentenceAssembler;
 	private final PipelineTracer pipelineTracer;
-	private final PersonaVoiceProvider voiceProvider;
+	private final VoiceSelectionPort voiceProvider;
 
 	/**
 	 * 현재 파이프라인 요청 범위에서 TTS 준비 작업을 최대 1회 수행하도록 warm-up Mono를 생성합니다.

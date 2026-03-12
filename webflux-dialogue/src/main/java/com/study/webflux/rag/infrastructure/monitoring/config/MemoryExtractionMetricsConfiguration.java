@@ -2,6 +2,7 @@ package com.study.webflux.rag.infrastructure.monitoring.config;
 
 import org.springframework.stereotype.Component;
 
+import com.study.webflux.rag.application.monitoring.port.MemoryExtractionMetricsPort;
 import io.micrometer.core.instrument.Counter;
 import io.micrometer.core.instrument.DistributionSummary;
 import io.micrometer.core.instrument.MeterRegistry;
@@ -13,7 +14,7 @@ import io.micrometer.core.instrument.MeterRegistry;
  * Phase 1B: RAG Quality Monitoring - 메모리 추출 트리거 빈도 - 추출 성공/실패율 - 추출된 메모리 타입 분포 - 추출된 메모리 중요도 분포
  */
 @Component
-public class MemoryExtractionMetricsConfiguration {
+public class MemoryExtractionMetricsConfiguration implements MemoryExtractionMetricsPort {
 
 	private final MeterRegistry meterRegistry;
 
