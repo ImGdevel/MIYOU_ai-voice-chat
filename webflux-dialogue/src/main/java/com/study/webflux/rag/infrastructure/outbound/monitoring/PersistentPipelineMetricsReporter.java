@@ -187,8 +187,7 @@ public class PersistentPipelineMetricsReporter implements PipelineMetricsReporte
 		java.util.function.Function<T, String> idExtractor) {
 		source.subscribe(
 			result -> log.debug("{} saved: {}", label, idExtractor.apply(result)),
-			error -> log
-				.error("Failed to save {} for {}: {}", label, pipelineId, error.getMessage()));
+			error -> log.error("Failed to save {} for {}", label, pipelineId, error));
 	}
 
 	private String extractString(Map<String, Object> map, String key) {

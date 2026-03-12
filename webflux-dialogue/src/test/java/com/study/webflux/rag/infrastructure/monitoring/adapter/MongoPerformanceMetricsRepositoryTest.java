@@ -5,6 +5,7 @@ import java.util.List;
 import java.util.Map;
 
 import org.springframework.data.domain.PageRequest;
+import org.springframework.data.domain.Sort;
 
 import com.study.webflux.rag.domain.monitoring.model.PerformanceMetrics;
 import com.study.webflux.rag.infrastructure.monitoring.document.PerformanceMetricsDocument;
@@ -130,16 +131,18 @@ class MongoPerformanceMetricsRepositoryTest {
 		PerformanceMetrics slow1 = createMetrics("slow-1", "COMPLETED", now, 5000L);
 		PerformanceMetrics slow2 = createMetrics("slow-2", "COMPLETED", now.plusSeconds(5), 6000L);
 
-		when(springRepository.findSlowPipelines(anyLong(), any(PageRequest.class))).thenReturn(
-			Flux.just(PerformanceMetricsDocument.fromDomain(slow1),
-				PerformanceMetricsDocument.fromDomain(slow2)));
+		when(springRepository.findByTotalDurationMillisGreaterThanEqual(anyLong(),
+			any(PageRequest.class))).thenReturn(
+				Flux.just(PerformanceMetricsDocument.fromDomain(slow2),
+					PerformanceMetricsDocument.fromDomain(slow1)));
 
 		StepVerifier.create(repository.findSlowPipelines(3000L, 5))
-			.assertNext(result -> assertThat(result.totalDurationMillis()).isEqualTo(5000L))
 			.assertNext(result -> assertThat(result.totalDurationMillis()).isEqualTo(6000L))
+			.assertNext(result -> assertThat(result.totalDurationMillis()).isEqualTo(5000L))
 			.verifyComplete();
 
-		verify(springRepository).findSlowPipelines(3000L, PageRequest.of(0, 5));
+		verify(springRepository).findByTotalDurationMillisGreaterThanEqual(3000L,
+			slowPipelinesPageRequest(5));
 	}
 
 	@Test
@@ -176,12 +179,13 @@ class MongoPerformanceMetricsRepositoryTest {
 	@Test
 	@DisplayName("느린 파이프라인 조회 시 limit 음수 보정")
 	void findSlowPipelines_negativeLimit() {
-		when(springRepository.findSlowPipelines(anyLong(), any(PageRequest.class))).thenReturn(
-			Flux.empty());
+		when(springRepository.findByTotalDurationMillisGreaterThanEqual(anyLong(),
+			any(PageRequest.class))).thenReturn(Flux.empty());
 
 		repository.findSlowPipelines(1000L, -5).blockLast();
 
-		verify(springRepository).findSlowPipelines(1000L, PageRequest.of(0, 1));
+		verify(springRepository).findByTotalDurationMillisGreaterThanEqual(1000L,
+			slowPipelinesPageRequest(1));
 	}
 
 	@Test
@@ -253,5 +257,11 @@ class MongoPerformanceMetricsRepositoryTest {
 		long duration) {
 		return new PerformanceMetrics(pipelineId, status, startedAt,
 			startedAt.plusMillis(duration), duration, null, null, List.of(), Map.of());
+	}
+
+	private PageRequest slowPipelinesPageRequest(int pageSize) {
+		return PageRequest.of(0,
+			pageSize,
+			Sort.by(Sort.Direction.DESC, "totalDurationMillis"));
 	}
 }
