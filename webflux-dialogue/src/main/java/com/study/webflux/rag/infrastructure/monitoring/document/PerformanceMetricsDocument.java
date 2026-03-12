@@ -23,6 +23,10 @@ public record PerformanceMetricsDocument(
 	List<StagePerformanceDoc> stages,
 	Map<String, Object> systemAttributes
 ) {
+	private static final String ESCAPE_TOKEN = "%";
+	private static final String ESCAPED_ESCAPE_TOKEN = "%25";
+	private static final String ESCAPED_DOT_TOKEN = "%2E";
+
 	public record StagePerformanceDoc(
 		String stageName,
 		String status,
@@ -87,7 +91,7 @@ public record PerformanceMetricsDocument(
 		}
 		return map.entrySet().stream()
 			.collect(Collectors.toMap(
-				e -> e.getKey().replace(".", "__DOT__"),
+				e -> encodeKey(e.getKey()),
 				Map.Entry::getValue));
 	}
 
@@ -97,7 +101,17 @@ public record PerformanceMetricsDocument(
 		}
 		return map.entrySet().stream()
 			.collect(Collectors.toMap(
-				e -> e.getKey().replace("__DOT__", "."),
+				e -> decodeKey(e.getKey()),
 				Map.Entry::getValue));
+	}
+
+	private static String encodeKey(String key) {
+		return key.replace(ESCAPE_TOKEN, ESCAPED_ESCAPE_TOKEN)
+			.replace(".", ESCAPED_DOT_TOKEN);
+	}
+
+	private static String decodeKey(String key) {
+		return key.replace(ESCAPED_DOT_TOKEN, ".")
+			.replace(ESCAPED_ESCAPE_TOKEN, ESCAPE_TOKEN);
 	}
 }
