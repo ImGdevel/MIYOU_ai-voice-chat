@@ -215,6 +215,59 @@ class MongoPerformanceMetricsRepositoryTest {
 	}
 
 	@Test
+	@DisplayName("메트릭 document key codec은 dotted key와 literal escape token을 round-trip 한다")
+	void performanceMetricsDocument_keyCodecRoundTrip() {
+		Instant now = Instant.now();
+		PerformanceMetrics.StagePerformance stage = new PerformanceMetrics.StagePerformance(
+			"LLM_GENERATION",
+			"COMPLETED",
+			now,
+			now.plusMillis(100),
+			100L,
+			Map.of(
+				"error.type",
+				"timeout",
+				"stage__DOT__name",
+				"kept"));
+		PerformanceMetrics metrics = new PerformanceMetrics(
+			"codec-1",
+			"COMPLETED",
+			now,
+			now.plusMillis(150),
+			150L,
+			null,
+			null,
+			List.of(stage),
+			Map.of(
+				"input.preview",
+				"hello",
+				"a__DOT__b",
+				"literal",
+				"usage%rate",
+				"kept"));
+
+		PerformanceMetricsDocument document = PerformanceMetricsDocument.fromDomain(metrics);
+
+		assertThat(document.systemAttributes())
+			.containsEntry("input%2Epreview", "hello")
+			.containsEntry("a__DOT__b", "literal")
+			.containsEntry("usage%25rate", "kept");
+		assertThat(document.stages().get(0).attributes())
+			.containsEntry("error%2Etype", "timeout")
+			.containsEntry("stage__DOT__name", "kept");
+
+		PerformanceMetrics restored = document.toDomain();
+
+		assertThat(restored.systemAttributes())
+			.containsEntry("input.preview", "hello")
+			.containsEntry("a__DOT__b", "literal")
+			.containsEntry("usage%rate", "kept");
+		assertThat(restored.stages().get(0).attributes())
+			.containsEntry("error.type", "timeout")
+			.containsEntry("stage__DOT__name", "kept");
+	}
+
+	@Test
 	@DisplayName("빈 결과 조회")
 	void findByTimeRange_empty() {
 		Instant start = Instant.now();
