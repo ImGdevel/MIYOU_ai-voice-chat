@@ -1,4 +1,4 @@
-package com.study.webflux.rag.application.dialogue.dto;
+package com.study.webflux.rag.infrastructure.inbound.web.dialogue.dto;
 
 import io.swagger.v3.oas.annotations.media.Schema;
 import jakarta.validation.constraints.NotBlank;

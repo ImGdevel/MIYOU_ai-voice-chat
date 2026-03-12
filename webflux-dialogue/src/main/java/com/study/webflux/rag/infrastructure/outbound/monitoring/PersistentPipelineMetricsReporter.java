@@ -1,4 +1,4 @@
-package com.study.webflux.rag.application.monitoring.monitor;
+package com.study.webflux.rag.infrastructure.outbound.monitoring;
 
 import java.util.Map;
 import java.util.Optional;
@@ -8,8 +8,11 @@ import lombok.extern.slf4j.Slf4j;
 
 import com.study.webflux.rag.domain.monitoring.model.DialoguePipelineStage;
 import com.study.webflux.rag.domain.monitoring.model.PerformanceMetrics;
+import com.study.webflux.rag.domain.monitoring.model.PipelineSummary;
+import com.study.webflux.rag.domain.monitoring.model.StageSnapshot;
 import com.study.webflux.rag.domain.monitoring.model.UsageAnalytics;
 import com.study.webflux.rag.domain.monitoring.port.PerformanceMetricsRepository;
+import com.study.webflux.rag.domain.monitoring.port.PipelineMetricsReporter;
 import com.study.webflux.rag.domain.monitoring.port.UsageAnalyticsRepository;
 import reactor.core.publisher.Mono;
 
@@ -22,7 +25,7 @@ public class PersistentPipelineMetricsReporter implements PipelineMetricsReporte
 	private final LoggingPipelineMetricsReporter loggingReporter;
 
 	@Override
-	public void report(DialoguePipelineTracker.PipelineSummary summary) {
+	public void report(PipelineSummary summary) {
 		loggingReporter.report(summary);
 
 		subscribeWithLogging(savePerformanceMetrics(summary),
@@ -35,11 +38,7 @@ public class PersistentPipelineMetricsReporter implements PipelineMetricsReporte
 			UsageAnalytics::pipelineId);
 	}
 
-	/**
-	 * 파이프라인 요약 정보를 성능 메트릭으로 변환해 저장합니다.
-	 */
-	private Mono<PerformanceMetrics> savePerformanceMetrics(
-		DialoguePipelineTracker.PipelineSummary summary) {
+	private Mono<PerformanceMetrics> savePerformanceMetrics(PipelineSummary summary) {
 		PerformanceMetrics metrics = PerformanceMetrics.fromPipelineSummary(
 			summary.pipelineId(),
 			summary.status().toString(),
@@ -62,11 +61,7 @@ public class PersistentPipelineMetricsReporter implements PipelineMetricsReporte
 		return performanceMetricsRepository.save(metrics);
 	}
 
-	/**
-	 * 파이프라인 요약 정보를 사용량 분석 모델로 변환해 저장합니다.
-	 */
-	private Mono<UsageAnalytics> saveUsageAnalytics(
-		DialoguePipelineTracker.PipelineSummary summary) {
+	private Mono<UsageAnalytics> saveUsageAnalytics(PipelineSummary summary) {
 		Map<String, Object> attrs = summary.attributes();
 
 		String inputPreview = extractString(attrs, "input.preview");
@@ -103,13 +98,8 @@ public class PersistentPipelineMetricsReporter implements PipelineMetricsReporte
 		return usageAnalyticsRepository.save(analytics);
 	}
 
-	/**
-	 * LLM 단계 속성에서 토큰/모델 정보를 추출해 사용량 모델로 변환합니다.
-	 */
-	private UsageAnalytics.LlmUsage extractLlmUsage(
-		DialoguePipelineTracker.PipelineSummary summary) {
-		Optional<DialoguePipelineTracker.StageSnapshot> llmStage = findStage(summary,
-			DialoguePipelineStage.LLM_COMPLETION);
+	private UsageAnalytics.LlmUsage extractLlmUsage(PipelineSummary summary) {
+		Optional<StageSnapshot> llmStage = findStage(summary, DialoguePipelineStage.LLM_COMPLETION);
 		if (llmStage.isEmpty()) {
 			return null;
 		}
@@ -133,11 +123,7 @@ public class PersistentPipelineMetricsReporter implements PipelineMetricsReporte
 			llmStage.get().durationMillis());
 	}
 
-	/**
-	 * 메모리 조회/문서 검색 단계의 건수와 수행시간을 합산합니다.
-	 */
-	private UsageAnalytics.RetrievalMetrics extractRetrievalMetrics(
-		DialoguePipelineTracker.PipelineSummary summary) {
+	private UsageAnalytics.RetrievalMetrics extractRetrievalMetrics(PipelineSummary summary) {
 		int memoryCount = 0;
 		int documentCount = 0;
 		long retrievalTime = 0;
@@ -155,11 +141,7 @@ public class PersistentPipelineMetricsReporter implements PipelineMetricsReporte
 		return new UsageAnalytics.RetrievalMetrics(memoryCount, documentCount, retrievalTime);
 	}
 
-	/**
-	 * 문장 조립/TTS 단계의 집계값을 사용해 음성 합성 메트릭을 구성합니다.
-	 */
-	private UsageAnalytics.TtsMetrics extractTtsMetrics(
-		DialoguePipelineTracker.PipelineSummary summary) {
+	private UsageAnalytics.TtsMetrics extractTtsMetrics(PipelineSummary summary) {
 		int sentenceCount = 0;
 		int audioChunks = 0;
 		long synthesisTime = 0;
@@ -194,8 +176,7 @@ public class PersistentPipelineMetricsReporter implements PipelineMetricsReporte
 		return 0L;
 	}
 
-	private Optional<DialoguePipelineTracker.StageSnapshot> findStage(
-		DialoguePipelineTracker.PipelineSummary summary,
+	private Optional<StageSnapshot> findStage(PipelineSummary summary,
 		DialoguePipelineStage stage) {
 		return summary.stages().stream().filter(snapshot -> snapshot.stage() == stage).findFirst();
 	}
@@ -206,10 +187,8 @@ public class PersistentPipelineMetricsReporter implements PipelineMetricsReporte
 		java.util.function.Function<T, String> idExtractor) {
 		source.subscribe(
 			result -> log.debug("{} saved: {}", label, idExtractor.apply(result)),
-			error -> log.error("Failed to save {} for {}: {}",
-				label,
-				pipelineId,
-				error.getMessage()));
+			error -> log
+				.error("Failed to save {} for {}: {}", label, pipelineId, error.getMessage()));
 	}
 
 	private String extractString(Map<String, Object> map, String key) {

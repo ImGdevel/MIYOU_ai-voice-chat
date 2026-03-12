@@ -1,10 +1,10 @@
-package com.study.webflux.rag.application.dialogue.controller.docs;
+package com.study.webflux.rag.infrastructure.inbound.web.dialogue.docs;
 
-import com.study.webflux.rag.application.dialogue.dto.CreateSessionRequest;
-import com.study.webflux.rag.application.dialogue.dto.CreateSessionResponse;
-import com.study.webflux.rag.application.dialogue.dto.RagDialogueRequest;
-import com.study.webflux.rag.application.dialogue.dto.SttDialogueResponse;
-import com.study.webflux.rag.application.dialogue.dto.SttTranscriptionResponse;
+import com.study.webflux.rag.infrastructure.inbound.web.dialogue.dto.CreateSessionRequest;
+import com.study.webflux.rag.infrastructure.inbound.web.dialogue.dto.CreateSessionResponse;
+import com.study.webflux.rag.infrastructure.inbound.web.dialogue.dto.RagDialogueRequest;
+import com.study.webflux.rag.infrastructure.inbound.web.dialogue.dto.SttDialogueResponse;
+import com.study.webflux.rag.infrastructure.inbound.web.dialogue.dto.SttTranscriptionResponse;
 import io.swagger.v3.oas.annotations.Operation;
 import io.swagger.v3.oas.annotations.Parameter;
 import io.swagger.v3.oas.annotations.media.Content;

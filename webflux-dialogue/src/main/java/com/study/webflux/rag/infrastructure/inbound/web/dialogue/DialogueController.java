@@ -1,4 +1,4 @@
-package com.study.webflux.rag.application.dialogue.controller;
+package com.study.webflux.rag.infrastructure.inbound.web.dialogue;
 
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
@@ -19,12 +19,6 @@ import org.springframework.web.bind.annotation.RequestPart;
 import org.springframework.web.bind.annotation.RestController;
 import org.springframework.web.server.ResponseStatusException;
 
-import com.study.webflux.rag.application.dialogue.controller.docs.DialogueApi;
-import com.study.webflux.rag.application.dialogue.dto.CreateSessionRequest;
-import com.study.webflux.rag.application.dialogue.dto.CreateSessionResponse;
-import com.study.webflux.rag.application.dialogue.dto.RagDialogueRequest;
-import com.study.webflux.rag.application.dialogue.dto.SttDialogueResponse;
-import com.study.webflux.rag.application.dialogue.dto.SttTranscriptionResponse;
 import com.study.webflux.rag.application.dialogue.service.DialogueSpeechService;
 import com.study.webflux.rag.domain.dialogue.model.ConversationSession;
 import com.study.webflux.rag.domain.dialogue.model.ConversationSessionId;
@@ -33,6 +27,12 @@ import com.study.webflux.rag.domain.dialogue.model.UserId;
 import com.study.webflux.rag.domain.dialogue.port.ConversationSessionRepository;
 import com.study.webflux.rag.domain.dialogue.port.DialoguePipelineUseCase;
 import com.study.webflux.rag.domain.voice.model.AudioFormat;
+import com.study.webflux.rag.infrastructure.inbound.web.dialogue.docs.DialogueApi;
+import com.study.webflux.rag.infrastructure.inbound.web.dialogue.dto.CreateSessionRequest;
+import com.study.webflux.rag.infrastructure.inbound.web.dialogue.dto.CreateSessionResponse;
+import com.study.webflux.rag.infrastructure.inbound.web.dialogue.dto.RagDialogueRequest;
+import com.study.webflux.rag.infrastructure.inbound.web.dialogue.dto.SttDialogueResponse;
+import com.study.webflux.rag.infrastructure.inbound.web.dialogue.dto.SttTranscriptionResponse;
 import jakarta.validation.Valid;
 import reactor.core.publisher.Flux;
 import reactor.core.publisher.Mono;

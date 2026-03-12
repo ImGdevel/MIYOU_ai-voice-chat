@@ -1,4 +1,4 @@
-package com.study.webflux.rag.application.dialogue.controller;
+package com.study.webflux.rag.infrastructure.inbound.web.dialogue;
 
 import lombok.RequiredArgsConstructor;
 

@@ -1,4 +1,4 @@
-package com.study.webflux.rag.application.dialogue.controller;
+package com.study.webflux.rag.infrastructure.inbound.web.dialogue;
 
 import java.time.Instant;
 
@@ -8,7 +8,6 @@ import org.springframework.http.MediaType;
 import org.springframework.test.context.bean.override.mockito.MockitoBean;
 import org.springframework.test.web.reactive.server.WebTestClient;
 
-import com.study.webflux.rag.application.dialogue.dto.RagDialogueRequest;
 import com.study.webflux.rag.application.dialogue.service.DialogueSpeechService;
 import com.study.webflux.rag.domain.dialogue.model.ConversationSession;
 import com.study.webflux.rag.domain.dialogue.model.ConversationSessionId;
@@ -16,6 +15,7 @@ import com.study.webflux.rag.domain.dialogue.port.ConversationSessionRepository;
 import com.study.webflux.rag.domain.dialogue.port.DialoguePipelineUseCase;
 import com.study.webflux.rag.domain.voice.model.AudioFormat;
 import com.study.webflux.rag.fixture.ConversationSessionFixture;
+import com.study.webflux.rag.infrastructure.inbound.web.dialogue.dto.RagDialogueRequest;
 import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Test;
 import reactor.core.publisher.Flux;
