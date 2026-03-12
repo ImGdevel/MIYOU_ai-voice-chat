@@ -3,15 +3,15 @@ package com.study.webflux.rag.infrastructure.dialogue.repository;
 import org.springframework.data.domain.Pageable;
 import org.springframework.data.mongodb.repository.ReactiveMongoRepository;
 
-import com.study.webflux.rag.domain.dialogue.entity.ConversationEntity;
+import com.study.webflux.rag.infrastructure.dialogue.adapter.persistence.document.ConversationDocument;
 import reactor.core.publisher.Flux;
 
 public interface ConversationMongoRepository
 	extends
-		ReactiveMongoRepository<ConversationEntity, String> {
+		ReactiveMongoRepository<ConversationDocument, String> {
 
-	Flux<ConversationEntity> findBySessionIdOrderByCreatedAtDesc(String sessionId,
+	Flux<ConversationDocument> findBySessionIdOrderByCreatedAtDesc(String sessionId,
 		Pageable pageable);
 
-	Flux<ConversationEntity> findAllBySessionId(String sessionId);
+	Flux<ConversationDocument> findAllBySessionId(String sessionId);
 }

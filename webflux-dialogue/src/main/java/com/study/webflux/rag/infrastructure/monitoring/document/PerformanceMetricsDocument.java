@@ -1,4 +1,4 @@
-package com.study.webflux.rag.domain.monitoring.entity;
+package com.study.webflux.rag.infrastructure.monitoring.document;
 
 import java.time.Instant;
 import java.util.List;
@@ -12,7 +12,7 @@ import org.springframework.data.mongodb.core.mapping.Document;
 import com.study.webflux.rag.domain.monitoring.model.PerformanceMetrics;
 
 @Document(collection = "performance_metrics")
-public record PerformanceMetricsEntity(
+public record PerformanceMetricsDocument(
 	@Id String pipelineId,
 	String status,
 	@Indexed Instant startedAt,
@@ -20,19 +20,18 @@ public record PerformanceMetricsEntity(
 	@Indexed long totalDurationMillis,
 	Long firstResponseLatencyMillis,
 	Long lastResponseLatencyMillis,
-	List<StagePerformanceEntity> stages,
+	List<StagePerformanceDoc> stages,
 	Map<String, Object> systemAttributes
 ) {
-	public record StagePerformanceEntity(
+	public record StagePerformanceDoc(
 		String stageName,
 		String status,
 		Instant startedAt,
 		Instant finishedAt,
 		long durationMillis,
 		Map<String, Object> attributes) {
-		public static StagePerformanceEntity fromDomain(
-			PerformanceMetrics.StagePerformance domain) {
-			return new StagePerformanceEntity(
+		public static StagePerformanceDoc fromDomain(PerformanceMetrics.StagePerformance domain) {
+			return new StagePerformanceDoc(
 				domain.stageName(),
 				domain.status(),
 				domain.startedAt(),
@@ -52,8 +51,8 @@ public record PerformanceMetricsEntity(
 		}
 	}
 
-	public static PerformanceMetricsEntity fromDomain(PerformanceMetrics domain) {
-		return new PerformanceMetricsEntity(
+	public static PerformanceMetricsDocument fromDomain(PerformanceMetrics domain) {
+		return new PerformanceMetricsDocument(
 			domain.pipelineId(),
 			domain.status(),
 			domain.startedAt(),
@@ -63,7 +62,7 @@ public record PerformanceMetricsEntity(
 			domain.lastResponseLatencyMillis(),
 			domain.stages() == null
 				? java.util.List.of()
-				: domain.stages().stream().map(StagePerformanceEntity::fromDomain).toList(),
+				: domain.stages().stream().map(StagePerformanceDoc::fromDomain).toList(),
 			sanitizeMapKeys(domain.systemAttributes()));
 	}
 
@@ -78,7 +77,7 @@ public record PerformanceMetricsEntity(
 			lastResponseLatencyMillis,
 			stages == null
 				? java.util.List.of()
-				: stages.stream().map(StagePerformanceEntity::toDomain).toList(),
+				: stages.stream().map(StagePerformanceDoc::toDomain).toList(),
 			restoreMapKeys(systemAttributes));
 	}
 

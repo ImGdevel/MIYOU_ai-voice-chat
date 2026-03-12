@@ -2,17 +2,17 @@ package com.study.webflux.rag.infrastructure.dialogue.repository;
 
 import org.springframework.data.mongodb.repository.ReactiveMongoRepository;
 
-import com.study.webflux.rag.domain.dialogue.entity.ConversationSessionEntity;
+import com.study.webflux.rag.infrastructure.dialogue.adapter.persistence.document.ConversationSessionDocument;
 import reactor.core.publisher.Flux;
 
 public interface ConversationSessionMongoRepository
 	extends
-		ReactiveMongoRepository<ConversationSessionEntity, String> {
+		ReactiveMongoRepository<ConversationSessionDocument, String> {
 
-	Flux<ConversationSessionEntity> findByUserIdOrderByCreatedAtDesc(String userId);
+	Flux<ConversationSessionDocument> findByUserIdOrderByCreatedAtDesc(String userId);
 
-	Flux<ConversationSessionEntity> findByPersonaIdOrderByCreatedAtDesc(String personaId);
+	Flux<ConversationSessionDocument> findByPersonaIdOrderByCreatedAtDesc(String personaId);
 
-	Flux<ConversationSessionEntity> findByPersonaIdAndUserIdOrderByCreatedAtDesc(String personaId,
+	Flux<ConversationSessionDocument> findByPersonaIdAndUserIdOrderByCreatedAtDesc(String personaId,
 		String userId);
 }

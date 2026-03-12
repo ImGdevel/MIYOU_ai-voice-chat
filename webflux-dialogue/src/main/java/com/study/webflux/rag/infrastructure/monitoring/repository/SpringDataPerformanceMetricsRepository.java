@@ -6,21 +6,21 @@ import org.springframework.data.domain.Pageable;
 import org.springframework.data.mongodb.repository.Query;
 import org.springframework.data.mongodb.repository.ReactiveMongoRepository;
 
-import com.study.webflux.rag.domain.monitoring.entity.PerformanceMetricsEntity;
+import com.study.webflux.rag.infrastructure.monitoring.document.PerformanceMetricsDocument;
 import reactor.core.publisher.Flux;
 
 public interface SpringDataPerformanceMetricsRepository
 	extends
-		ReactiveMongoRepository<PerformanceMetricsEntity, String> {
+		ReactiveMongoRepository<PerformanceMetricsDocument, String> {
 
-	Flux<PerformanceMetricsEntity> findByStartedAtBetweenOrderByStartedAtDesc(Instant startTime,
+	Flux<PerformanceMetricsDocument> findByStartedAtBetweenOrderByStartedAtDesc(Instant startTime,
 		Instant endTime);
 
-	Flux<PerformanceMetricsEntity> findByStatusOrderByStartedAtDesc(String status,
+	Flux<PerformanceMetricsDocument> findByStatusOrderByStartedAtDesc(String status,
 		Pageable pageable);
 
 	@Query("{ 'totalDurationMillis': { $gte: ?0 } }")
-	Flux<PerformanceMetricsEntity> findSlowPipelines(long thresholdMillis, Pageable pageable);
+	Flux<PerformanceMetricsDocument> findSlowPipelines(long thresholdMillis, Pageable pageable);
 
-	Flux<PerformanceMetricsEntity> findAllByOrderByStartedAtDesc(Pageable pageable);
+	Flux<PerformanceMetricsDocument> findAllByOrderByStartedAtDesc(Pageable pageable);
 }

@@ -6,10 +6,10 @@ import lombok.RequiredArgsConstructor;
 
 import org.springframework.stereotype.Repository;
 
-import com.study.webflux.rag.domain.monitoring.entity.StagePerformanceRollupEntity;
 import com.study.webflux.rag.domain.monitoring.model.MetricsGranularity;
 import com.study.webflux.rag.domain.monitoring.model.StagePerformanceRollup;
 import com.study.webflux.rag.domain.monitoring.port.StagePerformanceRollupRepository;
+import com.study.webflux.rag.infrastructure.monitoring.document.StagePerformanceRollupDocument;
 import com.study.webflux.rag.infrastructure.monitoring.repository.SpringDataStagePerformanceRollupRepository;
 import reactor.core.publisher.Flux;
 
@@ -21,8 +21,8 @@ public class MongoStagePerformanceRollupRepository implements StagePerformanceRo
 
 	@Override
 	public Flux<StagePerformanceRollup> saveAll(Flux<StagePerformanceRollup> rollups) {
-		return repository.saveAll(rollups.map(StagePerformanceRollupEntity::fromDomain))
-			.map(StagePerformanceRollupEntity::toDomain);
+		return repository.saveAll(rollups.map(StagePerformanceRollupDocument::fromDomain))
+			.map(StagePerformanceRollupDocument::toDomain);
 	}
 
 	@Override
@@ -34,6 +34,6 @@ public class MongoStagePerformanceRollupRepository implements StagePerformanceRo
 			granularity.name(),
 			startTime,
 			endTime)
-			.map(StagePerformanceRollupEntity::toDomain);
+			.map(StagePerformanceRollupDocument::toDomain);
 	}
 }

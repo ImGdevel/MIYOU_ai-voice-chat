@@ -4,14 +4,14 @@ import java.time.Instant;
 
 import org.springframework.data.mongodb.repository.ReactiveMongoRepository;
 
-import com.study.webflux.rag.domain.monitoring.entity.StagePerformanceRollupEntity;
+import com.study.webflux.rag.infrastructure.monitoring.document.StagePerformanceRollupDocument;
 import reactor.core.publisher.Flux;
 
 public interface SpringDataStagePerformanceRollupRepository
 	extends
-		ReactiveMongoRepository<StagePerformanceRollupEntity, String> {
+		ReactiveMongoRepository<StagePerformanceRollupDocument, String> {
 
-	Flux<StagePerformanceRollupEntity> findByGranularityAndBucketStartBetween(
+	Flux<StagePerformanceRollupDocument> findByGranularityAndBucketStartBetween(
 		String granularity,
 		Instant startTime,
 		Instant endTime);

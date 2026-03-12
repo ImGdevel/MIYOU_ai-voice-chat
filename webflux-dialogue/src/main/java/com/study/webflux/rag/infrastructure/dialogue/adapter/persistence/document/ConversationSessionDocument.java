@@ -1,4 +1,4 @@
-package com.study.webflux.rag.domain.dialogue.entity;
+package com.study.webflux.rag.infrastructure.dialogue.adapter.persistence.document;
 
 import java.time.Instant;
 
@@ -13,7 +13,7 @@ import org.springframework.data.mongodb.core.mapping.Document;
 	@CompoundIndex(name = "persona_created_idx", def = "{'personaId': 1, 'createdAt': -1}"),
 	@CompoundIndex(name = "persona_user_created_idx", def = "{'personaId': 1, 'userId': 1, 'createdAt': -1}")
 })
-public record ConversationSessionEntity(
+public record ConversationSessionDocument(
 	@Id String sessionId,
 	String personaId,
 	String userId,

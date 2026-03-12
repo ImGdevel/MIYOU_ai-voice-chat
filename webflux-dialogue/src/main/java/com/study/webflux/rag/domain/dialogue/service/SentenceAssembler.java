@@ -2,11 +2,8 @@ package com.study.webflux.rag.domain.dialogue.service;
 
 import java.util.List;
 
-import org.springframework.stereotype.Service;
-
 import reactor.core.publisher.Flux;
 
-@Service
 public class SentenceAssembler {
 
 	public Flux<String> assemble(Flux<String> tokenStream) {

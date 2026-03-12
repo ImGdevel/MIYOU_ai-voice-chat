@@ -7,9 +7,9 @@ import lombok.RequiredArgsConstructor;
 import org.springframework.data.domain.PageRequest;
 import org.springframework.stereotype.Repository;
 
-import com.study.webflux.rag.domain.monitoring.entity.UsageAnalyticsEntity;
 import com.study.webflux.rag.domain.monitoring.model.UsageAnalytics;
 import com.study.webflux.rag.domain.monitoring.port.UsageAnalyticsRepository;
+import com.study.webflux.rag.infrastructure.monitoring.document.UsageAnalyticsDocument;
 import com.study.webflux.rag.infrastructure.monitoring.repository.SpringDataUsageAnalyticsRepository;
 import reactor.core.publisher.Flux;
 import reactor.core.publisher.Mono;
@@ -23,39 +23,39 @@ public class MongoUsageAnalyticsRepository implements UsageAnalyticsRepository {
 	@Override
 	public Mono<UsageAnalytics> save(UsageAnalytics analytics) {
 		return Mono.just(analytics)
-			.map(UsageAnalyticsEntity::fromDomain)
+			.map(UsageAnalyticsDocument::fromDomain)
 			.flatMap(repository::save)
-			.map(UsageAnalyticsEntity::toDomain);
+			.map(UsageAnalyticsDocument::toDomain);
 	}
 
 	@Override
 	public Mono<UsageAnalytics> findById(String pipelineId) {
 		return repository.findById(pipelineId)
-			.map(UsageAnalyticsEntity::toDomain);
+			.map(UsageAnalyticsDocument::toDomain);
 	}
 
 	@Override
 	public Flux<UsageAnalytics> findByTimeRange(Instant startTime, Instant endTime) {
 		return repository.findByTimestampBetweenOrderByTimestampDesc(startTime, endTime)
-			.map(UsageAnalyticsEntity::toDomain);
+			.map(UsageAnalyticsDocument::toDomain);
 	}
 
 	@Override
 	public Flux<UsageAnalytics> findByModel(String model, int limit) {
 		return repository.findByModel(model, PageRequest.of(0, limit))
-			.map(UsageAnalyticsEntity::toDomain);
+			.map(UsageAnalyticsDocument::toDomain);
 	}
 
 	@Override
 	public Flux<UsageAnalytics> findHighTokenUsage(int tokenThreshold, int limit) {
 		return repository.findHighTokenUsage(tokenThreshold, PageRequest.of(0, limit))
-			.map(UsageAnalyticsEntity::toDomain);
+			.map(UsageAnalyticsDocument::toDomain);
 	}
 
 	@Override
 	public Flux<UsageAnalytics> findRecent(int limit) {
 		return repository.findAllByOrderByTimestampDesc(PageRequest.of(0, limit))
-			.map(UsageAnalyticsEntity::toDomain);
+			.map(UsageAnalyticsDocument::toDomain);
 	}
 
 	@Override
