@@ -45,7 +45,7 @@
 | Infrastructure dialogue | `infrastructure.dialogue.adapter.*`, `infrastructure.dialogue.config.*`, `infrastructure.dialogue.repository.*` | LLM/STT/TTS/Mongo 구현체와 Spring 조립 |
 | Infrastructure memory/retrieval | `infrastructure.memory.*`, `infrastructure.retrieval.adapter.*` | 임베딩, Redis, Vector DB, retrieval 구현체 |
 | Infrastructure monitoring | `infrastructure.monitoring.*`, `infrastructure.outbound.monitoring.*` | Mongo 문서/저장소, Micrometer, reporter 구현체 |
-| Infrastructure common | `infrastructure.common.*` | 공통 설정, 상수, 템플릿 로더 어댑터 |
+| Infrastructure common | `infrastructure.common.*` | 공통 설정, CORS/보안 헤더, OpenAPI, 템플릿 로더 어댑터 |
 
 ### 2.2 Current dependency model
 ```mermaid
@@ -122,6 +122,7 @@ flowchart LR
 - `domain` 패키지에는 Spring/Mongo/Micrometer 의존이 남아 있지 않다.
 - `application` 서비스는 `RagDialogueProperties` 같은 인프라 설정 타입을 직접 보지 않는다.
 - `RestController`와 Mongo `@Document`는 인프라 계층에만 존재한다.
+- HTTP 운영 관심사(CORS, 보안 헤더, forwarded header 처리)는 `infrastructure.common.config`에 머문다.
 - 모니터링 스냅샷과 reporter 계약은 `domain.monitoring` 중심으로 유지된다.
 - `application.dialogue.controller`, `application.dialogue.dto`, `application.monitoring.controller`에는 현재 소스 파일이 없다. 남은 것은 빈 디렉터리 수준이다.
 
