@@ -7,24 +7,24 @@ import org.springframework.data.mongodb.repository.Aggregation;
 import org.springframework.data.mongodb.repository.Query;
 import org.springframework.data.mongodb.repository.ReactiveMongoRepository;
 
-import com.study.webflux.rag.domain.monitoring.entity.UsageAnalyticsEntity;
+import com.study.webflux.rag.infrastructure.monitoring.document.UsageAnalyticsDocument;
 import reactor.core.publisher.Flux;
 import reactor.core.publisher.Mono;
 
 public interface SpringDataUsageAnalyticsRepository
 	extends
-		ReactiveMongoRepository<UsageAnalyticsEntity, String> {
+		ReactiveMongoRepository<UsageAnalyticsDocument, String> {
 
-	Flux<UsageAnalyticsEntity> findByTimestampBetweenOrderByTimestampDesc(Instant startTime,
+	Flux<UsageAnalyticsDocument> findByTimestampBetweenOrderByTimestampDesc(Instant startTime,
 		Instant endTime);
 
 	@Query("{ 'llmUsage.model': ?0 }")
-	Flux<UsageAnalyticsEntity> findByModel(String model, Pageable pageable);
+	Flux<UsageAnalyticsDocument> findByModel(String model, Pageable pageable);
 
 	@Query("{ 'llmUsage.totalTokens': { $gte: ?0 } }")
-	Flux<UsageAnalyticsEntity> findHighTokenUsage(int tokenThreshold, Pageable pageable);
+	Flux<UsageAnalyticsDocument> findHighTokenUsage(int tokenThreshold, Pageable pageable);
 
-	Flux<UsageAnalyticsEntity> findAllByOrderByTimestampDesc(Pageable pageable);
+	Flux<UsageAnalyticsDocument> findAllByOrderByTimestampDesc(Pageable pageable);
 
 	Mono<Long> countByTimestampBetween(Instant startTime, Instant endTime);
 

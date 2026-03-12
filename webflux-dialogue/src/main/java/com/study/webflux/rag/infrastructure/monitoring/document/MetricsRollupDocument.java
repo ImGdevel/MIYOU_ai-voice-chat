@@ -1,4 +1,4 @@
-package com.study.webflux.rag.domain.monitoring.entity;
+package com.study.webflux.rag.infrastructure.monitoring.document;
 
 import java.time.Instant;
 
@@ -10,7 +10,7 @@ import com.study.webflux.rag.domain.monitoring.model.MetricsGranularity;
 import com.study.webflux.rag.domain.monitoring.model.MetricsRollup;
 
 @Document(collection = "metrics_rollups")
-public record MetricsRollupEntity(
+public record MetricsRollupDocument(
 	@Id String id,
 	@Indexed Instant bucketStart,
 	@Indexed String granularity,
@@ -19,9 +19,9 @@ public record MetricsRollupEntity(
 	long totalDurationMillis,
 	double avgResponseMillis
 ) {
-	public static MetricsRollupEntity fromDomain(MetricsRollup domain) {
+	public static MetricsRollupDocument fromDomain(MetricsRollup domain) {
 		String id = domain.granularity().name() + "-" + domain.bucketStart().toEpochMilli();
-		return new MetricsRollupEntity(
+		return new MetricsRollupDocument(
 			id,
 			domain.bucketStart(),
 			domain.granularity().name(),

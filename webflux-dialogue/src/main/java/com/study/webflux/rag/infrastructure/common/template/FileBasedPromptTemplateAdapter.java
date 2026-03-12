@@ -1,22 +1,23 @@
-package com.study.webflux.rag.domain.dialogue.service;
+package com.study.webflux.rag.infrastructure.common.template;
 
 import java.util.Map;
 import java.util.stream.Collectors;
 
+import org.springframework.context.annotation.Primary;
 import org.springframework.stereotype.Component;
 
 import com.study.webflux.rag.domain.dialogue.model.ConversationContext;
 import com.study.webflux.rag.domain.dialogue.port.PromptTemplatePort;
 import com.study.webflux.rag.domain.retrieval.model.RetrievalContext;
-import com.study.webflux.rag.infrastructure.common.template.FileBasedPromptTemplate;
 
+@Primary
 @Component
-public class PromptBuilder implements PromptTemplatePort {
+public class FileBasedPromptTemplateAdapter implements PromptTemplatePort {
 
 	private static final String CONVERSATION_TEMPLATE = "dialogue/conversation";
 	private final FileBasedPromptTemplate templateLoader;
 
-	public PromptBuilder(FileBasedPromptTemplate templateLoader) {
+	public FileBasedPromptTemplateAdapter(FileBasedPromptTemplate templateLoader) {
 		this.templateLoader = templateLoader;
 	}
 

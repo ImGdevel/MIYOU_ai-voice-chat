@@ -2,7 +2,7 @@ package com.study.webflux.rag.fixture;
 
 import java.time.Instant;
 
-import com.study.webflux.rag.application.dialogue.dto.RagDialogueRequest;
+import com.study.webflux.rag.infrastructure.inbound.web.dialogue.dto.RagDialogueRequest;
 
 public final class RagDialogueRequestFixture {
 

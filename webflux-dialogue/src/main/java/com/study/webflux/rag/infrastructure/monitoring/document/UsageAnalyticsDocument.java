@@ -1,4 +1,4 @@
-package com.study.webflux.rag.domain.monitoring.entity;
+package com.study.webflux.rag.infrastructure.monitoring.document;
 
 import java.time.Instant;
 import java.util.List;
@@ -13,23 +13,23 @@ import com.study.webflux.rag.domain.monitoring.model.UsageAnalytics;
 
 @Document(collection = "usage_analytics")
 @CompoundIndex(name = "timestamp_model", def = "{'timestamp': -1, 'llmUsage.model': 1}")
-public record UsageAnalyticsEntity(
+public record UsageAnalyticsDocument(
 	@Id String pipelineId,
 	String status,
 	@Indexed Instant timestamp,
-	UserRequestEntity userRequest,
-	LlmUsageEntity llmUsage,
-	RetrievalMetricsEntity retrievalMetrics,
-	TtsMetricsEntity ttsMetrics,
-	ResponseMetricsEntity responseMetrics,
-	CostInfoEntity costInfo
+	UserRequestDoc userRequest,
+	LlmUsageDoc llmUsage,
+	RetrievalMetricsDoc retrievalMetrics,
+	TtsMetricsDoc ttsMetrics,
+	ResponseMetricsDoc responseMetrics,
+	CostInfoDoc costInfo
 ) {
-	public record UserRequestEntity(
+	public record UserRequestDoc(
 		String inputText,
 		int inputLength,
 		String inputPreview) {
-		public static UserRequestEntity fromDomain(UsageAnalytics.UserRequest domain) {
-			return new UserRequestEntity(
+		public static UserRequestDoc fromDomain(UsageAnalytics.UserRequest domain) {
+			return new UserRequestDoc(
 				domain.inputText(),
 				domain.inputLength(),
 				domain.inputPreview());
@@ -40,15 +40,15 @@ public record UsageAnalyticsEntity(
 		}
 	}
 
-	public record LlmUsageEntity(
+	public record LlmUsageDoc(
 		@Indexed String model,
 		int promptTokens,
 		int completionTokens,
 		@Indexed int totalTokens,
 		List<String> generatedSentences,
 		long completionTimeMillis) {
-		public static LlmUsageEntity fromDomain(UsageAnalytics.LlmUsage domain) {
-			return new LlmUsageEntity(
+		public static LlmUsageDoc fromDomain(UsageAnalytics.LlmUsage domain) {
+			return new LlmUsageDoc(
 				domain.model(),
 				domain.promptTokens(),
 				domain.completionTokens(),
@@ -68,12 +68,12 @@ public record UsageAnalyticsEntity(
 		}
 	}
 
-	public record RetrievalMetricsEntity(
+	public record RetrievalMetricsDoc(
 		int memoryCount,
 		int documentCount,
 		long retrievalTimeMillis) {
-		public static RetrievalMetricsEntity fromDomain(UsageAnalytics.RetrievalMetrics domain) {
-			return new RetrievalMetricsEntity(
+		public static RetrievalMetricsDoc fromDomain(UsageAnalytics.RetrievalMetrics domain) {
+			return new RetrievalMetricsDoc(
 				domain.memoryCount(),
 				domain.documentCount(),
 				domain.retrievalTimeMillis());
@@ -85,13 +85,13 @@ public record UsageAnalyticsEntity(
 		}
 	}
 
-	public record TtsMetricsEntity(
+	public record TtsMetricsDoc(
 		int sentenceCount,
 		int audioChunks,
 		long synthesisTimeMillis,
 		long audioLengthMillis) {
-		public static TtsMetricsEntity fromDomain(UsageAnalytics.TtsMetrics domain) {
-			return new TtsMetricsEntity(
+		public static TtsMetricsDoc fromDomain(UsageAnalytics.TtsMetrics domain) {
+			return new TtsMetricsDoc(
 				domain.sentenceCount(),
 				domain.audioChunks(),
 				domain.synthesisTimeMillis(),
@@ -104,12 +104,12 @@ public record UsageAnalyticsEntity(
 		}
 	}
 
-	public record ResponseMetricsEntity(
+	public record ResponseMetricsDoc(
 		long totalDurationMillis,
 		Long firstResponseLatencyMillis,
 		Long lastResponseLatencyMillis) {
-		public static ResponseMetricsEntity fromDomain(UsageAnalytics.ResponseMetrics domain) {
-			return new ResponseMetricsEntity(
+		public static ResponseMetricsDoc fromDomain(UsageAnalytics.ResponseMetrics domain) {
+			return new ResponseMetricsDoc(
 				domain.totalDurationMillis(),
 				domain.firstResponseLatencyMillis(),
 				domain.lastResponseLatencyMillis());
@@ -123,12 +123,12 @@ public record UsageAnalyticsEntity(
 		}
 	}
 
-	public record CostInfoEntity(
+	public record CostInfoDoc(
 		long llmCredits,
 		long ttsCredits,
 		long totalCredits) {
-		public static CostInfoEntity fromDomain(CostInfo domain) {
-			return new CostInfoEntity(
+		public static CostInfoDoc fromDomain(CostInfo domain) {
+			return new CostInfoDoc(
 				domain.llmCredits(),
 				domain.ttsCredits(),
 				domain.totalCredits());
@@ -139,23 +139,23 @@ public record UsageAnalyticsEntity(
 		}
 	}
 
-	public static UsageAnalyticsEntity fromDomain(UsageAnalytics domain) {
-		return new UsageAnalyticsEntity(
+	public static UsageAnalyticsDocument fromDomain(UsageAnalytics domain) {
+		return new UsageAnalyticsDocument(
 			domain.pipelineId(),
 			domain.status(),
 			domain.timestamp(),
 			domain.userRequest() != null
-				? UserRequestEntity.fromDomain(domain.userRequest())
+				? UserRequestDoc.fromDomain(domain.userRequest())
 				: null,
-			domain.llmUsage() != null ? LlmUsageEntity.fromDomain(domain.llmUsage()) : null,
+			domain.llmUsage() != null ? LlmUsageDoc.fromDomain(domain.llmUsage()) : null,
 			domain.retrievalMetrics() != null
-				? RetrievalMetricsEntity.fromDomain(domain.retrievalMetrics())
+				? RetrievalMetricsDoc.fromDomain(domain.retrievalMetrics())
 				: null,
-			domain.ttsMetrics() != null ? TtsMetricsEntity.fromDomain(domain.ttsMetrics()) : null,
+			domain.ttsMetrics() != null ? TtsMetricsDoc.fromDomain(domain.ttsMetrics()) : null,
 			domain.responseMetrics() != null
-				? ResponseMetricsEntity.fromDomain(domain.responseMetrics())
+				? ResponseMetricsDoc.fromDomain(domain.responseMetrics())
 				: null,
-			domain.costInfo() != null ? CostInfoEntity.fromDomain(domain.costInfo()) : null);
+			domain.costInfo() != null ? CostInfoDoc.fromDomain(domain.costInfo()) : null);
 	}
 
 	public UsageAnalytics toDomain() {

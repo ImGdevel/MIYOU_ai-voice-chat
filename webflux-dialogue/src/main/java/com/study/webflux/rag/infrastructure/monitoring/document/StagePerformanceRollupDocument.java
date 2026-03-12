@@ -1,4 +1,4 @@
-package com.study.webflux.rag.domain.monitoring.entity;
+package com.study.webflux.rag.infrastructure.monitoring.document;
 
 import java.time.Instant;
 
@@ -12,7 +12,7 @@ import com.study.webflux.rag.domain.monitoring.model.StagePerformanceRollup;
 
 @Document(collection = "stage_performance_rollups")
 @CompoundIndex(name = "granularity_bucket_stage", def = "{'granularity': 1, 'bucketStart': 1, 'stageName': 1}")
-public record StagePerformanceRollupEntity(
+public record StagePerformanceRollupDocument(
 	@Id String id,
 	@Indexed Instant bucketStart,
 	@Indexed String granularity,
@@ -21,10 +21,10 @@ public record StagePerformanceRollupEntity(
 	long totalDurationMillis,
 	double avgDurationMillis
 ) {
-	public static StagePerformanceRollupEntity fromDomain(StagePerformanceRollup domain) {
+	public static StagePerformanceRollupDocument fromDomain(StagePerformanceRollup domain) {
 		String id = domain.granularity().name() + "-" + domain.bucketStart().toEpochMilli()
 			+ "-" + domain.stageName();
-		return new StagePerformanceRollupEntity(
+		return new StagePerformanceRollupDocument(
 			id,
 			domain.bucketStart(),
 			domain.granularity().name(),

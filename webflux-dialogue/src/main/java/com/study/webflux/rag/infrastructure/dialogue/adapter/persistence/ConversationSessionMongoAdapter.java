@@ -4,12 +4,12 @@ import lombok.RequiredArgsConstructor;
 
 import org.springframework.stereotype.Component;
 
-import com.study.webflux.rag.domain.dialogue.entity.ConversationSessionEntity;
 import com.study.webflux.rag.domain.dialogue.model.ConversationSession;
 import com.study.webflux.rag.domain.dialogue.model.ConversationSessionId;
 import com.study.webflux.rag.domain.dialogue.model.PersonaId;
 import com.study.webflux.rag.domain.dialogue.model.UserId;
 import com.study.webflux.rag.domain.dialogue.port.ConversationSessionRepository;
+import com.study.webflux.rag.infrastructure.dialogue.adapter.persistence.document.ConversationSessionDocument;
 import com.study.webflux.rag.infrastructure.dialogue.repository.ConversationSessionMongoRepository;
 import reactor.core.publisher.Flux;
 import reactor.core.publisher.Mono;
@@ -22,8 +22,8 @@ public class ConversationSessionMongoAdapter implements ConversationSessionRepos
 
 	@Override
 	public Mono<ConversationSession> save(ConversationSession session) {
-		ConversationSessionEntity entity = toEntity(session);
-		return mongoRepository.save(entity).map(this::toDomain);
+		ConversationSessionDocument document = toDocument(session);
+		return mongoRepository.save(document).map(this::toDomain);
 	}
 
 	@Override
@@ -52,15 +52,15 @@ public class ConversationSessionMongoAdapter implements ConversationSessionRepos
 	@Override
 	public Mono<ConversationSession> softDelete(ConversationSessionId sessionId) {
 		return mongoRepository.findById(sessionId.value())
-			.flatMap(entity -> {
-				ConversationSession session = toDomain(entity);
-				return mongoRepository.save(toEntity(session.softDelete()));
+			.flatMap(document -> {
+				ConversationSession session = toDomain(document);
+				return mongoRepository.save(toDocument(session.softDelete()));
 			})
 			.map(this::toDomain);
 	}
 
-	private ConversationSessionEntity toEntity(ConversationSession session) {
-		return new ConversationSessionEntity(
+	private ConversationSessionDocument toDocument(ConversationSession session) {
+		return new ConversationSessionDocument(
 			session.sessionId().value(),
 			session.personaId().value(),
 			session.userId().value(),
@@ -68,12 +68,12 @@ public class ConversationSessionMongoAdapter implements ConversationSessionRepos
 			session.deletedAt());
 	}
 
-	private ConversationSession toDomain(ConversationSessionEntity entity) {
+	private ConversationSession toDomain(ConversationSessionDocument document) {
 		return new ConversationSession(
-			ConversationSessionId.of(entity.sessionId()),
-			PersonaId.of(entity.personaId()),
-			UserId.of(entity.userId()),
-			entity.createdAt(),
-			entity.deletedAt());
+			ConversationSessionId.of(document.sessionId()),
+			PersonaId.of(document.personaId()),
+			UserId.of(document.userId()),
+			document.createdAt(),
+			document.deletedAt());
 	}
 }
