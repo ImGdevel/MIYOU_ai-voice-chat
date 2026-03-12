@@ -5,6 +5,7 @@ import java.time.Instant;
 import lombok.RequiredArgsConstructor;
 
 import org.springframework.data.domain.PageRequest;
+import org.springframework.data.domain.Sort;
 import org.springframework.stereotype.Repository;
 
 import com.study.webflux.rag.domain.monitoring.model.PerformanceMetrics;
@@ -50,7 +51,10 @@ public class MongoPerformanceMetricsRepository implements PerformanceMetricsRepo
 	@Override
 	public Flux<PerformanceMetrics> findSlowPipelines(long thresholdMillis, int limit) {
 		int pageSize = Math.max(1, limit);
-		return repository.findSlowPipelines(thresholdMillis, PageRequest.of(0, pageSize))
+		return repository.findByTotalDurationMillisGreaterThanEqual(thresholdMillis,
+			PageRequest.of(0,
+				pageSize,
+				Sort.by(Sort.Direction.DESC, "totalDurationMillis")))
 			.map(PerformanceMetricsDocument::toDomain);
 	}
 

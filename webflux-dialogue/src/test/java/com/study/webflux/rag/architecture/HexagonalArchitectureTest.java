@@ -2,6 +2,7 @@ package com.study.webflux.rag.architecture;
 
 import com.tngtech.archunit.core.domain.JavaClasses;
 import com.tngtech.archunit.core.importer.ClassFileImporter;
+import com.tngtech.archunit.core.importer.ImportOption;
 import com.tngtech.archunit.lang.ArchRule;
 import org.junit.jupiter.api.Test;
 
@@ -11,6 +12,7 @@ import static com.tngtech.archunit.lang.syntax.ArchRuleDefinition.noClasses;
 public class HexagonalArchitectureTest {
 
 	private static final JavaClasses importedClasses = new ClassFileImporter()
+		.withImportOption(ImportOption.Predefined.DO_NOT_INCLUDE_TESTS)
 		.importPackages("com.study.webflux.rag");
 
 	@Test
@@ -19,9 +21,7 @@ public class HexagonalArchitectureTest {
 			.that().resideInAPackage("com.study.webflux.rag.domain..")
 			.should().dependOnClassesThat()
 			.resideInAnyPackage(
-				"org.springframework.stereotype..",
-				"org.springframework.data.mongodb..",
-				"org.springframework.data.annotation..",
+				"org.springframework..",
 				"io.micrometer..")
 			.because("Domain layer must be framework-agnostic");
 

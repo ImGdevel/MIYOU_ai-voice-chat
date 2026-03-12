@@ -8,7 +8,7 @@ import com.study.webflux.rag.application.dialogue.policy.PromptTemplatePolicy;
 import com.study.webflux.rag.application.dialogue.policy.SttPolicy;
 import com.study.webflux.rag.application.memory.policy.MemoryExtractionPolicy;
 import com.study.webflux.rag.application.memory.policy.MemoryRetrievalPolicy;
-import com.study.webflux.rag.infrastructure.common.template.FileBasedPromptTemplate;
+import com.study.webflux.rag.domain.dialogue.port.TemplateLoaderPort;
 import com.study.webflux.rag.infrastructure.dialogue.config.properties.RagDialogueProperties;
 
 /** 프로퍼티 기반 애플리케이션 정책 빈을 생성합니다. */
@@ -22,7 +22,7 @@ public class DialoguePolicyConfiguration {
 
 	@Bean
 	public PromptTemplatePolicy promptTemplatePolicy(RagDialogueProperties properties,
-		FileBasedPromptTemplate templateLoader) {
+		TemplateLoaderPort templateLoader) {
 		return new PromptTemplatePolicy(
 			resolveTemplate(templateLoader, properties.getSystemBasePromptTemplate()),
 			resolveTemplate(templateLoader, properties.getSystemPromptTemplate()),
@@ -48,14 +48,14 @@ public class DialoguePolicyConfiguration {
 		return new SttPolicy(stt.getMaxFileSizeBytes(), stt.getLanguage());
 	}
 
-	private String resolveTemplate(FileBasedPromptTemplate loader, String templateName) {
+	private String resolveTemplate(TemplateLoaderPort loader, String templateName) {
 		if (templateName == null || templateName.isBlank()) {
 			return "";
 		}
 		try {
 			return loader.load(templateName).trim();
 		} catch (RuntimeException e) {
-			return "";
+			throw new IllegalStateException("프롬프트 템플릿을 불러오지 못했습니다: " + templateName, e);
 		}
 	}
 }
