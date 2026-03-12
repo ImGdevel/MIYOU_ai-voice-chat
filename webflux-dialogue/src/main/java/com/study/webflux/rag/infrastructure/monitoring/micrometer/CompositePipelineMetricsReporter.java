@@ -2,8 +2,8 @@ package com.study.webflux.rag.infrastructure.monitoring.micrometer;
 
 import java.util.List;
 
-import com.study.webflux.rag.application.monitoring.monitor.DialoguePipelineTracker.PipelineSummary;
-import com.study.webflux.rag.application.monitoring.monitor.PipelineMetricsReporter;
+import com.study.webflux.rag.domain.monitoring.model.PipelineSummary;
+import com.study.webflux.rag.domain.monitoring.port.PipelineMetricsReporter;
 
 /**
  * 여러 PipelineMetricsReporter를 조합하여 하나의 Reporter로 제공합니다.
