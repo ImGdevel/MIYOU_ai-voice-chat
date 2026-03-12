@@ -5,8 +5,8 @@
 - 목적: 포트/어댑터 경계를 실제 코드와 테스트에서 강제하는 구조로 정리하고, 이후 DTO/Command/Query 정리까지 이어갈 수 있는 기준선을 만든다.
 - 현재 판단:
   - 핵심 경계 복원은 완료됐다.
-  - 문서 이동, 정책 객체 도입, 모니터링 계약 분리가 반영됐다.
-  - 다만 DTO 전환과 패키지 명명 통일은 아직 남아 있다.
+  - 2차 과제의 첫 단계로 주요 공개 시그니처는 Command/Query/Context 객체 기반으로 전환됐다.
+  - 다만 STT 입력 경계와 패키지 명명 통일은 아직 남아 있다.
 
 ### 1.1 Current verdict
 | 항목 | 상태 | 판단 |
@@ -15,7 +15,7 @@
 | `application -> infrastructure` 차단 | 완료 | 정책/포트 경계로 정리됨 |
 | Controller / Mongo document 위치 정리 | 완료 | `infrastructure.inbound.web`, `infrastructure..document`로 이동 완료 |
 | 모니터링 계약 분리 | 완료 | `PipelineSummary`, `StageSnapshot`, `PipelineMetricsReporter`가 상위 계약으로 유지 |
-| Command/Query/DTO 전환 | 미완료 | 공개 시그니처 다수가 여전히 파라미터 조합 기반 |
+| Command/Query/DTO 전환 | 부분 완료 | 주요 공개 시그니처는 전환됐고 STT/일부 후처리 입력만 남음 |
 | outbound 패키지 명명 통일 | 미완료 | 실제 구현은 인프라에 있으나 `infrastructure.outbound.*`로 완전 통일되진 않음 |
 
 ### 1.2 Validation snapshot
@@ -26,6 +26,7 @@
 | 모니터링 key codec 보정 | 통과 | `MongoPerformanceMetricsRepositoryTest` round-trip 검증 추가 |
 | 프롬프트 정책 null 방어 | 통과 | `SystemPromptServiceTest` null 정책 케이스 추가 |
 | STT 정책/스냅샷 불변 조건 | 통과 | `SttPolicyTest`, `StageSnapshotTest` 추가 |
+| DTO/Query 전환 회귀 | 통과 | pipeline/controller/retrieval/vector adapter 관련 테스트 통과 |
 
 ### 1.3 Current conclusion
 - 현재 리팩토링은 "헥사고날 경계 복원" 기준으로는 완료 단계다.
@@ -128,18 +129,18 @@ flowchart LR
 ### 2.4 Remaining structural debt
 | 항목 | 현재 위치 | 남은 문제 |
 | --- | --- | --- |
-| 공개 시그니처 다중 인자 | `DialoguePipelineUseCase`, `RetrievalPort`, `VectorMemoryPort`, `DialogueMessageService`, `SystemPromptService`, `DialogueTtsStreamService` | 의미 단위 DTO/Command/Query가 아직 부족함 |
+| 남은 공개 시그니처 다중 인자 | `DialogueSpeechService`, 일부 후처리 경로 | STT 입력과 후처리 명령이 아직 Spring/FilePart 또는 값 조합 기반 |
 | outbound 패키지 통일 | `infrastructure.dialogue.adapter.*`, `infrastructure.memory.adapter.*`, `infrastructure.retrieval.adapter.*` | 구조상 어댑터지만 `infrastructure.outbound.*` 네이밍으로 통일되지 않음 |
 | 레거시 빈 디렉터리 정리 | `application.dialogue.controller`, `application.dialogue.dto`, `application.monitoring.controller` | 기능에는 영향 없지만 문서와 트리 가독성을 떨어뜨림 |
 
 ## 3) Runtime flow
 
 ### 3.1 Current runtime
-1. `DialogueController`가 세션을 조회한 뒤 `DialoguePipelineUseCase` 또는 `DialogueSpeechService`를 호출한다.
-2. `DialogueSpeechService`는 음성 파일을 검증하고 `SttPort`로 전사한 뒤 필요하면 다시 `DialoguePipelineUseCase.executeTextOnly(...)`로 연결한다.
-3. `DialoguePipelineService`는 `DialogueInputService`로 retrieval, memory, conversation history를 묶어 `PipelineInputs`를 만든다.
-4. `DialogueLlmStreamService`는 메시지 목록을 구성해 `LlmPort`를 호출한다.
-5. `DialogueTtsStreamService`는 문장 조립과 TTS warm-up, 음성 합성을 담당한다.
+1. `DialogueController`가 세션을 조회한 뒤 `ExecuteAudioDialogueCommand` 또는 `ExecuteTextDialogueCommand`를 만들어 `DialoguePipelineUseCase`로 전달한다.
+2. `DialogueSpeechService`는 음성 파일을 검증하고 `SttPort`로 전사한 뒤 필요하면 `ExecuteTextDialogueCommand`를 만들어 다시 유스케이스로 연결한다.
+3. `DialoguePipelineService`는 command에서 세션/텍스트를 꺼내 `DialogueInputService`로 넘기고, 이 서비스는 `RetrievalQuery`, `MemorySearchQuery`로 retrieval, memory, conversation history를 묶어 `PipelineInputs`를 만든다.
+4. `DialogueLlmStreamService`는 `DialogueMessageCommand`와 `SystemPromptContext`를 조합해 메시지 목록을 만들고 `LlmPort`를 호출한다.
+5. `DialogueTtsStreamService`는 `TtsSynthesisCommand`를 받아 문장 조립과 TTS warm-up, 음성 합성을 담당한다.
 6. `DialoguePostProcessingService`는 대화 저장, 메모리 추출, 메트릭 후처리를 비동기로 연결한다.
 
 ### 3.2 Audio pipeline sequence
@@ -158,18 +159,18 @@ sequenceDiagram
 
   C->>SR: findById(sessionId)
   SR-->>C: ConversationSession
-  C->>U: executeAudioStreaming(session, text, format)
+  C->>U: ExecuteAudioDialogueCommand
   U->>P: executeAudioStreaming(...)
   P->>I: prepareInputs(session, text)
-  I->>R: retrieveMemories(sessionId, text, 5)
-  I->>R: retrieve(sessionId, text, 3)
+  I->>R: MemorySearchQuery
+  I->>R: RetrievalQuery
   I->>CR: findRecent(sessionId, 10)
   I-->>P: PipelineInputs
-  P->>L: buildLlmTokenStream(inputs)
+  P->>L: DialogueMessageCommand + SystemPromptContext
   L-->>P: Flux<String>
   P->>T: prepareTtsWarmup()
   P->>T: assembleSentences(llmTokens)
-  P->>T: buildAudioStream(sentences, warmup, format, personaId)
+  P->>T: TtsSynthesisCommand
   T-->>P: Flux<byte[]>
   P->>PP: persistAndExtract(inputs, sentences)
   P-->>C: Flux<byte[]>
@@ -177,21 +178,22 @@ sequenceDiagram
 
 ### 3.3 STT/text bridge flow
 - `POST /rag/dialogue/stt`는 `DialogueSpeechService.transcribe(...)`만 호출한다.
-- `POST /rag/dialogue/stt/text`는 전사 결과를 다시 `DialoguePipelineUseCase.executeTextOnly(...)`로 연결한다.
-- 현재 STT 경로는 헥사고날 경계를 깨지 않지만, 별도 `TranscribeDialogueCommand` 같은 진입 DTO는 아직 없다.
+- `POST /rag/dialogue/stt/text`는 전사 결과를 다시 `ExecuteTextDialogueCommand`로 감싸 유스케이스로 전달한다.
+- 현재 STT 경로는 유스케이스 진입은 DTO화됐지만, `DialogueSpeechService.transcribe(FilePart, String)` 자체는 아직 Spring `FilePart`를 직접 받는다.
 
 ### 3.4 DTO and signature debt
 | 현재 시그니처 | 현재 상태 | 다음 후보 |
 | --- | --- | --- |
-| `DialoguePipelineUseCase.executeAudioStreaming(ConversationSession, String, AudioFormat)` | 유지 중 | `ExecuteAudioDialogueCommand` |
-| `DialoguePipelineUseCase.executeTextOnly(ConversationSession, String)` | 유지 중 | `ExecuteTextDialogueCommand` |
-| `RetrievalPort.retrieve(ConversationSessionId, String, int)` | 유지 중 | `RetrievalQuery` |
-| `RetrievalPort.retrieveMemories(ConversationSessionId, String, int)` | 유지 중 | `MemorySearchQuery` |
-| `VectorMemoryPort.search(ConversationSessionId, List<Float>, List<MemoryType>, float, int)` | 유지 중 | `VectorMemorySearchQuery` |
-| `VectorMemoryPort.updateImportance(String, float, Instant, int)` | 유지 중 | `MemoryImportanceUpdateCommand` |
-| `SystemPromptService.buildSystemPrompt(PersonaId, RetrievalContext, MemoryRetrievalResult)` | 유지 중 | `SystemPromptContext` |
-| `DialogueMessageService.buildMessages(PersonaId, RetrievalContext, MemoryRetrievalResult, ConversationContext, String)` | 유지 중 | `DialogueMessageCommand` |
-| `DialogueTtsStreamService.buildAudioStream(Flux<String>, Mono<Void>, AudioFormat, PersonaId)` | 유지 중 | `TtsSynthesisCommand` |
+| `DialoguePipelineUseCase.executeAudioStreaming(ExecuteAudioDialogueCommand)` | 전환 완료 | 유스케이스 진입 command 도입 |
+| `DialoguePipelineUseCase.executeTextOnly(ExecuteTextDialogueCommand)` | 전환 완료 | 동일 |
+| `RetrievalPort.retrieve(RetrievalQuery)` | 전환 완료 | retrieval 질의 객체 도입 |
+| `RetrievalPort.retrieveMemories(MemorySearchQuery)` | 전환 완료 | 메모리 검색 질의 객체 도입 |
+| `VectorMemoryPort.search(VectorMemorySearchQuery)` | 전환 완료 | 벡터 검색 질의 객체 도입 |
+| `VectorMemoryPort.updateImportance(MemoryImportanceUpdateCommand)` | 전환 완료 | 상태 변경 명령 객체 도입 |
+| `SystemPromptService.buildSystemPrompt(SystemPromptContext)` | 전환 완료 | 프롬프트 컨텍스트 객체 도입 |
+| `DialogueMessageService.buildMessages(DialogueMessageCommand)` | 전환 완료 | 메시지 조립 입력 객체 도입 |
+| `DialogueTtsStreamService.buildAudioStream(TtsSynthesisCommand)` | 전환 완료 | TTS 합성 입력 객체 도입 |
+| `DialogueSpeechService.transcribe(FilePart, String)` | 잔여 | Spring 타입을 직접 받는 경계가 남아 있음 |
 
 `PipelineInputs`는 이미 도입되어 있어 입력 준비 단계의 1차 DTO 묶음 역할을 수행한다.
 
@@ -212,25 +214,19 @@ sequenceDiagram
 - 프롬프트 정책 문자열은 `PromptTemplatePolicy`에서 null을 정규화한다.
 - STT 설정은 `SttPolicy`에서 양수 크기와 기본 언어를 검증한다.
 - `StageSnapshot`은 생성 시 `attributes`를 불변 복사해 모니터링 스냅샷 오염을 막는다.
+- 대화 파이프라인 진입과 retrieval/vector memory 포트는 명명된 command/query record를 사용한다.
 
 ### 4.3 Remaining contract gaps
 | 항목 | 현재 상태 | 후속 방향 |
 | --- | --- | --- |
-| TTS 정책 객체 | `DialogueTtsStreamService`가 `AudioFormat`, `PersonaId`, `Mono<Void>`를 직접 조합 | `TtsSynthesisCommand` 또는 동등 DTO 도입 |
-| Retrieval query 객체 | `RetrievalPort`가 `sessionId`, `query`, `topK`를 직접 받음 | `RetrievalQuery`, `MemorySearchQuery` 도입 |
-| Vector memory update 객체 | `VectorMemoryPort.updateImportance(...)`가 primitive/value 조합 | 명명된 command record 도입 |
+| STT 입력 객체 | `DialogueSpeechService`가 `FilePart`, `language`를 직접 받음 | Spring 타입을 숨기는 전용 command/mapper 도입 검토 |
+| 후처리 명령 객체 | `DialoguePostProcessingService`가 `PipelineInputs`, `Flux<String>`를 직접 조합 | `PersistConversationCommand`, `MemoryExtractionCommand` 후보 |
 | 파라미터 규칙 자동화 | ArchUnit은 계층 경계만 강제 | 다중 인자 공개 메서드 경고 규칙 추가 검토 |
 
 ## 5) Extension/migration strategy
 
 ### 5.1 Recommended next order
-1. 공개 시그니처 DTO 전환
-   - `DialoguePipelineUseCase`
-   - `RetrievalPort`
-   - `VectorMemoryPort`
-   - `SystemPromptService`
-   - `DialogueMessageService`
-   - `DialogueTtsStreamService`
+1. 남은 STT/후처리 입력 DTO 전환
 2. 어댑터 패키지 명명 통일
    - `infrastructure.dialogue.adapter.*`
    - `infrastructure.memory.adapter.*`
@@ -259,6 +255,6 @@ sequenceDiagram
 - [x] 정책 값 검증과 기본 정규화가 `PromptTemplatePolicy`, `SttPolicy`에 반영되어 있다
 - [x] 모니터링 스냅샷이 외부 가변 맵에 오염되지 않도록 방어 복사된다
 - [x] 문서에 적힌 핵심 경계 복원 상태가 현재 코드와 일치한다
-- [ ] `DialoguePipelineUseCase`, `RetrievalPort`, `VectorMemoryPort`가 DTO/Command/Query 기반으로 전환되었다
+- [x] `DialoguePipelineUseCase`, `RetrievalPort`, `VectorMemoryPort`가 DTO/Command/Query 기반으로 전환되었다
 - [ ] 인프라 어댑터 패키지가 `infrastructure.outbound.*` 규칙으로 완전히 통일되었다
 - [ ] ArchUnit이 parameter-object 전환 기준까지 자동 강제한다
