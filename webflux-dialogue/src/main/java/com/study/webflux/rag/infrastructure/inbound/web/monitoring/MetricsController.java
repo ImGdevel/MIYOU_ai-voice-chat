@@ -1,4 +1,4 @@
-package com.study.webflux.rag.application.monitoring.controller;
+package com.study.webflux.rag.infrastructure.inbound.web.monitoring;
 
 import java.time.Instant;
 import java.time.temporal.ChronoUnit;

@@ -7,13 +7,13 @@ import org.springframework.context.annotation.Bean;
 import org.springframework.context.annotation.Configuration;
 import org.springframework.context.annotation.Primary;
 
-import com.study.webflux.rag.application.monitoring.monitor.LoggingPipelineMetricsReporter;
-import com.study.webflux.rag.application.monitoring.monitor.PersistentPipelineMetricsReporter;
-import com.study.webflux.rag.application.monitoring.monitor.PipelineMetricsReporter;
 import com.study.webflux.rag.domain.monitoring.port.PerformanceMetricsRepository;
+import com.study.webflux.rag.domain.monitoring.port.PipelineMetricsReporter;
 import com.study.webflux.rag.domain.monitoring.port.UsageAnalyticsRepository;
 import com.study.webflux.rag.infrastructure.monitoring.micrometer.CompositePipelineMetricsReporter;
 import com.study.webflux.rag.infrastructure.monitoring.micrometer.MicrometerPipelineMetricsReporter;
+import com.study.webflux.rag.infrastructure.outbound.monitoring.LoggingPipelineMetricsReporter;
+import com.study.webflux.rag.infrastructure.outbound.monitoring.PersistentPipelineMetricsReporter;
 
 /** 파이프라인 모니터링 설정을 제공합니다. */
 @Configuration

@@ -1,9 +1,11 @@
-package com.study.webflux.rag.application.monitoring.monitor;
+package com.study.webflux.rag.infrastructure.outbound.monitoring;
 
 import java.util.stream.Collectors;
 
 import org.springframework.stereotype.Component;
 
+import com.study.webflux.rag.domain.monitoring.model.PipelineSummary;
+import com.study.webflux.rag.domain.monitoring.port.PipelineMetricsReporter;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
@@ -13,7 +15,7 @@ public class LoggingPipelineMetricsReporter implements PipelineMetricsReporter {
 	private static final Logger log = LoggerFactory.getLogger(LoggingPipelineMetricsReporter.class);
 
 	@Override
-	public void report(DialoguePipelineTracker.PipelineSummary summary) {
+	public void report(PipelineSummary summary) {
 		boolean ideaActive = Boolean.parseBoolean(System.getProperty("idea.active", "false"));
 		String stageSummary = formatStages(summary, ideaActive);
 		String llmOutputs = formatOutputs(summary, ideaActive);
@@ -52,8 +54,7 @@ public class LoggingPipelineMetricsReporter implements PipelineMetricsReporter {
 		return latency == null ? "-" : latency.toString();
 	}
 
-	private String formatStages(DialoguePipelineTracker.PipelineSummary summary,
-		boolean ideaActive) {
+	private String formatStages(PipelineSummary summary, boolean ideaActive) {
 		var stream = summary.stages().stream().map(stage -> stage.stage() + ":" + stage.status()
 			+ "(" + stage.durationMillis() + "ms, attrs=" + stage.attributes() + ")");
 		if (ideaActive) {
@@ -62,8 +63,7 @@ public class LoggingPipelineMetricsReporter implements PipelineMetricsReporter {
 		return stream.collect(Collectors.joining(", "));
 	}
 
-	private String formatOutputs(DialoguePipelineTracker.PipelineSummary summary,
-		boolean ideaActive) {
+	private String formatOutputs(PipelineSummary summary, boolean ideaActive) {
 		if (summary.llmOutputs().isEmpty()) {
 			return "(none)";
 		}

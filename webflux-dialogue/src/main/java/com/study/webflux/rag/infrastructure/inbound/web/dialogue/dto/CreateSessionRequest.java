@@ -1,4 +1,4 @@
-package com.study.webflux.rag.application.dialogue.dto;
+package com.study.webflux.rag.infrastructure.inbound.web.dialogue.dto;
 
 public record CreateSessionRequest(
 	String userId,
