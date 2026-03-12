@@ -8,9 +8,9 @@
   - `webflux-dialogue/src/main/java/com/study/webflux/rag/infrastructure`
   - `webflux-dialogue/build.gradle`
 - 배경:
-  - 현재 구현은 포트 인터페이스와 어댑터 개념을 이미 도입했다.
-  - 그러나 `domain -> infrastructure`, `application -> infrastructure`, `infrastructure -> application` 역참조가 동시에 존재한다.
-  - 다중 파라미터 시그니처가 여러 계층에 산재해 있어, 정책 필드 추가 시 호출부가 넓게 깨질 가능성이 높다.
+  - 초기 진단 시점에는 포트 인터페이스와 어댑터 개념은 있었지만, `domain -> infrastructure`, `application -> infrastructure`, `infrastructure -> application` 역참조가 동시에 존재했다.
+  - 1차 리팩토링으로 핵심 레이어 경계와 모니터링 계약은 상당 부분 복원되었다.
+  - 현재 남은 주 작업은 Command/Query DTO 전환과 외부 시스템 어댑터 패키지 정리다.
 - 최종 목표:
   - `domain` 에서 Spring/Mongo/Web 관련 의존을 제거한다.
   - `application` 은 유스케이스와 오케스트레이션, DTO/Command/Query 조립에만 집중한다.
@@ -19,34 +19,44 @@
   - 아키텍처 규칙을 ArchUnit 또는 동등한 테스트로 자동 강제한다.
 
 ### 1.1 Validation result snapshot
-| 항목 | 결과 | 해석 |
-| --- | --- | --- |
-| `domain` 내 프레임워크 오염 파일 | 8개 | Spring/Mongo 어노테이션이 핵심 계층에 침투 |
-| `application -> infrastructure` import 파일 | 7개 | 유스케이스 계층이 구현/설정에 직접 결합 |
-| `infrastructure -> application` import 파일 | 4개 | 어댑터가 다시 상위 계층을 참조 |
-| 아키텍처 강제 테스트 | 없음 | 위반이 빌드에서 차단되지 않음 |
+| 항목 | 현재 결과 | 초기 진단 대비 | 판정 |
+| --- | --- | --- | --- |
+| `domain` 내 프레임워크 오염 파일 | 0개 | 8 -> 0 | 해결 |
+| `domain -> infrastructure` import 파일 | 0개 | 1 -> 0 | 해결 |
+| `application -> infrastructure` import 파일 | 0개 | 7 -> 0 | 해결 |
+| 금지 대상 `infrastructure.outbound -> application.service/pipeline` import 파일 | 0개 | 1 -> 0 | 해결 |
+| 허용 대상 `infrastructure.inbound/config -> application` import 파일 | 5개 | 신규 구조 반영 | 허용 |
+| 아키텍처 강제 테스트 | `HexagonalArchitectureTest` 추가 및 통과 | 없음 -> 추가 | 해결 |
 
-### 1.2 Representative issue map
-| 카테고리 | 현재 예시 | 문제 |
+검증 근거:
+- 정적 스캔: import/annotation 규칙 재집계
+- 실행 검증: `./gradlew :webflux-dialogue:test --tests "*HexagonalArchitectureTest"` 성공
+
+### 1.2 Current progress map
+| 항목 | 상태 | 근거 |
 | --- | --- | --- |
-| 도메인 프레임워크 오염 | `domain.dialogue.service.PromptBuilder`, `domain.dialogue.service.SentenceAssembler` | `@Component`, `@Service` 사용 |
-| 도메인 persistence 오염 | `domain.dialogue.entity.ConversationEntity`, `domain.monitoring.entity.PerformanceMetricsEntity` | `@Document`, `@Indexed`, Mongo 스키마 위치 오류 |
-| 애플리케이션의 구현체 직접 의존 | `application.dialogue.pipeline.stage.SystemPromptService` | `FileBasedPromptTemplate`, `RagDialogueProperties` 직접 주입 |
-| 인프라의 상위 계층 역참조 | `infrastructure.retrieval.adapter.VectorMemoryRetrievalAdapter` | `MemoryRetrievalService` 에 직접 의존 |
-| 파라미터 응집 부족 | `DialogueMessageService.buildMessages(...)`, `VectorMemoryPort.search(...)` | 인자 의미가 분산되고 확장 비용이 큼 |
+| 도메인 프레임워크 정화 | 완료 | `SentenceAssembler` 는 순수 클래스가 되었고 Spring/Mongo 어노테이션이 `domain` 에서 제거됨 |
+| persistence document 이동 | 완료 | `ConversationDocument`, `PerformanceMetricsDocument` 등으로 `infrastructure` 로 이동 |
+| 애플리케이션 정책 추출 | 완료 | `DialogueExecutionPolicy`, `PromptTemplatePolicy`, `MemoryRetrievalPolicy`, `SttPolicy` 도입 |
+| 인바운드 어댑터 이동 | 완료 | `DialogueController` 와 HTTP DTO 가 `infrastructure.inbound.web` 로 이동 |
+| 모니터링 계약 재정렬 | 완료 | `PipelineSummary`, `StageSnapshot`, `PipelineMetricsReporter` 가 `domain` 으로 이동 |
+| 아키텍처 가드레일 | 완료 | ArchUnit 기반 `HexagonalArchitectureTest` 추가 |
+| Command/Query DTO 전환 | 진행 중 | 공개 시그니처 다수가 여전히 순수 파라미터 조합 사용 |
+| 외부 시스템 패키지 정리 | 진행 중 | 일부 어댑터가 아직 `infrastructure.outbound.*` 표준 경로로 재배치되지 않음 |
 
 현재 상태(Implemented):
-- 구조 위반 지점이 코드 기준으로 식별되어 있다.
-- 포트 기반 진입점 일부(`DialoguePipelineUseCase`, `LlmPort`, `TtsPort`, `ConversationRepository`)는 이미 존재한다.
+- 핵심 레이어 경계 복원 작업은 1차적으로 성공했다.
+- `domain` 과 `application` 의 직접적인 인프라 결합은 해소됐다.
+- 모니터링 요약 DTO와 reporter 계약도 상위 계층 기준으로 재정렬됐다.
 
 미래 상태(TODO):
-- 레이어 의존을 단방향으로 복원한다.
-- DTO/Command/Query 객체를 도입해 시그니처를 재정렬한다.
-- 문서 규칙을 테스트와 패키지 구조로 고정한다.
+- Command/Query/DTO 객체를 도입해 다중 파라미터 시그니처를 축소한다.
+- 남아 있는 외부 시스템 어댑터 패키지를 `infrastructure.outbound.*` 규칙으로 통일한다.
+- ArchUnit 규칙에 DTO/parameter object 관련 가드까지 추가한다.
 
 ## 2) Module structure (packages, responsibilities)
 
-### 2.1 Current-state dependency leakage
+### 2.1 Pre-refactor dependency leakage baseline
 ```mermaid
 flowchart LR
   subgraph Domain["domain"]
@@ -196,7 +206,7 @@ flowchart LR
 
 ## 3) Runtime flow
 
-### 3.1 Current runtime pain points
+### 3.1 Pre-refactor runtime pain points baseline
 1. Controller 가 유스케이스 포트에 연결되는 지점은 괜찮다.
 2. 입력 준비 단계에서 `RetrievalPort` 는 유지되지만, 내부 구현 일부가 다시 `application` 서비스에 역참조한다.
 3. 시스템 프롬프트/LLM/TTS 단계는 정책과 템플릿, 보이스 선택을 위해 인프라 타입을 직접 주입받는다.
@@ -283,7 +293,7 @@ public record VectorMemorySearchQuery(
 
 ## 4) Configuration contract
 
-### 4.1 Current-state contract problem
+### 4.1 Pre-refactor contract problem baseline
 | 현재 타입 | 현재 소비 위치 | 문제 |
 | --- | --- | --- |
 | `RagDialogueProperties` | `SystemPromptService`, `DialogueLlmStreamService`, `DialoguePostProcessingService`, `DialogueSpeechService` | 애플리케이션이 `@ConfigurationProperties` 구조를 직접 안다 |
@@ -339,35 +349,39 @@ public record VectorMemorySearchQuery(
 ### 5.2 Phase plan
 | Phase | 목표 | 주요 작업 | 완료 조건 | 상태 |
 | --- | --- | --- | --- | --- |
-| 0 | 가드레일 확보 | ArchUnit 또는 유사 테스트 추가 | `domain` 의 Spring import 가 빌드 실패로 차단 | TODO |
-| 1 | domain 정화 | `@Document`/Mongo entity 를 infra 로 이동, mapper 분리 | `domain` 에 Spring Data annotation 없음 | TODO |
-| 2 | DTO 도입 | 대표 시그니처를 Command/Query DTO 로 전환 | 3개 이상 인자 공개 메서드 제거 | TODO |
-| 3 | application 경계 복원 | `RagDialogueProperties`, template loader, metrics config 직접 주입 제거 | `application -> infrastructure` import 0 | TODO |
-| 4 | inbound/outbound adapter 정리 | controller, response DTO, reporter 구현체를 infra 로 이동 | 웹/로그/DB adapter 가 infra 에 모임 | TODO |
-| 5 | monitoring 경계 재구성 | `PipelineSummary` 를 독립 DTO 로 분리, port 재정의 | infra 가 application concrete type 에 직접 의존하지 않음 | TODO |
+| 0 | 가드레일 확보 | ArchUnit 또는 유사 테스트 추가 | `domain` 의 Spring import 가 빌드 실패로 차단 | DONE |
+| 1 | domain 정화 | `@Document`/Mongo entity 를 infra 로 이동, mapper 분리 | `domain` 에 Spring Data annotation 없음 | DONE |
+| 2 | DTO 도입 | 대표 시그니처를 Command/Query DTO 로 전환 | 3개 이상 인자 공개 메서드 제거 | IN_PROGRESS |
+| 3 | application 경계 복원 | `RagDialogueProperties`, template loader, metrics config 직접 주입 제거 | `application -> infrastructure` import 0 | DONE |
+| 4 | inbound/outbound adapter 정리 | controller, response DTO, reporter 구현체를 infra 로 이동 | 웹/로그/DB adapter 가 infra 에 모임 | IN_PROGRESS |
+| 5 | monitoring 경계 재구성 | `PipelineSummary` 를 독립 DTO 로 분리, port 재정의 | infra 가 application concrete type 에 직접 의존하지 않음 | DONE |
 | 6 | 모듈 분리 검토 | 필요 시 Gradle 멀티모듈(`domain-core`, `application-core`, `infrastructure-web`) 검토 | 패키지 규칙이 장기적으로 유지 가능 | TODO |
 
 ### 5.3 Highest-priority changes
-1. `domain` 의 Mongo 문서 클래스 이동
-2. `PromptBuilder` 와 `SystemPromptService` 의 템플릿 로딩 경계 재정의
-3. `MemoryRetrievalService` 의 설정/메트릭 의존 제거
-4. `VectorMemoryRetrievalAdapter -> MemoryRetrievalService` 역참조 제거
-5. `PipelineMetricsReporter` 계약과 구현 위치 재정렬
+1. `DialoguePipelineUseCase`, `DialogueMessageService`, `DialogueSpeechService` 에 Command/DTO 도입
+2. `MemoryRetrievalPort`, `VectorMemoryPort` 의 query/update command 객체 도입
+3. `infrastructure.dialogue.adapter.*`, `infrastructure.memory.adapter.*` 패키지를 `infrastructure.outbound.*` 규칙으로 재배치
+4. ArchUnit 규칙에 다중 파라미터 공개 시그니처 제한 추가
+5. `SystemPromptService` 와 `DialogueTtsStreamService` 의 컨텍스트 전달을 전용 객체로 묶기
 
 ### 5.4 File-by-file recommendation
-| 파일 | 권장 조치 |
-| --- | --- |
-| `domain/dialogue/service/PromptBuilder.java` | domain 밖으로 이동하거나 순수 문자열 조립 서비스로 축소 |
-| `domain/dialogue/service/SentenceAssembler.java` | Spring stereotype 제거, 순수 도메인 서비스로 유지 |
-| `domain/dialogue/entity/*.java` | Mongo document 로 infra 이동 |
-| `domain/monitoring/entity/*.java` | Mongo document 로 infra 이동 |
-| `application/dialogue/pipeline/stage/SystemPromptService.java` | `PromptTemplatePolicy`, `PromptTemplateLoaderPort`, `SystemPromptContext` 기반으로 재작성 |
-| `application/dialogue/pipeline/stage/DialogueLlmStreamService.java` | `LlmCompletionCommand`, `DialogueExecutionPolicy` 도입 |
-| `application/dialogue/pipeline/stage/DialogueTtsStreamService.java` | `TtsSynthesisCommand`, `VoiceSelectionPort` 도입 |
-| `application/memory/service/MemoryRetrievalService.java` | `MemorySearchQuery`, `MemoryRetrievalPolicy`, `RagQualityMetricsPort` 사용 |
-| `application/memory/service/MemoryExtractionService.java` | `MemoryExtractionPolicy`, `MemoryExtractionMetricsPort` 사용 |
-| `infrastructure/retrieval/adapter/VectorMemoryRetrievalAdapter.java` | application 서비스 의존 제거, retrieval 전용 adapter 책임만 유지 |
-| `infrastructure/monitoring/config/MonitoringConfiguration.java` | concrete reporter 인스턴스화 대신 port 구현체만 wiring |
+| 파일/영역 | 현재 상태 | 다음 조치 |
+| --- | --- | --- |
+| `domain/dialogue/service/SentenceAssembler.java` | 완료 | 현 상태 유지 |
+| `infrastructure/dialogue/config/DomainServiceConfiguration.java` | 완료 | 도메인 서비스 빈 등록 지점으로 유지 |
+| `infrastructure/common/template/FileBasedPromptTemplateAdapter.java` | 완료 | `PromptTemplatePort` 어댑터로 유지 |
+| `application/dialogue/pipeline/stage/SystemPromptService.java` | 진행 중 | `SystemPromptContext` 도입으로 다중 인수 축소 |
+| `application/dialogue/pipeline/stage/DialogueLlmStreamService.java` | 진행 중 | `LlmCompletionCommand` 도입 |
+| `application/dialogue/pipeline/stage/DialogueTtsStreamService.java` | 진행 중 | `TtsSynthesisCommand` 도입 |
+| `application/dialogue/pipeline/stage/DialogueMessageService.java` | 진행 중 | `DialogueMessageCommand` 도입 |
+| `application/dialogue/service/DialogueSpeechService.java` | 진행 중 | `TranscribeDialogueCommand` 또는 등가 DTO 도입 |
+| `application/memory/service/MemoryRetrievalService.java` | 부분 완료 | 정책/메트릭 포트는 정리됐고 `MemorySearchQuery` 만 남음 |
+| `application/memory/service/MemoryExtractionService.java` | 부분 완료 | 메트릭 포트 정리는 완료, extraction command/context 객체 확장 여지 있음 |
+| `domain/dialogue/port/DialoguePipelineUseCase.java` | 진행 중 | `executeAudioStreaming`, `executeTextOnly` 를 command 기반으로 전환 |
+| `domain/memory/port/VectorMemoryPort.java` | 진행 중 | `search`, `updateImportance` 를 query/command 객체 기반으로 전환 |
+| `infrastructure/retrieval/adapter/VectorMemoryRetrievalAdapter.java` | 완료 | `MemoryRetrievalPort` 기반으로 역참조 제거 |
+| `infrastructure/monitoring/config/MonitoringConfiguration.java` | 완료 | reporter 구현체가 `infrastructure.outbound.monitoring` 에 위치 |
+| `infrastructure/dialogue/adapter/*`, `infrastructure/memory/adapter/*` | 진행 중 | `infrastructure.outbound.*` 규칙으로 경로 통일 |
 
 ### 5.5 DTO introduction order
 1. Use case 진입 DTO:
@@ -397,15 +411,17 @@ public record VectorMemorySearchQuery(
 - public 메서드 중 4개 이상 primitive/value 파라미터 조합이 남아 있으면 경고 또는 실패 처리한다.
 
 ## 6) Review checklist
-- [ ] `domain` 패키지에 `@Component`, `@Service`, `@Repository`, `@Document`, `@ConfigurationProperties` 가 없는가
-- [ ] `domain` 패키지가 `infrastructure` 패키지를 import 하지 않는가
-- [ ] `application` 패키지가 `infrastructure` 구현체 또는 설정 클래스를 import 하지 않는가
-- [ ] `infrastructure` 패키지가 `application` concrete service 를 import 하지 않는가
-- [ ] Controller 와 HTTP DTO 가 `infrastructure.inbound.web` 로 정리되어 있는가
-- [ ] Mongo/Qdrant/Redis/OpenAI/Supertone 관련 타입이 모두 `infrastructure.outbound` 로 정리되어 있는가
+- [x] `domain` 패키지에 `@Component`, `@Service`, `@Repository`, `@Document`, `@ConfigurationProperties` 가 없는가
+- [x] `domain` 패키지가 `infrastructure` 패키지를 import 하지 않는가
+- [x] `application` 패키지가 `infrastructure` 구현체 또는 설정 클래스를 import 하지 않는가
+- [x] `infrastructure.outbound` 패키지가 `application..service..` 또는 `application..pipeline..` concrete type 을 import 하지 않는가
+- [x] Controller 와 HTTP DTO 가 `infrastructure.inbound.web` 로 정리되어 있는가
+- [ ] Mongo/Qdrant/Redis/OpenAI/Supertone 관련 타입이 모두 `infrastructure.outbound` 규칙으로 재정리되었는가
 - [ ] 대표 시그니처가 Command/Query/DTO 기반으로 전환되었는가
-- [ ] `VectorMemoryPort.search(...)` 같은 다중 인자 메서드가 query 객체로 대체되었는가
-- [ ] `RagDialogueProperties` 가 `@Configuration` 경계 밖으로 새지 않는가
-- [ ] 메트릭 기록이 Micrometer 빈 직접 호출이 아니라 포트 뒤로 숨겨졌는가
-- [ ] `build.gradle` 또는 테스트 경로에 아키텍처 규칙 검증이 추가되었는가
-- [ ] 본 문서의 현재 상태와 실제 패키지 구조가 일치하는가
+- [ ] `VectorMemoryPort.search(...)` 와 `updateImportance(...)` 가 query/command 객체로 대체되었는가
+- [x] `RagDialogueProperties` 가 `application` 경계 밖으로 밀려나고 `infrastructure.config` 에서 정책 객체로 변환되는가
+- [x] 메트릭 기록이 애플리케이션에서 Micrometer 빈 직접 호출이 아니라 포트 뒤로 숨겨졌는가
+- [x] `PipelineSummary`, `StageSnapshot`, `PipelineMetricsReporter` 가 `application` 내부 타입이 아니라 상위 계층 계약으로 분리되었는가
+- [x] `build.gradle` 과 테스트 경로에 아키텍처 규칙 검증이 추가되었는가
+- [ ] ArchUnit 규칙이 DTO/parameter object 전환 기준까지 강제하는가
+- [x] 본 문서의 현재 상태와 실제 패키지 구조가 일치하는가
