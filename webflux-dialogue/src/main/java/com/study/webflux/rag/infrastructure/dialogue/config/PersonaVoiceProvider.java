@@ -12,6 +12,7 @@ import com.study.webflux.rag.domain.voice.model.AudioFormat;
 import com.study.webflux.rag.domain.voice.model.Voice;
 import com.study.webflux.rag.domain.voice.model.VoiceSettings;
 import com.study.webflux.rag.domain.voice.model.VoiceStyle;
+import com.study.webflux.rag.domain.voice.port.VoiceSelectionPort;
 import com.study.webflux.rag.infrastructure.dialogue.config.properties.RagDialogueProperties;
 import com.study.webflux.rag.infrastructure.dialogue.config.properties.RagDialogueProperties.PersonaVoiceConfig;
 
@@ -21,7 +22,7 @@ import com.study.webflux.rag.infrastructure.dialogue.config.properties.RagDialog
 @Slf4j
 @Service
 @RequiredArgsConstructor
-public class PersonaVoiceProvider {
+public class PersonaVoiceProvider implements VoiceSelectionPort {
 
 	private final RagDialogueProperties properties;
 	private final Voice defaultVoice;

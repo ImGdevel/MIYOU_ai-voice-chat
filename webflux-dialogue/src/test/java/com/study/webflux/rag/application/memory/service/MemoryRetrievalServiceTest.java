@@ -3,6 +3,8 @@ package com.study.webflux.rag.application.memory.service;
 import java.time.Instant;
 import java.util.List;
 
+import com.study.webflux.rag.application.memory.policy.MemoryRetrievalPolicy;
+import com.study.webflux.rag.application.monitoring.port.RagQualityMetricsPort;
 import com.study.webflux.rag.domain.dialogue.model.ConversationSessionId;
 import com.study.webflux.rag.domain.memory.model.Memory;
 import com.study.webflux.rag.domain.memory.model.MemoryEmbedding;
@@ -10,8 +12,6 @@ import com.study.webflux.rag.domain.memory.model.MemoryType;
 import com.study.webflux.rag.domain.memory.port.EmbeddingPort;
 import com.study.webflux.rag.domain.memory.port.VectorMemoryPort;
 import com.study.webflux.rag.fixture.ConversationSessionFixture;
-import com.study.webflux.rag.infrastructure.memory.adapter.MemoryExtractionConfig;
-import com.study.webflux.rag.infrastructure.monitoring.config.RagQualityMetricsConfiguration;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Test;
@@ -38,17 +38,16 @@ class MemoryRetrievalServiceTest {
 	private VectorMemoryPort vectorMemoryPort;
 
 	@Mock
-	private RagQualityMetricsConfiguration ragQualityMetricsConfiguration;
+	private RagQualityMetricsPort ragQualityMetricsConfiguration;
 
 	private MemoryRetrievalService service;
 
 	@BeforeEach
 	void setUp() {
-		MemoryExtractionConfig config = new MemoryExtractionConfig("gpt-4o-mini", 5, 0.05f, 0.3f);
 		service = new MemoryRetrievalService(embeddingPort,
 			vectorMemoryPort,
 			ragQualityMetricsConfiguration,
-			config);
+			new MemoryRetrievalPolicy(0.05f, 0.3f));
 	}
 
 	@Test

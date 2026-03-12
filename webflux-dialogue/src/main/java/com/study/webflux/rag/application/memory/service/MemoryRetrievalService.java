@@ -5,39 +5,41 @@ import java.util.List;
 
 import org.springframework.stereotype.Service;
 
+import com.study.webflux.rag.application.memory.policy.MemoryRetrievalPolicy;
+import com.study.webflux.rag.application.monitoring.port.RagQualityMetricsPort;
 import com.study.webflux.rag.domain.dialogue.model.ConversationSessionId;
 import com.study.webflux.rag.domain.memory.model.Memory;
 import com.study.webflux.rag.domain.memory.model.MemoryRetrievalResult;
 import com.study.webflux.rag.domain.memory.model.MemoryType;
 import com.study.webflux.rag.domain.memory.port.EmbeddingPort;
+import com.study.webflux.rag.domain.memory.port.MemoryRetrievalPort;
 import com.study.webflux.rag.domain.memory.port.VectorMemoryPort;
-import com.study.webflux.rag.infrastructure.memory.adapter.MemoryExtractionConfig;
-import com.study.webflux.rag.infrastructure.monitoring.config.RagQualityMetricsConfiguration;
 import reactor.core.publisher.Mono;
 
 @Service
-public class MemoryRetrievalService {
+public class MemoryRetrievalService implements MemoryRetrievalPort {
 
 	private static final float RECENCY_WEIGHT = 0.1f;
 	private static final int CANDIDATE_MULTIPLIER = 2;
 
 	private final EmbeddingPort embeddingPort;
 	private final VectorMemoryPort vectorMemoryPort;
-	private final RagQualityMetricsConfiguration ragMetrics;
+	private final RagQualityMetricsPort ragMetrics;
 	private final float importanceBoost;
 	private final float importanceThreshold;
 
 	public MemoryRetrievalService(EmbeddingPort embeddingPort,
 		VectorMemoryPort vectorMemoryPort,
-		RagQualityMetricsConfiguration ragMetrics,
-		MemoryExtractionConfig config) {
+		RagQualityMetricsPort ragMetrics,
+		MemoryRetrievalPolicy policy) {
 		this.embeddingPort = embeddingPort;
 		this.vectorMemoryPort = vectorMemoryPort;
 		this.ragMetrics = ragMetrics;
-		this.importanceBoost = config.importanceBoost();
-		this.importanceThreshold = config.importanceThreshold();
+		this.importanceBoost = policy.importanceBoost();
+		this.importanceThreshold = policy.importanceThreshold();
 	}
 
+	@Override
 	public Mono<MemoryRetrievalResult> retrieveMemories(ConversationSessionId sessionId,
 		String query,
 		int topK) {

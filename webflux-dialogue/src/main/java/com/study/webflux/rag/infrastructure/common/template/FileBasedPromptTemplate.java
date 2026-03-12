@@ -9,8 +9,10 @@ import org.springframework.core.io.ClassPathResource;
 import org.springframework.stereotype.Component;
 import org.springframework.util.StreamUtils;
 
+import com.study.webflux.rag.domain.dialogue.port.TemplateLoaderPort;
+
 @Component
-public class FileBasedPromptTemplate {
+public class FileBasedPromptTemplate implements TemplateLoaderPort {
 
 	private static final List<String> TEMPLATE_EXTENSIONS = List.of(".md", ".txt");
 

@@ -5,9 +5,10 @@ import java.util.List;
 import java.util.Map;
 
 import org.springframework.data.domain.PageRequest;
+import org.springframework.data.domain.Sort;
 
-import com.study.webflux.rag.domain.monitoring.entity.PerformanceMetricsEntity;
 import com.study.webflux.rag.domain.monitoring.model.PerformanceMetrics;
+import com.study.webflux.rag.infrastructure.monitoring.document.PerformanceMetricsDocument;
 import com.study.webflux.rag.infrastructure.monitoring.repository.SpringDataPerformanceMetricsRepository;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.DisplayName;
@@ -44,10 +45,10 @@ class MongoPerformanceMetricsRepositoryTest {
 	void save_success() {
 		Instant now = Instant.now();
 		PerformanceMetrics metrics = createMetrics("pipeline-1", "COMPLETED", now, 1000L);
-		PerformanceMetricsEntity entity = PerformanceMetricsEntity.fromDomain(metrics);
+		PerformanceMetricsDocument document = PerformanceMetricsDocument.fromDomain(metrics);
 
-		when(springRepository.save(any(PerformanceMetricsEntity.class))).thenReturn(
-			Mono.just(entity));
+		when(springRepository.save(any(PerformanceMetricsDocument.class))).thenReturn(
+			Mono.just(document));
 
 		StepVerifier.create(repository.save(metrics)).assertNext(result -> {
 			assertThat(result.pipelineId()).isEqualTo("pipeline-1");
@@ -55,7 +56,7 @@ class MongoPerformanceMetricsRepositoryTest {
 			assertThat(result.totalDurationMillis()).isEqualTo(1000L);
 		}).verifyComplete();
 
-		verify(springRepository).save(any(PerformanceMetricsEntity.class));
+		verify(springRepository).save(any(PerformanceMetricsDocument.class));
 	}
 
 	@Test
@@ -63,9 +64,9 @@ class MongoPerformanceMetricsRepositoryTest {
 	void findById_success() {
 		Instant now = Instant.now();
 		PerformanceMetrics metrics = createMetrics("pipeline-123", "COMPLETED", now, 500L);
-		PerformanceMetricsEntity entity = PerformanceMetricsEntity.fromDomain(metrics);
+		PerformanceMetricsDocument document = PerformanceMetricsDocument.fromDomain(metrics);
 
-		when(springRepository.findById("pipeline-123")).thenReturn(Mono.just(entity));
+		when(springRepository.findById("pipeline-123")).thenReturn(Mono.just(document));
 
 		StepVerifier.create(repository.findById("pipeline-123")).assertNext(result -> {
 			assertThat(result.pipelineId()).isEqualTo("pipeline-123");
@@ -93,8 +94,8 @@ class MongoPerformanceMetricsRepositoryTest {
 		PerformanceMetrics metrics2 = createMetrics("p2", "COMPLETED", time2, 2000L);
 
 		when(springRepository.findByStartedAtBetweenOrderByStartedAtDesc(start, end)).thenReturn(
-			Flux.just(PerformanceMetricsEntity.fromDomain(metrics2),
-				PerformanceMetricsEntity.fromDomain(metrics1)));
+			Flux.just(PerformanceMetricsDocument.fromDomain(metrics2),
+				PerformanceMetricsDocument.fromDomain(metrics1)));
 
 		StepVerifier.create(repository.findByTimeRange(start, end))
 			.assertNext(result -> assertThat(result.pipelineId()).isEqualTo("p2"))
@@ -111,8 +112,8 @@ class MongoPerformanceMetricsRepositoryTest {
 
 		when(springRepository.findByStatusOrderByStartedAtDesc(anyString(),
 			any(PageRequest.class))).thenReturn(
-				Flux.just(PerformanceMetricsEntity.fromDomain(metrics2),
-					PerformanceMetricsEntity.fromDomain(metrics1)));
+				Flux.just(PerformanceMetricsDocument.fromDomain(metrics2),
+					PerformanceMetricsDocument.fromDomain(metrics1)));
 
 		StepVerifier.create(repository.findByStatus("FAILED", 10))
 			.assertNext(result -> assertThat(result.status()).isEqualTo("FAILED"))
@@ -130,16 +131,18 @@ class MongoPerformanceMetricsRepositoryTest {
 		PerformanceMetrics slow1 = createMetrics("slow-1", "COMPLETED", now, 5000L);
 		PerformanceMetrics slow2 = createMetrics("slow-2", "COMPLETED", now.plusSeconds(5), 6000L);
 
-		when(springRepository.findSlowPipelines(anyLong(), any(PageRequest.class))).thenReturn(
-			Flux.just(PerformanceMetricsEntity.fromDomain(slow1),
-				PerformanceMetricsEntity.fromDomain(slow2)));
+		when(springRepository.findByTotalDurationMillisGreaterThanEqual(anyLong(),
+			any(PageRequest.class))).thenReturn(
+				Flux.just(PerformanceMetricsDocument.fromDomain(slow2),
+					PerformanceMetricsDocument.fromDomain(slow1)));
 
 		StepVerifier.create(repository.findSlowPipelines(3000L, 5))
-			.assertNext(result -> assertThat(result.totalDurationMillis()).isEqualTo(5000L))
 			.assertNext(result -> assertThat(result.totalDurationMillis()).isEqualTo(6000L))
+			.assertNext(result -> assertThat(result.totalDurationMillis()).isEqualTo(5000L))
 			.verifyComplete();
 
-		verify(springRepository).findSlowPipelines(3000L, PageRequest.of(0, 5));
+		verify(springRepository).findByTotalDurationMillisGreaterThanEqual(3000L,
+			slowPipelinesPageRequest(5));
 	}
 
 	@Test
@@ -150,8 +153,8 @@ class MongoPerformanceMetricsRepositoryTest {
 		PerformanceMetrics recent2 = createMetrics("r2", "COMPLETED", now.minusSeconds(10), 200L);
 
 		when(springRepository.findAllByOrderByStartedAtDesc(any(PageRequest.class))).thenReturn(
-			Flux.just(PerformanceMetricsEntity.fromDomain(recent1),
-				PerformanceMetricsEntity.fromDomain(recent2)));
+			Flux.just(PerformanceMetricsDocument.fromDomain(recent1),
+				PerformanceMetricsDocument.fromDomain(recent2)));
 
 		StepVerifier.create(repository.findRecent(2))
 			.assertNext(result -> assertThat(result.pipelineId()).isEqualTo("r1"))
@@ -176,12 +179,13 @@ class MongoPerformanceMetricsRepositoryTest {
 	@Test
 	@DisplayName("느린 파이프라인 조회 시 limit 음수 보정")
 	void findSlowPipelines_negativeLimit() {
-		when(springRepository.findSlowPipelines(anyLong(), any(PageRequest.class))).thenReturn(
-			Flux.empty());
+		when(springRepository.findByTotalDurationMillisGreaterThanEqual(anyLong(),
+			any(PageRequest.class))).thenReturn(Flux.empty());
 
 		repository.findSlowPipelines(1000L, -5).blockLast();
 
-		verify(springRepository).findSlowPipelines(1000L, PageRequest.of(0, 1));
+		verify(springRepository).findByTotalDurationMillisGreaterThanEqual(1000L,
+			slowPipelinesPageRequest(1));
 	}
 
 	@Test
@@ -198,9 +202,9 @@ class MongoPerformanceMetricsRepositoryTest {
 			now.plusMillis(900), 900L, 50L, 850L, List.of(stage1, stage2),
 			Map.of("version", "1.0"));
 
-		PerformanceMetricsEntity entity = PerformanceMetricsEntity.fromDomain(metrics);
-		when(springRepository.save(any(PerformanceMetricsEntity.class))).thenReturn(
-			Mono.just(entity));
+		PerformanceMetricsDocument document = PerformanceMetricsDocument.fromDomain(metrics);
+		when(springRepository.save(any(PerformanceMetricsDocument.class))).thenReturn(
+			Mono.just(document));
 
 		StepVerifier.create(repository.save(metrics)).assertNext(result -> {
 			assertThat(result.stages()).hasSize(2);
@@ -208,6 +212,59 @@ class MongoPerformanceMetricsRepositoryTest {
 			assertThat(result.stages().get(1).stageName()).isEqualTo("LLM_GENERATION");
 			assertThat(result.systemAttributes()).containsEntry("version", "1.0");
 		}).verifyComplete();
+	}
+
+	@Test
+	@DisplayName("메트릭 document key codec은 dotted key와 literal escape token을 round-trip 한다")
+	void performanceMetricsDocument_keyCodecRoundTrip() {
+		Instant now = Instant.now();
+		PerformanceMetrics.StagePerformance stage = new PerformanceMetrics.StagePerformance(
+			"LLM_GENERATION",
+			"COMPLETED",
+			now,
+			now.plusMillis(100),
+			100L,
+			Map.of(
+				"error.type",
+				"timeout",
+				"stage__DOT__name",
+				"kept"));
+		PerformanceMetrics metrics = new PerformanceMetrics(
+			"codec-1",
+			"COMPLETED",
+			now,
+			now.plusMillis(150),
+			150L,
+			null,
+			null,
+			List.of(stage),
+			Map.of(
+				"input.preview",
+				"hello",
+				"a__DOT__b",
+				"literal",
+				"usage%rate",
+				"kept"));
+
+		PerformanceMetricsDocument document = PerformanceMetricsDocument.fromDomain(metrics);
+
+		assertThat(document.systemAttributes())
+			.containsEntry("input%2Epreview", "hello")
+			.containsEntry("a__DOT__b", "literal")
+			.containsEntry("usage%25rate", "kept");
+		assertThat(document.stages().get(0).attributes())
+			.containsEntry("error%2Etype", "timeout")
+			.containsEntry("stage__DOT__name", "kept");
+
+		PerformanceMetrics restored = document.toDomain();
+
+		assertThat(restored.systemAttributes())
+			.containsEntry("input.preview", "hello")
+			.containsEntry("a__DOT__b", "literal")
+			.containsEntry("usage%rate", "kept");
+		assertThat(restored.stages().get(0).attributes())
+			.containsEntry("error.type", "timeout")
+			.containsEntry("stage__DOT__name", "kept");
 	}
 
 	@Test
@@ -227,7 +284,7 @@ class MongoPerformanceMetricsRepositoryTest {
 	void save_error_propagates() {
 		PerformanceMetrics metrics = createMetrics("err-1", "FAILED", Instant.now(), 100L);
 
-		when(springRepository.save(any(PerformanceMetricsEntity.class))).thenReturn(
+		when(springRepository.save(any(PerformanceMetricsDocument.class))).thenReturn(
 			Mono.error(new RuntimeException("DB write error")));
 
 		StepVerifier.create(repository.save(metrics))
@@ -253,5 +310,11 @@ class MongoPerformanceMetricsRepositoryTest {
 		long duration) {
 		return new PerformanceMetrics(pipelineId, status, startedAt,
 			startedAt.plusMillis(duration), duration, null, null, List.of(), Map.of());
+	}
+
+	private PageRequest slowPipelinesPageRequest(int pageSize) {
+		return PageRequest.of(0,
+			pageSize,
+			Sort.by(Sort.Direction.DESC, "totalDurationMillis"));
 	}
 }

@@ -2,6 +2,7 @@ package com.study.webflux.rag.infrastructure.monitoring.config;
 
 import org.springframework.stereotype.Component;
 
+import com.study.webflux.rag.application.monitoring.port.ConversationMetricsPort;
 import io.micrometer.core.instrument.Counter;
 import io.micrometer.core.instrument.DistributionSummary;
 import io.micrometer.core.instrument.MeterRegistry;
@@ -13,7 +14,7 @@ import io.micrometer.core.instrument.MeterRegistry;
  * Phase 1C: LLM & Conversation Metrics - 사용자별 대화 횟수 증가 - 대화 길이 분포 (query/response) - 대화 턴 증가 패턴
  */
 @Component
-public class ConversationMetricsConfiguration {
+public class ConversationMetricsConfiguration implements ConversationMetricsPort {
 
 	private final MeterRegistry meterRegistry;
 

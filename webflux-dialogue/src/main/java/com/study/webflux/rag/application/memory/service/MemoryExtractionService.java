@@ -7,6 +7,7 @@ import lombok.extern.slf4j.Slf4j;
 
 import org.springframework.stereotype.Service;
 
+import com.study.webflux.rag.application.monitoring.port.MemoryExtractionMetricsPort;
 import com.study.webflux.rag.domain.dialogue.model.ConversationSessionId;
 import com.study.webflux.rag.domain.dialogue.model.ConversationTurn;
 import com.study.webflux.rag.domain.dialogue.port.ConversationRepository;
@@ -17,7 +18,6 @@ import com.study.webflux.rag.domain.memory.port.ConversationCounterPort;
 import com.study.webflux.rag.domain.memory.port.EmbeddingPort;
 import com.study.webflux.rag.domain.memory.port.MemoryExtractionPort;
 import com.study.webflux.rag.domain.memory.port.VectorMemoryPort;
-import com.study.webflux.rag.infrastructure.monitoring.config.MemoryExtractionMetricsConfiguration;
 import reactor.core.publisher.Flux;
 import reactor.core.publisher.Mono;
 
@@ -35,7 +35,7 @@ public class MemoryExtractionService {
 	private final EmbeddingPort embeddingPort;
 	private final VectorMemoryPort vectorMemoryPort;
 	private final MemoryRetrievalService retrievalService;
-	private final MemoryExtractionMetricsConfiguration extractionMetrics;
+	private final MemoryExtractionMetricsPort extractionMetrics;
 	private final int conversationThreshold;
 
 	public Mono<Void> checkAndExtract(ConversationSessionId sessionId) {

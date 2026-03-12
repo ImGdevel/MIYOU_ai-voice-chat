@@ -3,8 +3,10 @@ package com.study.webflux.rag.application.dialogue.pipeline.stage;
 import org.springframework.stereotype.Service;
 
 import com.study.webflux.rag.application.dialogue.pipeline.PipelineInputs;
+import com.study.webflux.rag.application.memory.policy.MemoryExtractionPolicy;
 import com.study.webflux.rag.application.memory.service.MemoryExtractionService;
 import com.study.webflux.rag.application.monitoring.context.PipelineContext;
+import com.study.webflux.rag.application.monitoring.port.ConversationMetricsPort;
 import com.study.webflux.rag.application.monitoring.service.PipelineTracer;
 import com.study.webflux.rag.domain.dialogue.model.ConversationTurn;
 import com.study.webflux.rag.domain.dialogue.port.ConversationRepository;
@@ -12,8 +14,6 @@ import com.study.webflux.rag.domain.dialogue.port.LlmPort;
 import com.study.webflux.rag.domain.dialogue.port.TokenUsageProvider;
 import com.study.webflux.rag.domain.memory.port.ConversationCounterPort;
 import com.study.webflux.rag.domain.monitoring.model.DialoguePipelineStage;
-import com.study.webflux.rag.infrastructure.dialogue.config.properties.RagDialogueProperties;
-import com.study.webflux.rag.infrastructure.monitoring.config.ConversationMetricsConfiguration;
 import reactor.core.publisher.Flux;
 import reactor.core.publisher.Mono;
 import reactor.core.scheduler.Schedulers;
@@ -27,7 +27,7 @@ public class DialoguePostProcessingService {
 	private final MemoryExtractionService memoryExtractionService;
 	private final LlmPort llmPort;
 	private final PipelineTracer pipelineTracer;
-	private final ConversationMetricsConfiguration conversationMetrics;
+	private final ConversationMetricsPort conversationMetrics;
 	private final int conversationThreshold;
 
 	public DialoguePostProcessingService(ConversationRepository conversationRepository,
@@ -35,15 +35,15 @@ public class DialoguePostProcessingService {
 		MemoryExtractionService memoryExtractionService,
 		LlmPort llmPort,
 		PipelineTracer pipelineTracer,
-		ConversationMetricsConfiguration conversationMetrics,
-		RagDialogueProperties properties) {
+		ConversationMetricsPort conversationMetrics,
+		MemoryExtractionPolicy policy) {
 		this.conversationRepository = conversationRepository;
 		this.conversationCounterPort = conversationCounterPort;
 		this.memoryExtractionService = memoryExtractionService;
 		this.llmPort = llmPort;
 		this.pipelineTracer = pipelineTracer;
 		this.conversationMetrics = conversationMetrics;
-		this.conversationThreshold = properties.getMemory().getConversationThreshold();
+		this.conversationThreshold = policy.conversationThreshold();
 		if (this.conversationThreshold <= 0) {
 			throw new IllegalArgumentException("conversationThreshold 설정값은 0 이하일 수 없습니다.");
 		}
