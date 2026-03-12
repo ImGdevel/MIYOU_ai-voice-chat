@@ -7,10 +7,12 @@ import org.springframework.stereotype.Service;
 
 import com.study.webflux.rag.application.memory.policy.MemoryRetrievalPolicy;
 import com.study.webflux.rag.application.monitoring.port.RagQualityMetricsPort;
-import com.study.webflux.rag.domain.dialogue.model.ConversationSessionId;
 import com.study.webflux.rag.domain.memory.model.Memory;
+import com.study.webflux.rag.domain.memory.model.MemoryImportanceUpdateCommand;
 import com.study.webflux.rag.domain.memory.model.MemoryRetrievalResult;
+import com.study.webflux.rag.domain.memory.model.MemorySearchQuery;
 import com.study.webflux.rag.domain.memory.model.MemoryType;
+import com.study.webflux.rag.domain.memory.model.VectorMemorySearchQuery;
 import com.study.webflux.rag.domain.memory.port.EmbeddingPort;
 import com.study.webflux.rag.domain.memory.port.MemoryRetrievalPort;
 import com.study.webflux.rag.domain.memory.port.VectorMemoryPort;
@@ -40,17 +42,15 @@ public class MemoryRetrievalService implements MemoryRetrievalPort {
 	}
 
 	@Override
-	public Mono<MemoryRetrievalResult> retrieveMemories(ConversationSessionId sessionId,
-		String query,
-		int topK) {
-		return embeddingPort.embed(query)
-			.flatMap(embedding -> searchCandidateMemories(sessionId, embedding.vector(), topK))
+	public Mono<MemoryRetrievalResult> retrieveMemories(MemorySearchQuery query) {
+		return embeddingPort.embed(query.query())
+			.flatMap(embedding -> searchCandidateMemories(query, embedding.vector()))
 			.doOnNext(candidates -> {
 				ragMetrics.recordMemoryCandidateCount(candidates.size());
 			})
-			.map(memories -> rankAndLimit(memories, topK))
+			.map(memories -> rankAndLimit(memories, query.topK()))
 			.doOnNext(ranked -> {
-				int candidateCount = topK * CANDIDATE_MULTIPLIER;
+				int candidateCount = query.topK() * CANDIDATE_MULTIPLIER;
 				int filteredCount = Math.max(0, candidateCount - ranked.size());
 				ragMetrics.recordMemoryFilteredCount(filteredCount);
 
@@ -64,15 +64,14 @@ public class MemoryRetrievalService implements MemoryRetrievalPort {
 			.flatMap(this::updateAccessMetrics);
 	}
 
-	private Mono<List<Memory>> searchCandidateMemories(ConversationSessionId sessionId,
-		List<Float> queryEmbedding,
-		int topK) {
+	private Mono<List<Memory>> searchCandidateMemories(MemorySearchQuery query,
+		List<Float> queryEmbedding) {
 		List<MemoryType> types = List.of(MemoryType.EXPERIENTIAL, MemoryType.FACTUAL);
-		return vectorMemoryPort.search(sessionId,
+		return vectorMemoryPort.search(new VectorMemorySearchQuery(query.sessionId(),
 			queryEmbedding,
 			types,
 			importanceThreshold,
-			topK * CANDIDATE_MULTIPLIER).collectList();
+			query.topK() * CANDIDATE_MULTIPLIER)).collectList();
 	}
 
 	private List<Memory> rankAndLimit(List<Memory> memories, int topK) {
@@ -101,10 +100,11 @@ public class MemoryRetrievalService implements MemoryRetrievalPort {
 		return reactor.core.publisher.Flux.fromIterable(memories)
 			.flatMap(memory -> {
 				Memory updated = memory.withAccess(importanceBoost);
-				return vectorMemoryPort.updateImportance(updated.id(),
+				return vectorMemoryPort.updateImportance(new MemoryImportanceUpdateCommand(
+					updated.id(),
 					updated.importance(),
 					updated.lastAccessedAt(),
-					updated.accessCount()).thenReturn(updated);
+					updated.accessCount())).thenReturn(updated);
 			})
 			.collectList()
 			.map(this::groupByType);

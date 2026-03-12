@@ -11,7 +11,9 @@ import com.study.webflux.rag.domain.dialogue.model.ConversationSession;
 import com.study.webflux.rag.domain.dialogue.model.ConversationTurn;
 import com.study.webflux.rag.domain.dialogue.port.ConversationRepository;
 import com.study.webflux.rag.domain.memory.model.MemoryRetrievalResult;
+import com.study.webflux.rag.domain.memory.model.MemorySearchQuery;
 import com.study.webflux.rag.domain.retrieval.model.RetrievalContext;
+import com.study.webflux.rag.domain.retrieval.model.RetrievalQuery;
 import com.study.webflux.rag.domain.retrieval.port.RetrievalPort;
 import reactor.core.publisher.Mono;
 
@@ -29,10 +31,11 @@ public class DialogueInputService {
 			.cache();
 
 		Mono<MemoryRetrievalResult> memories = pipelineTracer.traceMemories(
-			() -> retrievalPort.retrieveMemories(session.sessionId(), text, 5));
+			() -> retrievalPort
+				.retrieveMemories(new MemorySearchQuery(session.sessionId(), text, 5)));
 
 		Mono<RetrievalContext> retrievalContext = pipelineTracer.traceRetrieval(
-			() -> retrievalPort.retrieve(session.sessionId(), text, 3));
+			() -> retrievalPort.retrieve(new RetrievalQuery(session.sessionId(), text, 3)));
 
 		Mono<ConversationContext> history = loadConversationHistory(session).cache();
 

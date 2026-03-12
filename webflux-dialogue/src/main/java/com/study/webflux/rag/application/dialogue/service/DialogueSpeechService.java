@@ -12,6 +12,7 @@ import org.springframework.web.server.ResponseStatusException;
 import com.study.webflux.rag.application.dialogue.policy.SttPolicy;
 import com.study.webflux.rag.domain.dialogue.model.AudioTranscriptionInput;
 import com.study.webflux.rag.domain.dialogue.model.ConversationSession;
+import com.study.webflux.rag.domain.dialogue.model.ExecuteTextDialogueCommand;
 import com.study.webflux.rag.domain.dialogue.port.DialoguePipelineUseCase;
 import com.study.webflux.rag.domain.dialogue.port.SttPort;
 import reactor.core.publisher.Mono;
@@ -37,7 +38,7 @@ public class DialogueSpeechService {
 		String language) {
 		return transcribe(filePart, language)
 			.flatMap(transcription -> dialoguePipelineUseCase
-				.executeTextOnly(session, transcription)
+				.executeTextOnly(new ExecuteTextDialogueCommand(session, transcription))
 				.collectList()
 				.map(tokens -> new SpeechDialogueResult(transcription, String.join("", tokens))));
 	}

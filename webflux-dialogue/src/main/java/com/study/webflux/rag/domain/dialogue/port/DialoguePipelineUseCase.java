@@ -1,7 +1,7 @@
 package com.study.webflux.rag.domain.dialogue.port;
 
-import com.study.webflux.rag.domain.dialogue.model.ConversationSession;
-import com.study.webflux.rag.domain.voice.model.AudioFormat;
+import com.study.webflux.rag.domain.dialogue.model.ExecuteAudioDialogueCommand;
+import com.study.webflux.rag.domain.dialogue.model.ExecuteTextDialogueCommand;
 import reactor.core.publisher.Flux;
 
 /**
@@ -9,9 +9,7 @@ import reactor.core.publisher.Flux;
  */
 public interface DialoguePipelineUseCase {
 
-	Flux<byte[]> executeAudioStreaming(ConversationSession session,
-		String text,
-		AudioFormat format);
+	Flux<byte[]> executeAudioStreaming(ExecuteAudioDialogueCommand command);
 
-	Flux<String> executeTextOnly(ConversationSession session, String text);
+	Flux<String> executeTextOnly(ExecuteTextDialogueCommand command);
 }

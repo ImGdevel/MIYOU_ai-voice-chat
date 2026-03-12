@@ -8,6 +8,8 @@ import com.study.webflux.rag.application.dialogue.pipeline.stage.DialoguePostPro
 import com.study.webflux.rag.application.dialogue.pipeline.stage.DialogueTtsStreamService;
 import com.study.webflux.rag.domain.dialogue.model.ConversationSession;
 import com.study.webflux.rag.domain.dialogue.model.ConversationTurn;
+import com.study.webflux.rag.domain.dialogue.model.ExecuteAudioDialogueCommand;
+import com.study.webflux.rag.domain.dialogue.model.ExecuteTextDialogueCommand;
 import com.study.webflux.rag.domain.voice.model.AudioFormat;
 import com.study.webflux.rag.fixture.ConversationSessionFixture;
 import org.junit.jupiter.api.BeforeEach;
@@ -63,13 +65,16 @@ class DialoguePipelineServiceTest {
 		when(ttsStreamService.prepareTtsWarmup()).thenReturn(Mono.empty());
 		when(llmStreamService.buildLlmTokenStream(any())).thenReturn(Flux.just("a", "b"));
 		when(ttsStreamService.assembleSentences(any())).thenReturn(Flux.just("ab"));
-		when(ttsStreamService.buildAudioStream(any(), any(), any(), any()))
+		when(ttsStreamService.buildAudioStream(any()))
 			.thenReturn(Flux.just("audio".getBytes()));
 		when(ttsStreamService.traceTtsSynthesis(any()))
 			.thenReturn(Flux.just("audio".getBytes()));
 		when(postProcessingService.persistAndExtract(any(), any())).thenReturn(Mono.empty());
 
-		StepVerifier.create(service.executeAudioStreaming(session, testText, AudioFormat.MP3))
+		StepVerifier.create(
+			service.executeAudioStreaming(new ExecuteAudioDialogueCommand(session,
+				testText,
+				AudioFormat.MP3)))
 			.expectNextMatches(bytes -> Arrays.equals(bytes, "audio".getBytes()))
 			.verifyComplete();
 
@@ -89,7 +94,9 @@ class DialoguePipelineServiceTest {
 		when(llmStreamService.buildLlmTokenStream(any())).thenReturn(Flux.just("hi"));
 		when(postProcessingService.persistAndExtractText(any(), any())).thenReturn(Mono.empty());
 
-		StepVerifier.create(service.executeTextOnly(session, testText)).expectNext("hi")
+		StepVerifier.create(service.executeTextOnly(new ExecuteTextDialogueCommand(session,
+			testText)))
+			.expectNext("hi")
 			.verifyComplete();
 
 		verify(inputService, times(1)).prepareInputs(session, testText);

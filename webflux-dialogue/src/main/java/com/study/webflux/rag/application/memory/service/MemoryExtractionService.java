@@ -14,6 +14,7 @@ import com.study.webflux.rag.domain.dialogue.port.ConversationRepository;
 import com.study.webflux.rag.domain.memory.model.ExtractedMemory;
 import com.study.webflux.rag.domain.memory.model.Memory;
 import com.study.webflux.rag.domain.memory.model.MemoryExtractionContext;
+import com.study.webflux.rag.domain.memory.model.MemorySearchQuery;
 import com.study.webflux.rag.domain.memory.port.ConversationCounterPort;
 import com.study.webflux.rag.domain.memory.port.EmbeddingPort;
 import com.study.webflux.rag.domain.memory.port.MemoryExtractionPort;
@@ -100,7 +101,8 @@ public class MemoryExtractionService {
 	private Mono<MemoryExtractionContext> buildExtractionContext(ConversationSessionId sessionId,
 		List<ConversationTurn> conversations) {
 		String combinedQuery = mergeQueries(conversations);
-		return retrievalService.retrieveMemories(sessionId, combinedQuery, 10)
+		return retrievalService
+			.retrieveMemories(new MemorySearchQuery(sessionId, combinedQuery, 10))
 			.map(result -> MemoryExtractionContext
 				.of(sessionId, conversations, result.allMemories()));
 	}

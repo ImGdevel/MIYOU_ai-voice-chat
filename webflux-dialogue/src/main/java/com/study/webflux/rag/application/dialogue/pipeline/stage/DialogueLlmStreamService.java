@@ -4,6 +4,7 @@ import lombok.extern.slf4j.Slf4j;
 
 import org.springframework.stereotype.Service;
 
+import com.study.webflux.rag.application.dialogue.pipeline.DialogueMessageCommand;
 import com.study.webflux.rag.application.dialogue.pipeline.PipelineInputs;
 import com.study.webflux.rag.application.dialogue.policy.DialogueExecutionPolicy;
 import com.study.webflux.rag.application.monitoring.context.PipelineContext;
@@ -57,11 +58,12 @@ public class DialogueLlmStreamService {
 				? java.util.Map.<String, Object>of("correlationId", tracker.pipelineId())
 				: java.util.Map.<String, Object>of();
 			return inputsMono.flatMapMany(inputs -> pipelineTracer.tracePrompt(
-				() -> messageService.buildMessages(inputs.session().personaId(),
+				() -> messageService.buildMessages(new DialogueMessageCommand(
+					inputs.session().personaId(),
 					inputs.retrievalContext(),
 					inputs.memories(),
 					inputs.conversationContext(),
-					inputs.currentTurn().query()))
+					inputs.currentTurn().query())))
 				.flatMapMany(messages -> {
 					CompletionRequest request = new CompletionRequest(
 						messages,

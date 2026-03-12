@@ -8,6 +8,7 @@ import org.springframework.web.server.ResponseStatusException;
 
 import com.study.webflux.rag.application.dialogue.policy.SttPolicy;
 import com.study.webflux.rag.domain.dialogue.model.ConversationSession;
+import com.study.webflux.rag.domain.dialogue.model.ExecuteTextDialogueCommand;
 import com.study.webflux.rag.domain.dialogue.port.DialoguePipelineUseCase;
 import com.study.webflux.rag.domain.dialogue.port.SttPort;
 import com.study.webflux.rag.fixture.ConversationSessionFixture;
@@ -37,7 +38,7 @@ class DialogueSpeechServiceTest {
 		ConversationSession session = ConversationSessionFixture.create();
 
 		when(sttPort.transcribe(any())).thenReturn(Mono.just("회의 일정 알려줘"));
-		when(dialoguePipelineUseCase.executeTextOnly(any(), any()))
+		when(dialoguePipelineUseCase.executeTextOnly(any(ExecuteTextDialogueCommand.class)))
 			.thenReturn(Flux.just("오늘 회의는 ", "오후 2시입니다."));
 
 		Mono<DialogueSpeechService.SpeechDialogueResult> result = service.transcribeAndRespond(

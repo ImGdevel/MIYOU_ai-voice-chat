@@ -16,7 +16,9 @@ import org.springframework.stereotype.Component;
 
 import com.study.webflux.rag.domain.dialogue.model.ConversationSessionId;
 import com.study.webflux.rag.domain.memory.model.Memory;
+import com.study.webflux.rag.domain.memory.model.MemoryImportanceUpdateCommand;
 import com.study.webflux.rag.domain.memory.model.MemoryType;
+import com.study.webflux.rag.domain.memory.model.VectorMemorySearchQuery;
 import com.study.webflux.rag.domain.memory.port.VectorMemoryPort;
 import com.study.webflux.rag.infrastructure.dialogue.config.properties.RagDialogueProperties;
 import io.qdrant.client.QdrantClient;
@@ -77,31 +79,28 @@ public class SpringAiVectorDbAdapter implements VectorMemoryPort {
 	}
 
 	@Override
-	public Flux<Memory> search(ConversationSessionId sessionId,
-		List<Float> queryEmbedding,
-		List<MemoryType> types,
-		float importanceThreshold,
-		int topK) {
+	public Flux<Memory> search(VectorMemorySearchQuery query) {
 		return Mono.fromCallable(() -> {
 			Filter.Builder filterBuilder = Filter.newBuilder();
 
 			filterBuilder.addMust(Condition.newBuilder()
 				.setField(FieldCondition.newBuilder()
 					.setKey("sessionId")
-					.setMatch(Match.newBuilder().setKeyword(sessionId.value()).build())
+					.setMatch(Match.newBuilder().setKeyword(query.sessionId().value()).build())
 					.build())
 				.build());
 
-			if (importanceThreshold > 0) {
+			if (query.importanceThreshold() > 0) {
 				filterBuilder.addMust(Condition.newBuilder()
 					.setField(FieldCondition.newBuilder().setKey("importance")
-						.setRange(Range.newBuilder().setGte(importanceThreshold).build()).build())
+						.setRange(Range.newBuilder().setGte(query.importanceThreshold()).build())
+						.build())
 					.build());
 			}
 
-			if (types != null && !types.isEmpty()) {
+			if (!query.types().isEmpty()) {
 				Filter.Builder typeFilterBuilder = Filter.newBuilder();
-				for (MemoryType type : types) {
+				for (MemoryType type : query.types()) {
 					typeFilterBuilder.addShould(Condition.newBuilder()
 						.setField(FieldCondition.newBuilder().setKey("type")
 							.setMatch(Match.newBuilder().setKeyword(type.name()).build()).build())
@@ -113,8 +112,8 @@ public class SpringAiVectorDbAdapter implements VectorMemoryPort {
 
 			SearchPoints searchPoints = SearchPoints.newBuilder()
 				.setCollectionName(collectionName)
-				.addAllVector(queryEmbedding)
-				.setLimit(topK)
+				.addAllVector(query.queryEmbedding())
+				.setLimit(query.topK())
 				.setWithPayload(
 					io.qdrant.client.grpc.Points.WithPayloadSelector.newBuilder().setEnable(true)
 						.build())
@@ -124,18 +123,16 @@ public class SpringAiVectorDbAdapter implements VectorMemoryPort {
 			List<ScoredPoint> results = qdrantClient.searchAsync(searchPoints).get();
 
 			return results.stream()
-				.map(point -> toMemoryFromScoredPoint(point, sessionId))
+				.map(point -> toMemoryFromScoredPoint(point, query.sessionId()))
 				.collect(Collectors.toList());
 		}).subscribeOn(Schedulers.boundedElastic()).flatMapMany(Flux::fromIterable);
 	}
 
 	@Override
-	public Mono<Void> updateImportance(String memoryId,
-		float newImportance,
-		Instant lastAccessedAt,
-		int accessCount) {
+	public Mono<Void> updateImportance(MemoryImportanceUpdateCommand command) {
 		return Mono.fromRunnable(() -> {
-			log.warn("메모리 ID={}의 중요도 업데이트는 현재 Spring AI에서 지원하지 않습니다", memoryId);
+			log.warn("메모리 ID={}의 중요도 업데이트는 현재 Spring AI에서 지원하지 않습니다",
+				command.memoryId());
 		}).subscribeOn(Schedulers.boundedElastic()).then();
 	}
 

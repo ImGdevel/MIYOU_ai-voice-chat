@@ -2,6 +2,7 @@ package com.study.webflux.rag.application.dialogue.pipeline.stage;
 
 import java.util.List;
 
+import com.study.webflux.rag.application.dialogue.pipeline.SystemPromptContext;
 import com.study.webflux.rag.application.dialogue.policy.PromptTemplatePolicy;
 import com.study.webflux.rag.domain.dialogue.model.ConversationSessionId;
 import com.study.webflux.rag.domain.dialogue.model.PersonaId;
@@ -49,7 +50,9 @@ class SystemPromptServiceTest {
 		RetrievalContext context = RetrievalContext.of("사용자 취미",
 			List.of(RetrievalDocument.of("러닝은 체력 향상에 도움이 된다.", 90)));
 
-		String prompt = service.buildSystemPrompt(PersonaId.of("maid"), context, memories);
+			String prompt = service.buildSystemPrompt(new SystemPromptContext(PersonaId.of("maid"),
+				context,
+				memories));
 
 		assertThat(prompt).contains("persona").contains("common").contains("대화 상대에 대한 기억:")
 			.contains("경험적 기억:").contains("사실 기반 기억:")
@@ -71,9 +74,9 @@ class SystemPromptServiceTest {
 
 		SystemPromptService service = new SystemPromptService(templateLoader, policy);
 
-		String prompt = service.buildSystemPrompt(PersonaId.of("maid"),
-			RetrievalContext.empty("query"),
-			MemoryRetrievalResult.empty());
+			String prompt = service.buildSystemPrompt(new SystemPromptContext(PersonaId.of("maid"),
+				RetrievalContext.empty("query"),
+				MemoryRetrievalResult.empty()));
 
 		assertThat(prompt).isEqualTo("configured persona\n\ncommon");
 	}
@@ -89,9 +92,10 @@ class SystemPromptServiceTest {
 
 		SystemPromptService service = new SystemPromptService(templateLoader, policy);
 
-		String prompt = service.buildSystemPrompt(PersonaId.defaultPersona(),
-			RetrievalContext.empty("query"),
-			MemoryRetrievalResult.empty());
+		String prompt = service.buildSystemPrompt(
+			new SystemPromptContext(PersonaId.defaultPersona(),
+				RetrievalContext.empty("query"),
+				MemoryRetrievalResult.empty()));
 
 		assertThat(prompt).isEqualTo("configured persona");
 	}

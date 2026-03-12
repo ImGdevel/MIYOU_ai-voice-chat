@@ -5,13 +5,12 @@ import lombok.extern.slf4j.Slf4j;
 
 import org.springframework.stereotype.Service;
 
+import com.study.webflux.rag.application.dialogue.pipeline.TtsSynthesisCommand;
 import com.study.webflux.rag.application.monitoring.context.PipelineContext;
 import com.study.webflux.rag.application.monitoring.service.PipelineTracer;
-import com.study.webflux.rag.domain.dialogue.model.PersonaId;
 import com.study.webflux.rag.domain.dialogue.port.TtsPort;
 import com.study.webflux.rag.domain.dialogue.service.SentenceAssembler;
 import com.study.webflux.rag.domain.monitoring.model.DialoguePipelineStage;
-import com.study.webflux.rag.domain.voice.model.AudioFormat;
 import com.study.webflux.rag.domain.voice.model.Voice;
 import com.study.webflux.rag.domain.voice.port.VoiceSelectionPort;
 import reactor.core.publisher.Flux;
@@ -57,25 +56,11 @@ public class DialogueTtsStreamService {
 	/**
 	 * 문장 스트림을 순차적으로 TTS 합성해 오디오 청크 스트림으로 변환합니다.
 	 */
-	public Flux<byte[]> buildAudioStream(Flux<String> sentences,
-		Mono<Void> ttsWarmup,
-		AudioFormat targetFormat) {
-		return sentences.publishOn(Schedulers.boundedElastic())
-			.concatMap(sentence -> ttsWarmup.thenMany(ttsPort.streamSynthesize(sentence,
-				targetFormat)));
-	}
-
-	/**
-	 * 페르소나에 맞는 보이스로 문장 스트림을 순차적으로 TTS 합성해 오디오 청크 스트림으로 변환합니다.
-	 */
-	public Flux<byte[]> buildAudioStream(Flux<String> sentences,
-		Mono<Void> ttsWarmup,
-		AudioFormat targetFormat,
-		PersonaId personaId) {
-		Voice voice = voiceProvider.getVoiceForPersona(personaId);
-		return sentences.publishOn(Schedulers.boundedElastic())
-			.concatMap(sentence -> ttsWarmup.thenMany(ttsPort.streamSynthesize(sentence,
-				targetFormat,
+	public Flux<byte[]> buildAudioStream(TtsSynthesisCommand command) {
+		Voice voice = voiceProvider.getVoiceForPersona(command.personaId());
+		return command.sentences().publishOn(Schedulers.boundedElastic())
+			.concatMap(sentence -> command.ttsWarmup().thenMany(ttsPort.streamSynthesize(sentence,
+				command.targetFormat(),
 				voice)));
 	}
 

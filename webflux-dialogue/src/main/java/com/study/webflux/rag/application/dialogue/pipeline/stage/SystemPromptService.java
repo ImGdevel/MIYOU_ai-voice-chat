@@ -7,6 +7,7 @@ import lombok.extern.slf4j.Slf4j;
 
 import org.springframework.stereotype.Service;
 
+import com.study.webflux.rag.application.dialogue.pipeline.SystemPromptContext;
 import com.study.webflux.rag.application.dialogue.policy.PromptTemplatePolicy;
 import com.study.webflux.rag.domain.dialogue.model.PersonaId;
 import com.study.webflux.rag.domain.dialogue.port.TemplateLoaderPort;
@@ -48,13 +49,11 @@ public class SystemPromptService {
 	 *            현재 대화 상대에 대한 회수 메모리
 	 * @return LLM 요청에 주입할 시스템 프롬프트
 	 */
-	public String buildSystemPrompt(PersonaId personaId,
-		RetrievalContext context,
-		MemoryRetrievalResult memories) {
-		PromptSections sections = new PromptSections(resolvePersonaPrompt(personaId),
+	public String buildSystemPrompt(SystemPromptContext context) {
+		PromptSections sections = new PromptSections(resolvePersonaPrompt(context.personaId()),
 			policy.commonTemplate(),
-			buildMemoryBlock(memories),
-			buildContextBlock(context));
+			buildMemoryBlock(context.memoryResult()),
+			buildContextBlock(context.retrievalContext()));
 
 		String baseTemplate = policy.baseTemplate();
 		if (!baseTemplate.isBlank()) {
@@ -69,13 +68,6 @@ public class SystemPromptService {
 
 	/**
 	 * 기본 페르소나로 시스템 프롬프트를 생성합니다. (하위 호환성)
-	 */
-	public String buildSystemPrompt(RetrievalContext context, MemoryRetrievalResult memories) {
-		return buildSystemPrompt(PersonaId.defaultPersona(), context, memories);
-	}
-
-	/**
-	 * 페르소나 프롬프트를 personaId 기반으로 동적 로드합니다.
 	 */
 	private String resolvePersonaPrompt(PersonaId personaId) {
 		if (personaId != null && !PersonaId.DEFAULT.equals(personaId)) {

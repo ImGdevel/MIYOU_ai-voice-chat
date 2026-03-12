@@ -5,6 +5,8 @@ import java.time.Instant;
 import com.study.webflux.rag.domain.dialogue.model.ConversationSessionId;
 import com.study.webflux.rag.domain.dialogue.model.ConversationTurn;
 import com.study.webflux.rag.domain.dialogue.port.ConversationRepository;
+import com.study.webflux.rag.domain.memory.model.MemorySearchQuery;
+import com.study.webflux.rag.domain.retrieval.model.RetrievalQuery;
 import com.study.webflux.rag.fixture.ConversationSessionFixture;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.DisplayName;
@@ -53,7 +55,7 @@ class InMemoryRetrievalAdapterTest {
 
 		when(conversationRepository.findAll(sessionId)).thenReturn(Flux.just(turn1, turn2, turn3));
 
-		StepVerifier.create(adapter.retrieve(sessionId, "스프링 웹플럭스", 5))
+		StepVerifier.create(adapter.retrieve(new RetrievalQuery(sessionId, "스프링 웹플럭스", 5)))
 			.assertNext(context -> {
 				assertThat(context.query()).isEqualTo("스프링 웹플럭스");
 				assertThat(context.documents()).hasSize(2);
@@ -72,11 +74,12 @@ class InMemoryRetrievalAdapterTest {
 
 		when(conversationRepository.findAll(sessionId)).thenReturn(Flux.just(turn1, turn2, turn3));
 
-		StepVerifier.create(adapter.retrieve(sessionId, "자바 스프링", 5)).assertNext(context -> {
-			assertThat(context.documents()).hasSize(3);
-			assertThat(context.documents().get(0).content()).isEqualTo("자바 스프링");
-			assertThat(context.documents().get(0).score().value()).isEqualTo(2);
-		}).verifyComplete();
+		StepVerifier.create(adapter.retrieve(new RetrievalQuery(sessionId, "자바 스프링", 5)))
+			.assertNext(context -> {
+				assertThat(context.documents()).hasSize(3);
+				assertThat(context.documents().get(0).content()).isEqualTo("자바 스프링");
+				assertThat(context.documents().get(0).score().value()).isEqualTo(2);
+			}).verifyComplete();
 	}
 
 	@Test
@@ -91,9 +94,10 @@ class InMemoryRetrievalAdapterTest {
 		when(conversationRepository.findAll(sessionId))
 			.thenReturn(Flux.just(turn1, turn2, turn3, turn4));
 
-		StepVerifier.create(adapter.retrieve(sessionId, "자바", 2)).assertNext(context -> {
-			assertThat(context.documents()).hasSize(2);
-		}).verifyComplete();
+		StepVerifier.create(adapter.retrieve(new RetrievalQuery(sessionId, "자바", 2)))
+			.assertNext(context -> {
+				assertThat(context.documents()).hasSize(2);
+			}).verifyComplete();
 	}
 
 	@Test
@@ -106,7 +110,7 @@ class InMemoryRetrievalAdapterTest {
 
 		when(conversationRepository.findAll(sessionId)).thenReturn(Flux.just(turn1, turn2, turn3));
 
-		StepVerifier.create(adapter.retrieve(sessionId, "자바 스프링", 10))
+		StepVerifier.create(adapter.retrieve(new RetrievalQuery(sessionId, "자바 스프링", 10)))
 			.assertNext(context -> {
 				assertThat(context.documents()).hasSize(1);
 				assertThat(context.documents().get(0).content()).isEqualTo("자바 스프링");
@@ -119,10 +123,11 @@ class InMemoryRetrievalAdapterTest {
 		ConversationSessionId sessionId = ConversationSessionFixture.createId();
 		when(conversationRepository.findAll(sessionId)).thenReturn(Flux.empty());
 
-		StepVerifier.create(adapter.retrieve(sessionId, "테스트", 5)).assertNext(context -> {
-			assertThat(context.isEmpty()).isTrue();
-			assertThat(context.documents()).isEmpty();
-		}).verifyComplete();
+		StepVerifier.create(adapter.retrieve(new RetrievalQuery(sessionId, "테스트", 5)))
+			.assertNext(context -> {
+				assertThat(context.isEmpty()).isTrue();
+				assertThat(context.documents()).isEmpty();
+			}).verifyComplete();
 	}
 
 	@Test
@@ -134,7 +139,7 @@ class InMemoryRetrievalAdapterTest {
 
 		when(conversationRepository.findAll(sessionId)).thenReturn(Flux.just(turn1, turn2));
 
-		StepVerifier.create(adapter.retrieve(sessionId, "자바 스프링", 10))
+		StepVerifier.create(adapter.retrieve(new RetrievalQuery(sessionId, "자바 스프링", 10)))
 			.assertNext(context -> {
 				assertThat(context.isEmpty()).isTrue();
 			}).verifyComplete();
@@ -148,7 +153,7 @@ class InMemoryRetrievalAdapterTest {
 
 		when(conversationRepository.findAll(sessionId)).thenReturn(Flux.just(turn));
 
-		StepVerifier.create(adapter.retrieve(sessionId, "java spring", 5))
+		StepVerifier.create(adapter.retrieve(new RetrievalQuery(sessionId, "java spring", 5)))
 			.assertNext(context -> {
 				assertThat(context.documents()).hasSize(1);
 				assertThat(context.documents().get(0).score().value()).isEqualTo(2);
@@ -163,7 +168,7 @@ class InMemoryRetrievalAdapterTest {
 
 		when(conversationRepository.findAll(sessionId)).thenReturn(Flux.just(turn));
 
-		StepVerifier.create(adapter.retrieve(sessionId, "스프링 자바", 5))
+		StepVerifier.create(adapter.retrieve(new RetrievalQuery(sessionId, "스프링 자바", 5)))
 			.assertNext(context -> {
 				assertThat(context.documents()).hasSize(1);
 				assertThat(context.documents().get(0).score().value()).isEqualTo(2);
@@ -174,7 +179,7 @@ class InMemoryRetrievalAdapterTest {
 	@DisplayName("메모리 검색은 빈 결과 반환")
 	void retrieveMemories_returnsEmpty() {
 		ConversationSessionId sessionId = ConversationSessionFixture.createId();
-		StepVerifier.create(adapter.retrieveMemories(sessionId, "테스트", 5))
+		StepVerifier.create(adapter.retrieveMemories(new MemorySearchQuery(sessionId, "테스트", 5)))
 			.assertNext(result -> {
 				assertThat(result.isEmpty()).isTrue();
 				assertThat(result.allMemories()).isEmpty();
@@ -190,9 +195,10 @@ class InMemoryRetrievalAdapterTest {
 
 		when(conversationRepository.findAll(sessionId)).thenReturn(Flux.just(turn1, turn2));
 
-		StepVerifier.create(adapter.retrieve(sessionId, "테스트", 5)).assertNext(context -> {
-			assertThat(context.documents()).isEmpty();
-		}).verifyComplete();
+		StepVerifier.create(adapter.retrieve(new RetrievalQuery(sessionId, "테스트", 5)))
+			.assertNext(context -> {
+				assertThat(context.documents()).isEmpty();
+			}).verifyComplete();
 	}
 
 	@Test
@@ -205,12 +211,13 @@ class InMemoryRetrievalAdapterTest {
 
 		when(conversationRepository.findAll(sessionId)).thenReturn(Flux.just(turn1, turn2, turn3));
 
-		StepVerifier.create(adapter.retrieve(sessionId, "a b", 5)).assertNext(context -> {
-			assertThat(context.documents()).hasSize(3);
-			assertThat(context.documents().get(0).score().value()).isEqualTo(2);
-			assertThat(context.documents().get(1).score().value()).isEqualTo(2);
-			assertThat(context.documents().get(2).score().value()).isEqualTo(1);
-		}).verifyComplete();
+		StepVerifier.create(adapter.retrieve(new RetrievalQuery(sessionId, "a b", 5)))
+			.assertNext(context -> {
+				assertThat(context.documents()).hasSize(3);
+				assertThat(context.documents().get(0).score().value()).isEqualTo(2);
+				assertThat(context.documents().get(1).score().value()).isEqualTo(2);
+				assertThat(context.documents().get(2).score().value()).isEqualTo(1);
+			}).verifyComplete();
 	}
 
 	@Test
@@ -220,7 +227,7 @@ class InMemoryRetrievalAdapterTest {
 		when(conversationRepository.findAll(sessionId)).thenReturn(
 			Flux.error(new RuntimeException("DB error")));
 
-		StepVerifier.create(adapter.retrieve(sessionId, "테스트", 5))
+		StepVerifier.create(adapter.retrieve(new RetrievalQuery(sessionId, "테스트", 5)))
 			.expectErrorMatches(throwable -> throwable.getMessage().contains("DB error"))
 			.verify();
 	}

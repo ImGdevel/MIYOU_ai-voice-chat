@@ -10,7 +10,9 @@ import org.springframework.ai.vectorstore.VectorStore;
 import com.google.common.util.concurrent.Futures;
 import com.study.webflux.rag.domain.dialogue.model.ConversationSessionId;
 import com.study.webflux.rag.domain.memory.model.Memory;
+import com.study.webflux.rag.domain.memory.model.MemoryImportanceUpdateCommand;
 import com.study.webflux.rag.domain.memory.model.MemoryType;
+import com.study.webflux.rag.domain.memory.model.VectorMemorySearchQuery;
 import com.study.webflux.rag.fixture.ConversationSessionFixture;
 import com.study.webflux.rag.infrastructure.dialogue.config.properties.RagDialogueProperties;
 import io.qdrant.client.QdrantClient;
@@ -137,8 +139,11 @@ class SpringAiVectorDbAdapterTest {
 			.thenReturn(Futures.immediateFuture(List.of(mockPoint)));
 
 		StepVerifier
-			.create(
-				vectorDbAdapter.search(sessionId, queryEmbedding, types, importanceThreshold, topK))
+			.create(vectorDbAdapter.search(new VectorMemorySearchQuery(sessionId,
+				queryEmbedding,
+				types,
+				importanceThreshold,
+				topK)))
 			.assertNext(result -> {
 				assertThat(result).isNotNull();
 				assertThat(result.id()).isEqualTo("doc-1");
@@ -158,7 +163,11 @@ class SpringAiVectorDbAdapterTest {
 		when(qdrantClient.searchAsync(any(SearchPoints.class)))
 			.thenReturn(Futures.immediateFuture(List.of()));
 
-		StepVerifier.create(vectorDbAdapter.search(sessionId, queryEmbedding, types, 0.5f, 5))
+		StepVerifier.create(vectorDbAdapter.search(new VectorMemorySearchQuery(sessionId,
+			queryEmbedding,
+			types,
+			0.5f,
+			5)))
 			.verifyComplete();
 	}
 
@@ -190,7 +199,11 @@ class SpringAiVectorDbAdapterTest {
 		when(qdrantClient.searchAsync(any(SearchPoints.class)))
 			.thenReturn(Futures.immediateFuture(List.of(point1, point2)));
 
-		StepVerifier.create(vectorDbAdapter.search(sessionId, queryEmbedding, types, 0.5f, 5))
+		StepVerifier.create(vectorDbAdapter.search(new VectorMemorySearchQuery(sessionId,
+			queryEmbedding,
+			types,
+			0.5f,
+			5)))
 			.assertNext(result -> {
 				assertThat(result.id()).isEqualTo("doc-1");
 				assertThat(result.importance()).isEqualTo(0.9f);
@@ -209,8 +222,10 @@ class SpringAiVectorDbAdapterTest {
 		int accessCount = 10;
 
 		StepVerifier
-			.create(vectorDbAdapter
-				.updateImportance(memoryId, newImportance, lastAccessedAt, accessCount))
+			.create(vectorDbAdapter.updateImportance(new MemoryImportanceUpdateCommand(memoryId,
+				newImportance,
+				lastAccessedAt,
+				accessCount)))
 			.verifyComplete();
 	}
 
@@ -237,11 +252,11 @@ class SpringAiVectorDbAdapterTest {
 			.thenReturn(Futures.immediateFuture(List.of(point)));
 
 		StepVerifier
-			.create(vectorDbAdapter.search(sessionId,
+			.create(vectorDbAdapter.search(new VectorMemorySearchQuery(sessionId,
 				List.of(0.1f),
 				List.of(MemoryType.FACTUAL),
 				0.5f,
-				1))
+				1)))
 			.assertNext(result -> {
 				assertThat(result.id()).isEqualTo("doc-123");
 				assertThat(result.content()).isEqualTo("완전한 메모리");
@@ -268,11 +283,11 @@ class SpringAiVectorDbAdapterTest {
 			.thenReturn(Futures.immediateFuture(List.of(point)));
 
 		StepVerifier
-			.create(vectorDbAdapter.search(sessionId,
+			.create(vectorDbAdapter.search(new VectorMemorySearchQuery(sessionId,
 				List.of(0.1f),
 				List.of(MemoryType.EXPERIENTIAL),
 				0.0f,
-				1))
+				1)))
 			.assertNext(result -> {
 				assertThat(result.id()).isEqualTo("doc-min");
 				assertThat(result.type()).isEqualTo(MemoryType.EXPERIENTIAL);
@@ -292,7 +307,11 @@ class SpringAiVectorDbAdapterTest {
 		when(qdrantClient.searchAsync(any(SearchPoints.class)))
 			.thenReturn(Futures.immediateFuture(List.of()));
 
-		StepVerifier.create(vectorDbAdapter.search(sessionId, List.of(0.1f), types, 0.3f, 5))
+		StepVerifier.create(vectorDbAdapter.search(new VectorMemorySearchQuery(sessionId,
+			List.of(0.1f),
+			types,
+			0.3f,
+			5)))
 			.verifyComplete();
 
 		verify(qdrantClient).searchAsync(any(SearchPoints.class));

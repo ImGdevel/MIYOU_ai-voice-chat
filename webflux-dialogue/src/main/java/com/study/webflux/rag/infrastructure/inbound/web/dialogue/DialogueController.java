@@ -22,6 +22,8 @@ import org.springframework.web.server.ResponseStatusException;
 import com.study.webflux.rag.application.dialogue.service.DialogueSpeechService;
 import com.study.webflux.rag.domain.dialogue.model.ConversationSession;
 import com.study.webflux.rag.domain.dialogue.model.ConversationSessionId;
+import com.study.webflux.rag.domain.dialogue.model.ExecuteAudioDialogueCommand;
+import com.study.webflux.rag.domain.dialogue.model.ExecuteTextDialogueCommand;
 import com.study.webflux.rag.domain.dialogue.model.PersonaId;
 import com.study.webflux.rag.domain.dialogue.model.UserId;
 import com.study.webflux.rag.domain.dialogue.port.ConversationSessionRepository;
@@ -93,7 +95,9 @@ public class DialogueController implements DialogueApi {
 			.switchIfEmpty(Mono.error(new ResponseStatusException(HttpStatus.NOT_FOUND,
 				"세션을 찾을 수 없습니다: " + request.sessionId())))
 			.flatMapMany(session -> dialoguePipelineUseCase
-				.executeAudioStreaming(session, request.text(), finalFormat))
+				.executeAudioStreaming(new ExecuteAudioDialogueCommand(session,
+					request.text(),
+					finalFormat)))
 			.map(bufferFactory::wrap);
 	}
 
@@ -105,8 +109,8 @@ public class DialogueController implements DialogueApi {
 		return sessionRepository.findById(sessionId)
 			.switchIfEmpty(Mono.error(new ResponseStatusException(HttpStatus.NOT_FOUND,
 				"세션을 찾을 수 없습니다: " + request.sessionId())))
-			.flatMapMany(
-				session -> dialoguePipelineUseCase.executeTextOnly(session, request.text()));
+			.flatMapMany(session -> dialoguePipelineUseCase
+				.executeTextOnly(new ExecuteTextDialogueCommand(session, request.text())));
 	}
 
 	/** 업로드한 음성 파일을 Whisper STT로 텍스트 변환합니다. */
