@@ -4,10 +4,10 @@ import java.util.concurrent.TimeUnit;
 
 import org.springframework.stereotype.Component;
 
-import com.study.webflux.rag.application.monitoring.monitor.DialoguePipelineTracker.PipelineSummary;
-import com.study.webflux.rag.application.monitoring.monitor.DialoguePipelineTracker.StageSnapshot;
-import com.study.webflux.rag.application.monitoring.monitor.PipelineMetricsReporter;
 import com.study.webflux.rag.domain.monitoring.model.DialoguePipelineStage;
+import com.study.webflux.rag.domain.monitoring.model.PipelineSummary;
+import com.study.webflux.rag.domain.monitoring.model.StageSnapshot;
+import com.study.webflux.rag.domain.monitoring.port.PipelineMetricsReporter;
 import com.study.webflux.rag.infrastructure.monitoring.config.CostTrackingMetricsConfiguration;
 import com.study.webflux.rag.infrastructure.monitoring.config.LlmMetricsConfiguration;
 import com.study.webflux.rag.infrastructure.monitoring.config.UxMetricsConfiguration;

@@ -17,7 +17,10 @@ import java.util.stream.Collectors;
 
 import com.study.webflux.rag.domain.monitoring.model.DialoguePipelineStage;
 import com.study.webflux.rag.domain.monitoring.model.PipelineStatus;
+import com.study.webflux.rag.domain.monitoring.model.PipelineSummary;
+import com.study.webflux.rag.domain.monitoring.model.StageSnapshot;
 import com.study.webflux.rag.domain.monitoring.model.StageStatus;
+import com.study.webflux.rag.domain.monitoring.port.PipelineMetricsReporter;
 import reactor.core.publisher.Flux;
 import reactor.core.publisher.Mono;
 
@@ -213,33 +216,6 @@ public class DialoguePipelineTracker {
 			}
 			return new StageSnapshot(stage, status, startedAt, finishedAt, duration,
 				Map.copyOf(attributes));
-		}
-	}
-
-	public record StageSnapshot(
-		DialoguePipelineStage stage,
-		StageStatus status,
-		Instant startedAt,
-		Instant finishedAt,
-		long durationMillis,
-		Map<String, Object> attributes) {
-	}
-
-	public record PipelineSummary(
-		String pipelineId,
-		PipelineStatus status,
-		Instant startedAt,
-		Instant finishedAt,
-		Map<String, Object> attributes,
-		List<StageSnapshot> stages,
-		List<String> llmOutputs,
-		Long firstResponseLatencyMillis,
-		Long lastResponseLatencyMillis) {
-		public long durationMillis() {
-			if (startedAt == null || finishedAt == null) {
-				return -1L;
-			}
-			return Duration.between(startedAt, finishedAt).toMillis();
 		}
 	}
 }

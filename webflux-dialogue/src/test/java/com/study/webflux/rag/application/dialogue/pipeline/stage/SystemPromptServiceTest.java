@@ -2,16 +2,16 @@ package com.study.webflux.rag.application.dialogue.pipeline.stage;
 
 import java.util.List;
 
+import com.study.webflux.rag.application.dialogue.policy.PromptTemplatePolicy;
 import com.study.webflux.rag.domain.dialogue.model.ConversationSessionId;
+import com.study.webflux.rag.domain.dialogue.model.PersonaId;
+import com.study.webflux.rag.domain.dialogue.port.TemplateLoaderPort;
 import com.study.webflux.rag.domain.memory.model.Memory;
 import com.study.webflux.rag.domain.memory.model.MemoryRetrievalResult;
 import com.study.webflux.rag.domain.memory.model.MemoryType;
 import com.study.webflux.rag.domain.retrieval.model.RetrievalContext;
 import com.study.webflux.rag.domain.retrieval.model.RetrievalDocument;
 import com.study.webflux.rag.fixture.ConversationSessionFixture;
-import com.study.webflux.rag.infrastructure.common.template.FileBasedPromptTemplate;
-import com.study.webflux.rag.infrastructure.dialogue.config.properties.RagDialogueProperties;
-import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.extension.ExtendWith;
@@ -25,24 +25,20 @@ import static org.mockito.Mockito.when;
 class SystemPromptServiceTest {
 
 	@Mock
-	private FileBasedPromptTemplate promptTemplate;
-
-	private RagDialogueProperties properties;
-
-	@BeforeEach
-	void setUp() {
-		properties = new RagDialogueProperties();
-	}
+	private TemplateLoaderPort templateLoader;
 
 	@Test
 	@DisplayName("시스템 프롬프트 생성 시 모든 섹션을 포함한다")
 	void buildSystemPrompt_shouldRenderBaseTemplateWithAllSections() {
-		when(promptTemplate.load("system/base"))
-			.thenReturn("{{persona}}\n\n{{common}}\n\n{{memories}}\n\n{{context}}");
-		when(promptTemplate.load("system/persona/maid")).thenReturn("persona");
-		when(promptTemplate.load("system/common")).thenReturn("common");
+		when(templateLoader.load("system/persona/maid")).thenReturn("persona");
 
-		SystemPromptService service = new SystemPromptService(promptTemplate, properties);
+		PromptTemplatePolicy policy = new PromptTemplatePolicy(
+			"{{persona}}\n\n{{common}}\n\n{{memories}}\n\n{{context}}",
+			"",
+			"common",
+			null);
+
+		SystemPromptService service = new SystemPromptService(templateLoader, policy);
 
 		ConversationSessionId sessionId = ConversationSessionFixture.createId();
 		Memory experiential = Memory.create(sessionId, MemoryType.EXPERIENTIAL, "사용자는 러닝을 좋아한다.",
@@ -53,7 +49,7 @@ class SystemPromptServiceTest {
 		RetrievalContext context = RetrievalContext.of("사용자 취미",
 			List.of(RetrievalDocument.of("러닝은 체력 향상에 도움이 된다.", 90)));
 
-		String prompt = service.buildSystemPrompt(context, memories);
+		String prompt = service.buildSystemPrompt(PersonaId.of("maid"), context, memories);
 
 		assertThat(prompt).contains("persona").contains("common").contains("대화 상대에 대한 기억:")
 			.contains("경험적 기억:").contains("사실 기반 기억:")
@@ -64,18 +60,39 @@ class SystemPromptServiceTest {
 	@Test
 	@DisplayName("페르소나 템플릿 누락 시 기본 프롬프트로 폴백한다")
 	void buildSystemPrompt_shouldFallbackToConfiguredSystemPromptWhenPersonaTemplateIsMissing() {
-		properties.setSystemPrompt("configured persona");
-
-		when(promptTemplate.load("system/base")).thenThrow(new RuntimeException("base missing"));
-		when(promptTemplate.load("system/persona/maid"))
+		when(templateLoader.load("system/persona/maid"))
 			.thenThrow(new RuntimeException("persona missing"));
-		when(promptTemplate.load("system/common")).thenReturn("common");
 
-		SystemPromptService service = new SystemPromptService(promptTemplate, properties);
+		PromptTemplatePolicy policy = new PromptTemplatePolicy(
+			"",
+			"",
+			"common",
+			"configured persona");
 
-		String prompt = service.buildSystemPrompt(RetrievalContext.empty("query"),
+		SystemPromptService service = new SystemPromptService(templateLoader, policy);
+
+		String prompt = service.buildSystemPrompt(PersonaId.of("maid"),
+			RetrievalContext.empty("query"),
 			MemoryRetrievalResult.empty());
 
 		assertThat(prompt).isEqualTo("configured persona\n\ncommon");
+	}
+
+	@Test
+	@DisplayName("정책 템플릿이 null 이어도 시스템 프롬프트를 생성한다")
+	void buildSystemPrompt_shouldHandleNullPolicyTemplates() {
+		PromptTemplatePolicy policy = new PromptTemplatePolicy(
+			null,
+			null,
+			null,
+			" configured persona ");
+
+		SystemPromptService service = new SystemPromptService(templateLoader, policy);
+
+		String prompt = service.buildSystemPrompt(PersonaId.defaultPersona(),
+			RetrievalContext.empty("query"),
+			MemoryRetrievalResult.empty());
+
+		assertThat(prompt).isEqualTo("configured persona");
 	}
 }

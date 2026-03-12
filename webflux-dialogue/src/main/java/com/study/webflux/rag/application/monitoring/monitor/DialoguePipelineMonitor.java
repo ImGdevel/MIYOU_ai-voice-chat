@@ -4,6 +4,8 @@ import java.time.Clock;
 
 import org.springframework.stereotype.Component;
 
+import com.study.webflux.rag.domain.monitoring.port.PipelineMetricsReporter;
+
 @Component
 public class DialoguePipelineMonitor {
 

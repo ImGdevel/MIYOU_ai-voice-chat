@@ -2,6 +2,7 @@ package com.study.webflux.rag.infrastructure.monitoring.config;
 
 import org.springframework.stereotype.Component;
 
+import com.study.webflux.rag.application.monitoring.port.RagQualityMetricsPort;
 import io.micrometer.core.instrument.Counter;
 import io.micrometer.core.instrument.DistributionSummary;
 import io.micrometer.core.instrument.MeterRegistry;
@@ -13,7 +14,7 @@ import io.micrometer.core.instrument.MeterRegistry;
  * Phase 1B: RAG Quality Monitoring - Vector 검색 유사도 점수 - 메모리 중요도 분포 - 메모리 필터링 비율 - 문서 검색 관련성 점수
  */
 @Component
-public class RagQualityMetricsConfiguration {
+public class RagQualityMetricsConfiguration implements RagQualityMetricsPort {
 
 	private final MeterRegistry meterRegistry;
 

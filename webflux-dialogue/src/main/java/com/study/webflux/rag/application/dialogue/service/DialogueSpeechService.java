@@ -9,11 +9,11 @@ import org.springframework.http.codec.multipart.FilePart;
 import org.springframework.stereotype.Service;
 import org.springframework.web.server.ResponseStatusException;
 
+import com.study.webflux.rag.application.dialogue.policy.SttPolicy;
 import com.study.webflux.rag.domain.dialogue.model.AudioTranscriptionInput;
 import com.study.webflux.rag.domain.dialogue.model.ConversationSession;
 import com.study.webflux.rag.domain.dialogue.port.DialoguePipelineUseCase;
 import com.study.webflux.rag.domain.dialogue.port.SttPort;
-import com.study.webflux.rag.infrastructure.dialogue.config.properties.RagDialogueProperties;
 import reactor.core.publisher.Mono;
 
 /** 음성 입력 기반 STT/대화 기능을 제공합니다. */
@@ -23,7 +23,7 @@ public class DialogueSpeechService {
 
 	private final SttPort sttPort;
 	private final DialoguePipelineUseCase dialoguePipelineUseCase;
-	private final RagDialogueProperties properties;
+	private final SttPolicy sttPolicy;
 
 	/** 음성 파일을 텍스트로 변환합니다. */
 	public Mono<String> transcribe(FilePart filePart, String language) {
@@ -73,7 +73,7 @@ public class DialogueSpeechService {
 	}
 
 	private void validateAudioSize(int size) {
-		long maxFileSizeBytes = properties.getStt().getMaxFileSizeBytes();
+		long maxFileSizeBytes = sttPolicy.maxFileSizeBytes();
 		if (size > maxFileSizeBytes) {
 			throw new ResponseStatusException(HttpStatus.PAYLOAD_TOO_LARGE,
 				"오디오 파일 크기가 허용 범위를 초과했습니다. 최대 " + maxFileSizeBytes + " bytes");
@@ -84,7 +84,7 @@ public class DialogueSpeechService {
 		if (language != null && !language.isBlank()) {
 			return language;
 		}
-		String defaultLanguage = properties.getStt().getLanguage();
+		String defaultLanguage = sttPolicy.defaultLanguage();
 		return (defaultLanguage == null || defaultLanguage.isBlank()) ? null : defaultLanguage;
 	}
 }

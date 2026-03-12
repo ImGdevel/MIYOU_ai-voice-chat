@@ -3,10 +3,10 @@ package com.study.webflux.rag.infrastructure.dialogue.adapter.persistence;
 import org.springframework.data.domain.PageRequest;
 import org.springframework.stereotype.Component;
 
-import com.study.webflux.rag.domain.dialogue.entity.ConversationEntity;
 import com.study.webflux.rag.domain.dialogue.model.ConversationSessionId;
 import com.study.webflux.rag.domain.dialogue.model.ConversationTurn;
 import com.study.webflux.rag.domain.dialogue.port.ConversationRepository;
+import com.study.webflux.rag.infrastructure.dialogue.adapter.persistence.document.ConversationDocument;
 import com.study.webflux.rag.infrastructure.dialogue.repository.ConversationMongoRepository;
 import reactor.core.publisher.Flux;
 import reactor.core.publisher.Mono;
@@ -22,13 +22,13 @@ public class ConversationMongoAdapter implements ConversationRepository {
 
 	@Override
 	public Mono<ConversationTurn> save(ConversationTurn turn) {
-		ConversationEntity entity = new ConversationEntity(
+		ConversationDocument document = new ConversationDocument(
 			turn.id(),
 			turn.sessionId().value(),
 			turn.query(),
 			turn.response(),
 			turn.createdAt());
-		return mongoRepository.save(entity).map(this::toConversationTurn);
+		return mongoRepository.save(document).map(this::toConversationTurn);
 	}
 
 	@Override
@@ -48,12 +48,12 @@ public class ConversationMongoAdapter implements ConversationRepository {
 		return mongoRepository.findAllBySessionId(sessionId.value()).map(this::toConversationTurn);
 	}
 
-	private ConversationTurn toConversationTurn(ConversationEntity entity) {
+	private ConversationTurn toConversationTurn(ConversationDocument document) {
 		return ConversationTurn.withId(
-			entity.id(),
-			ConversationSessionId.of(entity.sessionId()),
-			entity.query(),
-			entity.response(),
-			entity.createdAt());
+			document.id(),
+			ConversationSessionId.of(document.sessionId()),
+			document.query(),
+			document.response(),
+			document.createdAt());
 	}
 }
