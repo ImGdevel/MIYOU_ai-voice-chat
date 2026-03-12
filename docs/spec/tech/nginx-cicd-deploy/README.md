@@ -19,7 +19,7 @@
 | Rolling 배포 | `deploy/aws/deploy_remote_compose.sh` | active 슬롯 기준 pull/up 배포 |
 | Nginx 단독 배포 | `deploy/aws/deploy_remote_nginx.sh` | nginx conf 반영, active 슬롯 정합성 보정 |
 | Self-heal watchdog | `deploy/aws/remote_app_self_heal.sh` | blue/green 둘 다 down 시 active 슬롯 자동 복구 |
-| Nginx 라우팅 | `deploy/nginx/default.conf` | `$app_upstream` 기반 프록시, 모니터링 경로 프록시 |
+| Nginx 라우팅 | `deploy/nginx/default.conf` | `$app_upstream` 기반 프록시, TLS 종료, 모니터링 경로 프록시 |
 | 런타임 토폴로지 | `deploy/docker-compose.app.yml` | `app_blue/app_green/nginx/mongodb/redis/qdrant` 컨테이너 정의 |
 
 현재 상태(Implemented):
@@ -29,7 +29,7 @@
 - compose 경로 계약 파일(`.compose_app_file`)로 root/deploy 경로 자동 호환
 - blue-green/nginx 배포 시 nginx 컨테이너 재생성 대신 `nginx -s reload` 사용
 - CI에서 Gradle/Buildx 캐시 최적화 적용
-
+- 443 포트에서 TLS 종료, 80 포트는 redirect/ACME/health 용도로만 유지
 미래 상태(TODO):
 - cron 기반 self-heal을 `systemd timer`로 전환
 - remote 서버 상태를 Prometheus alert와 자동 연동
@@ -130,6 +130,10 @@ sequenceDiagram
 - Gradle: `--build-cache` + `gradle.properties(org.gradle.caching=true)`
 - Docker Buildx: `cache-from/to type=gha,scope=miyou-dialogue-image`
 - `webflux-dialogue/Dockerfile`: BuildKit 캐시 마운트(`/home/gradle/.gradle`)
+
+### 4.6 TLS and proxy contract
+- TLS 인증서와 리다이렉트는 `deploy/nginx/default.conf`가 담당한다.
+- 앱은 `server.forward-headers-strategy=framework`로 프록시 전달 스킴을 반영한다.
 
 ## 5) Extension/migration strategy
 - self-heal 고도화:

@@ -8,7 +8,7 @@
 - 이미지 저장소: GHCR (`ghcr.io/<owner>/miyou-dialogue`)
 - 서버: EC2 (Ubuntu + Docker + Docker Compose)
 - 설정/시크릿: AWS SSM Parameter Store (`/miyou/prod/*`)
-- 진입점: Nginx(80) -> App(8081, 내부 노출)
+- 진입점: Nginx(80/443) -> App(8081, 내부 노출)
 - 앱 배포 토폴로지: `app_blue` / `app_green` 2개 슬롯 기반
 
 ## 2. 워크플로우 개요
@@ -103,19 +103,24 @@
 
 ## 6. 포트/보안그룹 운영 기준
 - 외부 오픈:
-  - `80` (Nginx)
+  - `80` (ACME challenge, health check, HTTPS redirect)
+  - `443` (실서비스 HTTPS)
   - `22` (운영 정책에 맞춰 제한, CI에서 SSH 배포 시 접근 가능해야 함)
 - 내부 전용:
   - App `8081` (compose `expose`만 사용)
   - Mongo/Redis/Qdrant 포트 (외부 미노출)
 
-## 7. Health Check 기준
+## 7. HTTPS/TLS 운영 기준
+- TLS 종료 지점은 Nginx다. 앱은 `X-Forwarded-*` 헤더를 신뢰하도록 `server.forward-headers-strategy=framework`를 사용한다.
+- HTTP 80 포트는 ACME challenge, `/actuator/health`, HTTPS 리다이렉트만 담당한다.
+
+## 8. Health Check 기준
 - 엔드포인트: `GET /actuator/health`
 - 외부 점검 URL: `http://<EC2_PUBLIC_IP>/actuator/health`
 - 현재 앱 설정에서 actuator health/info 노출 활성화:
   - `webflux-dialogue/src/main/resources/application.yml`
 
-## 8. 실행 방법
+## 9. 실행 방법
 1) GitHub Actions > `CI-CD` > `Run workflow`
 2) 브랜치 선택 (`develop` 권장)
 3) `deploy_scope` 선택
@@ -131,7 +136,7 @@
 - 로컬/서버에서 실행: `bash scripts/check-active-slot.sh`
 - SSH 별칭으로 원격 확인: `bash scripts/check-active-slot.sh miyou-dev`
 
-## 9. 트러블슈팅 이력(재발 방지)
+## 10. 트러블슈팅 이력(재발 방지)
 - 수동 실행 버튼 미노출:
   - 원인: 워크플로우 YAML 파싱 오류
   - 대응: payload 생성 로직 단순화(jq)
@@ -159,7 +164,7 @@
     - `docker inspect miyou-mongodb --format '{{ index .Config.Labels "com.docker.compose.project.config_files" }}'`
     - `ls -al /opt/app/miyou/.env.deploy /opt/app/miyou/deploy/.env.deploy /opt/app/miyou/.compose_app_file`
 
-## 10. 커밋 정책 (Nginx 관련)
+## 11. 커밋 정책 (Nginx 관련)
 - 커밋 권장:
   - `deploy/nginx/default.conf`
   - compose/워크플로우/배포 스크립트
@@ -167,7 +172,7 @@
   - 인증서/개인키
   - 실제 시크릿 값(.env 실값, 토큰, API 키)
 
-## 11. 작업 종료 문서화 규칙
+## 12. 작업 종료 문서화 규칙
 - 배포/운영 로직 변경 시 반드시 본 런북 업데이트
 - 변경 대상:
   - 워크플로우 입력/동작 순서
