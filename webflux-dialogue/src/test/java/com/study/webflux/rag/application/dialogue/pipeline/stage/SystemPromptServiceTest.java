@@ -77,4 +77,22 @@ class SystemPromptServiceTest {
 
 		assertThat(prompt).isEqualTo("configured persona\n\ncommon");
 	}
+
+	@Test
+	@DisplayName("정책 템플릿이 null 이어도 시스템 프롬프트를 생성한다")
+	void buildSystemPrompt_shouldHandleNullPolicyTemplates() {
+		PromptTemplatePolicy policy = new PromptTemplatePolicy(
+			null,
+			null,
+			null,
+			" configured persona ");
+
+		SystemPromptService service = new SystemPromptService(templateLoader, policy);
+
+		String prompt = service.buildSystemPrompt(PersonaId.defaultPersona(),
+			RetrievalContext.empty("query"),
+			MemoryRetrievalResult.empty());
+
+		assertThat(prompt).isEqualTo("configured persona");
+	}
 }
