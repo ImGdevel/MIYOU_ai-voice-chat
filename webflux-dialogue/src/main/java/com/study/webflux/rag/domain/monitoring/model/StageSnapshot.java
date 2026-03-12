@@ -11,4 +11,7 @@ public record StageSnapshot(
 	long durationMillis,
 	Map<String, Object> attributes
 ) {
+	public StageSnapshot {
+		attributes = attributes == null ? Map.of() : Map.copyOf(attributes);
+	}
 }
