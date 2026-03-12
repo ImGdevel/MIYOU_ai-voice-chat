@@ -6,11 +6,11 @@ import org.springframework.http.MediaType;
 import org.springframework.http.codec.multipart.FilePart;
 import org.springframework.web.server.ResponseStatusException;
 
+import com.study.webflux.rag.application.dialogue.policy.SttPolicy;
 import com.study.webflux.rag.domain.dialogue.model.ConversationSession;
 import com.study.webflux.rag.domain.dialogue.port.DialoguePipelineUseCase;
 import com.study.webflux.rag.domain.dialogue.port.SttPort;
 import com.study.webflux.rag.fixture.ConversationSessionFixture;
-import com.study.webflux.rag.infrastructure.dialogue.config.properties.RagDialogueProperties;
 import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Test;
 import reactor.core.publisher.Flux;
@@ -29,7 +29,7 @@ class DialogueSpeechServiceTest {
 		SttPort sttPort = mock(SttPort.class);
 		DialoguePipelineUseCase dialoguePipelineUseCase = mock(DialoguePipelineUseCase.class);
 		DialogueSpeechService service = new DialogueSpeechService(sttPort, dialoguePipelineUseCase,
-			new RagDialogueProperties());
+			new SttPolicy(25L * 1024L * 1024L, "ko"));
 		FilePart audioFile = createFilePart("voice.mp3",
 			MediaType.parseMediaType("audio/mpeg"),
 			"dummy-audio".getBytes());
@@ -57,7 +57,7 @@ class DialogueSpeechServiceTest {
 		SttPort sttPort = mock(SttPort.class);
 		DialoguePipelineUseCase dialoguePipelineUseCase = mock(DialoguePipelineUseCase.class);
 		DialogueSpeechService service = new DialogueSpeechService(sttPort, dialoguePipelineUseCase,
-			new RagDialogueProperties());
+			new SttPolicy(25L * 1024L * 1024L, "ko"));
 		FilePart textFile = createFilePart("test.txt", MediaType.TEXT_PLAIN, "text".getBytes());
 
 		StepVerifier.create(service.transcribe(textFile, "ko"))
