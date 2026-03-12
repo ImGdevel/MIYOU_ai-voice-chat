@@ -56,8 +56,9 @@ public class SystemPromptService {
 			buildMemoryBlock(memories),
 			buildContextBlock(context));
 
-		if (!policy.baseTemplate().isBlank()) {
-			return applyTemplate(policy.baseTemplate(), sections);
+		String baseTemplate = policy.baseTemplate();
+		if (!baseTemplate.isBlank()) {
+			return applyTemplate(baseTemplate, sections);
 		}
 
 		return joinNonBlankBlocks(sections.persona(),
@@ -90,11 +91,13 @@ public class SystemPromptService {
 	 * 기본 페르소나 프롬프트를 템플릿 우선 정책으로 선택합니다.
 	 */
 	private String resolveDefaultPersonaPrompt() {
-		if (!policy.defaultPersonaTemplate().isBlank()) {
-			return policy.defaultPersonaTemplate();
+		String defaultPersonaTemplate = policy.defaultPersonaTemplate();
+		if (!defaultPersonaTemplate.isBlank()) {
+			return defaultPersonaTemplate;
 		}
-		if (policy.configuredSystemPrompt() != null) {
-			return policy.configuredSystemPrompt().trim();
+		String configuredSystemPrompt = policy.configuredSystemPrompt();
+		if (!configuredSystemPrompt.isBlank()) {
+			return configuredSystemPrompt.trim();
 		}
 		return "";
 	}
