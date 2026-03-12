@@ -23,6 +23,11 @@ export SUPERTONE_API_KEY=your-supertone-key
 http://localhost:8081/
 ```
 
+프론트/백엔드를 분리해서 띄우는 경우에만 아래처럼 CORS 허용 Origin을 지정한다.
+```bash
+export WEB_CORS_ALLOWED_ORIGINS=http://localhost:5173
+```
+
 ## 테스트 클라이언트 사용법
 
 ### 화면 구성
@@ -66,6 +71,7 @@ curl -X POST http://localhost:8081/rag/dialogue/audio \
   -H "Content-Type: application/json" \
   -H "Accept: audio/wav" \
   -d '{
+    "sessionId": "your-session-id",
     "text": "WebFlux란 무엇인가요?",
     "requestedAt": "2025-12-08T12:00:00Z"
   }'
@@ -117,7 +123,9 @@ SUPERTONE_API_KEY=REDACTED
 ```
 
 ### CORS 오류
-이미 CORS 설정 완료되어 있음. 브라우저 콘솔 확인.
+- 기본 로컬 실행은 동일 오리진(`http://localhost:8081`) 기준이라 별도 CORS 설정이 필요 없다.
+- 프론트 개발 서버를 분리했다면 `WEB_CORS_ALLOWED_ORIGINS`에 정확한 Origin을 지정한다.
+- 현재 허용 메서드는 `GET, POST, OPTIONS`이며, 허용 헤더는 `Content-Type`, `Authorization` 등을 명시적으로 사용한다.
 
 ## 데이터 확인
 
