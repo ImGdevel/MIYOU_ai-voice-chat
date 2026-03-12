@@ -1,5 +1,7 @@
 # MIYOU 헥사고날 아키텍처 리팩토링 현황
 
+> 현재 구현된 아키텍처 구조도 및 패키지 트리는 [hexagonal-architecture/README.md](../hexagonal-architecture/README.md)를 참고하세요.
+
 ## 1) Background and objective
 - 대상 모듈: `webflux-dialogue`
 - 목적: 포트/어댑터 경계를 실제 코드와 테스트에서 강제하는 구조로 정리하고, 이후 DTO/Command/Query 정리까지 이어갈 수 있는 기준선을 만든다.
