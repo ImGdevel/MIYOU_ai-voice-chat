@@ -102,6 +102,10 @@ rag:
       importance-boost: 0.05
       importance-threshold: 0.3
 
+credit:
+  conversation-cost: ${CREDIT_CONVERSATION_COST:100}
+  signup-bonus: ${CREDIT_SIGNUP_BONUS:5000}
+
 monitoring:
   persistent:
     enabled: ${MONITORING_PERSISTENT_ENABLED:true}
