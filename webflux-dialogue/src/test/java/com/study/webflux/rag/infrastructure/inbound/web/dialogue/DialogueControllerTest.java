@@ -4,6 +4,7 @@ import java.time.Instant;
 
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.boot.test.autoconfigure.web.reactive.WebFluxTest;
+import org.springframework.context.annotation.Import;
 import org.springframework.http.MediaType;
 import org.springframework.test.context.bean.override.mockito.MockitoBean;
 import org.springframework.test.web.reactive.server.WebTestClient;
@@ -15,6 +16,7 @@ import com.study.webflux.rag.domain.dialogue.port.ConversationSessionRepository;
 import com.study.webflux.rag.domain.dialogue.port.DialoguePipelineUseCase;
 import com.study.webflux.rag.domain.voice.model.AudioFormat;
 import com.study.webflux.rag.fixture.ConversationSessionFixture;
+import com.study.webflux.rag.infrastructure.common.config.SecurityHeadersWebFilter;
 import com.study.webflux.rag.infrastructure.inbound.web.dialogue.dto.RagDialogueRequest;
 import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Test;
@@ -26,6 +28,7 @@ import static org.mockito.Mockito.verify;
 import static org.mockito.Mockito.when;
 
 @WebFluxTest(DialogueController.class)
+@Import(SecurityHeadersWebFilter.class)
 class DialogueControllerTest {
 
 	@Autowired
@@ -131,5 +134,21 @@ class DialogueControllerTest {
 
 		webTestClient.post().uri("/rag/dialogue/text").contentType(MediaType.APPLICATION_JSON)
 			.bodyValue(request).exchange().expectStatus().isBadRequest();
+	}
+
+	@Test
+	@DisplayName("검증 실패 응답에도 기본 보안 헤더를 포함한다")
+	void validationError_shouldIncludeSecurityHeaders() {
+		RagDialogueRequest request = new RagDialogueRequest(
+			ConversationSessionFixture.DEFAULT_SESSION_ID, "", Instant.now());
+
+		webTestClient.post().uri("/rag/dialogue/text").contentType(MediaType.APPLICATION_JSON)
+			.bodyValue(request).exchange()
+			.expectStatus().isBadRequest()
+			.expectHeader().valueEquals("X-Content-Type-Options", "nosniff")
+			.expectHeader().valueEquals("X-Frame-Options", "DENY")
+			.expectHeader().valueEquals("Referrer-Policy", "strict-origin-when-cross-origin")
+			.expectHeader().valueEquals("Permissions-Policy",
+				"camera=(), microphone=(), geolocation=()");
 	}
 }
