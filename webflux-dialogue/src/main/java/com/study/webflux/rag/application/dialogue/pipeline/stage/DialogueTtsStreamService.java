@@ -1,5 +1,7 @@
 package com.study.webflux.rag.application.dialogue.pipeline.stage;
 
+import java.time.Duration;
+
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 
@@ -16,7 +18,6 @@ import com.study.webflux.rag.domain.voice.model.Voice;
 import com.study.webflux.rag.domain.voice.port.VoiceSelectionPort;
 import reactor.core.publisher.Flux;
 import reactor.core.publisher.Mono;
-import reactor.core.scheduler.Schedulers;
 
 @Slf4j
 @Service
@@ -60,23 +61,27 @@ public class DialogueTtsStreamService {
 	public Flux<byte[]> buildAudioStream(Flux<String> sentences,
 		Mono<Void> ttsWarmup,
 		AudioFormat targetFormat) {
-		return sentences.publishOn(Schedulers.boundedElastic())
-			.concatMap(sentence -> ttsWarmup.thenMany(ttsPort.streamSynthesize(sentence,
-				targetFormat)));
+		return sentences.flatMapSequential(
+			sentence -> ttsWarmup.thenMany(
+				ttsPort.streamSynthesize(sentence, targetFormat).timeout(Duration.ofSeconds(15))),
+			5,
+			1);
 	}
 
 	/**
-	 * 페르소나에 맞는 보이스로 문장 스트림을 순차적으로 TTS 합성해 오디오 청크 스트림으로 변환합니다.
+	 * 페르소나에 맞는 보이스로 문장 스트림을 병렬 TTS 합성해 오디오 청크 스트림으로 변환합니다. flatMapSequential로 병렬 처리하되 구독 순서(문장 순서)를 보장합니다.
 	 */
 	public Flux<byte[]> buildAudioStream(Flux<String> sentences,
 		Mono<Void> ttsWarmup,
 		AudioFormat targetFormat,
 		PersonaId personaId) {
 		Voice voice = voiceProvider.getVoiceForPersona(personaId);
-		return sentences.publishOn(Schedulers.boundedElastic())
-			.concatMap(sentence -> ttsWarmup.thenMany(ttsPort.streamSynthesize(sentence,
-				targetFormat,
-				voice)));
+		return sentences.flatMapSequential(
+			sentence -> ttsWarmup.thenMany(
+				ttsPort.streamSynthesize(sentence, targetFormat, voice)
+					.timeout(Duration.ofSeconds(15))),
+			5,
+			1);
 	}
 
 	/**
