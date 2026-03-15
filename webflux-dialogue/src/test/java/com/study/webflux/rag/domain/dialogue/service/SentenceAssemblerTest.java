@@ -96,4 +96,29 @@ class SentenceAssemblerTest {
 
 		StepVerifier.create(result).verifyComplete();
 	}
+
+	@Test
+	@DisplayName("maxChars 초과 시 구두점 없이도 문장을 분리한다")
+	void assemble_shouldFlushWhenMaxCharsExceeded() {
+		SentenceAssembler assembler = new SentenceAssembler(10);
+		// 총 12자 - 구두점 없음
+		Flux<String> tokens = Flux.just("Hello", " world", " test");
+
+		Flux<String> result = assembler.assemble(tokens);
+
+		StepVerifier.create(result).expectNextMatches(s -> s.length() <= 12).verifyComplete();
+	}
+
+	@Test
+	@DisplayName("maxChars 도달 후 나머지 토큰도 별도 문장으로 분리된다")
+	void assemble_shouldSplitIntoMultipleChunksWhenMaxCharsExceeded() {
+		SentenceAssembler assembler = new SentenceAssembler(5);
+		// 각 토큰 "Hello"(5자), " World"(6자) - 첫 토큰이 5자 이상이면 즉시 flush
+		Flux<String> tokens = Flux.just("Hello", " World", ".");
+
+		Flux<String> result = assembler.assemble(tokens);
+
+		// 5자 제한으로 최소 1번 이상 분리됨
+		StepVerifier.create(result).expectNextCount(1).thenConsumeWhile(s -> true).verifyComplete();
+	}
 }

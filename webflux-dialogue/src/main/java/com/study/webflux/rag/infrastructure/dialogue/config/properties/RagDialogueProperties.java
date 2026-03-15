@@ -145,6 +145,7 @@ public class RagDialogueProperties {
 		private VoiceSettings voiceSettings = new VoiceSettings();
 		private CreditMonitorConfig creditMonitor = new CreditMonitorConfig();
 		private CircuitBreakerConfig circuitBreaker = new CircuitBreakerConfig();
+		private int maxSentenceChars = 250;
 
 		public List<TtsEndpointConfig> getEndpoints() {
 			return endpoints;
@@ -208,6 +209,14 @@ public class RagDialogueProperties {
 
 		public void setCircuitBreaker(CircuitBreakerConfig circuitBreaker) {
 			this.circuitBreaker = circuitBreaker;
+		}
+
+		public int getMaxSentenceChars() {
+			return maxSentenceChars;
+		}
+
+		public void setMaxSentenceChars(int maxSentenceChars) {
+			this.maxSentenceChars = maxSentenceChars;
 		}
 
 		public static class VoiceSettings {

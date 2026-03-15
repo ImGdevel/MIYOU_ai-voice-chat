@@ -4,13 +4,14 @@ import org.springframework.context.annotation.Bean;
 import org.springframework.context.annotation.Configuration;
 
 import com.study.webflux.rag.domain.dialogue.service.SentenceAssembler;
+import com.study.webflux.rag.infrastructure.dialogue.config.properties.RagDialogueProperties;
 
 /** 프레임워크 비의존 도메인 서비스 빈을 등록합니다. */
 @Configuration
 public class DomainServiceConfiguration {
 
 	@Bean
-	public SentenceAssembler sentenceAssembler() {
-		return new SentenceAssembler();
+	public SentenceAssembler sentenceAssembler(RagDialogueProperties properties) {
+		return new SentenceAssembler(properties.getSupertone().getMaxSentenceChars());
 	}
 }
