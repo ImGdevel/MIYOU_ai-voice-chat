@@ -19,6 +19,7 @@ import org.springframework.web.bind.annotation.RequestPart;
 import org.springframework.web.bind.annotation.RestController;
 import org.springframework.web.server.ResponseStatusException;
 
+import com.study.webflux.rag.application.credit.usecase.CreditQueryUseCase;
 import com.study.webflux.rag.application.dialogue.service.DialogueSpeechService;
 import com.study.webflux.rag.domain.dialogue.model.ConversationSession;
 import com.study.webflux.rag.domain.dialogue.model.ConversationSessionId;
@@ -45,9 +46,12 @@ import reactor.core.publisher.Mono;
 @RequestMapping("/rag/dialogue")
 public class DialogueController implements DialogueApi {
 
+	private static final long CONVERSATION_COST = 100L;
+
 	private final DialoguePipelineUseCase dialoguePipelineUseCase;
 	private final ConversationSessionRepository sessionRepository;
 	private final DialogueSpeechService dialogueSpeechService;
+	private final CreditQueryUseCase creditQueryUseCase;
 	private final DataBufferFactory bufferFactory = new DefaultDataBufferFactory();
 
 	/** 새 대화 세션을 생성합니다. */
@@ -92,8 +96,12 @@ public class DialogueController implements DialogueApi {
 		return sessionRepository.findById(sessionId)
 			.switchIfEmpty(Mono.error(new ResponseStatusException(HttpStatus.NOT_FOUND,
 				"세션을 찾을 수 없습니다: " + request.sessionId())))
-			.flatMapMany(session -> dialoguePipelineUseCase
-				.executeAudioStreaming(session, request.text(), finalFormat))
+			.flatMapMany(session -> creditQueryUseCase.getBalance(session.userId())
+				.filter(credit -> credit.balance() >= CONVERSATION_COST)
+				.switchIfEmpty(Mono.error(new ResponseStatusException(HttpStatus.PAYMENT_REQUIRED,
+					"크레딧이 부족합니다. 크레딧을 충전해주세요.")))
+				.flatMapMany(credit -> dialoguePipelineUseCase
+					.executeAudioStreaming(session, request.text(), finalFormat)))
 			.map(bufferFactory::wrap);
 	}
 
