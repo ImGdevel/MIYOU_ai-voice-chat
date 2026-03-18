@@ -1,7 +1,5 @@
-package com.study.webflux.rag.domain.credit.model.source;
+package com.study.webflux.rag.domain.credit.model;
 
-import com.study.webflux.rag.domain.credit.model.CreditSource;
-import com.study.webflux.rag.domain.credit.model.CreditSourceType;
 import com.study.webflux.rag.domain.mission.model.MissionId;
 
 public record MissionReward(
