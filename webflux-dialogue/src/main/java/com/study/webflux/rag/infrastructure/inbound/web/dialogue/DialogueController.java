@@ -19,6 +19,7 @@ import org.springframework.web.bind.annotation.RequestPart;
 import org.springframework.web.bind.annotation.RestController;
 import org.springframework.web.server.ResponseStatusException;
 
+import com.study.webflux.rag.application.credit.usecase.CreditChargeUseCase;
 import com.study.webflux.rag.application.credit.usecase.CreditQueryUseCase;
 import com.study.webflux.rag.application.dialogue.service.DialogueSpeechService;
 import com.study.webflux.rag.domain.dialogue.model.ConversationSession;
@@ -52,6 +53,7 @@ public class DialogueController implements DialogueApi {
 	private final ConversationSessionRepository sessionRepository;
 	private final DialogueSpeechService dialogueSpeechService;
 	private final CreditQueryUseCase creditQueryUseCase;
+	private final CreditChargeUseCase creditChargeUseCase;
 	private final DataBufferFactory bufferFactory = new DefaultDataBufferFactory();
 
 	/** 새 대화 세션을 생성합니다. */
@@ -69,6 +71,8 @@ public class DialogueController implements DialogueApi {
 		ConversationSession session = ConversationSession.create(personaId, userId);
 
 		return sessionRepository.save(session)
+			.flatMap(saved -> creditChargeUseCase.initializeIfAbsent(saved.userId())
+				.thenReturn(saved))
 			.map(saved -> new CreateSessionResponse(
 				saved.sessionId().value(),
 				saved.userId().value(),
