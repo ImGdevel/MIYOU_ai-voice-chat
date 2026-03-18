@@ -2,8 +2,8 @@ package com.study.webflux.rag.fixture;
 
 import com.study.webflux.rag.domain.credit.model.CreditTransaction;
 import com.study.webflux.rag.domain.credit.model.CreditTransactionType;
-import com.study.webflux.rag.domain.credit.model.source.ConversationDeduction;
-import com.study.webflux.rag.domain.credit.model.source.SignupBonus;
+import com.study.webflux.rag.domain.credit.model.ConversationDeduction;
+import com.study.webflux.rag.domain.credit.model.SignupBonus;
 import com.study.webflux.rag.domain.dialogue.model.UserId;
 
 public final class CreditTransactionFixture {

@@ -4,7 +4,7 @@ import com.study.webflux.rag.application.credit.service.CreditApplicationService
 import com.study.webflux.rag.domain.credit.exception.InsufficientCreditException;
 import com.study.webflux.rag.domain.credit.model.CreditSourceType;
 import com.study.webflux.rag.domain.credit.model.CreditTransactionType;
-import com.study.webflux.rag.domain.credit.model.source.PaymentCharge;
+import com.study.webflux.rag.domain.credit.model.PaymentCharge;
 import com.study.webflux.rag.domain.dialogue.model.ConversationSessionId;
 import com.study.webflux.rag.domain.dialogue.model.UserId;
 import com.study.webflux.rag.infrastructure.credit.adapter.CreditTransactionMongoAdapter;

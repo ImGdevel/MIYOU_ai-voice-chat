@@ -15,10 +15,10 @@ import com.study.webflux.rag.domain.credit.exception.InsufficientCreditException
 import com.study.webflux.rag.domain.credit.model.CreditTransaction;
 import com.study.webflux.rag.domain.credit.model.CreditTransactionType;
 import com.study.webflux.rag.domain.credit.model.UserCredit;
-import com.study.webflux.rag.domain.credit.model.source.ConversationDeduction;
-import com.study.webflux.rag.domain.credit.model.source.MissionReward;
-import com.study.webflux.rag.domain.credit.model.source.PaymentCharge;
-import com.study.webflux.rag.domain.credit.model.source.SignupBonus;
+import com.study.webflux.rag.domain.credit.model.ConversationDeduction;
+import com.study.webflux.rag.domain.credit.model.MissionReward;
+import com.study.webflux.rag.domain.credit.model.PaymentCharge;
+import com.study.webflux.rag.domain.credit.model.SignupBonus;
 import com.study.webflux.rag.domain.credit.port.CreditTransactionRepository;
 import com.study.webflux.rag.domain.credit.port.UserCreditRepository;
 import com.study.webflux.rag.domain.dialogue.model.ConversationSessionId;

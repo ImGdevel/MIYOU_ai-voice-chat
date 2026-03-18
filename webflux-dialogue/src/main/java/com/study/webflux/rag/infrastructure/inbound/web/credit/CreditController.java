@@ -16,7 +16,7 @@ import org.springframework.web.server.ResponseStatusException;
 
 import com.study.webflux.rag.application.credit.usecase.CreditChargeUseCase;
 import com.study.webflux.rag.application.credit.usecase.CreditQueryUseCase;
-import com.study.webflux.rag.domain.credit.model.source.PaymentCharge;
+import com.study.webflux.rag.domain.credit.model.PaymentCharge;
 import com.study.webflux.rag.domain.dialogue.model.UserId;
 import com.study.webflux.rag.infrastructure.inbound.web.credit.dto.ChargeByPaymentRequest;
 import com.study.webflux.rag.infrastructure.inbound.web.credit.dto.CreditTransactionResponse;

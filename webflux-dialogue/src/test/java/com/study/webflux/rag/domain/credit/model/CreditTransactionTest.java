@@ -1,7 +1,7 @@
 package com.study.webflux.rag.domain.credit.model;
 
-import com.study.webflux.rag.domain.credit.model.source.ConversationDeduction;
-import com.study.webflux.rag.domain.credit.model.source.SignupBonus;
+import com.study.webflux.rag.domain.credit.model.ConversationDeduction;
+import com.study.webflux.rag.domain.credit.model.SignupBonus;
 import com.study.webflux.rag.domain.dialogue.model.ConversationSessionId;
 import com.study.webflux.rag.fixture.ConversationSessionFixture;
 import com.study.webflux.rag.fixture.UserIdFixture;
