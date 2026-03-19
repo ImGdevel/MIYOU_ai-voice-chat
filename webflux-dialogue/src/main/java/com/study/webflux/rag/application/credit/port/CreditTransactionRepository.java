@@ -1,4 +1,4 @@
-package com.study.webflux.rag.domain.credit.port;
+package com.study.webflux.rag.application.credit.port;
 
 import org.springframework.data.domain.Pageable;
 

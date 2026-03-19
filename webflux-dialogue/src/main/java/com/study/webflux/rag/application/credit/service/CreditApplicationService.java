@@ -19,7 +19,7 @@ import com.study.webflux.rag.domain.credit.model.ConversationDeduction;
 import com.study.webflux.rag.domain.credit.model.MissionReward;
 import com.study.webflux.rag.domain.credit.model.PaymentCharge;
 import com.study.webflux.rag.domain.credit.model.SignupBonus;
-import com.study.webflux.rag.domain.credit.port.CreditTransactionRepository;
+import com.study.webflux.rag.application.credit.port.CreditTransactionRepository;
 import com.study.webflux.rag.domain.credit.port.UserCreditRepository;
 import com.study.webflux.rag.domain.dialogue.model.ConversationSessionId;
 import com.study.webflux.rag.domain.dialogue.model.UserId;
@@ -77,7 +77,7 @@ public class CreditApplicationService
 					updated.balance(),
 					sessionId.value());
 				return userCreditRepository.save(updated)
-					.then(creditTransactionRepository.save(tx));
+					.flatMap(saved -> creditTransactionRepository.save(tx));
 			});
 	}
 
@@ -97,7 +97,7 @@ public class CreditApplicationService
 					updated.balance(),
 					source.paymentId());
 				return userCreditRepository.save(updated)
-					.then(creditTransactionRepository.save(tx));
+					.flatMap(saved -> creditTransactionRepository.save(tx));
 			});
 	}
 
@@ -113,7 +113,7 @@ public class CreditApplicationService
 			0L,
 			signupBonus);
 		return userCreditRepository.save(initial)
-			.then(creditTransactionRepository.save(tx));
+			.flatMap(saved -> creditTransactionRepository.save(tx));
 	}
 
 	@Override
@@ -133,7 +133,7 @@ public class CreditApplicationService
 					updated.balance(),
 					missionId.value());
 				return userCreditRepository.save(updated)
-					.then(creditTransactionRepository.save(tx));
+					.flatMap(saved -> creditTransactionRepository.save(tx));
 			});
 	}
 

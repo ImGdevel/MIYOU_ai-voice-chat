@@ -21,14 +21,14 @@ public record UserCredit(
 		if (balance < amount) {
 			throw new InsufficientCreditException(userId, balance, amount);
 		}
-		return new UserCredit(userId, balance - amount, version + 1);
+		return new UserCredit(userId, balance - amount, version);
 	}
 
 	public UserCredit charge(long amount) {
 		if (amount <= 0) {
 			throw new IllegalArgumentException("charge amount must be positive");
 		}
-		return new UserCredit(userId, balance + amount, version + 1);
+		return new UserCredit(userId, balance + amount, version);
 	}
 
 	public static UserCredit initialize(UserId userId, long initialBalance) {

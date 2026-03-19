@@ -6,7 +6,7 @@ import org.springframework.data.domain.Pageable;
 import org.springframework.stereotype.Component;
 
 import com.study.webflux.rag.domain.credit.model.CreditTransaction;
-import com.study.webflux.rag.domain.credit.port.CreditTransactionRepository;
+import com.study.webflux.rag.application.credit.port.CreditTransactionRepository;
 import com.study.webflux.rag.domain.dialogue.model.UserId;
 import com.study.webflux.rag.infrastructure.credit.document.CreditTransactionDocument;
 import com.study.webflux.rag.infrastructure.credit.repository.CreditTransactionMongoRepository;
