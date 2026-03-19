@@ -1,6 +1,5 @@
 import { motion, AnimatePresence } from "motion/react";
-import { X, MessageSquare, Plus, Settings, User, Trash2 } from "lucide-react";
-import { useState } from "react";
+import { X, MessageSquare, Plus, Settings, User, Trash2, Coins } from "lucide-react";
 import { Persona } from "./PersonaSelector";
 
 export interface ChatRoom {
@@ -18,9 +17,10 @@ interface SidebarProps {
   onDeleteRoom: (roomId: string) => void;
   activeRoomId?: string;
   rooms: ChatRoom[];
+  creditBalance?: number | null;
 }
 
-export function Sidebar({ isOpen, onClose, onSelectRoom, onNewChat, onDeleteRoom, activeRoomId, rooms }: SidebarProps) {
+export function Sidebar({ isOpen, onClose, onSelectRoom, onNewChat, onDeleteRoom, activeRoomId, rooms, creditBalance }: SidebarProps) {
   return (
     <AnimatePresence>
       {isOpen && (
@@ -132,6 +132,15 @@ export function Sidebar({ isOpen, onClose, onSelectRoom, onNewChat, onDeleteRoom
             </div>
 
             <div className="p-4 border-t border-zinc-800 bg-zinc-900/50">
+                {creditBalance != null && (
+                  <div className="flex items-center gap-2 px-3 py-2.5 mb-2 rounded-lg bg-amber-500/8 border border-amber-500/15">
+                    <Coins size={15} className="text-amber-400 shrink-0" />
+                    <span className="text-xs text-zinc-400 flex-1">크레딧 잔액</span>
+                    <span className="text-sm font-bold text-amber-400 tabular-nums">
+                      {creditBalance.toLocaleString()}
+                    </span>
+                  </div>
+                )}
                 <div className="flex items-center gap-3 p-3 rounded-lg hover:bg-zinc-800 transition-colors cursor-pointer text-zinc-400 hover:text-white group">
                     <Settings size={18} className="group-hover:rotate-90 transition-transform duration-500" />
                     <span className="text-sm font-medium">Settings</span>

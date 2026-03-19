@@ -6,6 +6,8 @@ import { Sidebar, ChatRoom } from "./components/Sidebar";
 import { RecordingButton } from "./components/RecordingButton";
 import { PersonaSelector, Persona } from "./components/PersonaSelector";
 import { DeleteConfirmationModal } from "./components/DeleteConfirmationModal";
+import { CreditBadge } from "./components/CreditBadge";
+import { useCreditBalance } from "./hooks/useCreditBalance";
 import { motion, AnimatePresence } from "motion/react";
 
 type AppStatus = "idle" | "listening" | "processing" | "speaking";
@@ -295,6 +297,8 @@ export default function App() {
   const [toast, setToast] = useState<{ message: string; kind: ToastKind } | null>(null);
   const [isBusy, setIsBusy] = useState(false);
 
+  const { balance: creditBalance, isLoading: creditLoading, refresh: refreshCredit } = useCreditBalance(buildApiUrl);
+
   const [rooms, setRooms] = useState<ChatRoomState[]>([]);
   const [activeRoomId, setActiveRoomId] = useState<string>("");
   const [messagesByRoom, setMessagesByRoom] = useState<Record<string, Message[]>>({});
@@ -451,9 +455,10 @@ export default function App() {
       } finally {
         setStatus("idle");
         setIsBusy(false);
+        void refreshCredit();
       }
     },
-    [activeRoom, isVoiceOutputEnabled, patchMessage, patchMessageThrottled, pushMessage, showToast, touchRoom],
+    [activeRoom, isVoiceOutputEnabled, patchMessage, patchMessageThrottled, pushMessage, refreshCredit, showToast, touchRoom],
   );
 
   const startRecording = useCallback(async () => {
@@ -575,6 +580,7 @@ export default function App() {
       setActiveRoomId(roomId);
       setStatus("idle");
       showToast("대화를 시작하려면 길게 눌러 말하세요.");
+      void refreshCredit();
     } catch (error) {
       console.error(error);
       showToast(error instanceof Error ? error.message : "세션 생성 중 오류가 발생했습니다.", "error");
@@ -583,7 +589,7 @@ export default function App() {
     } finally {
       setIsBusy(false);
     }
-  }, [showToast]);
+  }, [refreshCredit, showToast]);
 
   const handleDeleteRoom = useCallback((roomId: string) => {
     setRoomToDelete(roomId);
@@ -668,7 +674,7 @@ export default function App() {
           )}
         </AnimatePresence>
 
-        <div className="w-12" />
+        <CreditBadge balance={creditBalance} isLoading={creditLoading} />
       </header>
 
       <main className="flex-1 flex flex-col items-center justify-between w-full relative z-10 pt-20 pb-4">
@@ -773,6 +779,7 @@ export default function App() {
         onDeleteRoom={handleDeleteRoom}
         activeRoomId={activeRoomId}
         rooms={rooms}
+        creditBalance={creditBalance}
       />
 
       <PersonaSelector
