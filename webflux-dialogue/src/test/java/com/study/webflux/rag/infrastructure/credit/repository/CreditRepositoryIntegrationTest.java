@@ -107,15 +107,15 @@ class CreditRepositoryIntegrationTest {
 		}
 
 		@Test
-		@DisplayName("동일 userId로 두 번 저장하면 마지막 값으로 갱신된다 (upsert)")
-		void save_sameUserTwice_lastValueWins() {
+		@DisplayName("저장 후 충전하면 갱신된 잔액이 조회된다")
+		void save_chargeAfterSave_updatesBalance() {
 			UserId userId = UserId.of("integration-user-upsert");
-			UserCredit first = UserCredit.initialize(userId, 1000L);
-			UserCredit second = first.charge(4000L);
+			UserCredit initial = UserCredit.initialize(userId, 1000L);
 
 			StepVerifier.create(
-				userCreditAdapter.save(first)
-					.then(userCreditAdapter.save(second))
+				userCreditAdapter.save(initial)
+					.map(saved -> saved.charge(4000L))
+					.flatMap(userCreditAdapter::save)
 					.then(userCreditAdapter.findByUserId(userId)))
 				.assertNext(found -> assertThat(found.balance()).isEqualTo(5000L))
 				.verifyComplete();

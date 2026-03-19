@@ -2,6 +2,7 @@ package com.study.webflux.rag.infrastructure.inbound.web.dialogue;
 
 import java.time.Instant;
 
+import com.study.webflux.rag.application.credit.usecase.CreditChargeUseCase;
 import com.study.webflux.rag.application.credit.usecase.CreditQueryUseCase;
 import com.study.webflux.rag.application.dialogue.service.DialogueSpeechService;
 import com.study.webflux.rag.domain.dialogue.model.ConversationSession;
@@ -52,6 +53,9 @@ class DialogueControllerCreditTest {
 
 	@MockitoBean
 	private CreditQueryUseCase creditQueryUseCase;
+
+	@MockitoBean
+	private CreditChargeUseCase creditChargeUseCase;
 
 	// ── 오디오 엔드포인트 크레딧 확인 ─────────────────────────────────────
 

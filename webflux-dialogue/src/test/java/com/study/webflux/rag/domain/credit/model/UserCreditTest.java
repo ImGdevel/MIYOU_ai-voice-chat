@@ -59,7 +59,7 @@ class UserCreditTest {
 	class Deduct {
 
 		@Test
-		@DisplayName("잔액 충분 시 차감 후 새로운 UserCredit 반환, 버전 1 증가")
+		@DisplayName("잔액 충분 시 차감 후 새로운 UserCredit 반환")
 		void deduct_sufficient_returnsNewCreditWithDeductedBalance() {
 			UserId userId = UserIdFixture.create();
 			UserCredit credit = new UserCredit(userId, 5000L, 2L);
@@ -68,7 +68,7 @@ class UserCreditTest {
 
 			assertThat(result.userId()).isEqualTo(userId);
 			assertThat(result.balance()).isEqualTo(4900L);
-			assertThat(result.version()).isEqualTo(3L);
+			assertThat(result.version()).isEqualTo(2L);
 		}
 
 		@Test
@@ -126,15 +126,15 @@ class UserCreditTest {
 	class Charge {
 
 		@Test
-		@DisplayName("충전 후 잔액 증가, 버전 1 증가")
-		void charge_increasesBalanceAndVersion() {
+		@DisplayName("충전 후 잔액 증가")
+		void charge_increasesBalance() {
 			UserId userId = UserIdFixture.create();
 			UserCredit credit = new UserCredit(userId, 1000L, 5L);
 
 			UserCredit result = credit.charge(3000L);
 
 			assertThat(result.balance()).isEqualTo(4000L);
-			assertThat(result.version()).isEqualTo(6L);
+			assertThat(result.version()).isEqualTo(5L);
 		}
 
 		@Test

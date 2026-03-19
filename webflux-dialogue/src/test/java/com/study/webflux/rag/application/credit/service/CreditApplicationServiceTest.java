@@ -5,7 +5,7 @@ import com.study.webflux.rag.domain.credit.model.CreditTransaction;
 import com.study.webflux.rag.domain.credit.model.CreditTransactionType;
 import com.study.webflux.rag.domain.credit.model.UserCredit;
 import com.study.webflux.rag.domain.credit.model.PaymentCharge;
-import com.study.webflux.rag.domain.credit.port.CreditTransactionRepository;
+import com.study.webflux.rag.application.credit.port.CreditTransactionRepository;
 import com.study.webflux.rag.domain.credit.port.UserCreditRepository;
 import com.study.webflux.rag.domain.dialogue.model.UserId;
 import com.study.webflux.rag.fixture.ConversationSessionFixture;
