@@ -8,6 +8,8 @@ import org.springframework.http.MediaType;
 import org.springframework.test.context.bean.override.mockito.MockitoBean;
 import org.springframework.test.web.reactive.server.WebTestClient;
 
+import com.study.webflux.rag.application.credit.usecase.CreditChargeUseCase;
+import com.study.webflux.rag.application.credit.usecase.CreditQueryUseCase;
 import com.study.webflux.rag.application.dialogue.service.DialogueSpeechService;
 import com.study.webflux.rag.domain.dialogue.model.ConversationSession;
 import com.study.webflux.rag.domain.dialogue.model.ConversationSessionId;
@@ -15,6 +17,7 @@ import com.study.webflux.rag.domain.dialogue.port.ConversationSessionRepository;
 import com.study.webflux.rag.domain.dialogue.port.DialoguePipelineUseCase;
 import com.study.webflux.rag.domain.voice.model.AudioFormat;
 import com.study.webflux.rag.fixture.ConversationSessionFixture;
+import com.study.webflux.rag.fixture.UserCreditFixture;
 import com.study.webflux.rag.infrastructure.inbound.web.dialogue.dto.RagDialogueRequest;
 import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Test;
@@ -39,6 +42,12 @@ class DialogueControllerTest {
 
 	@MockitoBean
 	private ConversationSessionRepository sessionRepository;
+
+	@MockitoBean
+	private CreditQueryUseCase creditQueryUseCase;
+
+	@MockitoBean
+	private CreditChargeUseCase creditChargeUseCase;
 
 	@Test
 	@DisplayName("텍스트 질의 요청 시 스트리밍 응답을 반환한다")
@@ -73,6 +82,8 @@ class DialogueControllerTest {
 		byte[] audioBytes = "default-audio".getBytes();
 
 		when(sessionRepository.findById(eq(sessionId))).thenReturn(Mono.just(session));
+		when(creditQueryUseCase.getBalance(session.userId()))
+			.thenReturn(Mono.just(UserCreditFixture.create(session.userId(), 5000L)));
 		when(dialoguePipelineUseCase
 			.executeAudioStreaming(eq(session), eq(testText), eq(AudioFormat.WAV)))
 			.thenReturn(Flux.just(audioBytes));
@@ -98,6 +109,8 @@ class DialogueControllerTest {
 		byte[] audioBytes = "mp3-audio-data".getBytes();
 
 		when(sessionRepository.findById(eq(sessionId))).thenReturn(Mono.just(session));
+		when(creditQueryUseCase.getBalance(session.userId()))
+			.thenReturn(Mono.just(UserCreditFixture.create(session.userId(), 5000L)));
 		when(dialoguePipelineUseCase
 			.executeAudioStreaming(eq(session), eq(testText), eq(AudioFormat.MP3)))
 			.thenReturn(Flux.just(audioBytes));

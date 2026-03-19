@@ -5,6 +5,8 @@ import com.study.webflux.rag.application.memory.policy.MemoryExtractionPolicy;
 import com.study.webflux.rag.application.memory.service.MemoryExtractionService;
 import com.study.webflux.rag.application.monitoring.port.ConversationMetricsPort;
 import com.study.webflux.rag.application.monitoring.service.PipelineTracer;
+import com.study.webflux.rag.application.credit.usecase.CreditDeductUseCase;
+import com.study.webflux.rag.domain.credit.model.CreditTransaction;
 import com.study.webflux.rag.domain.dialogue.model.ConversationSession;
 import com.study.webflux.rag.domain.dialogue.model.ConversationSessionId;
 import com.study.webflux.rag.domain.dialogue.model.ConversationTurn;
@@ -24,6 +26,8 @@ import reactor.test.StepVerifier;
 
 import static org.assertj.core.api.Assertions.assertThatThrownBy;
 import static org.mockito.ArgumentMatchers.any;
+import static org.mockito.Mockito.lenient;
+import static org.mockito.Mockito.mock;
 import static org.mockito.Mockito.never;
 import static org.mockito.Mockito.verify;
 import static org.mockito.Mockito.when;
@@ -49,6 +53,9 @@ class DialoguePostProcessingServiceTest {
 	@Mock
 	private ConversationMetricsPort conversationMetricsConfiguration;
 
+	@Mock
+	private CreditDeductUseCase creditDeductUseCase;
+
 	private DialoguePostProcessingService service;
 
 	@BeforeEach
@@ -60,7 +67,12 @@ class DialoguePostProcessingServiceTest {
 			llmPort,
 			pipelineTracer,
 			conversationMetricsConfiguration,
+			creditDeductUseCase,
 			new MemoryExtractionPolicy(5));
+		// 크레딧 차감은 실패해도 파이프라인을 중단하지 않으므로 기본 stub으로 처리
+		// lenient: constructor 예외 테스트에서는 이 stub이 사용되지 않아 strict 모드에서 오류 발생 방지
+		lenient().when(creditDeductUseCase.deductForConversation(any(), any()))
+			.thenReturn(Mono.just(mock(CreditTransaction.class)));
 	}
 
 	@Test
@@ -148,6 +160,7 @@ class DialoguePostProcessingServiceTest {
 			llmPort,
 			pipelineTracer,
 			conversationMetricsConfiguration,
+			creditDeductUseCase,
 			new MemoryExtractionPolicy(0)))
 			.isInstanceOf(IllegalArgumentException.class)
 			.hasMessageContaining("conversationThreshold");

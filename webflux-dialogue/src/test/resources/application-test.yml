@@ -3,7 +3,7 @@ spring:
     name: webflux-dialogue-test
   data:
     mongodb:
-      uri: mongodb://localhost:27017/ragdb-test
+      uri: mongodb://localhost:27018/ragdb-test?directConnection=true
     redis:
       host: localhost
       port: 6379

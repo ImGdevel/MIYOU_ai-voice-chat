@@ -13,6 +13,7 @@ import org.springframework.web.bind.annotation.RequestParam;
 import org.springframework.web.bind.annotation.ResponseStatus;
 import org.springframework.web.bind.annotation.RestController;
 
+import com.study.webflux.rag.application.credit.usecase.CreditChargeUseCase;
 import com.study.webflux.rag.domain.dialogue.model.ConversationSession;
 import com.study.webflux.rag.domain.dialogue.model.ConversationSessionId;
 import com.study.webflux.rag.domain.dialogue.model.PersonaId;
@@ -30,16 +31,19 @@ import reactor.core.publisher.Mono;
 public class ConversationSessionController {
 
 	private final ConversationSessionRepository sessionRepository;
+	private final CreditChargeUseCase creditChargeUseCase;
 
-	/** 새 세션을 생성합니다. */
+	/** 새 세션을 생성합니다. 해당 유저의 크레딧이 없으면 가입 보너스를 지급합니다. */
 	@PostMapping
 	@ResponseStatus(HttpStatus.CREATED)
 	public Mono<ConversationSession> createSession(
 		@Valid @RequestBody CreateSessionRequest request) {
+		UserId userId = UserId.of(request.userId());
 		ConversationSession session = ConversationSession.create(
 			PersonaId.of(request.personaId()),
-			UserId.of(request.userId()));
-		return sessionRepository.save(session);
+			userId);
+		return sessionRepository.save(session)
+			.flatMap(saved -> creditChargeUseCase.initializeIfAbsent(userId).thenReturn(saved));
 	}
 
 	/** 세션을 soft delete 처리합니다. */

@@ -26,6 +26,10 @@ export default defineConfig(({ mode }) => {
           target: apiProxyTarget,
           changeOrigin: true,
         },
+        '/credit': {
+          target: apiProxyTarget,
+          changeOrigin: true,
+        },
       },
     },
 

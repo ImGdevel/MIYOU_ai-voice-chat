@@ -8,6 +8,26 @@ services:
       MONGO_INITDB_DATABASE: ragdb
     volumes:
       - mongodb-data:/data/db
+    command: mongod --replSet rs0 --bind_ip_all
+    healthcheck:
+      test: ["CMD", "mongosh", "--quiet", "--eval", "db.adminCommand('ping').ok"]
+      interval: 5s
+      timeout: 5s
+      retries: 12
+      start_period: 10s
+    networks:
+      - webflux-network
+
+  mongo-setup:
+    image: mongo:7.0
+    container_name: webflux-mongodb-setup
+    depends_on:
+      mongodb:
+        condition: service_healthy
+    restart: "no"
+    command: >
+      mongosh --host mongodb:27017 --eval
+      "try { rs.status(); print('RS already initialized') } catch(e) { rs.initiate({_id:'rs0',members:[{_id:0,host:'mongodb:27017'}]}); print('RS initialized') }"
     networks:
       - webflux-network
 

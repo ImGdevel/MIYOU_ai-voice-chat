@@ -28,6 +28,7 @@ on:
 permissions:
   contents: read
   packages: write
+  id-token: write
 
 concurrency:
   group: deploy-${{ github.ref }}
@@ -89,6 +90,27 @@ jobs:
 
       - name: 프론트엔드 빌드
         run: ./scripts/sync_frontend_to_static.sh
+
+      - name: S3 ???? ?? (frontend)
+        shell: bash
+        run: |
+          test -n "${{ secrets.AWS_ROLE_ARN }}" || (echo "AWS_ROLE_ARN secret is missing." >&2; exit 1)
+          test -n "${{ secrets.AWS_REGION }}" || (echo "AWS_REGION secret is missing." >&2; exit 1)
+          test -n "${{ secrets.FRONTEND_S3_BUCKET }}" || (echo "FRONTEND_S3_BUCKET secret is missing." >&2; exit 1)
+
+      - name: AWS ???? ?? (OIDC, frontend)
+        uses: aws-actions/configure-aws-credentials@v4
+        with:
+          role-to-assume: ${{ secrets.AWS_ROLE_ARN }}
+          aws-region: ${{ secrets.AWS_REGION }}
+          role-session-name: github-actions-frontend-upload
+
+      - name: ????? S3 ???
+        env:
+          FRONTEND_S3_BUCKET: ${{ secrets.FRONTEND_S3_BUCKET }}
+        shell: bash
+        run: |
+          aws s3 sync "frontend/dist" "s3://${FRONTEND_S3_BUCKET}/" --delete
 
       - name: 빌드 결과 업로드
         uses: actions/upload-artifact@v4

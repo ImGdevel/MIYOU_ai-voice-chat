@@ -1,7 +1,10 @@
 package com.study.webflux.rag.application.dialogue.pipeline.stage;
 
+import lombok.extern.slf4j.Slf4j;
+
 import org.springframework.stereotype.Service;
 
+import com.study.webflux.rag.application.credit.usecase.CreditDeductUseCase;
 import com.study.webflux.rag.application.dialogue.pipeline.PipelineInputs;
 import com.study.webflux.rag.application.memory.policy.MemoryExtractionPolicy;
 import com.study.webflux.rag.application.memory.service.MemoryExtractionService;
@@ -19,6 +22,7 @@ import reactor.core.publisher.Mono;
 import reactor.core.scheduler.Schedulers;
 import reactor.util.context.ContextView;
 
+@Slf4j
 @Service
 public class DialoguePostProcessingService {
 
@@ -28,6 +32,7 @@ public class DialoguePostProcessingService {
 	private final LlmPort llmPort;
 	private final PipelineTracer pipelineTracer;
 	private final ConversationMetricsPort conversationMetrics;
+	private final CreditDeductUseCase creditDeductUseCase;
 	private final int conversationThreshold;
 
 	public DialoguePostProcessingService(ConversationRepository conversationRepository,
@@ -36,6 +41,7 @@ public class DialoguePostProcessingService {
 		LlmPort llmPort,
 		PipelineTracer pipelineTracer,
 		ConversationMetricsPort conversationMetrics,
+		CreditDeductUseCase creditDeductUseCase,
 		MemoryExtractionPolicy policy) {
 		this.conversationRepository = conversationRepository;
 		this.conversationCounterPort = conversationCounterPort;
@@ -43,6 +49,7 @@ public class DialoguePostProcessingService {
 		this.llmPort = llmPort;
 		this.pipelineTracer = pipelineTracer;
 		this.conversationMetrics = conversationMetrics;
+		this.creditDeductUseCase = creditDeductUseCase;
 		this.conversationThreshold = policy.conversationThreshold();
 		if (this.conversationThreshold <= 0) {
 			throw new IllegalArgumentException("conversationThreshold 설정값은 0 이하일 수 없습니다.");
@@ -71,18 +78,22 @@ public class DialoguePostProcessingService {
 	}
 
 	/**
-	 * 응답 저장 이후 대화 카운트를 증가시키고, 임계 회차 도달 시 메모리를 추출합니다.
+	 * 응답 저장, 크레딧 차감, 대화 카운트 증가, 임계 회차 도달 시 메모리 추출을 순서대로 수행합니다.
+	 * 크레딧 차감은 오디오가 클라이언트에게 완전히 전달된 이후에만 호출되므로,
+	 * 파이프라인이 중단되면 차감되지 않습니다.
 	 */
 	private Mono<Void> persistConversationAndMaybeExtract(Mono<PipelineInputs> inputsMono,
 		Mono<String> responseMono) {
 		return inputsMono.flatMap(inputs -> {
-			var sessionId = inputs.session().sessionId();
+			var session = inputs.session();
+			var sessionId = session.sessionId();
 			return responseMono.flatMap(response -> {
 				conversationMetrics.recordQueryLength(inputs.currentTurn().query().length());
 				conversationMetrics.recordResponseLength(response.length());
 				return persistConversation(inputsMono, response);
 			})
-				.flatMap(turn -> conversationCounterPort.increment(sessionId))
+				.flatMap(turn -> deductCreditSafely(session.userId(), sessionId))
+				.flatMap(ignored -> conversationCounterPort.increment(sessionId))
 				.doOnNext(count -> {
 					conversationMetrics.recordConversationIncrement();
 					conversationMetrics.recordConversationCount(count);
@@ -90,6 +101,22 @@ public class DialoguePostProcessingService {
 				.filter(count -> count % conversationThreshold == 0)
 				.flatMap(count -> memoryExtractionService.checkAndExtract(sessionId));
 		}).subscribeOn(Schedulers.boundedElastic()).then();
+	}
+
+	/**
+	 * 크레딧 차감을 시도하고, 실패해도 파이프라인 전체가 중단되지 않도록 에러를 흡수합니다.
+	 * 잔액 부족이나 트랜잭션 충돌은 로그로 기록하고 관리자가 별도로 처리합니다.
+	 */
+	private Mono<Object> deductCreditSafely(
+		com.study.webflux.rag.domain.dialogue.model.UserId userId,
+		com.study.webflux.rag.domain.dialogue.model.ConversationSessionId sessionId) {
+		return creditDeductUseCase.deductForConversation(userId, sessionId)
+			.cast(Object.class)
+			.onErrorResume(e -> {
+				log.error("크레딧 차감 실패 - userId={}, sessionId={}: {}",
+					userId.value(), sessionId.value(), e.getMessage());
+				return Mono.just(Boolean.FALSE);
+			});
 	}
 
 	/**
