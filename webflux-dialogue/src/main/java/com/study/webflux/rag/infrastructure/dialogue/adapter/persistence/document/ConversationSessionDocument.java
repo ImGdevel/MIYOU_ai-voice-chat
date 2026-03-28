@@ -9,9 +9,18 @@ import org.springframework.data.mongodb.core.mapping.Document;
 
 @Document(collection = "conversation_sessions")
 @CompoundIndexes({
-	@CompoundIndex(name = "user_created_idx", def = "{'userId': 1, 'createdAt': -1}"),
-	@CompoundIndex(name = "persona_created_idx", def = "{'personaId': 1, 'createdAt': -1}"),
-	@CompoundIndex(name = "persona_user_created_idx", def = "{'personaId': 1, 'userId': 1, 'createdAt': -1}")
+	@CompoundIndex(
+		name = "active_user_created_idx",
+		def = "{'userId': 1, 'createdAt': -1}",
+		partialFilter = "{'deletedAt': {'$eq': null}}"),
+	@CompoundIndex(
+		name = "active_persona_created_idx",
+		def = "{'personaId': 1, 'createdAt': -1}",
+		partialFilter = "{'deletedAt': {'$eq': null}}"),
+	@CompoundIndex(
+		name = "active_persona_user_created_idx",
+		def = "{'personaId': 1, 'userId': 1, 'createdAt': -1}",
+		partialFilter = "{'deletedAt': {'$eq': null}}")
 })
 public record ConversationSessionDocument(
 	@Id String sessionId,

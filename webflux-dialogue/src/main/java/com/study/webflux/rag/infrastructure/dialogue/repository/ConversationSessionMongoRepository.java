@@ -1,5 +1,7 @@
 package com.study.webflux.rag.infrastructure.dialogue.repository;
 
+import org.springframework.data.domain.Sort;
+import org.springframework.data.mongodb.repository.Query;
 import org.springframework.data.mongodb.repository.ReactiveMongoRepository;
 
 import com.study.webflux.rag.infrastructure.dialogue.adapter.persistence.document.ConversationSessionDocument;
@@ -9,10 +11,13 @@ public interface ConversationSessionMongoRepository
 	extends
 		ReactiveMongoRepository<ConversationSessionDocument, String> {
 
-	Flux<ConversationSessionDocument> findByUserIdOrderByCreatedAtDesc(String userId);
+	@Query("{'userId': ?0, 'deletedAt': null}")
+	Flux<ConversationSessionDocument> findActiveByUserId(String userId, Sort sort);
 
-	Flux<ConversationSessionDocument> findByPersonaIdOrderByCreatedAtDesc(String personaId);
+	@Query("{'personaId': ?0, 'deletedAt': null}")
+	Flux<ConversationSessionDocument> findActiveByPersonaId(String personaId, Sort sort);
 
-	Flux<ConversationSessionDocument> findByPersonaIdAndUserIdOrderByCreatedAtDesc(String personaId,
-		String userId);
+	@Query("{'personaId': ?0, 'userId': ?1, 'deletedAt': null}")
+	Flux<ConversationSessionDocument> findActiveByPersonaIdAndUserId(String personaId, String userId,
+		Sort sort);
 }

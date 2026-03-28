@@ -1,7 +1,9 @@
 package com.study.webflux.rag.infrastructure.dialogue.adapter.persistence;
 
-import lombok.RequiredArgsConstructor;
-
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
+import org.springframework.beans.factory.annotation.Qualifier;
+import org.springframework.data.domain.Sort;
 import org.springframework.stereotype.Component;
 
 import com.study.webflux.rag.domain.dialogue.model.ConversationSession;
@@ -11,14 +13,26 @@ import com.study.webflux.rag.domain.dialogue.model.UserId;
 import com.study.webflux.rag.domain.dialogue.port.ConversationSessionRepository;
 import com.study.webflux.rag.infrastructure.dialogue.adapter.persistence.document.ConversationSessionDocument;
 import com.study.webflux.rag.infrastructure.dialogue.repository.ConversationSessionMongoRepository;
+import org.springframework.data.redis.core.ReactiveRedisTemplate;
 import reactor.core.publisher.Flux;
 import reactor.core.publisher.Mono;
 
 @Component
-@RequiredArgsConstructor
 public class ConversationSessionMongoAdapter implements ConversationSessionRepository {
 
+	private static final Logger log = LoggerFactory.getLogger(ConversationSessionMongoAdapter.class);
+	private static final String HISTORY_KEY_PREFIX = "dialogue:conversation:history:";
+	private static final Sort CREATED_AT_DESC = Sort.by(Sort.Direction.DESC, "createdAt");
+
 	private final ConversationSessionMongoRepository mongoRepository;
+	private final ReactiveRedisTemplate<String, String> redisTemplate;
+
+	public ConversationSessionMongoAdapter(
+		ConversationSessionMongoRepository mongoRepository,
+		@Qualifier("reactiveRedisStringTemplate") ReactiveRedisTemplate<String, String> redisTemplate) {
+		this.mongoRepository = mongoRepository;
+		this.redisTemplate = redisTemplate;
+	}
 
 	@Override
 	public Mono<ConversationSession> save(ConversationSession session) {
@@ -33,19 +47,19 @@ public class ConversationSessionMongoAdapter implements ConversationSessionRepos
 
 	@Override
 	public Flux<ConversationSession> findByUserId(UserId userId) {
-		return mongoRepository.findByUserIdOrderByCreatedAtDesc(userId.value()).map(this::toDomain);
+		return mongoRepository.findActiveByUserId(userId.value(), CREATED_AT_DESC).map(this::toDomain);
 	}
 
 	@Override
 	public Flux<ConversationSession> findByPersonaId(PersonaId personaId) {
-		return mongoRepository.findByPersonaIdOrderByCreatedAtDesc(personaId.value())
+		return mongoRepository.findActiveByPersonaId(personaId.value(), CREATED_AT_DESC)
 			.map(this::toDomain);
 	}
 
 	@Override
 	public Flux<ConversationSession> findByPersonaIdAndUserId(PersonaId personaId, UserId userId) {
 		return mongoRepository
-			.findByPersonaIdAndUserIdOrderByCreatedAtDesc(personaId.value(), userId.value())
+			.findActiveByPersonaIdAndUserId(personaId.value(), userId.value(), CREATED_AT_DESC)
 			.map(this::toDomain);
 	}
 
@@ -56,7 +70,20 @@ public class ConversationSessionMongoAdapter implements ConversationSessionRepos
 				ConversationSession session = toDomain(document);
 				return mongoRepository.save(toDocument(session.softDelete()));
 			})
-			.map(this::toDomain);
+			.map(this::toDomain)
+			.flatMap(deleted ->
+				evictHistoryCache(sessionId)
+					.onErrorResume(e -> {
+						log.warn("Failed to evict history cache for session {} on soft-delete",
+							sessionId.value(), e);
+						return Mono.empty();
+					})
+					.thenReturn(deleted)
+			);
+	}
+
+	private Mono<Void> evictHistoryCache(ConversationSessionId sessionId) {
+		return redisTemplate.delete(HISTORY_KEY_PREFIX + sessionId.value()).then();
 	}
 
 	private ConversationSessionDocument toDocument(ConversationSession session) {
