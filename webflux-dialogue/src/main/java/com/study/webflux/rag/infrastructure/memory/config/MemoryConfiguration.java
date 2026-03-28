@@ -40,4 +40,15 @@ public class MemoryConfiguration {
 
 		return new ReactiveRedisTemplate<>(connectionFactory, context);
 	}
+
+	/** String 값을 위한 ReactiveRedisTemplate을 생성합니다. 대화 이력 캐시에 사용합니다. */
+	@Bean("reactiveRedisStringTemplate")
+	public ReactiveRedisTemplate<String, String> reactiveRedisStringTemplate(
+		ReactiveRedisConnectionFactory connectionFactory) {
+		RedisSerializationContext<String, String> context = RedisSerializationContext
+			.<String, String>newSerializationContext(new StringRedisSerializer())
+			.value(new StringRedisSerializer()).build();
+
+		return new ReactiveRedisTemplate<>(connectionFactory, context);
+	}
 }

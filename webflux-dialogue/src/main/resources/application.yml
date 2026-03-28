@@ -101,6 +101,9 @@ rag:
       conversation-threshold: 5
       importance-boost: 0.05
       importance-threshold: 0.3
+    cache:
+      max-history-size: ${DIALOGUE_CACHE_MAX_HISTORY_SIZE:20}
+      ttl-hours: ${DIALOGUE_CACHE_TTL_HOURS:24}
 
 monitoring:
   persistent:
