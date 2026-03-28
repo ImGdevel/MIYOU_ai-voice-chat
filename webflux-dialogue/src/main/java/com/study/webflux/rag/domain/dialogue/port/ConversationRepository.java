@@ -10,6 +10,4 @@ public interface ConversationRepository {
 	Mono<ConversationTurn> save(ConversationTurn turn);
 
 	Flux<ConversationTurn> findRecent(ConversationSessionId sessionId, int limit);
-
-	Flux<ConversationTurn> findAll(ConversationSessionId sessionId);
 }

@@ -1,7 +1,6 @@
 package com.study.webflux.rag.infrastructure.dialogue.adapter.persistence;
 
 import org.springframework.data.domain.PageRequest;
-import org.springframework.stereotype.Component;
 
 import com.study.webflux.rag.domain.dialogue.model.ConversationSessionId;
 import com.study.webflux.rag.domain.dialogue.model.ConversationTurn;
@@ -11,12 +10,15 @@ import com.study.webflux.rag.infrastructure.dialogue.repository.ConversationMong
 import reactor.core.publisher.Flux;
 import reactor.core.publisher.Mono;
 
-@Component
-public class ConversationMongoAdapter implements ConversationRepository {
+/**
+ * MongoDB 전용 ConversationRepository 구현체.
+ * 캐싱이 필요한 경우 {@link ConversationCachingAdapter}를 사용한다.
+ */
+class ConversationMongoAdapter implements ConversationRepository {
 
 	private final ConversationMongoRepository mongoRepository;
 
-	public ConversationMongoAdapter(ConversationMongoRepository mongoRepository) {
+	ConversationMongoAdapter(ConversationMongoRepository mongoRepository) {
 		this.mongoRepository = mongoRepository;
 	}
 
@@ -41,11 +43,6 @@ public class ConversationMongoAdapter implements ConversationRepository {
 				java.util.Collections.reverse(list);
 				return Flux.fromIterable(list);
 			});
-	}
-
-	@Override
-	public Flux<ConversationTurn> findAll(ConversationSessionId sessionId) {
-		return mongoRepository.findAllBySessionId(sessionId.value()).map(this::toConversationTurn);
 	}
 
 	private ConversationTurn toConversationTurn(ConversationDocument document) {
