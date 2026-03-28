@@ -20,6 +20,7 @@ public class RagDialogueProperties {
 	private Stt stt = new Stt();
 	private Qdrant qdrant = new Qdrant();
 	private Memory memory = new Memory();
+	private Cache cache = new Cache();
 	private String systemPrompt = "";
 	private String systemPromptTemplate = "system/persona/maid";
 	private String commonSystemPromptTemplate = "system/common";
@@ -64,6 +65,14 @@ public class RagDialogueProperties {
 
 	public void setMemory(Memory memory) {
 		this.memory = memory;
+	}
+
+	public Cache getCache() {
+		return cache;
+	}
+
+	public void setCache(Cache cache) {
+		this.cache = cache;
 	}
 
 	public String getSystemPrompt() {
@@ -500,6 +509,32 @@ public class RagDialogueProperties {
 
 		public void setMaxBackoffSeconds(int maxBackoffSeconds) {
 			this.maxBackoffSeconds = maxBackoffSeconds;
+		}
+	}
+
+	/**
+	 * 대화 이력 캐시 설정
+	 */
+	public static class Cache {
+		/** Redis List에 보관할 최대 턴 수 (limit * 2 이상 권장) */
+		private int maxHistorySize = 20;
+		/** 캐시 키 TTL (시간 단위) */
+		private int ttlHours = 24;
+
+		public int getMaxHistorySize() {
+			return maxHistorySize;
+		}
+
+		public void setMaxHistorySize(int maxHistorySize) {
+			this.maxHistorySize = maxHistorySize;
+		}
+
+		public int getTtlHours() {
+			return ttlHours;
+		}
+
+		public void setTtlHours(int ttlHours) {
+			this.ttlHours = ttlHours;
 		}
 	}
 }

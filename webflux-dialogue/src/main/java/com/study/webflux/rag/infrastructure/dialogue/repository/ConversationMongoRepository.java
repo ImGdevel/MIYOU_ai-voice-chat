@@ -13,5 +13,6 @@ public interface ConversationMongoRepository
 	Flux<ConversationDocument> findBySessionIdOrderByCreatedAtDesc(String sessionId,
 		Pageable pageable);
 
-	Flux<ConversationDocument> findAllBySessionId(String sessionId);
+	Flux<ConversationDocument> findBySessionIdOrderByCreatedAtAsc(String sessionId,
+		Pageable pageable);
 }
