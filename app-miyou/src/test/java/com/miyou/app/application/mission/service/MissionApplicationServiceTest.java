@@ -1,5 +1,8 @@
 package com.miyou.app.application.mission.service;
 
+import org.springframework.http.HttpStatus;
+import org.springframework.web.server.ResponseStatusException;
+
 import com.miyou.app.application.credit.usecase.CreditChargeUseCase;
 import com.miyou.app.domain.credit.model.CreditTransaction;
 import com.miyou.app.domain.dialogue.model.UserId;
@@ -20,8 +23,6 @@ import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.extension.ExtendWith;
 import org.mockito.Mock;
 import org.mockito.junit.jupiter.MockitoExtension;
-import org.springframework.http.HttpStatus;
-import org.springframework.web.server.ResponseStatusException;
 import reactor.core.publisher.Flux;
 import reactor.core.publisher.Mono;
 import reactor.test.StepVerifier;
@@ -120,8 +121,10 @@ class MissionApplicationServiceTest {
 			when(missionRepository.findById(missionId)).thenReturn(Mono.just(mission));
 			when(userMissionRepository.findByUserIdAndMissionId(userId, missionId))
 				.thenReturn(Mono.empty());
-			when(userMissionRepository.save(any())).thenAnswer(inv -> Mono.just(inv.getArgument(0)));
-			when(creditChargeUseCase.grantMissionReward(eq(userId), eq(missionId), anyLong(), anyString()))
+			when(userMissionRepository.save(any()))
+				.thenAnswer(inv -> Mono.just(inv.getArgument(0)));
+			when(creditChargeUseCase
+				.grantMissionReward(eq(userId), eq(missionId), anyLong(), anyString()))
 				.thenReturn(Mono.just(rewardTx));
 
 			StepVerifier.create(service.completeMission(userId, missionId))
@@ -135,7 +138,10 @@ class MissionApplicationServiceTest {
 				.verifyComplete();
 
 			verify(creditChargeUseCase).grantMissionReward(
-				eq(userId), eq(missionId), eq(MissionFixture.DEFAULT_REWARD), eq("SHARE_SERVICE"));
+				eq(userId),
+				eq(missionId),
+				eq(MissionFixture.DEFAULT_REWARD),
+				eq("SHARE_SERVICE"));
 		}
 
 		@Test
@@ -146,12 +152,12 @@ class MissionApplicationServiceTest {
 			when(missionRepository.findById(unknownId)).thenReturn(Mono.empty());
 
 			StepVerifier.create(service.completeMission(userId, unknownId))
-				.expectErrorMatches(e ->
-					e instanceof ResponseStatusException rse &&
+				.expectErrorMatches(e -> e instanceof ResponseStatusException rse &&
 					rse.getStatusCode() == HttpStatus.NOT_FOUND)
 				.verify();
 
-			verify(creditChargeUseCase, never()).grantMissionReward(any(), any(), anyLong(), anyString());
+			verify(creditChargeUseCase, never())
+				.grantMissionReward(any(), any(), anyLong(), anyString());
 		}
 
 		@Test
@@ -159,7 +165,10 @@ class MissionApplicationServiceTest {
 		void completeMission_alreadyRewarded_nonRepeatable_throws409() {
 			UserId userId = UserIdFixture.create();
 			Mission mission = MissionFixture.create(
-				"one-time-mission", MissionType.SHARE_SERVICE, 500L, false);
+				"one-time-mission",
+				MissionType.SHARE_SERVICE,
+				500L,
+				false);
 			MissionId missionId = mission.missionId();
 			UserMission completedWithSameId = new UserMission(
 				userId, missionId, MissionStatus.REWARDED,
@@ -170,12 +179,12 @@ class MissionApplicationServiceTest {
 				.thenReturn(Mono.just(completedWithSameId));
 
 			StepVerifier.create(service.completeMission(userId, missionId))
-				.expectErrorMatches(e ->
-					e instanceof ResponseStatusException rse &&
+				.expectErrorMatches(e -> e instanceof ResponseStatusException rse &&
 					rse.getStatusCode() == HttpStatus.CONFLICT)
 				.verify();
 
-			verify(creditChargeUseCase, never()).grantMissionReward(any(), any(), anyLong(), anyString());
+			verify(creditChargeUseCase, never())
+				.grantMissionReward(any(), any(), anyLong(), anyString());
 		}
 
 		@Test
@@ -183,7 +192,10 @@ class MissionApplicationServiceTest {
 		void completeMission_repeatable_alreadyRewarded_succeeds() {
 			UserId userId = UserIdFixture.create();
 			Mission repeatableMission = MissionFixture.create(
-				"daily-mission", MissionType.TASK_COMPLETION, 100L, true);
+				"daily-mission",
+				MissionType.TASK_COMPLETION,
+				100L,
+				true);
 			MissionId missionId = repeatableMission.missionId();
 			UserMission previouslyRewarded = new UserMission(
 				userId, missionId, MissionStatus.REWARDED,
@@ -194,7 +206,8 @@ class MissionApplicationServiceTest {
 			when(missionRepository.findById(missionId)).thenReturn(Mono.just(repeatableMission));
 			when(userMissionRepository.findByUserIdAndMissionId(userId, missionId))
 				.thenReturn(Mono.just(previouslyRewarded));
-			when(userMissionRepository.save(any())).thenAnswer(inv -> Mono.just(inv.getArgument(0)));
+			when(userMissionRepository.save(any()))
+				.thenAnswer(inv -> Mono.just(inv.getArgument(0)));
 			when(creditChargeUseCase.grantMissionReward(any(), any(), anyLong(), anyString()))
 				.thenReturn(Mono.just(rewardTx));
 

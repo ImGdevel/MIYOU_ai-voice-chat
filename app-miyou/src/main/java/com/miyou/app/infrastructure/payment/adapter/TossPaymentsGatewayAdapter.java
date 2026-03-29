@@ -9,8 +9,7 @@ import com.miyou.app.infrastructure.payment.port.PaymentGatewayPort;
 import reactor.core.publisher.Mono;
 
 /**
- * 토스페이먼츠 PG 어댑터 (stub 구현).
- * 실제 운영 연동 시 Toss Payments REST API를 호출하도록 구현합니다.
+ * 토스페이먼츠 PG 어댑터 (stub 구현). 실제 운영 연동 시 Toss Payments REST API를 호출하도록 구현합니다.
  */
 @Slf4j
 @Component

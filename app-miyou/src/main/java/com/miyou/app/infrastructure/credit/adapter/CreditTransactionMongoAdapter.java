@@ -5,8 +5,8 @@ import lombok.RequiredArgsConstructor;
 import org.springframework.data.domain.Pageable;
 import org.springframework.stereotype.Component;
 
-import com.miyou.app.domain.credit.model.CreditTransaction;
 import com.miyou.app.application.credit.port.CreditTransactionRepository;
+import com.miyou.app.domain.credit.model.CreditTransaction;
 import com.miyou.app.domain.dialogue.model.UserId;
 import com.miyou.app.infrastructure.credit.document.CreditTransactionDocument;
 import com.miyou.app.infrastructure.credit.repository.CreditTransactionMongoRepository;

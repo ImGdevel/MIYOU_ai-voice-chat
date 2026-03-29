@@ -13,8 +13,7 @@ public record UserCreditDocument(
 	@Indexed(unique = true) String userId,
 	long balance,
 	@Version long version,
-	Instant updatedAt
-) {
+	Instant updatedAt) {
 	public static UserCreditDocument fromDomain(
 		com.miyou.app.domain.credit.model.UserCredit credit) {
 		return new UserCreditDocument(

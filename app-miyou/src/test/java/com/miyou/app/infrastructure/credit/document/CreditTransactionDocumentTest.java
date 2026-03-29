@@ -1,9 +1,9 @@
 package com.miyou.app.infrastructure.credit.document;
 
+import com.miyou.app.domain.credit.model.ConversationDeduction;
+import com.miyou.app.domain.credit.model.CreditSourceType;
 import com.miyou.app.domain.credit.model.CreditTransaction;
 import com.miyou.app.domain.credit.model.CreditTransactionType;
-import com.miyou.app.domain.credit.model.CreditSourceType;
-import com.miyou.app.domain.credit.model.ConversationDeduction;
 import com.miyou.app.domain.credit.model.MissionReward;
 import com.miyou.app.domain.credit.model.PaymentCharge;
 import com.miyou.app.domain.credit.model.SignupBonus;
@@ -32,7 +32,10 @@ class CreditTransactionDocumentTest {
 				UserIdFixture.create(),
 				CreditTransactionType.DEDUCT,
 				new ConversationDeduction(sessionId),
-				100L, 5000L, 4900L, "session-abc");
+				100L,
+				5000L,
+				4900L,
+				"session-abc");
 
 			CreditTransactionDocument doc = CreditTransactionDocument.fromDomain(original);
 			CreditTransaction restored = doc.toDomain();
@@ -44,7 +47,8 @@ class CreditTransactionDocumentTest {
 			assertThat(restored.balanceBefore()).isEqualTo(5000L);
 			assertThat(restored.balanceAfter()).isEqualTo(4900L);
 			assertThat(restored.referenceId()).isEqualTo("session-abc");
-			assertThat(restored.source().sourceType()).isEqualTo(CreditSourceType.CONVERSATION_DEDUCTION);
+			assertThat(restored.source().sourceType())
+				.isEqualTo(CreditSourceType.CONVERSATION_DEDUCTION);
 
 			ConversationDeduction source = (ConversationDeduction) restored.source();
 			assertThat(source.sessionId().value()).isEqualTo("session-abc");
@@ -57,7 +61,9 @@ class CreditTransactionDocumentTest {
 				UserIdFixture.create(),
 				CreditTransactionType.DEDUCT,
 				new ConversationDeduction(ConversationSessionFixture.createId()),
-				100L, 5000L, 4900L);
+				100L,
+				5000L,
+				4900L);
 
 			CreditTransactionDocument doc = CreditTransactionDocument.fromDomain(tx);
 
@@ -77,7 +83,9 @@ class CreditTransactionDocumentTest {
 				UserIdFixture.create(),
 				CreditTransactionType.CHARGE,
 				new SignupBonus(),
-				5000L, 0L, 5000L);
+				5000L,
+				0L,
+				5000L);
 
 			CreditTransactionDocument doc = CreditTransactionDocument.fromDomain(original);
 			CreditTransaction restored = doc.toDomain();
@@ -100,7 +108,9 @@ class CreditTransactionDocumentTest {
 				UserIdFixture.create(),
 				CreditTransactionType.CHARGE,
 				new PaymentCharge("pay-xyz-123", "toss"),
-				10000L, 0L, 10000L);
+				10000L,
+				0L,
+				10000L);
 
 			CreditTransactionDocument doc = CreditTransactionDocument.fromDomain(original);
 			CreditTransaction restored = doc.toDomain();
@@ -126,7 +136,9 @@ class CreditTransactionDocumentTest {
 				UserIdFixture.create(),
 				CreditTransactionType.CHARGE,
 				new MissionReward(MissionId.of("mission-share"), "SHARE_SERVICE"),
-				500L, 2000L, 2500L);
+				500L,
+				2000L,
+				2500L);
 
 			CreditTransactionDocument doc = CreditTransactionDocument.fromDomain(original);
 			CreditTransaction restored = doc.toDomain();

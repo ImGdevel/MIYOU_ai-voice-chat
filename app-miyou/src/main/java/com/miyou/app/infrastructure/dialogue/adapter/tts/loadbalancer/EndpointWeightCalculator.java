@@ -18,8 +18,7 @@ package com.miyou.app.infrastructure.dialogue.adapter.tts.loadbalancer;
  * <li>낮은 구간(0~67%)에서 완만하게 감소, 최대값 근처(83~100%)에서 급격히 감소</li>
  * </ul>
  *
- * <h3>최종 가중치</h3>
- * W_total = W_credit × W_traffic
+ * <h3>최종 가중치</h3> W_total = W_credit × W_traffic
  */
 public class EndpointWeightCalculator {
 

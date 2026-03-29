@@ -52,7 +52,7 @@ if [ -z "$emoji" ] || [ -z "$normalized_type" ]; then
 fi
 
 # 첫 번째 단어를 '이모지 + 타입(소문자)' 로 변환
-first_line=$(echo "$first_line" | sed "s/^$type/$emoji $normalized_type/")
+first_line="$emoji $normalized_type${first_line#$type}"
 
 echo "$first_line" > "$COMMIT_MESSAGE_FILE_PATH"
 echo "$remaining_lines" >> "$COMMIT_MESSAGE_FILE_PATH"

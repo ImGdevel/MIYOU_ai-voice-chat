@@ -1,13 +1,17 @@
 package com.miyou.app.infrastructure.credit.repository;
 
+import org.springframework.beans.factory.annotation.Autowired;
+import org.springframework.context.annotation.Import;
+import org.springframework.data.domain.PageRequest;
+
 import com.miyou.app.config.annotation.ReactiveRepositoryTest;
+import com.miyou.app.domain.credit.model.ConversationDeduction;
 import com.miyou.app.domain.credit.model.CreditSourceType;
 import com.miyou.app.domain.credit.model.CreditTransaction;
 import com.miyou.app.domain.credit.model.CreditTransactionType;
-import com.miyou.app.domain.credit.model.UserCredit;
-import com.miyou.app.domain.credit.model.ConversationDeduction;
 import com.miyou.app.domain.credit.model.PaymentCharge;
 import com.miyou.app.domain.credit.model.SignupBonus;
+import com.miyou.app.domain.credit.model.UserCredit;
 import com.miyou.app.domain.dialogue.model.UserId;
 import com.miyou.app.fixture.ConversationSessionFixture;
 import com.miyou.app.infrastructure.credit.adapter.CreditTransactionMongoAdapter;
@@ -18,9 +22,6 @@ import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Nested;
 import org.junit.jupiter.api.Test;
-import org.springframework.beans.factory.annotation.Autowired;
-import org.springframework.context.annotation.Import;
-import org.springframework.data.domain.PageRequest;
 import reactor.test.StepVerifier;
 
 import static org.assertj.core.api.Assertions.assertThat;
@@ -28,13 +29,10 @@ import static org.assertj.core.api.Assertions.assertThat;
 /**
  * MongoDB 실제 연결을 통한 Credit 리포지토리 통합 테스트.
  *
- * 전제: 로컬 MongoDB 인스턴스 (application-test.yml 참조)
- * - URI: mongodb://localhost:27017/ragdb-test
+ * 전제: 로컬 MongoDB 인스턴스 (application-test.yml 참조) - URI: mongodb://localhost:27017/ragdb-test
  *
- * 검증 항목:
- * - UserCredit CRUD 및 userId unique 제약
- * - CreditTransaction 저장 및 userId + createdAt 복합 인덱스 정렬
- * - 모든 CreditSource 타입의 직렬화/역직렬화 정합성
+ * 검증 항목: - UserCredit CRUD 및 userId unique 제약 - CreditTransaction 저장 및 userId + createdAt 복합 인덱스 정렬 - 모든 CreditSource
+ * 타입의 직렬화/역직렬화 정합성
  */
 @ReactiveRepositoryTest
 @Import({UserCreditMongoAdapter.class, CreditTransactionMongoAdapter.class})
@@ -134,20 +132,33 @@ class CreditRepositoryIntegrationTest {
 			UserId userId = UserId.of("tx-order-user");
 
 			// 시간 순서가 다르도록 약간의 간격 삽입
-			CreditTransaction tx1 = CreditTransaction.of(userId, CreditTransactionType.CHARGE,
-				new SignupBonus(), 5000L, 0L, 5000L);
+			CreditTransaction tx1 = CreditTransaction.of(userId,
+				CreditTransactionType.CHARGE,
+				new SignupBonus(),
+				5000L,
+				0L,
+				5000L);
 			Thread.sleep(5);
-			CreditTransaction tx2 = CreditTransaction.of(userId, CreditTransactionType.DEDUCT,
-				new ConversationDeduction(ConversationSessionFixture.createId()), 100L, 5000L, 4900L);
+			CreditTransaction tx2 = CreditTransaction.of(userId,
+				CreditTransactionType.DEDUCT,
+				new ConversationDeduction(ConversationSessionFixture.createId()),
+				100L,
+				5000L,
+				4900L);
 			Thread.sleep(5);
-			CreditTransaction tx3 = CreditTransaction.of(userId, CreditTransactionType.DEDUCT,
-				new ConversationDeduction(ConversationSessionFixture.createId()), 100L, 4900L, 4800L);
+			CreditTransaction tx3 = CreditTransaction.of(userId,
+				CreditTransactionType.DEDUCT,
+				new ConversationDeduction(ConversationSessionFixture.createId()),
+				100L,
+				4900L,
+				4800L);
 
 			StepVerifier.create(
 				creditTxAdapter.save(tx1)
 					.then(creditTxAdapter.save(tx2))
 					.then(creditTxAdapter.save(tx3))
-					.thenMany(creditTxAdapter.findByUserIdOrderByCreatedAtDesc(userId, PageRequest.of(0, 10))))
+					.thenMany(creditTxAdapter.findByUserIdOrderByCreatedAtDesc(userId,
+						PageRequest.of(0, 10))))
 				.assertNext(tx -> assertThat(tx.balanceBefore()).isEqualTo(4900L)) // tx3 (최신)
 				.assertNext(tx -> assertThat(tx.balanceBefore()).isEqualTo(5000L)) // tx2
 				.assertNext(tx -> assertThat(tx.type()).isEqualTo(CreditTransactionType.CHARGE)) // tx1
@@ -160,9 +171,12 @@ class CreditRepositoryIntegrationTest {
 			UserId userId = UserId.of("tx-page-user");
 
 			for (int i = 0; i < 5; i++) {
-				CreditTransaction tx = CreditTransaction.of(userId, CreditTransactionType.DEDUCT,
-					new ConversationDeduction(ConversationSessionFixture.createId()), 100L,
-					5000L - (i * 100L), 4900L - (i * 100L));
+				CreditTransaction tx = CreditTransaction.of(userId,
+					CreditTransactionType.DEDUCT,
+					new ConversationDeduction(ConversationSessionFixture.createId()),
+					100L,
+					5000L - (i * 100L),
+					4900L - (i * 100L));
 				creditTxAdapter.save(tx).block();
 				Thread.sleep(2);
 			}
@@ -179,15 +193,24 @@ class CreditRepositoryIntegrationTest {
 			UserId userA = UserId.of("isolation-user-a");
 			UserId userB = UserId.of("isolation-user-b");
 
-			CreditTransaction txA = CreditTransaction.of(userA, CreditTransactionType.CHARGE,
-				new SignupBonus(), 5000L, 0L, 5000L);
-			CreditTransaction txB = CreditTransaction.of(userB, CreditTransactionType.CHARGE,
-				new SignupBonus(), 5000L, 0L, 5000L);
+			CreditTransaction txA = CreditTransaction.of(userA,
+				CreditTransactionType.CHARGE,
+				new SignupBonus(),
+				5000L,
+				0L,
+				5000L);
+			CreditTransaction txB = CreditTransaction.of(userB,
+				CreditTransactionType.CHARGE,
+				new SignupBonus(),
+				5000L,
+				0L,
+				5000L);
 
 			StepVerifier.create(
 				creditTxAdapter.save(txA)
 					.then(creditTxAdapter.save(txB))
-					.thenMany(creditTxAdapter.findByUserIdOrderByCreatedAtDesc(userA, PageRequest.of(0, 10))))
+					.thenMany(creditTxAdapter.findByUserIdOrderByCreatedAtDesc(userA,
+						PageRequest.of(0, 10))))
 				.assertNext(tx -> assertThat(tx.userId()).isEqualTo(userA))
 				.verifyComplete();
 		}
@@ -204,8 +227,13 @@ class CreditRepositoryIntegrationTest {
 		void conversationDeduction_persistsSessionId() {
 			UserId userId = UserId.of("source-deduction-user");
 			var sessionId = ConversationSessionFixture.createId("my-session-xyz");
-			CreditTransaction tx = CreditTransaction.of(userId, CreditTransactionType.DEDUCT,
-				new ConversationDeduction(sessionId), 100L, 5000L, 4900L, "my-session-xyz");
+			CreditTransaction tx = CreditTransaction.of(userId,
+				CreditTransactionType.DEDUCT,
+				new ConversationDeduction(sessionId),
+				100L,
+				5000L,
+				4900L,
+				"my-session-xyz");
 
 			StepVerifier.create(
 				creditTxAdapter.save(tx)
@@ -225,15 +253,20 @@ class CreditRepositoryIntegrationTest {
 		@DisplayName("SignupBonus: sourceData가 비어 있어도 역직렬화된다")
 		void signupBonus_persistsWithEmptySourceData() {
 			UserId userId = UserId.of("source-signup-user");
-			CreditTransaction tx = CreditTransaction.of(userId, CreditTransactionType.CHARGE,
-				new SignupBonus(), 5000L, 0L, 5000L);
+			CreditTransaction tx = CreditTransaction.of(userId,
+				CreditTransactionType.CHARGE,
+				new SignupBonus(),
+				5000L,
+				0L,
+				5000L);
 
 			StepVerifier.create(
 				creditTxAdapter.save(tx)
 					.then(creditTxRepo.findById(tx.transactionId().value()))
 					.map(CreditTransactionDocument::toDomain))
 				.assertNext(restored -> {
-					assertThat(restored.source().sourceType()).isEqualTo(CreditSourceType.SIGNUP_BONUS);
+					assertThat(restored.source().sourceType())
+						.isEqualTo(CreditSourceType.SIGNUP_BONUS);
 					assertThat(restored.source()).isInstanceOf(SignupBonus.class);
 				})
 				.verifyComplete();
@@ -243,15 +276,21 @@ class CreditRepositoryIntegrationTest {
 		@DisplayName("PaymentCharge: paymentId와 pgProvider가 MongoDB 저장 후에도 유지된다")
 		void paymentCharge_persistsPaymentInfo() {
 			UserId userId = UserId.of("source-payment-user");
-			CreditTransaction tx = CreditTransaction.of(userId, CreditTransactionType.CHARGE,
-				new PaymentCharge("toss-pay-001", "toss"), 10000L, 0L, 10000L, "toss-pay-001");
+			CreditTransaction tx = CreditTransaction.of(userId,
+				CreditTransactionType.CHARGE,
+				new PaymentCharge("toss-pay-001", "toss"),
+				10000L,
+				0L,
+				10000L,
+				"toss-pay-001");
 
 			StepVerifier.create(
 				creditTxAdapter.save(tx)
 					.then(creditTxRepo.findById(tx.transactionId().value()))
 					.map(CreditTransactionDocument::toDomain))
 				.assertNext(restored -> {
-					assertThat(restored.source().sourceType()).isEqualTo(CreditSourceType.PAYMENT_CHARGE);
+					assertThat(restored.source().sourceType())
+						.isEqualTo(CreditSourceType.PAYMENT_CHARGE);
 					PaymentCharge src = (PaymentCharge) restored.source();
 					assertThat(src.paymentId()).isEqualTo("toss-pay-001");
 					assertThat(src.pgProvider()).isEqualTo("toss");

@@ -11,8 +11,7 @@ import reactor.core.publisher.Flux;
 import reactor.core.publisher.Mono;
 
 /**
- * MongoDB 전용 ConversationRepository 구현체.
- * 캐싱이 필요한 경우 {@link ConversationCachingAdapter}를 사용한다.
+ * MongoDB 전용 ConversationRepository 구현체. 캐싱이 필요한 경우 {@link ConversationCachingAdapter}를 사용한다.
  */
 class ConversationMongoAdapter implements ConversationRepository {
 

@@ -49,8 +49,9 @@ class TtsLoadBalancerTest {
 	@Test
 	@DisplayName("크레딧 기반: 크레딧이 가장 적은 엔드포인트 우선 선택")
 	void selectLowestCreditEndpoint() {
-		// 크레딧 설정: endpoint-1=100, endpoint-2=50, endpoint-3=200
-		endpoints.get(0).updateCredits(100.0);
+		// 크레딧 설정: endpoint-1=200(max), endpoint-2=50, endpoint-3=200(max)
+		// endpoint-1, endpoint-3은 maxCredits와 같아 weight=0 → endpoint-2만 선택 가능
+		endpoints.get(0).updateCredits(200.0);
 		endpoints.get(1).updateCredits(50.0);
 		endpoints.get(2).updateCredits(200.0);
 

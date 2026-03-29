@@ -6,7 +6,8 @@ import com.miyou.app.infrastructure.mission.document.MissionDocument;
 import reactor.core.publisher.Flux;
 
 public interface MissionMongoRepository
-	extends ReactiveMongoRepository<MissionDocument, String> {
+	extends
+		ReactiveMongoRepository<MissionDocument, String> {
 
 	Flux<MissionDocument> findByType(String type);
 }

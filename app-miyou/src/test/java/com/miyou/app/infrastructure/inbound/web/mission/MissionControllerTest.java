@@ -1,5 +1,14 @@
 package com.miyou.app.infrastructure.inbound.web.mission;
 
+import java.time.Instant;
+
+import org.springframework.beans.factory.annotation.Autowired;
+import org.springframework.boot.test.autoconfigure.web.reactive.WebFluxTest;
+import org.springframework.http.HttpStatus;
+import org.springframework.test.context.bean.override.mockito.MockitoBean;
+import org.springframework.test.web.reactive.server.WebTestClient;
+import org.springframework.web.server.ResponseStatusException;
+
 import com.miyou.app.application.mission.usecase.MissionCompletionUseCase;
 import com.miyou.app.application.mission.usecase.MissionQueryUseCase;
 import com.miyou.app.domain.dialogue.model.UserId;
@@ -13,16 +22,8 @@ import com.miyou.app.fixture.UserIdFixture;
 import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Nested;
 import org.junit.jupiter.api.Test;
-import org.springframework.beans.factory.annotation.Autowired;
-import org.springframework.boot.test.autoconfigure.web.reactive.WebFluxTest;
-import org.springframework.http.HttpStatus;
-import org.springframework.test.context.bean.override.mockito.MockitoBean;
-import org.springframework.test.web.reactive.server.WebTestClient;
-import org.springframework.web.server.ResponseStatusException;
 import reactor.core.publisher.Flux;
 import reactor.core.publisher.Mono;
-
-import java.time.Instant;
 
 import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.ArgumentMatchers.eq;
@@ -133,7 +134,8 @@ class MissionControllerTest {
 
 			webTestClient.post()
 				.uri("/missions/{missionId}/complete?userId={userId}",
-					missionId.value(), userId.value())
+					missionId.value(),
+					userId.value())
 				.exchange()
 				.expectStatus().isOk()
 				.expectBody()
@@ -156,7 +158,8 @@ class MissionControllerTest {
 
 			webTestClient.post()
 				.uri("/missions/{missionId}/complete?userId={userId}",
-					unknownId.value(), userId.value())
+					unknownId.value(),
+					userId.value())
 				.exchange()
 				.expectStatus().isNotFound();
 		}
@@ -173,7 +176,8 @@ class MissionControllerTest {
 
 			webTestClient.post()
 				.uri("/missions/{missionId}/complete?userId={userId}",
-					missionId.value(), userId.value())
+					missionId.value(),
+					userId.value())
 				.exchange()
 				.expectStatus().isEqualTo(409);
 		}

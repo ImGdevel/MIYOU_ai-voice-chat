@@ -1,5 +1,7 @@
 package com.miyou.app.infrastructure.inbound.web.credit;
 
+import java.util.Map;
+
 import lombok.RequiredArgsConstructor;
 
 import org.springframework.data.domain.PageRequest;
@@ -25,8 +27,6 @@ import jakarta.validation.Valid;
 import jakarta.validation.constraints.NotBlank;
 import reactor.core.publisher.Flux;
 import reactor.core.publisher.Mono;
-
-import java.util.Map;
 
 /** 크레딧 잔액 조회 및 충전 엔드포인트 */
 @RestController

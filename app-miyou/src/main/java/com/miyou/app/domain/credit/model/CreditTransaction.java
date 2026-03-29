@@ -36,8 +36,12 @@ public record CreditTransaction(
 		}
 	}
 
-	public static CreditTransaction of(UserId userId, CreditTransactionType type, CreditSource source,
-		long amount, long balanceBefore, long balanceAfter) {
+	public static CreditTransaction of(UserId userId,
+		CreditTransactionType type,
+		CreditSource source,
+		long amount,
+		long balanceBefore,
+		long balanceAfter) {
 		return new CreditTransaction(
 			CreditTransactionId.generate(),
 			userId,
@@ -50,8 +54,13 @@ public record CreditTransaction(
 			Instant.now());
 	}
 
-	public static CreditTransaction of(UserId userId, CreditTransactionType type, CreditSource source,
-		long amount, long balanceBefore, long balanceAfter, String referenceId) {
+	public static CreditTransaction of(UserId userId,
+		CreditTransactionType type,
+		CreditSource source,
+		long amount,
+		long balanceBefore,
+		long balanceAfter,
+		String referenceId) {
 		return new CreditTransaction(
 			CreditTransactionId.generate(),
 			userId,

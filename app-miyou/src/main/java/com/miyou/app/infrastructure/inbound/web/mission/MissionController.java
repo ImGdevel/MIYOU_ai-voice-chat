@@ -41,7 +41,8 @@ public class MissionController {
 	/** 유저의 미션 진행 현황을 조회합니다. */
 	@GetMapping("/my")
 	public Flux<UserMissionResponse> getUserMissions(@RequestParam @NotBlank String userId) {
-		return missionQueryUseCase.getUserMissions(UserId.of(userId)).map(UserMissionResponse::from);
+		return missionQueryUseCase.getUserMissions(UserId.of(userId))
+			.map(UserMissionResponse::from);
 	}
 
 	/** 미션을 완료 처리하고 크레딧을 지급합니다. */

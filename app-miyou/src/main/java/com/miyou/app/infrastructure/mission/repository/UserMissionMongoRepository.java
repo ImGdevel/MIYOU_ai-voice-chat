@@ -7,7 +7,8 @@ import reactor.core.publisher.Flux;
 import reactor.core.publisher.Mono;
 
 public interface UserMissionMongoRepository
-	extends ReactiveMongoRepository<UserMissionDocument, String> {
+	extends
+		ReactiveMongoRepository<UserMissionDocument, String> {
 
 	Flux<UserMissionDocument> findByUserId(String userId);
 

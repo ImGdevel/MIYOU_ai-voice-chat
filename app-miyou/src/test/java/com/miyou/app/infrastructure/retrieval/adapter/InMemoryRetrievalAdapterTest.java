@@ -53,7 +53,8 @@ class InMemoryRetrievalAdapterTest {
 			"네",
 			Instant.now());
 
-		when(conversationRepository.findRecent(eq(sessionId), anyInt())).thenReturn(Flux.just(turn1, turn2, turn3));
+		when(conversationRepository.findRecent(eq(sessionId), anyInt()))
+			.thenReturn(Flux.just(turn1, turn2, turn3));
 
 		StepVerifier.create(adapter.retrieve(sessionId, "스프링 웹플럭스", 5))
 			.assertNext(context -> {
@@ -72,7 +73,8 @@ class InMemoryRetrievalAdapterTest {
 		ConversationTurn turn2 = ConversationTurn.create(sessionId, "자바 스프링");
 		ConversationTurn turn3 = ConversationTurn.create(sessionId, "자바 스프링 부트");
 
-		when(conversationRepository.findRecent(eq(sessionId), anyInt())).thenReturn(Flux.just(turn1, turn2, turn3));
+		when(conversationRepository.findRecent(eq(sessionId), anyInt()))
+			.thenReturn(Flux.just(turn1, turn2, turn3));
 
 		StepVerifier.create(adapter.retrieve(sessionId, "자바 스프링", 5)).assertNext(context -> {
 			assertThat(context.documents()).hasSize(3);
@@ -106,7 +108,8 @@ class InMemoryRetrievalAdapterTest {
 		ConversationTurn turn2 = ConversationTurn.create(sessionId, "파이썬 장고");
 		ConversationTurn turn3 = ConversationTurn.create(sessionId, "자바스크립트 리액트");
 
-		when(conversationRepository.findRecent(eq(sessionId), anyInt())).thenReturn(Flux.just(turn1, turn2, turn3));
+		when(conversationRepository.findRecent(eq(sessionId), anyInt()))
+			.thenReturn(Flux.just(turn1, turn2, turn3));
 
 		StepVerifier.create(adapter.retrieve(sessionId, "자바 스프링", 10))
 			.assertNext(context -> {
@@ -134,7 +137,8 @@ class InMemoryRetrievalAdapterTest {
 		ConversationTurn turn1 = ConversationTurn.create(sessionId, "파이썬 장고");
 		ConversationTurn turn2 = ConversationTurn.create(sessionId, "루비 레일즈");
 
-		when(conversationRepository.findRecent(eq(sessionId), anyInt())).thenReturn(Flux.just(turn1, turn2));
+		when(conversationRepository.findRecent(eq(sessionId), anyInt()))
+			.thenReturn(Flux.just(turn1, turn2));
 
 		StepVerifier.create(adapter.retrieve(sessionId, "자바 스프링", 10))
 			.assertNext(context -> {
@@ -148,7 +152,8 @@ class InMemoryRetrievalAdapterTest {
 		ConversationSessionId sessionId = ConversationSessionFixture.createId();
 		ConversationTurn turn = ConversationTurn.create(sessionId, "JAVA Spring");
 
-		when(conversationRepository.findRecent(eq(sessionId), anyInt())).thenReturn(Flux.just(turn));
+		when(conversationRepository.findRecent(eq(sessionId), anyInt()))
+			.thenReturn(Flux.just(turn));
 
 		StepVerifier.create(adapter.retrieve(sessionId, "java spring", 5))
 			.assertNext(context -> {
@@ -163,7 +168,8 @@ class InMemoryRetrievalAdapterTest {
 		ConversationSessionId sessionId = ConversationSessionFixture.createId();
 		ConversationTurn turn = ConversationTurn.create(sessionId, "자바   스프링    부트");
 
-		when(conversationRepository.findRecent(eq(sessionId), anyInt())).thenReturn(Flux.just(turn));
+		when(conversationRepository.findRecent(eq(sessionId), anyInt()))
+			.thenReturn(Flux.just(turn));
 
 		StepVerifier.create(adapter.retrieve(sessionId, "스프링 자바", 5))
 			.assertNext(context -> {
@@ -190,7 +196,8 @@ class InMemoryRetrievalAdapterTest {
 		ConversationTurn turn1 = ConversationTurn.create(sessionId, "관련 없는 내용");
 		ConversationTurn turn2 = ConversationTurn.create(sessionId, "완전히 다른 주제");
 
-		when(conversationRepository.findRecent(eq(sessionId), anyInt())).thenReturn(Flux.just(turn1, turn2));
+		when(conversationRepository.findRecent(eq(sessionId), anyInt()))
+			.thenReturn(Flux.just(turn1, turn2));
 
 		StepVerifier.create(adapter.retrieve(sessionId, "테스트", 5)).assertNext(context -> {
 			assertThat(context.documents()).isEmpty();
@@ -205,7 +212,8 @@ class InMemoryRetrievalAdapterTest {
 		ConversationTurn turn2 = ConversationTurn.create(sessionId, "a b e f");
 		ConversationTurn turn3 = ConversationTurn.create(sessionId, "a e f g");
 
-		when(conversationRepository.findRecent(eq(sessionId), anyInt())).thenReturn(Flux.just(turn1, turn2, turn3));
+		when(conversationRepository.findRecent(eq(sessionId), anyInt()))
+			.thenReturn(Flux.just(turn1, turn2, turn3));
 
 		StepVerifier.create(adapter.retrieve(sessionId, "a b", 5)).assertNext(context -> {
 			assertThat(context.documents()).hasSize(3);

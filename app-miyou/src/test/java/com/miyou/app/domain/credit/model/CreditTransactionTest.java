@@ -1,7 +1,5 @@
 package com.miyou.app.domain.credit.model;
 
-import com.miyou.app.domain.credit.model.ConversationDeduction;
-import com.miyou.app.domain.credit.model.SignupBonus;
 import com.miyou.app.domain.dialogue.model.ConversationSessionId;
 import com.miyou.app.fixture.ConversationSessionFixture;
 import com.miyou.app.fixture.UserIdFixture;
@@ -88,13 +86,19 @@ class CreditTransactionTest {
 		@DisplayName("매 호출마다 고유한 transactionId가 생성된다")
 		void of_uniqueTransactionId_eachCall() {
 			CreditTransaction tx1 = CreditTransaction.of(
-				UserIdFixture.create(), CreditTransactionType.DEDUCT,
+				UserIdFixture.create(),
+				CreditTransactionType.DEDUCT,
 				new ConversationDeduction(ConversationSessionFixture.createId()),
-				100L, 5000L, 4900L);
+				100L,
+				5000L,
+				4900L);
 			CreditTransaction tx2 = CreditTransaction.of(
-				UserIdFixture.create(), CreditTransactionType.DEDUCT,
+				UserIdFixture.create(),
+				CreditTransactionType.DEDUCT,
 				new ConversationDeduction(ConversationSessionFixture.createId()),
-				100L, 5000L, 4900L);
+				100L,
+				5000L,
+				4900L);
 
 			assertThat(tx1.transactionId().value()).isNotEqualTo(tx2.transactionId().value());
 		}

@@ -23,7 +23,10 @@ public record Mission(
 		}
 	}
 
-	public static Mission create(MissionType type, String name, String description, long rewardAmount,
+	public static Mission create(MissionType type,
+		String name,
+		String description,
+		long rewardAmount,
 		boolean repeatable) {
 		return new Mission(MissionId.generate(), type, name, description, rewardAmount, repeatable);
 	}

@@ -18,6 +18,7 @@ public interface ConversationSessionMongoRepository
 	Flux<ConversationSessionDocument> findActiveByPersonaId(String personaId, Sort sort);
 
 	@Query("{'personaId': ?0, 'userId': ?1, 'deletedAt': null}")
-	Flux<ConversationSessionDocument> findActiveByPersonaIdAndUserId(String personaId, String userId,
+	Flux<ConversationSessionDocument> findActiveByPersonaIdAndUserId(String personaId,
+		String userId,
 		Sort sort);
 }

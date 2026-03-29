@@ -24,7 +24,10 @@ public final class MissionFixture {
 			false);
 	}
 
-	public static Mission create(String missionId, MissionType type, long reward, boolean repeatable) {
+	public static Mission create(String missionId,
+		MissionType type,
+		long reward,
+		boolean repeatable) {
 		return new Mission(
 			MissionId.of(missionId),
 			type,

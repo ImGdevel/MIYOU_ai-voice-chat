@@ -6,7 +6,8 @@ import com.miyou.app.infrastructure.credit.document.UserCreditDocument;
 import reactor.core.publisher.Mono;
 
 public interface UserCreditMongoRepository
-	extends ReactiveMongoRepository<UserCreditDocument, String> {
+	extends
+		ReactiveMongoRepository<UserCreditDocument, String> {
 
 	Mono<UserCreditDocument> findByUserId(String userId);
 }

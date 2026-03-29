@@ -10,11 +10,11 @@ import org.springframework.data.mongodb.core.index.CompoundIndexes;
 import org.springframework.data.mongodb.core.index.Indexed;
 import org.springframework.data.mongodb.core.mapping.Document;
 
+import com.miyou.app.domain.credit.model.ConversationDeduction;
 import com.miyou.app.domain.credit.model.CreditSource;
 import com.miyou.app.domain.credit.model.CreditTransaction;
 import com.miyou.app.domain.credit.model.CreditTransactionId;
 import com.miyou.app.domain.credit.model.CreditTransactionType;
-import com.miyou.app.domain.credit.model.ConversationDeduction;
 import com.miyou.app.domain.credit.model.MissionReward;
 import com.miyou.app.domain.credit.model.PaymentCharge;
 import com.miyou.app.domain.credit.model.SignupBonus;
@@ -86,14 +86,13 @@ public record CreditTransactionDocument(
 	private static CreditSource deserializeSource(String sourceType,
 		Map<String, String> sourceData) {
 		return switch (sourceType) {
-			case "CONVERSATION_DEDUCTION" ->
-				new ConversationDeduction(ConversationSessionId.of(sourceData.get("sessionId")));
+			case "CONVERSATION_DEDUCTION" -> new ConversationDeduction(
+				ConversationSessionId.of(sourceData.get("sessionId")));
 			case "SIGNUP_BONUS" -> new SignupBonus();
-			case "PAYMENT_CHARGE" ->
-				new PaymentCharge(sourceData.get("paymentId"), sourceData.get("pgProvider"));
-			case "MISSION_REWARD" ->
-				new MissionReward(MissionId.of(sourceData.get("missionId")),
-					sourceData.get("missionType"));
+			case "PAYMENT_CHARGE" -> new PaymentCharge(sourceData.get("paymentId"),
+				sourceData.get("pgProvider"));
+			case "MISSION_REWARD" -> new MissionReward(MissionId.of(sourceData.get("missionId")),
+				sourceData.get("missionType"));
 			default -> throw new IllegalArgumentException("알 수 없는 CreditSourceType: " + sourceType);
 		};
 	}

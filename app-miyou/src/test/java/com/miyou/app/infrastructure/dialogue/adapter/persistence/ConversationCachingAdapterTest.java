@@ -68,7 +68,8 @@ class ConversationCachingAdapterTest {
 		ConversationSessionId sessionId = ConversationSessionFixture.createId();
 		ConversationTurn turn = ConversationTurn.create(sessionId, "안녕");
 		String cacheKey = KEY_PREFIX + sessionId.value();
-		ConversationDocument saved = new ConversationDocument("id-1", sessionId.value(), "안녕", null, Instant.now());
+		ConversationDocument saved = new ConversationDocument("id-1", sessionId.value(), "안녕", null,
+			Instant.now());
 
 		when(mongoRepository.save(any())).thenReturn(Mono.just(saved));
 		when(redisTemplate.opsForList()).thenReturn(listOps);
@@ -92,7 +93,8 @@ class ConversationCachingAdapterTest {
 	void save_redisFails_stillReturnsResult() {
 		ConversationSessionId sessionId = ConversationSessionFixture.createId();
 		ConversationTurn turn = ConversationTurn.create(sessionId, "질문");
-		ConversationDocument saved = new ConversationDocument("id-2", sessionId.value(), "질문", null, Instant.now());
+		ConversationDocument saved = new ConversationDocument("id-2", sessionId.value(), "질문", null,
+			Instant.now());
 
 		when(mongoRepository.save(any())).thenReturn(Mono.just(saved));
 		when(redisTemplate.opsForList()).thenReturn(listOps);
@@ -110,7 +112,8 @@ class ConversationCachingAdapterTest {
 		ConversationSessionId sessionId = ConversationSessionFixture.createId();
 		ConversationTurn turn = ConversationTurn.create(sessionId, "질문");
 
-		when(mongoRepository.save(any())).thenReturn(Mono.error(new RuntimeException("Mongo down")));
+		when(mongoRepository.save(any()))
+			.thenReturn(Mono.error(new RuntimeException("Mongo down")));
 
 		StepVerifier.create(adapter.save(turn))
 			.expectErrorMatches(e -> e.getMessage().contains("Mongo down"))
@@ -129,7 +132,8 @@ class ConversationCachingAdapterTest {
 		// serialize manually to match adapter's format
 		String json = String.format(
 			"{\"id\":\"id-1\",\"sessionId\":\"%s\",\"query\":\"질문\",\"response\":\"답변\",\"createdAt\":\"%s\"}",
-			sessionId.value(), now.toString());
+			sessionId.value(),
+			now.toString());
 
 		when(redisTemplate.opsForList()).thenReturn(listOps);
 		when(listOps.range(eq(cacheKey), anyLong(), anyLong())).thenReturn(Flux.just(json));
@@ -151,11 +155,13 @@ class ConversationCachingAdapterTest {
 		ConversationSessionId sessionId = ConversationSessionFixture.createId();
 		String cacheKey = KEY_PREFIX + sessionId.value();
 		Instant now = Instant.now();
-		ConversationDocument doc = new ConversationDocument("id-1", sessionId.value(), "질문", "답변", now);
+		ConversationDocument doc = new ConversationDocument("id-1", sessionId.value(), "질문", "답변",
+			now);
 
 		when(redisTemplate.opsForList()).thenReturn(listOps);
 		when(listOps.range(eq(cacheKey), anyLong(), anyLong())).thenReturn(Flux.empty());
-		when(mongoRepository.findBySessionIdOrderByCreatedAtAsc(eq(sessionId.value()), any(PageRequest.class)))
+		when(mongoRepository.findBySessionIdOrderByCreatedAtAsc(eq(sessionId.value()),
+			any(PageRequest.class)))
 			.thenReturn(Flux.just(doc));
 		when(listOps.rightPushAll(eq(cacheKey), any(String[].class))).thenReturn(Mono.just(1L));
 		when(listOps.trim(eq(cacheKey), anyLong(), anyLong())).thenReturn(Mono.just(true));
@@ -178,12 +184,14 @@ class ConversationCachingAdapterTest {
 		ConversationSessionId sessionId = ConversationSessionFixture.createId();
 		String cacheKey = KEY_PREFIX + sessionId.value();
 		Instant now = Instant.now();
-		ConversationDocument doc = new ConversationDocument("id-2", sessionId.value(), "오류 후 복구", null, now);
+		ConversationDocument doc = new ConversationDocument("id-2", sessionId.value(), "오류 후 복구",
+			null, now);
 
 		when(redisTemplate.opsForList()).thenReturn(listOps);
 		when(listOps.range(eq(cacheKey), anyLong(), anyLong()))
 			.thenReturn(Flux.error(new RuntimeException("Redis timeout")));
-		when(mongoRepository.findBySessionIdOrderByCreatedAtAsc(eq(sessionId.value()), any(PageRequest.class)))
+		when(mongoRepository.findBySessionIdOrderByCreatedAtAsc(eq(sessionId.value()),
+			any(PageRequest.class)))
 			.thenReturn(Flux.just(doc));
 		when(listOps.rightPushAll(eq(cacheKey), any(String[].class))).thenReturn(Mono.just(1L));
 		when(listOps.trim(eq(cacheKey), anyLong(), anyLong())).thenReturn(Mono.just(true));
@@ -202,7 +210,8 @@ class ConversationCachingAdapterTest {
 
 		when(redisTemplate.opsForList()).thenReturn(listOps);
 		when(listOps.range(eq(cacheKey), anyLong(), anyLong())).thenReturn(Flux.empty());
-		when(mongoRepository.findBySessionIdOrderByCreatedAtAsc(eq(sessionId.value()), any(PageRequest.class)))
+		when(mongoRepository.findBySessionIdOrderByCreatedAtAsc(eq(sessionId.value()),
+			any(PageRequest.class)))
 			.thenReturn(Flux.empty());
 
 		StepVerifier.create(adapter.findRecent(sessionId, 5)).verifyComplete();

@@ -1,11 +1,11 @@
 package com.miyou.app.application.credit.service;
 
+import com.miyou.app.application.credit.port.CreditTransactionRepository;
 import com.miyou.app.domain.credit.exception.InsufficientCreditException;
 import com.miyou.app.domain.credit.model.CreditTransaction;
 import com.miyou.app.domain.credit.model.CreditTransactionType;
-import com.miyou.app.domain.credit.model.UserCredit;
 import com.miyou.app.domain.credit.model.PaymentCharge;
-import com.miyou.app.application.credit.port.CreditTransactionRepository;
+import com.miyou.app.domain.credit.model.UserCredit;
 import com.miyou.app.domain.credit.port.UserCreditRepository;
 import com.miyou.app.domain.dialogue.model.UserId;
 import com.miyou.app.fixture.ConversationSessionFixture;
@@ -140,7 +140,8 @@ class CreditApplicationServiceTest {
 			when(creditTransactionRepository.save(any())).thenReturn(Mono.just(savedTx));
 
 			StepVerifier.create(service.deductForConversation(
-				userId, ConversationSessionFixture.createId()))
+				userId,
+				ConversationSessionFixture.createId()))
 				.assertNext(tx -> {
 					assertThat(tx.type()).isEqualTo(CreditTransactionType.DEDUCT);
 					assertThat(tx.amount()).isEqualTo(CONVERSATION_COST);
@@ -156,7 +157,8 @@ class CreditApplicationServiceTest {
 			when(userCreditRepository.findByUserId(userId)).thenReturn(Mono.just(lowCredit));
 
 			StepVerifier.create(service.deductForConversation(
-				userId, ConversationSessionFixture.createId()))
+				userId,
+				ConversationSessionFixture.createId()))
 				.expectError(InsufficientCreditException.class)
 				.verify();
 
@@ -171,7 +173,8 @@ class CreditApplicationServiceTest {
 			when(userCreditRepository.findByUserId(userId)).thenReturn(Mono.empty());
 
 			StepVerifier.create(service.deductForConversation(
-				userId, ConversationSessionFixture.createId()))
+				userId,
+				ConversationSessionFixture.createId()))
 				.expectError(InsufficientCreditException.class)
 				.verify();
 		}
@@ -185,7 +188,8 @@ class CreditApplicationServiceTest {
 			when(userCreditRepository.findByUserId(userId)).thenReturn(Mono.just(existing));
 			when(userCreditRepository.save(any())).thenAnswer(inv -> Mono.just(inv.getArgument(0)));
 
-			ArgumentCaptor<CreditTransaction> txCaptor = ArgumentCaptor.forClass(CreditTransaction.class);
+			ArgumentCaptor<CreditTransaction> txCaptor = ArgumentCaptor
+				.forClass(CreditTransaction.class);
 			when(creditTransactionRepository.save(txCaptor.capture()))
 				.thenAnswer(inv -> Mono.just(inv.getArgument(0)));
 
@@ -211,7 +215,8 @@ class CreditApplicationServiceTest {
 		void grantSignupBonus_createsChargeTransaction() {
 			UserId userId = UserIdFixture.create();
 			ArgumentCaptor<UserCredit> creditCaptor = ArgumentCaptor.forClass(UserCredit.class);
-			ArgumentCaptor<CreditTransaction> txCaptor = ArgumentCaptor.forClass(CreditTransaction.class);
+			ArgumentCaptor<CreditTransaction> txCaptor = ArgumentCaptor
+				.forClass(CreditTransaction.class);
 
 			when(userCreditRepository.save(creditCaptor.capture()))
 				.thenAnswer(inv -> Mono.just(inv.getArgument(0)));
@@ -246,7 +251,8 @@ class CreditApplicationServiceTest {
 
 			when(userCreditRepository.findByUserId(userId)).thenReturn(Mono.just(existing));
 			when(userCreditRepository.save(any())).thenAnswer(inv -> Mono.just(inv.getArgument(0)));
-			when(creditTransactionRepository.save(any())).thenAnswer(inv -> Mono.just(inv.getArgument(0)));
+			when(creditTransactionRepository.save(any()))
+				.thenAnswer(inv -> Mono.just(inv.getArgument(0)));
 
 			StepVerifier.create(service.chargeByPayment(userId, 3000L, source))
 				.assertNext(tx -> {
@@ -267,7 +273,8 @@ class CreditApplicationServiceTest {
 
 			when(userCreditRepository.findByUserId(userId)).thenReturn(Mono.empty());
 			when(userCreditRepository.save(any())).thenAnswer(inv -> Mono.just(inv.getArgument(0)));
-			when(creditTransactionRepository.save(any())).thenAnswer(inv -> Mono.just(inv.getArgument(0)));
+			when(creditTransactionRepository.save(any()))
+				.thenAnswer(inv -> Mono.just(inv.getArgument(0)));
 
 			StepVerifier.create(service.chargeByPayment(userId, 10000L, source))
 				.assertNext(tx -> {
@@ -294,16 +301,19 @@ class CreditApplicationServiceTest {
 
 			when(userCreditRepository.findByUserId(userId)).thenReturn(Mono.just(existing));
 			when(userCreditRepository.save(any())).thenAnswer(inv -> Mono.just(inv.getArgument(0)));
-			when(creditTransactionRepository.save(any())).thenAnswer(inv -> Mono.just(inv.getArgument(0)));
+			when(creditTransactionRepository.save(any()))
+				.thenAnswer(inv -> Mono.just(inv.getArgument(0)));
 
-			StepVerifier.create(service.grantMissionReward(userId, missionId, 500L, "SHARE_SERVICE"))
+			StepVerifier
+				.create(service.grantMissionReward(userId, missionId, 500L, "SHARE_SERVICE"))
 				.assertNext(tx -> {
 					assertThat(tx.type()).isEqualTo(CreditTransactionType.CHARGE);
 					assertThat(tx.amount()).isEqualTo(500L);
 					assertThat(tx.balanceBefore()).isEqualTo(2000L);
 					assertThat(tx.balanceAfter()).isEqualTo(2500L);
 					assertThat(tx.source().sourceType())
-						.isEqualTo(com.miyou.app.domain.credit.model.CreditSourceType.MISSION_REWARD);
+						.isEqualTo(
+							com.miyou.app.domain.credit.model.CreditSourceType.MISSION_REWARD);
 				})
 				.verifyComplete();
 		}
@@ -321,7 +331,8 @@ class CreditApplicationServiceTest {
 			UserId userId = UserIdFixture.create();
 			when(userCreditRepository.findByUserId(userId)).thenReturn(Mono.empty());
 			when(userCreditRepository.save(any())).thenAnswer(inv -> Mono.just(inv.getArgument(0)));
-			when(creditTransactionRepository.save(any())).thenAnswer(inv -> Mono.just(inv.getArgument(0)));
+			when(creditTransactionRepository.save(any()))
+				.thenAnswer(inv -> Mono.just(inv.getArgument(0)));
 
 			StepVerifier.create(service.initializeIfAbsent(userId))
 				.verifyComplete();

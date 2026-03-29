@@ -21,7 +21,8 @@ class UserMissionTest {
 		@DisplayName("start() 시 AVAILABLE 상태, completedAt/rewardedAt은 null")
 		void start_isAvailable() {
 			UserMission userMission = UserMission.start(
-				UserIdFixture.create(), MissionId.of(MissionFixture.DEFAULT_MISSION_ID));
+				UserIdFixture.create(),
+				MissionId.of(MissionFixture.DEFAULT_MISSION_ID));
 
 			assertThat(userMission.status()).isEqualTo(MissionStatus.AVAILABLE);
 			assertThat(userMission.completedAt()).isNull();
@@ -38,7 +39,8 @@ class UserMissionTest {
 		void complete_setsCompletedStatus() {
 			Instant before = Instant.now();
 			UserMission available = UserMission.start(
-				UserIdFixture.create(), MissionId.of(MissionFixture.DEFAULT_MISSION_ID));
+				UserIdFixture.create(),
+				MissionId.of(MissionFixture.DEFAULT_MISSION_ID));
 
 			UserMission completed = available.complete();
 
@@ -52,7 +54,8 @@ class UserMissionTest {
 		@DisplayName("complete()는 불변 — 원본 AVAILABLE 상태 유지")
 		void complete_isImmutable() {
 			UserMission original = UserMission.start(
-				UserIdFixture.create(), MissionId.of(MissionFixture.DEFAULT_MISSION_ID));
+				UserIdFixture.create(),
+				MissionId.of(MissionFixture.DEFAULT_MISSION_ID));
 
 			original.complete();
 
@@ -88,7 +91,8 @@ class UserMissionTest {
 		@DisplayName("AVAILABLE → complete() → reward() 전체 상태 전이 검증")
 		void fullTransition_availableToRewarded() {
 			UserMission userMission = UserMission.start(
-				UserIdFixture.create(), MissionId.of(MissionFixture.DEFAULT_MISSION_ID));
+				UserIdFixture.create(),
+				MissionId.of(MissionFixture.DEFAULT_MISSION_ID));
 
 			UserMission rewarded = userMission.complete().reward();
 

@@ -4,10 +4,9 @@ import java.time.Duration;
 import java.time.Instant;
 import java.util.List;
 
-import org.slf4j.Logger;
-import org.slf4j.LoggerFactory;
 import org.springframework.beans.factory.annotation.Qualifier;
 import org.springframework.data.domain.PageRequest;
+import org.springframework.data.redis.core.ReactiveRedisTemplate;
 import org.springframework.stereotype.Component;
 
 import com.fasterxml.jackson.core.JsonProcessingException;
@@ -20,7 +19,8 @@ import com.miyou.app.domain.dialogue.port.ConversationRepository;
 import com.miyou.app.infrastructure.dialogue.adapter.persistence.document.ConversationDocument;
 import com.miyou.app.infrastructure.dialogue.config.properties.RagDialogueProperties;
 import com.miyou.app.infrastructure.dialogue.repository.ConversationMongoRepository;
-import org.springframework.data.redis.core.ReactiveRedisTemplate;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 import reactor.core.publisher.Flux;
 import reactor.core.publisher.Mono;
 
@@ -55,15 +55,14 @@ public class ConversationCachingAdapter implements ConversationRepository {
 		ConversationDocument doc = toDocument(turn);
 		return mongoRepository.save(doc)
 			.map(this::toConversationTurn)
-			.flatMap(saved ->
-				appendToCache(saved)
-					.onErrorResume(e -> {
-						log.warn("Redis cache write failed for session {}, continuing without cache",
-							saved.sessionId().value(), e);
-						return Mono.empty();
-					})
-					.thenReturn(saved)
-			);
+			.flatMap(saved -> Mono.defer(() -> appendToCache(saved))
+				.onErrorResume(e -> {
+					log.warn("Redis cache write failed for session {}, continuing without cache",
+						saved.sessionId().value(),
+						e);
+					return Mono.empty();
+				})
+				.thenReturn(saved));
 	}
 
 	@Override
@@ -74,28 +73,27 @@ public class ConversationCachingAdapter implements ConversationRepository {
 			.map(this::deserialize)
 			.onErrorResume(e -> {
 				log.warn("Redis cache read failed for session {}, falling back to MongoDB",
-					sessionId.value(), e);
+					sessionId.value(),
+					e);
 				return Flux.empty();
 			})
 			.switchIfEmpty(
-				loadFromMongoAndWarmup(sessionId, key, limit)
-			);
+				Flux.defer(() -> loadFromMongoAndWarmup(sessionId, key, limit)));
 	}
 
 	private Flux<ConversationTurn> loadFromMongoAndWarmup(ConversationSessionId sessionId,
-		String key, int limit) {
+		String key,
+		int limit) {
 		return mongoRepository
 			.findBySessionIdOrderByCreatedAtAsc(sessionId.value(), PageRequest.of(0, limit))
 			.map(this::toConversationTurn)
 			.collectList()
-			.flatMapMany(list ->
-				warmupCache(key, list)
-					.onErrorResume(e -> {
-						log.warn("Redis cache warmup failed for session {}", sessionId.value(), e);
-						return Mono.empty();
-					})
-					.thenMany(Flux.fromIterable(list))
-			);
+			.flatMapMany(list -> warmupCache(key, list)
+				.onErrorResume(e -> {
+					log.warn("Redis cache warmup failed for session {}", sessionId.value(), e);
+					return Mono.empty();
+				})
+				.thenMany(Flux.fromIterable(list)));
 	}
 
 	private Mono<Void> appendToCache(ConversationTurn turn) {

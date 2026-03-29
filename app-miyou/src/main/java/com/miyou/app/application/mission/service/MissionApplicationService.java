@@ -1,5 +1,7 @@
 package com.miyou.app.application.mission.service;
 
+import lombok.RequiredArgsConstructor;
+
 import org.springframework.http.HttpStatus;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
@@ -15,7 +17,6 @@ import com.miyou.app.domain.mission.model.MissionStatus;
 import com.miyou.app.domain.mission.model.UserMission;
 import com.miyou.app.domain.mission.port.MissionRepository;
 import com.miyou.app.domain.mission.port.UserMissionRepository;
-import lombok.RequiredArgsConstructor;
 import reactor.core.publisher.Flux;
 import reactor.core.publisher.Mono;
 
@@ -42,13 +43,15 @@ public class MissionApplicationService implements MissionQueryUseCase, MissionCo
 	public Mono<UserMission> completeMission(UserId userId, MissionId missionId) {
 		return missionRepository.findById(missionId)
 			.switchIfEmpty(Mono.error(
-				new ResponseStatusException(HttpStatus.NOT_FOUND, "미션을 찾을 수 없습니다: " + missionId.value())))
+				new ResponseStatusException(HttpStatus.NOT_FOUND,
+					"미션을 찾을 수 없습니다: " + missionId.value())))
 			.flatMap(mission -> userMissionRepository.findByUserIdAndMissionId(userId, missionId)
 				.defaultIfEmpty(UserMission.start(userId, missionId))
 				.flatMap(userMission -> validateAndComplete(userMission, mission, userId)));
 	}
 
-	private Mono<UserMission> validateAndComplete(UserMission userMission, Mission mission,
+	private Mono<UserMission> validateAndComplete(UserMission userMission,
+		Mission mission,
 		UserId userId) {
 		if (userMission.status() == MissionStatus.REWARDED && !mission.repeatable()) {
 			return Mono.error(new ResponseStatusException(HttpStatus.CONFLICT,
@@ -58,7 +61,9 @@ public class MissionApplicationService implements MissionQueryUseCase, MissionCo
 		UserMission rewarded = completed.reward();
 		return userMissionRepository.save(rewarded)
 			.flatMap(saved -> creditChargeUseCase
-				.grantMissionReward(userId, mission.missionId(), mission.rewardAmount(),
+				.grantMissionReward(userId,
+					mission.missionId(),
+					mission.rewardAmount(),
 					mission.type().name())
 				.thenReturn(saved));
 	}

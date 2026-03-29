@@ -10,7 +10,9 @@ public class InsufficientCreditException extends RuntimeException {
 
 	public InsufficientCreditException(UserId userId, long currentBalance, long requiredAmount) {
 		super(String.format("크레딧이 부족합니다. userId=%s, 현재 잔액=%d, 필요 크레딧=%d",
-			userId.value(), currentBalance, requiredAmount));
+			userId.value(),
+			currentBalance,
+			requiredAmount));
 		this.userId = userId.value();
 		this.currentBalance = currentBalance;
 		this.requiredAmount = requiredAmount;

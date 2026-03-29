@@ -19,7 +19,6 @@ import reactor.test.StepVerifier;
 
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.mockito.ArgumentMatchers.any;
-import static org.mockito.Mockito.verify;
 import static org.mockito.Mockito.when;
 
 @ExtendWith(MockitoExtension.class)
@@ -88,7 +87,8 @@ class UserCreditMongoAdapterTest {
 		void save_convertsAndPersists() {
 			UserId userId = UserIdFixture.create();
 			UserCredit credit = UserCreditFixture.create(userId, 5000L);
-			ArgumentCaptor<UserCreditDocument> captor = ArgumentCaptor.forClass(UserCreditDocument.class);
+			ArgumentCaptor<UserCreditDocument> captor = ArgumentCaptor
+				.forClass(UserCreditDocument.class);
 			when(mongoRepository.save(captor.capture()))
 				.thenAnswer(inv -> Mono.just(inv.getArgument(0)));
 

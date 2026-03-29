@@ -1,11 +1,18 @@
 package com.miyou.app.infrastructure.inbound.web.credit;
 
+import org.springframework.beans.factory.annotation.Autowired;
+import org.springframework.boot.test.autoconfigure.web.reactive.WebFluxTest;
+import org.springframework.data.domain.PageRequest;
+import org.springframework.http.MediaType;
+import org.springframework.test.context.bean.override.mockito.MockitoBean;
+import org.springframework.test.web.reactive.server.WebTestClient;
+
 import com.miyou.app.application.credit.usecase.CreditChargeUseCase;
 import com.miyou.app.application.credit.usecase.CreditQueryUseCase;
 import com.miyou.app.domain.credit.model.CreditTransaction;
 import com.miyou.app.domain.credit.model.CreditTransactionType;
-import com.miyou.app.domain.credit.model.UserCredit;
 import com.miyou.app.domain.credit.model.PaymentCharge;
+import com.miyou.app.domain.credit.model.UserCredit;
 import com.miyou.app.domain.dialogue.model.UserId;
 import com.miyou.app.fixture.CreditTransactionFixture;
 import com.miyou.app.fixture.UserCreditFixture;
@@ -14,12 +21,6 @@ import com.miyou.app.infrastructure.inbound.web.credit.dto.ChargeByPaymentReques
 import com.miyou.app.infrastructure.payment.port.PaymentGatewayPort;
 import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Test;
-import org.springframework.beans.factory.annotation.Autowired;
-import org.springframework.boot.test.autoconfigure.web.reactive.WebFluxTest;
-import org.springframework.data.domain.PageRequest;
-import org.springframework.http.MediaType;
-import org.springframework.test.context.bean.override.mockito.MockitoBean;
-import org.springframework.test.web.reactive.server.WebTestClient;
 import reactor.core.publisher.Flux;
 import reactor.core.publisher.Mono;
 
@@ -152,9 +153,13 @@ class CreditControllerTest {
 				"paykey-001", "order-001", 10000L, "DONE")));
 
 		CreditTransaction tx = CreditTransaction.of(
-			userId, CreditTransactionType.CHARGE,
+			userId,
+			CreditTransactionType.CHARGE,
 			new PaymentCharge("paykey-001", "toss"),
-			10000L, 0L, 10000L, "paykey-001");
+			10000L,
+			0L,
+			10000L,
+			"paykey-001");
 		when(creditChargeUseCase.chargeByPayment(eq(userId), anyLong(), any(PaymentCharge.class)))
 			.thenReturn(Mono.just(tx));
 

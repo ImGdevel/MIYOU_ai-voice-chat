@@ -26,8 +26,8 @@ class MissionTest {
 		@Test
 		@DisplayName("rewardAmount가 0 이하이면 예외 발생")
 		void create_nonPositiveReward_throws() {
-			assertThatThrownBy(() ->
-				Mission.create(MissionType.TASK_COMPLETION, "태스크 미션", "설명", 0L, false))
+			assertThatThrownBy(
+				() -> Mission.create(MissionType.TASK_COMPLETION, "태스크 미션", "설명", 0L, false))
 				.isInstanceOf(IllegalArgumentException.class)
 				.hasMessageContaining("rewardAmount must be positive");
 		}
@@ -35,8 +35,7 @@ class MissionTest {
 		@Test
 		@DisplayName("name이 blank이면 예외 발생")
 		void create_blankName_throws() {
-			assertThatThrownBy(() ->
-				Mission.create(MissionType.REFERRAL, "  ", "설명", 100L, false))
+			assertThatThrownBy(() -> Mission.create(MissionType.REFERRAL, "  ", "설명", 100L, false))
 				.isInstanceOf(IllegalArgumentException.class)
 				.hasMessageContaining("mission name cannot be blank");
 		}

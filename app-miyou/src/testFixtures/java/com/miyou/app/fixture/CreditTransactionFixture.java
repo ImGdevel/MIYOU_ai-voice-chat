@@ -1,8 +1,8 @@
 package com.miyou.app.fixture;
 
+import com.miyou.app.domain.credit.model.ConversationDeduction;
 import com.miyou.app.domain.credit.model.CreditTransaction;
 import com.miyou.app.domain.credit.model.CreditTransactionType;
-import com.miyou.app.domain.credit.model.ConversationDeduction;
 import com.miyou.app.domain.credit.model.SignupBonus;
 import com.miyou.app.domain.dialogue.model.UserId;
 

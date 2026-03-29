@@ -12,7 +12,9 @@ public interface CreditChargeUseCase {
 
 	Mono<CreditTransaction> grantSignupBonus(UserId userId);
 
-	Mono<CreditTransaction> grantMissionReward(UserId userId, MissionId missionId, long amount,
+	Mono<CreditTransaction> grantMissionReward(UserId userId,
+		MissionId missionId,
+		long amount,
 		String missionType);
 
 	Mono<Void> initializeIfAbsent(UserId userId);

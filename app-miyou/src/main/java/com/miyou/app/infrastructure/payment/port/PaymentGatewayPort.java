@@ -3,8 +3,8 @@ package com.miyou.app.infrastructure.payment.port;
 import reactor.core.publisher.Mono;
 
 /**
- * 결제 대행사(PG) 연동 포트.
- * 새 PG사를 추가할 경우 이 인터페이스를 구현하고 {@link com.miyou.app.infrastructure.payment.config.PaymentGatewayConfiguration}에 빈으로 등록합니다.
+ * 결제 대행사(PG) 연동 포트. 새 PG사를 추가할 경우 이 인터페이스를 구현하고
+ * {@link com.miyou.app.infrastructure.payment.config.PaymentGatewayConfiguration}에 빈으로 등록합니다.
  */
 public interface PaymentGatewayPort {
 
@@ -17,15 +17,13 @@ public interface PaymentGatewayPort {
 	record PaymentConfirmRequest(
 		String paymentKey,
 		String orderId,
-		long amount
-	) {
+		long amount) {
 	}
 
 	record PaymentConfirmResult(
 		String paymentId,
 		String orderId,
 		long amount,
-		String status
-	) {
+		String status) {
 	}
 }

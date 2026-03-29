@@ -1,5 +1,12 @@
 package com.miyou.app.application.credit;
 
+import org.springframework.beans.factory.annotation.Autowired;
+import org.springframework.boot.test.autoconfigure.data.mongo.DataMongoTest;
+import org.springframework.context.annotation.Import;
+import org.springframework.data.domain.PageRequest;
+import org.springframework.test.context.ActiveProfiles;
+import org.springframework.test.context.TestPropertySource;
+
 import com.miyou.app.application.credit.service.CreditApplicationService;
 import com.miyou.app.domain.credit.exception.InsufficientCreditException;
 import com.miyou.app.domain.credit.model.CreditSourceType;
@@ -16,12 +23,6 @@ import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Nested;
 import org.junit.jupiter.api.Test;
-import org.springframework.beans.factory.annotation.Autowired;
-import org.springframework.boot.test.autoconfigure.data.mongo.DataMongoTest;
-import org.springframework.context.annotation.Import;
-import org.springframework.data.domain.PageRequest;
-import org.springframework.test.context.ActiveProfiles;
-import org.springframework.test.context.TestPropertySource;
 import reactor.core.publisher.Flux;
 import reactor.test.StepVerifier;
 
@@ -30,13 +31,9 @@ import static org.assertj.core.api.Assertions.assertThat;
 /**
  * 크레딧 시스템 통합 테스트 — Application Service + MongoDB Adapter + 실제 DB 연결.
  *
- * 검증 항목:
- * 1. 가입 보너스 지급 → 잔액 5000, SIGNUP_BONUS 트랜잭션 1건
- * 2. 연속 차감 → 잔액 올바르게 감소, 각 DEDUCT 트랜잭션 기록
- * 3. 잔액 부족 시 차감 거부 → 잔액과 트랜잭션 수 불변
- * 4. 결제 충전 → 잔액 증가, PAYMENT_CHARGE 트랜잭션 기록
- * 5. initializeIfAbsent 멱등성 → 중복 가입 보너스 방지
- * 6. 트랜잭션 격리 → 서로 다른 userId는 독립적으로 관리됨
+ * 검증 항목: 1. 가입 보너스 지급 → 잔액 5000, SIGNUP_BONUS 트랜잭션 1건 2. 연속 차감 → 잔액 올바르게 감소, 각 DEDUCT 트랜잭션 기록 3. 잔액 부족 시 차감 거부 → 잔액과
+ * 트랜잭션 수 불변 4. 결제 충전 → 잔액 증가, PAYMENT_CHARGE 트랜잭션 기록 5. initializeIfAbsent 멱등성 → 중복 가입 보너스 방지 6. 트랜잭션 격리 → 서로 다른
+ * userId는 독립적으로 관리됨
  */
 @DataMongoTest
 @ActiveProfiles("test")
@@ -126,7 +123,7 @@ class CreditSystemIntegrationTest {
 
 			StepVerifier.create(
 				creditService.getTransactions(userId, PageRequest.of(0, 10)))
-				.expectNextCount(4)  // SIGNUP + 3 × DEDUCT
+				.expectNextCount(4) // SIGNUP + 3 × DEDUCT
 				.verifyComplete();
 		}
 
@@ -173,14 +170,15 @@ class CreditSystemIntegrationTest {
 			// 가입 보너스 지급 후 대부분을 결제로 소진시킨 상황을 모사:
 			// grantSignupBonus → 5000, 그 다음 49번 deduct → 100 남기고 → 50으로 만들기 위해 직접 저장
 			// 실제 테스트는 단순히 잔액 50 상태에서 시작
-			com.miyou.app.domain.credit.model.UserCredit lowCredit =
-				new com.miyou.app.domain.credit.model.UserCredit(userId, 50L, 0L);
+			com.miyou.app.domain.credit.model.UserCredit lowCredit = new com.miyou.app.domain.credit.model.UserCredit(
+				userId, 50L, 0L);
 
 			StepVerifier.create(
 				userCreditRepo.save(
 					com.miyou.app.infrastructure.credit.document.UserCreditDocument.fromDomain(
 						lowCredit))
-					.then(creditService.deductForConversation(userId, ConversationSessionId.of("s-fail"))))
+					.then(creditService.deductForConversation(userId,
+						ConversationSessionId.of("s-fail"))))
 				.expectError(InsufficientCreditException.class)
 				.verify();
 
@@ -198,14 +196,15 @@ class CreditSystemIntegrationTest {
 		@DisplayName("잔액이 정확히 99일 때 100 차감 시도 시 거부된다")
 		void deduct_balanceIs99_rejected() {
 			UserId userId = UserId.of("boundary-user");
-			com.miyou.app.domain.credit.model.UserCredit nearThreshold =
-				new com.miyou.app.domain.credit.model.UserCredit(userId, 99L, 0L);
+			com.miyou.app.domain.credit.model.UserCredit nearThreshold = new com.miyou.app.domain.credit.model.UserCredit(
+				userId, 99L, 0L);
 
 			StepVerifier.create(
 				userCreditRepo.save(
 					com.miyou.app.infrastructure.credit.document.UserCreditDocument.fromDomain(
 						nearThreshold))
-					.then(creditService.deductForConversation(userId, ConversationSessionId.of("s-boundary"))))
+					.then(creditService.deductForConversation(userId,
+						ConversationSessionId.of("s-boundary"))))
 				.expectError(InsufficientCreditException.class)
 				.verify();
 		}
@@ -264,7 +263,7 @@ class CreditSystemIntegrationTest {
 
 			StepVerifier.create(
 				creditService.getTransactions(userId, PageRequest.of(0, 10)))
-				.expectNextCount(1)  // SIGNUP_BONUS 딱 1건
+				.expectNextCount(1) // SIGNUP_BONUS 딱 1건
 				.verifyComplete();
 		}
 
@@ -275,7 +274,8 @@ class CreditSystemIntegrationTest {
 
 			StepVerifier.create(
 				creditService.grantSignupBonus(userId)
-					.then(creditService.deductForConversation(userId, ConversationSessionId.of("s-x")))
+					.then(creditService.deductForConversation(userId,
+						ConversationSessionId.of("s-x")))
 					.then(creditService.initializeIfAbsent(userId))
 					.then(creditService.getBalance(userId)))
 				.assertNext(credit -> assertThat(credit.balance()).isEqualTo(4900L))
@@ -298,8 +298,10 @@ class CreditSystemIntegrationTest {
 			StepVerifier.create(
 				creditService.grantSignupBonus(userA)
 					.then(creditService.grantSignupBonus(userB))
-					.then(creditService.deductForConversation(userA, ConversationSessionId.of("s-a-1")))
-					.then(creditService.deductForConversation(userA, ConversationSessionId.of("s-a-2")))
+					.then(creditService.deductForConversation(userA,
+						ConversationSessionId.of("s-a-1")))
+					.then(creditService.deductForConversation(userA,
+						ConversationSessionId.of("s-a-2")))
 					.then(creditService.getBalance(userB)))
 				.assertNext(credit -> assertThat(credit.balance()).isEqualTo(5000L))
 				.verifyComplete();
@@ -314,7 +316,8 @@ class CreditSystemIntegrationTest {
 			StepVerifier.create(
 				creditService.grantSignupBonus(userA)
 					.then(creditService.grantSignupBonus(userB))
-					.then(creditService.deductForConversation(userA, ConversationSessionId.of("s-a")))
+					.then(
+						creditService.deductForConversation(userA, ConversationSessionId.of("s-a")))
 					.thenMany(creditService.getTransactions(userA, PageRequest.of(0, 10))))
 				.assertNext(tx -> assertThat(tx.userId()).isEqualTo(userA))
 				.assertNext(tx -> assertThat(tx.userId()).isEqualTo(userA))
@@ -340,7 +343,7 @@ class CreditSystemIntegrationTest {
 				.flatMap(i -> creditService
 					.deductForConversation(userId, ConversationSessionId.of("concurrent-s-" + i))
 					.thenReturn(1L)
-					.onErrorReturn(0L));  // InsufficientCreditException 발생 시 0 반환
+					.onErrorReturn(0L)); // InsufficientCreditException 발생 시 0 반환
 
 			long succeeded = deductions.collectList().block()
 				.stream().mapToLong(Long::longValue).sum();

@@ -1,9 +1,8 @@
 package com.miyou.app.infrastructure.dialogue.adapter.persistence;
 
-import org.slf4j.Logger;
-import org.slf4j.LoggerFactory;
 import org.springframework.beans.factory.annotation.Qualifier;
 import org.springframework.data.domain.Sort;
+import org.springframework.data.redis.core.ReactiveRedisTemplate;
 import org.springframework.stereotype.Component;
 
 import com.miyou.app.domain.dialogue.model.ConversationSession;
@@ -13,14 +12,16 @@ import com.miyou.app.domain.dialogue.model.UserId;
 import com.miyou.app.domain.dialogue.port.ConversationSessionRepository;
 import com.miyou.app.infrastructure.dialogue.adapter.persistence.document.ConversationSessionDocument;
 import com.miyou.app.infrastructure.dialogue.repository.ConversationSessionMongoRepository;
-import org.springframework.data.redis.core.ReactiveRedisTemplate;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 import reactor.core.publisher.Flux;
 import reactor.core.publisher.Mono;
 
 @Component
 public class ConversationSessionMongoAdapter implements ConversationSessionRepository {
 
-	private static final Logger log = LoggerFactory.getLogger(ConversationSessionMongoAdapter.class);
+	private static final Logger log = LoggerFactory
+		.getLogger(ConversationSessionMongoAdapter.class);
 	private static final String HISTORY_KEY_PREFIX = "dialogue:conversation:history:";
 	private static final Sort CREATED_AT_DESC = Sort.by(Sort.Direction.DESC, "createdAt");
 
@@ -47,7 +48,8 @@ public class ConversationSessionMongoAdapter implements ConversationSessionRepos
 
 	@Override
 	public Flux<ConversationSession> findByUserId(UserId userId) {
-		return mongoRepository.findActiveByUserId(userId.value(), CREATED_AT_DESC).map(this::toDomain);
+		return mongoRepository.findActiveByUserId(userId.value(), CREATED_AT_DESC)
+			.map(this::toDomain);
 	}
 
 	@Override
@@ -71,15 +73,14 @@ public class ConversationSessionMongoAdapter implements ConversationSessionRepos
 				return mongoRepository.save(toDocument(session.softDelete()));
 			})
 			.map(this::toDomain)
-			.flatMap(deleted ->
-				evictHistoryCache(sessionId)
-					.onErrorResume(e -> {
-						log.warn("Failed to evict history cache for session {} on soft-delete",
-							sessionId.value(), e);
-						return Mono.empty();
-					})
-					.thenReturn(deleted)
-			);
+			.flatMap(deleted -> evictHistoryCache(sessionId)
+				.onErrorResume(e -> {
+					log.warn("Failed to evict history cache for session {} on soft-delete",
+						sessionId.value(),
+						e);
+					return Mono.empty();
+				})
+				.thenReturn(deleted));
 	}
 
 	private Mono<Void> evictHistoryCache(ConversationSessionId sessionId) {

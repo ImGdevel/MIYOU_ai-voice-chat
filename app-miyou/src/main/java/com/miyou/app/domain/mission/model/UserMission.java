@@ -32,6 +32,7 @@ public record UserMission(
 	}
 
 	public UserMission reward() {
-		return new UserMission(userId, missionId, MissionStatus.REWARDED, completedAt, Instant.now());
+		return new UserMission(userId, missionId, MissionStatus.REWARDED, completedAt,
+			Instant.now());
 	}
 }
