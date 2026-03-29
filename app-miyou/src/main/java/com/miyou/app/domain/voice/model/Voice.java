@@ -1,0 +1,120 @@
+package com.miyou.app.domain.voice.model;
+
+/** TTS 음성 합성 설정을 보관합니다. */
+public class Voice {
+	/** 공급자의 음성 ID입니다. */
+	private final String id;
+	/** 표시 이름입니다. */
+	private final String name;
+	/** TTS 서비스 제공자입니다. */
+	private final String provider;
+	/** 피치/속도 등을 담은 설정입니다. */
+	private final VoiceSettings settings;
+	/** 언어 코드입니다. */
+	private final String language;
+	/** 발화 스타일입니다. */
+	private final com.miyou.app.domain.voice.model.VoiceStyle style;
+	/** 출력 오디오 형식입니다. */
+	private final AudioFormat outputFormat;
+
+	private Voice(Builder builder) {
+		this.id = builder.id;
+		this.name = builder.name;
+		this.provider = builder.provider;
+		this.settings = builder.settings;
+		this.language = builder.language;
+		this.style = builder.style;
+		this.outputFormat = builder.outputFormat;
+	}
+
+	public String getId() {
+		return id;
+	}
+
+	public String getName() {
+		return name;
+	}
+
+	public String getProvider() {
+		return provider;
+	}
+
+	public VoiceSettings getSettings() {
+		return settings;
+	}
+
+	public String getLanguage() {
+		return language;
+	}
+
+	public com.miyou.app.domain.voice.model.VoiceStyle getStyle() {
+		return style;
+	}
+
+	public AudioFormat getOutputFormat() {
+		return outputFormat;
+	}
+
+	public static Builder builder() {
+		return new Builder();
+	}
+
+	public static class Builder {
+		private String id;
+		private String name;
+		private String provider;
+		private com.miyou.app.domain.voice.model.VoiceSettings settings = com.miyou.app.domain.voice.model.VoiceSettings
+			.defaultSettings();
+		private String language = "ko";
+		private com.miyou.app.domain.voice.model.VoiceStyle style = com.miyou.app.domain.voice.model.VoiceStyle.NEUTRAL;
+		private com.miyou.app.domain.voice.model.AudioFormat outputFormat = com.miyou.app.domain.voice.model.AudioFormat.WAV;
+
+		public Builder id(String id) {
+			this.id = id;
+			return this;
+		}
+
+		public Builder name(String name) {
+			this.name = name;
+			return this;
+		}
+
+		public Builder provider(String provider) {
+			this.provider = provider;
+			return this;
+		}
+
+		public Builder settings(VoiceSettings settings) {
+			this.settings = settings;
+			return this;
+		}
+
+		public Builder language(String language) {
+			this.language = language;
+			return this;
+		}
+
+		public Builder style(com.miyou.app.domain.voice.model.VoiceStyle style) {
+			this.style = style;
+			return this;
+		}
+
+		public Builder outputFormat(AudioFormat outputFormat) {
+			this.outputFormat = outputFormat;
+			return this;
+		}
+
+		public Voice build() {
+			if (id == null || id.isBlank()) {
+				throw new IllegalStateException("Voice id is required");
+			}
+			if (name == null || name.isBlank()) {
+				throw new IllegalStateException("Voice name is required");
+			}
+			if (provider == null || provider.isBlank()) {
+				throw new IllegalStateException("Voice provider is required");
+			}
+			return new Voice(this);
+		}
+	}
+}

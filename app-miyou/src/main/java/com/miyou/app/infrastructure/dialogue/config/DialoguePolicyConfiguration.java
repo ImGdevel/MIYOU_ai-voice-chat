@@ -1,0 +1,61 @@
+package com.miyou.app.infrastructure.dialogue.config;
+
+import org.springframework.context.annotation.Bean;
+import org.springframework.context.annotation.Configuration;
+
+import com.miyou.app.application.dialogue.policy.DialogueExecutionPolicy;
+import com.miyou.app.application.dialogue.policy.PromptTemplatePolicy;
+import com.miyou.app.application.dialogue.policy.SttPolicy;
+import com.miyou.app.application.memory.policy.MemoryExtractionPolicy;
+import com.miyou.app.application.memory.policy.MemoryRetrievalPolicy;
+import com.miyou.app.domain.dialogue.port.TemplateLoaderPort;
+import com.miyou.app.infrastructure.dialogue.config.properties.RagDialogueProperties;
+
+/** 프로퍼티 기반 애플리케이션 정책 빈을 생성합니다. */
+@Configuration
+public class DialoguePolicyConfiguration {
+
+	@Bean
+	public DialogueExecutionPolicy dialogueExecutionPolicy(RagDialogueProperties properties) {
+		return new DialogueExecutionPolicy(properties.getOpenai().getModel());
+	}
+
+	@Bean
+	public PromptTemplatePolicy promptTemplatePolicy(RagDialogueProperties properties,
+		TemplateLoaderPort templateLoader) {
+		return new PromptTemplatePolicy(
+			resolveTemplate(templateLoader, properties.getSystemBasePromptTemplate()),
+			resolveTemplate(templateLoader, properties.getSystemPromptTemplate()),
+			resolveTemplate(templateLoader, properties.getCommonSystemPromptTemplate()),
+			properties.getSystemPrompt());
+	}
+
+	@Bean
+	public MemoryRetrievalPolicy memoryRetrievalPolicy(RagDialogueProperties properties) {
+		var memory = properties.getMemory();
+		return new MemoryRetrievalPolicy(memory.getImportanceBoost(),
+			memory.getImportanceThreshold());
+	}
+
+	@Bean
+	public MemoryExtractionPolicy memoryExtractionPolicy(RagDialogueProperties properties) {
+		return new MemoryExtractionPolicy(properties.getMemory().getConversationThreshold());
+	}
+
+	@Bean
+	public SttPolicy sttPolicy(RagDialogueProperties properties) {
+		var stt = properties.getStt();
+		return new SttPolicy(stt.getMaxFileSizeBytes(), stt.getLanguage());
+	}
+
+	private String resolveTemplate(TemplateLoaderPort loader, String templateName) {
+		if (templateName == null || templateName.isBlank()) {
+			return "";
+		}
+		try {
+			return loader.load(templateName).trim();
+		} catch (RuntimeException e) {
+			throw new IllegalStateException("프롬프트 템플릿을 불러오지 못했습니다: " + templateName, e);
+		}
+	}
+}

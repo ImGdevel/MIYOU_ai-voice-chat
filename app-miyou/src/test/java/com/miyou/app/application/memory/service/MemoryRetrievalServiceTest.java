@@ -1,0 +1,137 @@
+package com.miyou.app.application.memory.service;
+
+import java.time.Instant;
+import java.util.List;
+
+import com.miyou.app.application.memory.policy.MemoryRetrievalPolicy;
+import com.miyou.app.application.monitoring.port.RagQualityMetricsPort;
+import com.miyou.app.domain.dialogue.model.ConversationSessionId;
+import com.miyou.app.domain.memory.model.Memory;
+import com.miyou.app.domain.memory.model.MemoryEmbedding;
+import com.miyou.app.domain.memory.model.MemoryType;
+import com.miyou.app.domain.memory.port.EmbeddingPort;
+import com.miyou.app.domain.memory.port.VectorMemoryPort;
+import com.miyou.app.fixture.ConversationSessionFixture;
+import org.junit.jupiter.api.BeforeEach;
+import org.junit.jupiter.api.DisplayName;
+import org.junit.jupiter.api.Test;
+import org.junit.jupiter.api.extension.ExtendWith;
+import org.mockito.ArgumentMatchers;
+import org.mockito.Mock;
+import org.mockito.junit.jupiter.MockitoExtension;
+import reactor.core.publisher.Flux;
+import reactor.core.publisher.Mono;
+import reactor.test.StepVerifier;
+
+import static org.assertj.core.api.Assertions.assertThat;
+import static org.mockito.Mockito.never;
+import static org.mockito.Mockito.verify;
+import static org.mockito.Mockito.when;
+
+@ExtendWith(MockitoExtension.class)
+class MemoryRetrievalServiceTest {
+
+	@Mock
+	private EmbeddingPort embeddingPort;
+
+	@Mock
+	private VectorMemoryPort vectorMemoryPort;
+
+	@Mock
+	private RagQualityMetricsPort ragQualityMetricsConfiguration;
+
+	private MemoryRetrievalService service;
+
+	@BeforeEach
+	void setUp() {
+		service = new MemoryRetrievalService(embeddingPort,
+			vectorMemoryPort,
+			ragQualityMetricsConfiguration,
+			new MemoryRetrievalPolicy(0.05f, 0.3f));
+	}
+
+	@Test
+	@DisplayName("메모리 검색 시 랭킹, 제한, 접근 메트릭 업데이트를 수행한다")
+	void retrieveMemories_shouldRankLimitAndUpdateAccessMetrics() {
+		ConversationSessionId sessionId = ConversationSessionFixture.createId();
+		Instant now = Instant.now();
+		Memory top = new Memory("m-top",
+			sessionId,
+			MemoryType.EXPERIENTIAL,
+			"사용자는 러닝을 좋아한다",
+			0.95f,
+			now.minusSeconds(100),
+			now,
+			3);
+		Memory second = new Memory("m-second",
+			sessionId,
+			MemoryType.FACTUAL,
+			"사용자는 개발자다",
+			0.70f,
+			now.minusSeconds(100),
+			now,
+			2);
+		Memory dropped = new Memory("m-dropped",
+			sessionId,
+			MemoryType.FACTUAL,
+			"사용자는 고양이를 키운다",
+			0.10f,
+			now.minusSeconds(100),
+			now,
+			1);
+
+		when(embeddingPort.embed("query")).thenReturn(
+			Mono.just(MemoryEmbedding.of("query", List.of(0.1f, 0.2f))));
+		when(vectorMemoryPort.search(sessionId,
+			List.of(0.1f, 0.2f),
+			List.of(MemoryType.EXPERIENTIAL, MemoryType.FACTUAL),
+			0.3f,
+			4)).thenReturn(Flux.just(top, second, dropped));
+		when(vectorMemoryPort.updateImportance(ArgumentMatchers.anyString(),
+			ArgumentMatchers.anyFloat(),
+			ArgumentMatchers.any(),
+			ArgumentMatchers.anyInt())).thenReturn(Mono.empty());
+
+		StepVerifier.create(service.retrieveMemories(sessionId, "query", 2)).assertNext(result -> {
+			assertThat(result.experientialMemories()).hasSize(1);
+			assertThat(result.experientialMemories().get(0).id()).isEqualTo("m-top");
+			assertThat(result.factualMemories()).hasSize(1);
+			assertThat(result.factualMemories().get(0).id()).isEqualTo("m-second");
+		}).verifyComplete();
+
+		verify(vectorMemoryPort).updateImportance(ArgumentMatchers.eq("m-top"),
+			ArgumentMatchers.anyFloat(),
+			ArgumentMatchers.any(),
+			ArgumentMatchers.eq(4));
+		verify(vectorMemoryPort).updateImportance(ArgumentMatchers.eq("m-second"),
+			ArgumentMatchers.anyFloat(),
+			ArgumentMatchers.any(),
+			ArgumentMatchers.eq(3));
+		verify(vectorMemoryPort, never()).updateImportance(ArgumentMatchers.eq("m-dropped"),
+			ArgumentMatchers.anyFloat(),
+			ArgumentMatchers.any(),
+			ArgumentMatchers.anyInt());
+	}
+
+	@Test
+	@DisplayName("검색 결과가 없으면 빈 결과를 반환한다")
+	void retrieveMemories_shouldReturnEmptyWithoutUpdateWhenSearchIsEmpty() {
+		ConversationSessionId sessionId = ConversationSessionFixture.createId();
+		when(embeddingPort.embed("query")).thenReturn(
+			Mono.just(MemoryEmbedding.of("query", List.of(0.1f, 0.2f))));
+		when(vectorMemoryPort.search(ArgumentMatchers.eq(sessionId),
+			ArgumentMatchers.anyList(),
+			ArgumentMatchers.anyList(),
+			ArgumentMatchers.anyFloat(),
+			ArgumentMatchers.anyInt())).thenReturn(Flux.empty());
+
+		StepVerifier.create(service.retrieveMemories(sessionId, "query", 3)).assertNext(result -> {
+			assertThat(result.isEmpty()).isTrue();
+		}).verifyComplete();
+
+		verify(vectorMemoryPort, never()).updateImportance(ArgumentMatchers.anyString(),
+			ArgumentMatchers.anyFloat(),
+			ArgumentMatchers.any(),
+			ArgumentMatchers.anyInt());
+	}
+}

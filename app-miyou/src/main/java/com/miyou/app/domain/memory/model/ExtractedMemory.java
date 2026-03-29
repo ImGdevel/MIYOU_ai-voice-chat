@@ -1,0 +1,30 @@
+package com.miyou.app.domain.memory.model;
+
+import com.miyou.app.domain.dialogue.model.ConversationSessionId;
+
+public record ExtractedMemory(
+	ConversationSessionId sessionId,
+	MemoryType type,
+	String content,
+	float importance,
+	String reasoning
+) {
+	public ExtractedMemory {
+		if (sessionId == null) {
+			throw new IllegalArgumentException("sessionId cannot be null");
+		}
+		if (type == null) {
+			throw new IllegalArgumentException("type cannot be null");
+		}
+		if (content == null || content.isBlank()) {
+			throw new IllegalArgumentException("content cannot be null or blank");
+		}
+		if (importance < 0.0f || importance > 1.0f) {
+			throw new IllegalArgumentException("importance must be between 0.0 and 1.0");
+		}
+	}
+
+	public Memory toMemory() {
+		return Memory.create(sessionId, type, content, importance);
+	}
+}

@@ -5,10 +5,11 @@
     <option name="envFilePaths">
       <option value="$PROJECT_DIR$/.env" />
     </option>
-    <option name="MAIN_CLASS_NAME" value="com.study.webflux.rag.RagApplication" />
-    <module name="webflux.webflux-dialogue.main" />
+    <option name="MAIN_CLASS_NAME" value="com.miyou.app.RagApplication" />
+    <module name="webflux.app-miyou.main" />
     <method v="2">
       <option name="Make" enabled="true" />
     </method>
   </configuration>
 </component>
+

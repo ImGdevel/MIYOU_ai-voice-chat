@@ -1,0 +1,86 @@
+package com.miyou.app.application.dialogue.pipeline.stage;
+
+import lombok.extern.slf4j.Slf4j;
+
+import org.springframework.stereotype.Service;
+
+import com.miyou.app.application.dialogue.pipeline.PipelineInputs;
+import com.miyou.app.application.dialogue.policy.DialogueExecutionPolicy;
+import com.miyou.app.application.monitoring.context.PipelineContext;
+import com.miyou.app.application.monitoring.service.PipelineTracer;
+import com.miyou.app.domain.dialogue.model.CompletionRequest;
+import com.miyou.app.domain.dialogue.port.LlmPort;
+import com.miyou.app.domain.monitoring.model.DialoguePipelineStage;
+import reactor.core.publisher.Flux;
+import reactor.core.publisher.Mono;
+import reactor.core.scheduler.Schedulers;
+
+@Slf4j
+@Service
+public class DialogueLlmStreamService {
+
+	private final LlmPort llmPort;
+	private final PipelineTracer pipelineTracer;
+	private final DialogueMessageService messageService;
+	private final String llmModel;
+
+	public DialogueLlmStreamService(LlmPort llmPort,
+		PipelineTracer pipelineTracer,
+		DialogueMessageService messageService,
+		DialogueExecutionPolicy policy) {
+		this.llmPort = llmPort;
+		this.pipelineTracer = pipelineTracer;
+		this.messageService = messageService;
+		this.llmModel = policy.llmModel();
+	}
+
+	/**
+	 * 준비된 파이프라인 입력으로 LLM 토큰 스트림을 구성하고 모니터링 계측을 적용합니다.
+	 *
+	 * @param inputsMono
+	 *            검색/메모리/이력을 포함한 파이프라인 입력 Mono
+	 * @return LLM이 생성한 토큰 Flux
+	 */
+	public Flux<String> buildLlmTokenStream(Mono<PipelineInputs> inputsMono) {
+		return streamLlmTokens(inputsMono)
+			.subscribeOn(Schedulers.boundedElastic())
+			.transform(this::trackLlmTokens);
+	}
+
+	/**
+	 * 컨텍스트에서 추적 정보를 읽어 메시지/요청을 구성한 뒤 LLM 스트림을 호출합니다.
+	 */
+	private Flux<String> streamLlmTokens(Mono<PipelineInputs> inputsMono) {
+		return Flux.deferContextual(contextView -> {
+			var tracker = PipelineContext.findTracker(contextView);
+			var metadata = tracker != null
+				? java.util.Map.<String, Object>of("correlationId", tracker.pipelineId())
+				: java.util.Map.<String, Object>of();
+			return inputsMono.flatMapMany(inputs -> pipelineTracer.tracePrompt(
+				() -> messageService.buildMessages(inputs.session().personaId(),
+					inputs.retrievalContext(),
+					inputs.memories(),
+					inputs.conversationContext(),
+					inputs.currentTurn().query()))
+				.flatMapMany(messages -> {
+					CompletionRequest request = new CompletionRequest(
+						messages,
+						llmModel,
+						true,
+						metadata);
+					return pipelineTracer.traceLlm(request.model(),
+						() -> llmPort.streamCompletion(request));
+				}));
+		});
+	}
+
+	/**
+	 * 토큰 단위 카운터를 누적하고 디버그 로깅을 추가합니다.
+	 */
+	private Flux<String> trackLlmTokens(Flux<String> llmTokens) {
+		return pipelineTracer.incrementOnNext(llmTokens,
+			DialoguePipelineStage.LLM_COMPLETION,
+			"tokenCount",
+			1).doOnNext(token -> log.debug("LLM Token: [{}]", token));
+	}
+}

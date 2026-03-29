@@ -3,7 +3,7 @@ set -euo pipefail
 
 ROOT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")/.." && pwd)"
 FRONTEND_DIR="${ROOT_DIR}/frontend"
-STATIC_DIR="${ROOT_DIR}/webflux-dialogue/src/main/resources/static"
+STATIC_DIR="${ROOT_DIR}/app-miyou/src/main/resources/static"
 
 if [[ ! -f "${FRONTEND_DIR}/package.json" ]]; then
 	echo "[sync-frontend] frontend/package.json 파일을 찾을 수 없습니다." >&2

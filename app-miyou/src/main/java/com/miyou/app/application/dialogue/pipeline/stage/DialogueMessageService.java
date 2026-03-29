@@ -1,0 +1,56 @@
+package com.miyou.app.application.dialogue.pipeline.stage;
+
+import java.util.ArrayList;
+import java.util.List;
+
+import lombok.RequiredArgsConstructor;
+
+import org.springframework.stereotype.Service;
+
+import com.miyou.app.domain.dialogue.model.ConversationContext;
+import com.miyou.app.domain.dialogue.model.Message;
+import com.miyou.app.domain.dialogue.model.PersonaId;
+import com.miyou.app.domain.memory.model.MemoryRetrievalResult;
+import com.miyou.app.domain.retrieval.model.RetrievalContext;
+
+@Service
+@RequiredArgsConstructor
+public class DialogueMessageService {
+
+	private static final String DEFAULT_SYSTEM_PROMPT = "You are a helpful assistant.";
+
+	private final SystemPromptService systemPromptService;
+
+	/**
+	 * 시스템 프롬프트와 이전 대화, 현재 사용자 쿼리를 조합해 LLM 요청 메시지 목록을 만듭니다.
+	 */
+	public List<Message> buildMessages(PersonaId personaId,
+		RetrievalContext context,
+		MemoryRetrievalResult memories,
+		ConversationContext conversationContext,
+		String currentQuery) {
+		if (currentQuery == null || currentQuery.isBlank()) {
+			throw new IllegalArgumentException("현재 사용자 쿼리는 null이거나 비어 있을 수 없습니다.");
+		}
+
+		List<Message> messages = new ArrayList<>();
+
+		String fullSystemPrompt = systemPromptService
+			.buildSystemPrompt(personaId, context, memories);
+		if (fullSystemPrompt == null || fullSystemPrompt.isBlank()) {
+			fullSystemPrompt = DEFAULT_SYSTEM_PROMPT;
+		}
+		messages.add(Message.system(fullSystemPrompt));
+
+		conversationContext.turns().stream()
+			.filter(turn -> turn.response() != null)
+			.forEach(turn -> {
+				messages.add(Message.user(turn.query()));
+				messages.add(Message.assistant(turn.response()));
+			});
+
+		messages.add(Message.user(currentQuery));
+
+		return messages;
+	}
+}

@@ -5,7 +5,7 @@ plugins {
 	id 'com.diffplug.spotless' version '6.25.0' apply false
 }
 
-group = 'com.study'
+group = 'com.miyou'
 version = '0.0.1-SNAPSHOT'
 description = 'Webflux Multi-Module Project'
 
@@ -60,3 +60,4 @@ subprojects {
 		dependsOn 'spotlessCheck'
 	}
 }
+

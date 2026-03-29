@@ -1,0 +1,105 @@
+plugins {
+	id 'java'
+	id 'java-test-fixtures'
+	id 'org.springframework.boot' version '3.4.12'
+	id 'io.spring.dependency-management' version '1.1.7'
+}
+
+group = 'com.miyou'
+version = '0.0.1-SNAPSHOT'
+
+java {
+	toolchain {
+		languageVersion = JavaLanguageVersion.of(21)
+	}
+}
+
+configurations {
+	compileOnly {
+		extendsFrom annotationProcessor
+	}
+}
+
+repositories {
+	mavenCentral()
+}
+
+ext {
+	set('springAiVersion', "1.0.0-M5")
+}
+
+dependencyManagement {
+	imports {
+		mavenBom "org.springframework.ai:spring-ai-bom:${springAiVersion}"
+	}
+}
+
+dependencies {
+	implementation 'org.springframework.boot:spring-boot-starter-aop'
+	implementation 'org.springframework.boot:spring-boot-starter-webflux'
+	implementation 'org.springframework.boot:spring-boot-starter-actuator'
+	implementation 'io.micrometer:micrometer-registry-prometheus'
+	implementation 'org.springframework.boot:spring-boot-starter-validation'
+	implementation 'org.springframework.boot:spring-boot-starter-data-mongodb-reactive'
+	implementation 'org.springframework.boot:spring-boot-starter-data-redis-reactive'
+	implementation 'org.springframework.ai:spring-ai-openai-spring-boot-starter'
+	implementation 'org.springframework.ai:spring-ai-qdrant-store-spring-boot-starter'
+	implementation 'org.springdoc:springdoc-openapi-starter-webflux-ui:2.8.9'
+	compileOnly 'org.projectlombok:lombok'
+	annotationProcessor 'org.springframework.boot:spring-boot-configuration-processor'
+	annotationProcessor 'org.projectlombok:lombok'
+	testImplementation 'org.springframework.boot:spring-boot-starter-test'
+	testImplementation 'io.projectreactor:reactor-test'
+	testImplementation 'com.tngtech.archunit:archunit-junit5:1.3.0'
+	testRuntimeOnly 'org.junit.platform:junit-platform-launcher'
+}
+
+tasks.withType(JavaCompile).configureEach {
+	options.encoding = 'UTF-8'
+}
+
+tasks.named('test') {
+	useJUnitPlatform()
+
+	// Workaround: On Windows with a Korean locale (native.encoding=MS949), Java's C
+	// launcher reads @-argfiles using the Windows ACP (MS949), but Gradle 8 writes
+	// @-argfiles in hardcoded UTF-8. The Korean characters in the project path
+	// (e.g. "문서") get garbled ??ClassNotFoundException for every test class.
+	//
+	// Fix: collapse the entire test classpath into a single manifest JAR stored at an
+	// ASCII-only path. The classpath inside that JAR is encoded as percent-escaped
+	// file: URIs, so the JVM's Java-level URL handling (not the C launcher) does the
+	// UTF-8 decoding ??which works correctly regardless of the system ACP.
+	//
+	// On macOS / Linux / Docker the project path is ASCII-only, so this is a no-op
+	// (the manifest JAR is still created but the Korean-encoding edge-case never fires).
+	doFirst {
+		// The manifest JAR must reside at an ASCII-only path.
+		// The project itself is under a Korean path (e.g. "문서"), and the Gradle
+		// @-argfile is read by Java's C launcher using the Windows ACP (MS949).
+		// Putting the manifest JAR inside the project build dir would put its path
+		// in the @-argfile, where the Korean characters would be garbled again.
+		// Use the OS temp dir (ASCII-only on Windows) so the @-argfile is safe.
+		def manifestJar = new File(System.getProperty('java.io.tmpdir'), "miyou-test-classpath-${project.name}.jar")
+		manifestJar.parentFile.mkdirs()
+
+		def cpUris = classpath.files.collect { f ->
+			// toASCIIString() percent-encodes non-ASCII characters (e.g. Korean "문서").
+			// This is essential: the JAR manifest splits lines at 72 *bytes*, so a
+			// literal multi-byte UTF-8 character spanning the boundary would be
+			// silently corrupted. With percent-encoding the value is pure ASCII.
+			f.toURI().toASCIIString()
+		}.join(' ')
+
+		def mf = new java.util.jar.Manifest()
+		mf.mainAttributes.put(java.util.jar.Attributes.Name.MANIFEST_VERSION, '1.0')
+		mf.mainAttributes.put(java.util.jar.Attributes.Name.CLASS_PATH, cpUris)
+
+		manifestJar.withOutputStream { os ->
+			new java.util.jar.JarOutputStream(os, mf).close()
+		}
+
+		classpath = files(manifestJar)
+	}
+}
+

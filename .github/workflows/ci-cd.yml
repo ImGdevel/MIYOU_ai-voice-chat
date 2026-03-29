@@ -91,21 +91,21 @@ jobs:
       - name: 프론트엔드 빌드
         run: ./scripts/sync_frontend_to_static.sh
 
-      - name: S3 ???? ?? (frontend)
+      - name: S3 업로드 사전 검증 (frontend)
         shell: bash
         run: |
           test -n "${{ secrets.AWS_ROLE_ARN }}" || (echo "AWS_ROLE_ARN secret is missing." >&2; exit 1)
           test -n "${{ secrets.AWS_REGION }}" || (echo "AWS_REGION secret is missing." >&2; exit 1)
           test -n "${{ secrets.FRONTEND_S3_BUCKET }}" || (echo "FRONTEND_S3_BUCKET secret is missing." >&2; exit 1)
 
-      - name: AWS ???? ?? (OIDC, frontend)
+      - name: AWS 자격증명 설정 (OIDC, frontend)
         uses: aws-actions/configure-aws-credentials@v4
         with:
           role-to-assume: ${{ secrets.AWS_ROLE_ARN }}
           aws-region: ${{ secrets.AWS_REGION }}
           role-session-name: github-actions-frontend-upload
 
-      - name: ????? S3 ???
+      - name: 프론트엔드 S3 업로드
         env:
           FRONTEND_S3_BUCKET: ${{ secrets.FRONTEND_S3_BUCKET }}
         shell: bash
@@ -116,7 +116,7 @@ jobs:
         uses: actions/upload-artifact@v4
         with:
           name: frontend-dist
-          path: webflux-dialogue/src/main/resources/static/
+          path: app-miyou/src/main/resources/static/
           retention-days: 1
 
   gradle-test:
@@ -139,7 +139,7 @@ jobs:
           cache-read-only: false
 
       - name: 테스트 실행
-        run: ./gradlew --no-daemon --build-cache :webflux-dialogue:test
+        run: ./gradlew --no-daemon --build-cache :app-miyou:test
 
   gradle-compile:
     runs-on: ubuntu-latest
@@ -161,7 +161,7 @@ jobs:
           cache-read-only: false
 
       - name: 컴파일 검증
-        run: ./gradlew --no-daemon --build-cache :webflux-dialogue:compileJava
+        run: ./gradlew --no-daemon --build-cache :app-miyou:compileJava
 
   build-and-push:
     runs-on: ubuntu-latest
@@ -179,7 +179,7 @@ jobs:
         uses: actions/download-artifact@v4
         with:
           name: frontend-dist
-          path: webflux-dialogue/src/main/resources/static/
+          path: app-miyou/src/main/resources/static/
 
       - name: QEMU 설정
         uses: docker/setup-qemu-action@v3
@@ -208,7 +208,7 @@ jobs:
         uses: docker/build-push-action@v6
         with:
           context: .
-          file: ./webflux-dialogue/Dockerfile
+          file: ./app-miyou/Dockerfile
           push: true
           tags: |
             ${{ steps.meta.outputs.image_ref }}
