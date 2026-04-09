@@ -8,8 +8,7 @@ import org.springframework.test.context.ActiveProfiles
 @SpringBootTest
 @ActiveProfiles("test")
 class RagApplicationTests : ContainerizedIntegrationTestSupport() {
-
-	@Test
-	fun contextLoads() {
-	}
+    @Test
+    fun contextLoads() {
+    }
 }

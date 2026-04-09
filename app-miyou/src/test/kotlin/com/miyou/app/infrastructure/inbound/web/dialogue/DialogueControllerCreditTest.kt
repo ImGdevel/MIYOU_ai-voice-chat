@@ -30,69 +30,73 @@ import java.time.Instant
 @WebFluxTest(DialogueController::class)
 @DisplayName("DialogueController 크레딧 연동 테스트")
 class DialogueControllerCreditTest {
+    @Autowired
+    private lateinit var webTestClient: WebTestClient
 
-	@Autowired
-	private lateinit var webTestClient: WebTestClient
+    @MockitoBean
+    private lateinit var dialoguePipelineUseCase: DialoguePipelineUseCase
 
-	@MockitoBean
-	private lateinit var dialoguePipelineUseCase: DialoguePipelineUseCase
+    @MockitoBean
+    private lateinit var sessionRepository: ConversationSessionRepository
 
-	@MockitoBean
-	private lateinit var sessionRepository: ConversationSessionRepository
+    @MockitoBean
+    private lateinit var dialogueSpeechService: DialogueSpeechService
 
-	@MockitoBean
-	private lateinit var dialogueSpeechService: DialogueSpeechService
+    @MockitoBean
+    private lateinit var creditQueryUseCase: CreditQueryUseCase
 
-	@MockitoBean
-	private lateinit var creditQueryUseCase: CreditQueryUseCase
+    @MockitoBean
+    private lateinit var creditChargeUseCase: CreditChargeUseCase
 
-	@MockitoBean
-	private lateinit var creditChargeUseCase: CreditChargeUseCase
+    @Nested
+    @DisplayName("POST /rag/dialogue/audio 의 크레딧 체크")
+    inner class AudioCreditCheck {
+        @Test
+        @DisplayName("잔액이 충분하면 파이프라인을 실행하고 200을 반환한다")
+        fun audio_sufficientCredit_executionPipeline() {
+            val sessionIdValue = "credit-session-1"
+            val session = ConversationSessionFixture.create(sessionIdValue)
+            val request = RagDialogueRequest(sessionIdValue, "안녕", Instant.now())
 
-	@Nested
-	@DisplayName("POST /rag/dialogue/audio 의 크레딧 체크")
-	inner class AudioCreditCheck {
+            `when`(sessionRepository.findById(ConversationSessionId.of(sessionIdValue))).thenReturn(Mono.just(session))
+            `when`(creditQueryUseCase.getBalance(eq(session.userId())))
+                .thenReturn(Mono.just(UserCreditFixture.create(session.userId(), 4900L)))
+            `when`(dialoguePipelineUseCase.executeAudioStreaming(eq(session), eq("안녕"), eq(AudioFormat.WAV)))
+                .thenReturn(Flux.just("audio-bytes".toByteArray()))
 
-		@Test
-		@DisplayName("잔액이 충분하면 파이프라인을 실행하고 200을 반환한다")
-		fun audio_sufficientCredit_executionPipeline() {
-			val sessionIdValue = "credit-session-1"
-			val session = ConversationSessionFixture.create(sessionIdValue)
-			val request = RagDialogueRequest(sessionIdValue, "안녕", Instant.now())
+            webTestClient
+                .post()
+                .uri("/rag/dialogue/audio")
+                .contentType(MediaType.APPLICATION_JSON)
+                .accept(MediaType.parseMediaType("audio/wav"))
+                .bodyValue(request)
+                .exchange()
+                .expectStatus()
+                .isOk
+        }
 
-			`when`(sessionRepository.findById(ConversationSessionId.of(sessionIdValue))).thenReturn(Mono.just(session))
-			`when`(creditQueryUseCase.getBalance(eq(session.userId())))
-				.thenReturn(Mono.just(UserCreditFixture.create(session.userId(), 4900L)))
-			`when`(dialoguePipelineUseCase.executeAudioStreaming(eq(session), eq("안녕"), eq(AudioFormat.WAV)))
-				.thenReturn(Flux.just("audio-bytes".toByteArray()))
+        @Test
+        @DisplayName("잔액이 부족하면 402를 반환하고 파이프라인을 실행하지 않는다")
+        fun audio_insufficientCredit_returns402() {
+            val sessionIdValue = "credit-session-low"
+            val session = ConversationSessionFixture.create(sessionIdValue)
+            val request = RagDialogueRequest(sessionIdValue, "안녕", Instant.now())
 
-			webTestClient.post().uri("/rag/dialogue/audio")
-				.contentType(MediaType.APPLICATION_JSON)
-				.accept(MediaType.parseMediaType("audio/wav"))
-				.bodyValue(request)
-				.exchange()
-				.expectStatus().isOk
-		}
+            `when`(sessionRepository.findById(ConversationSessionId.of(sessionIdValue))).thenReturn(Mono.just(session))
+            `when`(creditQueryUseCase.getBalance(eq(session.userId())))
+                .thenReturn(Mono.just(UserCreditFixture.create(session.userId(), 99L)))
 
-		@Test
-		@DisplayName("잔액이 부족하면 402를 반환하고 파이프라인을 실행하지 않는다")
-		fun audio_insufficientCredit_returns402() {
-			val sessionIdValue = "credit-session-low"
-			val session = ConversationSessionFixture.create(sessionIdValue)
-			val request = RagDialogueRequest(sessionIdValue, "안녕", Instant.now())
+            webTestClient
+                .post()
+                .uri("/rag/dialogue/audio")
+                .contentType(MediaType.APPLICATION_JSON)
+                .accept(MediaType.parseMediaType("audio/wav"))
+                .bodyValue(request)
+                .exchange()
+                .expectStatus()
+                .isEqualTo(402)
 
-			`when`(sessionRepository.findById(ConversationSessionId.of(sessionIdValue))).thenReturn(Mono.just(session))
-			`when`(creditQueryUseCase.getBalance(eq(session.userId())))
-				.thenReturn(Mono.just(UserCreditFixture.create(session.userId(), 99L)))
-
-			webTestClient.post().uri("/rag/dialogue/audio")
-				.contentType(MediaType.APPLICATION_JSON)
-				.accept(MediaType.parseMediaType("audio/wav"))
-				.bodyValue(request)
-				.exchange()
-				.expectStatus().isEqualTo(402)
-
-			verify(dialoguePipelineUseCase, never()).executeAudioStreaming(any(), any(), any())
-		}
-	}
+            verify(dialoguePipelineUseCase, never()).executeAudioStreaming(any(), any(), any())
+        }
+    }
 }
