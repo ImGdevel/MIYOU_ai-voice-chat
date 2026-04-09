@@ -5,7 +5,7 @@ import org.junit.jupiter.api.Test
 import org.springframework.boot.test.context.SpringBootTest
 import org.springframework.test.context.ActiveProfiles
 
-@SpringBootTest
+@SpringBootTest(classes = [RagApplication::class])
 @ActiveProfiles("test")
 class RagApplicationTests : ContainerizedIntegrationTestSupport() {
     @Test

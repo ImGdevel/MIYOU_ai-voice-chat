@@ -8,17 +8,16 @@ import com.miyou.app.domain.memory.model.MemoryType
 import com.miyou.app.domain.memory.port.EmbeddingPort
 import com.miyou.app.domain.memory.port.VectorMemoryPort
 import com.miyou.app.fixture.ConversationSessionFixture
+import com.miyou.app.support.anyFloatValue
+import com.miyou.app.support.anyIntValue
+import com.miyou.app.support.anyStringValue
+import com.miyou.app.support.anyValue
+import com.miyou.app.support.eqValue
 import org.assertj.core.api.Assertions.assertThat
 import org.junit.jupiter.api.BeforeEach
 import org.junit.jupiter.api.DisplayName
 import org.junit.jupiter.api.Test
 import org.junit.jupiter.api.extension.ExtendWith
-import org.mockito.ArgumentMatchers.any
-import org.mockito.ArgumentMatchers.anyFloat
-import org.mockito.ArgumentMatchers.anyInt
-import org.mockito.ArgumentMatchers.anyList
-import org.mockito.ArgumentMatchers.anyString
-import org.mockito.ArgumentMatchers.eq
 import org.mockito.Mock
 import org.mockito.Mockito.never
 import org.mockito.Mockito.verify
@@ -54,7 +53,7 @@ class MemoryRetrievalServiceTest {
     }
 
     @Test
-    @DisplayName("메모리 검색 시 랭킹, 제한, 접근 메트릭 업데이트를 수행한다")
+    @DisplayName("메모리를 점수순으로 제한해 조회하고 접근 지표를 갱신한다")
     fun retrieveMemories_shouldRankLimitAndUpdateAccessMetrics() {
         val sessionId = ConversationSessionFixture.createId()
         val now = Instant.now()
@@ -63,7 +62,7 @@ class MemoryRetrievalServiceTest {
                 "m-top",
                 sessionId,
                 MemoryType.EXPERIENTIAL,
-                "사용자는 러닝을 좋아한다",
+                "user likes sushi",
                 0.95f,
                 now.minusSeconds(100),
                 now,
@@ -74,7 +73,7 @@ class MemoryRetrievalServiceTest {
                 "m-second",
                 sessionId,
                 MemoryType.FACTUAL,
-                "사용자는 개발자다",
+                "user is a developer",
                 0.70f,
                 now.minusSeconds(100),
                 now,
@@ -85,7 +84,7 @@ class MemoryRetrievalServiceTest {
                 "m-dropped",
                 sessionId,
                 MemoryType.FACTUAL,
-                "사용자는 고양이를 키운다",
+                "user owns a cat",
                 0.10f,
                 now.minusSeconds(100),
                 now,
@@ -104,32 +103,35 @@ class MemoryRetrievalServiceTest {
                 4,
             ),
         ).thenReturn(Flux.just(top, second, dropped))
-        `when`(vectorMemoryPort.updateImportance(anyString(), anyFloat(), any(), anyInt()))
+        `when`(vectorMemoryPort.updateImportance(anyStringValue(), anyFloatValue(), anyValue(), anyIntValue()))
             .thenReturn(Mono.empty())
 
         StepVerifier
             .create(service.retrieveMemories(sessionId, "query", 2))
             .assertNext { result ->
-                assertThat(result.experientialMemories()).hasSize(1)
-                assertThat(result.experientialMemories()[0].id()).isEqualTo("m-top")
-                assertThat(result.factualMemories()).hasSize(1)
-                assertThat(result.factualMemories()[0].id()).isEqualTo("m-second")
+                assertThat(result.experientialMemories).hasSize(1)
+                assertThat(result.experientialMemories[0].id).isEqualTo("m-top")
+                assertThat(result.factualMemories).hasSize(1)
+                assertThat(result.factualMemories[0].id).isEqualTo("m-second")
             }.verifyComplete()
 
-        verify(vectorMemoryPort).updateImportance(eq("m-top"), anyFloat(), any(), eq(4))
-        verify(vectorMemoryPort).updateImportance(eq("m-second"), anyFloat(), any(), eq(3))
-        verify(vectorMemoryPort, never()).updateImportance(eq("m-dropped"), anyFloat(), any(), anyInt())
+        verify(vectorMemoryPort).updateImportance(eqValue("m-top"), anyFloatValue(), anyValue(), eqValue(4))
+        verify(vectorMemoryPort).updateImportance(eqValue("m-second"), anyFloatValue(), anyValue(), eqValue(3))
+        verify(
+            vectorMemoryPort,
+            never()
+        ).updateImportance(eqValue("m-dropped"), anyFloatValue(), anyValue(), anyIntValue())
     }
 
     @Test
-    @DisplayName("검색 결과가 없으면 빈 결과를 반환한다")
+    @DisplayName("검색 결과가 없으면 빈 메모리 결과를 반환한다")
     fun retrieveMemories_shouldReturnEmptyWithoutUpdateWhenSearchIsEmpty() {
         val sessionId = ConversationSessionFixture.createId()
 
         `when`(embeddingPort.embed("query")).thenReturn(
             Mono.just(MemoryEmbedding.of("query", listOf(0.1f, 0.2f))),
         )
-        `when`(vectorMemoryPort.search(eq(sessionId), anyList(), anyList(), anyFloat(), anyInt()))
+        `when`(vectorMemoryPort.search(eqValue(sessionId), anyValue(), anyValue(), anyFloatValue(), anyIntValue()))
             .thenReturn(Flux.empty())
 
         StepVerifier
@@ -137,6 +139,6 @@ class MemoryRetrievalServiceTest {
             .assertNext { result -> assertThat(result.isEmpty()).isTrue() }
             .verifyComplete()
 
-        verify(vectorMemoryPort, never()).updateImportance(anyString(), anyFloat(), any(), anyInt())
+        verify(vectorMemoryPort, never()).updateImportance(anyStringValue(), anyFloatValue(), anyValue(), anyIntValue())
     }
 }

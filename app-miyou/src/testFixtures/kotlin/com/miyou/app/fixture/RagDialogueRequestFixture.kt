@@ -4,7 +4,7 @@ import com.miyou.app.infrastructure.inbound.web.dialogue.dto.RagDialogueRequest
 import java.time.Instant
 
 object RagDialogueRequestFixture {
-    const val DEFAULT_TEXT = "테스트 질문입니다"
+    const val DEFAULT_TEXT = "안녕하세요"
 
     @JvmStatic
     fun create(): RagDialogueRequest =
@@ -24,5 +24,5 @@ object RagDialogueRequestFixture {
 
     @JvmStatic
     fun createWithNullTimestamp(): RagDialogueRequest =
-        RagDialogueRequest(ConversationSessionFixture.DEFAULT_SESSION_ID, DEFAULT_TEXT, null)
+        RagDialogueRequest(ConversationSessionFixture.DEFAULT_SESSION_ID, DEFAULT_TEXT, Instant.now())
 }

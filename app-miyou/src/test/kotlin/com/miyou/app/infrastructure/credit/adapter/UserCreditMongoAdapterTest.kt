@@ -34,10 +34,10 @@ class UserCreditMongoAdapterTest {
     }
 
     @Nested
-    @DisplayName("findByUserId()")
+    @DisplayName("findByUserId")
     inner class FindByUserId {
         @Test
-        @DisplayName("존재하는 userId 조회 시 도메인 객체로 변환하여 반환한다")
+        @DisplayName("사용자가 존재하면 도메인 객체를 반환한다")
         fun findByUserId_existing_returnsDomain() {
             val userId = UserIdFixture.create()
             val doc = UserCreditDocument.fromDomain(UserCreditFixture.create(userId, 3000L))
@@ -52,7 +52,7 @@ class UserCreditMongoAdapterTest {
         }
 
         @Test
-        @DisplayName("존재하지 않는 userId 조회 시 빈 Mono를 반환한다")
+        @DisplayName("사용자가 없으면 빈 결과를 반환한다")
         fun findByUserId_notFound_returnsEmpty() {
             val userId = UserIdFixture.create()
             `when`(mongoRepository.findByUserId(userId.value())).thenReturn(Mono.empty())
@@ -63,24 +63,24 @@ class UserCreditMongoAdapterTest {
         }
 
         @Test
-        @DisplayName("MongoDB 오류는 그대로 전파한다")
+        @DisplayName("저장소 오류를 그대로 전파한다")
         fun findByUserId_error_propagates() {
             val userId = UserIdFixture.create()
             `when`(mongoRepository.findByUserId(userId.value()))
-                .thenReturn(Mono.error(RuntimeException("DB 연결 실패")))
+                .thenReturn(Mono.error(RuntimeException("DB connection failed")))
 
             StepVerifier
                 .create(adapter.findByUserId(userId))
-                .expectErrorMessage("DB 연결 실패")
+                .expectErrorMessage("DB connection failed")
                 .verify()
         }
     }
 
     @Nested
-    @DisplayName("save()")
+    @DisplayName("save")
     inner class Save {
         @Test
-        @DisplayName("도메인 객체를 Document로 변환해 저장하고 다시 도메인으로 반환한다")
+        @DisplayName("도메인 객체를 변환해 저장하고 저장된 결과를 반환한다")
         fun save_convertsAndPersists() {
             val userId = UserIdFixture.create()
             val credit: UserCredit = UserCreditFixture.create(userId, 5000L)
@@ -98,20 +98,20 @@ class UserCreditMongoAdapterTest {
                 }.verifyComplete()
 
             val captured = captor.value
-            assertThat(captured.userId()).isEqualTo(userId.value())
-            assertThat(captured.balance()).isEqualTo(5000L)
+            assertThat(captured.userId).isEqualTo(userId.value())
+            assertThat(captured.balance).isEqualTo(5000L)
         }
 
         @Test
-        @DisplayName("저장 실패 시 에러가 전파된다")
+        @DisplayName("저장 중 발생한 오류를 그대로 전파한다")
         fun save_error_propagates() {
             val credit = UserCreditFixture.create()
             `when`(mongoRepository.save(any()))
-                .thenReturn(Mono.error(RuntimeException("저장 실패")))
+                .thenReturn(Mono.error(RuntimeException("save failed")))
 
             StepVerifier
                 .create(adapter.save(credit))
-                .expectErrorMessage("저장 실패")
+                .expectErrorMessage("save failed")
                 .verify()
         }
     }

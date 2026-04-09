@@ -39,45 +39,45 @@ class SpringAiVectorDbAdapterTest {
     @BeforeEach
     fun setUp() {
         val properties = RagDialogueProperties()
-        val qdrant = RagDialogueProperties.Qdrant()
-        qdrant.collectionName = "test-collection"
-        properties.qdrant = qdrant
+        properties.qdrant.collectionName = "test-collection"
         vectorDbAdapter = SpringAiVectorDbAdapter(vectorStore, qdrantClient, properties)
     }
 
     @Test
-    @DisplayName("upsert는 메타데이터를 포함해 벡터 저장소에 저장한다")
-    fun upsert_setsMetadataCorrectly() {
+    @DisplayName("upsert 시 메모리 메타데이터를 벡터 저장소에 저장한다")
+    fun upsert_storesMemoryMetadata() {
         val sessionId = ConversationSessionFixture.createId()
         val memory =
             Memory(
-                null,
-                sessionId,
-                MemoryType.EXPERIENTIAL,
-                "metadata test",
-                0.9f,
-                Instant.parse("2025-01-01T00:00:00Z"),
-                Instant.parse("2025-01-02T00:00:00Z"),
-                5,
+                id = null,
+                sessionId = sessionId,
+                type = MemoryType.EXPERIENTIAL,
+                content = "metadata test",
+                importance = 0.9f,
+                createdAt = Instant.parse("2025-01-01T00:00:00Z"),
+                lastAccessedAt = Instant.parse("2025-01-02T00:00:00Z"),
+                accessCount = 5,
             )
+
+        @Suppress("UNCHECKED_CAST")
         val captor = ArgumentCaptor.forClass(List::class.java) as ArgumentCaptor<List<Document>>
 
         StepVerifier
             .create(vectorDbAdapter.upsert(memory, listOf(0.1f)))
-            .assertNext { result -> assertThat(result.id()).isNotNull() }
+            .assertNext { result -> assertThat(result.id).isNotNull() }
             .verifyComplete()
 
         verify(vectorStore).add(captor.capture())
-        val metadata = captor.value[0].metadata
-        assertThat(metadata["sessionId"]).isEqualTo(sessionId.value())
+        val metadata = captor.value.single().metadata
+        assertThat(metadata["sessionId"]).isEqualTo(sessionId.value)
         assertThat(metadata["type"]).isEqualTo("EXPERIENTIAL")
         assertThat(metadata["importance"]).isEqualTo(0.9f)
         assertThat(metadata["accessCount"]).isEqualTo(5)
     }
 
     @Test
-    @DisplayName("search는 Qdrant 결과를 Memory로 매핑한다")
-    fun search_withFilters_success() {
+    @DisplayName("검색 결과 Qdrant 포인트를 Memory 객체로 변환한다")
+    fun search_mapsQdrantPointsIntoMemoryObjects() {
         val sessionId = ConversationSessionFixture.createId()
         val point =
             ScoredPoint
@@ -86,25 +86,25 @@ class SpringAiVectorDbAdapterTest {
                     Points.PointId
                         .newBuilder()
                         .setUuid("doc-1")
-                        .build()
+                        .build(),
                 ).putPayload(
                     "content",
                     JsonWithInt.Value
                         .newBuilder()
-                        .setStringValue("테스트 내용")
-                        .build()
+                        .setStringValue("test content")
+                        .build(),
                 ).putPayload(
                     "type",
                     JsonWithInt.Value
                         .newBuilder()
                         .setStringValue("EXPERIENTIAL")
-                        .build()
+                        .build(),
                 ).putPayload(
                     "importance",
                     JsonWithInt.Value
                         .newBuilder()
                         .setDoubleValue(0.8)
-                        .build()
+                        .build(),
                 ).build()
 
         `when`(qdrantClient.searchAsync(any(SearchPoints::class.java)))
@@ -112,17 +112,23 @@ class SpringAiVectorDbAdapterTest {
 
         StepVerifier
             .create(
-                vectorDbAdapter.search(sessionId, listOf(0.1f, 0.2f), listOf(MemoryType.EXPERIENTIAL), 0.5f, 5),
+                vectorDbAdapter.search(
+                    sessionId,
+                    listOf(0.1f, 0.2f),
+                    listOf(MemoryType.EXPERIENTIAL),
+                    0.5f,
+                    5,
+                ),
             ).assertNext { result ->
-                assertThat(result.id()).isEqualTo("doc-1")
-                assertThat(result.content()).isEqualTo("테스트 내용")
-                assertThat(result.type()).isEqualTo(MemoryType.EXPERIENTIAL)
+                assertThat(result.id).isEqualTo("doc-1")
+                assertThat(result.content).isEqualTo("test content")
+                assertThat(result.type).isEqualTo(MemoryType.EXPERIENTIAL)
             }.verifyComplete()
     }
 
     @Test
-    @DisplayName("updateImportance는 현재 no-op 으로 완료된다")
-    fun updateImportance_logsWarning() {
+    @DisplayName("updateImportance는 별도 작업 없이 정상 완료된다")
+    fun updateImportance_completesAsNoOp() {
         StepVerifier
             .create(vectorDbAdapter.updateImportance("test-id", 0.9f, Instant.now(), 10))
             .verifyComplete()

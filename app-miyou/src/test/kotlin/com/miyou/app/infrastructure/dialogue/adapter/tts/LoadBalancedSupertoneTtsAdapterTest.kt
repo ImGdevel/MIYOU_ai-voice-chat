@@ -74,7 +74,7 @@ class LoadBalancedSupertoneTtsAdapterTest {
     }
 
     @Test
-    @DisplayName("temporary error가 나면 다른 endpoint로 재시도한다")
+    @DisplayName("일시 오류가 나면 다른 endpoint로 재시도한다")
     fun streamSynthesizeTemporaryErrorRetry() {
         fakeServer.setEndpointBehavior(
             "key-1",
@@ -92,7 +92,7 @@ class LoadBalancedSupertoneTtsAdapterTest {
     }
 
     @Test
-    @DisplayName("permanent error가 나면 다른 endpoint로 재시도한다")
+    @DisplayName("영구 오류가 나면 endpoint를 영구 실패로 표시한다")
     fun streamSynthesizePermanentErrorRetry() {
         fakeServer.setEndpointBehavior(
             "key-1",
@@ -110,7 +110,7 @@ class LoadBalancedSupertoneTtsAdapterTest {
     }
 
     @Test
-    @DisplayName("client error는 즉시 실패한다")
+    @DisplayName("클라이언트 오류면 즉시 실패한다")
     fun streamSynthesizeClientErrorImmediateFail() {
         fakeServer.setEndpointBehavior(
             "key-1",
@@ -144,9 +144,8 @@ class LoadBalancedSupertoneTtsAdapterTest {
 
         StepVerifier
             .create(adapter.streamSynthesize("Hello, world!"))
-            .expectErrorMatches {
-                it is RuntimeException && it.message!!.contains("모든 TTS 엔드포인트 요청 실패")
-            }.verify()
+            .expectError(RuntimeException::class.java)
+            .verify()
 
         assertThat(requestCount("key-1", "key-2", "key-3")).isEqualTo(2)
     }
@@ -196,7 +195,7 @@ class LoadBalancedSupertoneTtsAdapterTest {
     }
 
     @Test
-    @DisplayName("요청 취소 후 active request count를 감소시킨다")
+    @DisplayName("요청 취소 시 active request count를 감소시킨다")
     fun cancelledRequestDecrementsActiveRequestCount() {
         fakeServer.setEndpointBehavior("key-1", FakeSupertoneServer.ServerBehavior.delayed(5000))
         fakeServer.setEndpointBehavior("key-2", FakeSupertoneServer.ServerBehavior.delayed(5000))

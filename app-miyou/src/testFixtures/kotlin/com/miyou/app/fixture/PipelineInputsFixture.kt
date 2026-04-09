@@ -11,10 +11,10 @@ object PipelineInputsFixture {
     @JvmStatic
     fun create(): PipelineInputs {
         val session = ConversationSessionFixture.create()
-        val turn = ConversationTurnFixture.create(session.sessionId())
+        val turn = ConversationTurnFixture.create(session.sessionId)
         return PipelineInputs(
             session,
-            RetrievalContext.empty(turn.query()),
+            RetrievalContext.empty(turn.query),
             MemoryRetrievalResult.empty(),
             ConversationContext.empty(),
             turn,
@@ -23,10 +23,10 @@ object PipelineInputsFixture {
 
     @JvmStatic
     fun create(session: ConversationSession): PipelineInputs {
-        val turn = ConversationTurnFixture.create(session.sessionId())
+        val turn = ConversationTurnFixture.create(session.sessionId)
         return PipelineInputs(
             session,
-            RetrievalContext.empty(turn.query()),
+            RetrievalContext.empty(turn.query),
             MemoryRetrievalResult.empty(),
             ConversationContext.empty(),
             turn,
@@ -36,7 +36,7 @@ object PipelineInputsFixture {
     @JvmStatic
     fun createWithQuery(query: String): PipelineInputs {
         val session = ConversationSessionFixture.create()
-        val turn = ConversationTurn.create(session.sessionId(), query)
+        val turn = ConversationTurn.create(session.sessionId, query)
         return PipelineInputs(
             session,
             RetrievalContext.empty(query),
@@ -50,5 +50,12 @@ object PipelineInputsFixture {
     fun createMinimal(
         session: ConversationSession,
         turn: ConversationTurn,
-    ): PipelineInputs = PipelineInputs(session, null, null, null, turn)
+    ): PipelineInputs =
+        PipelineInputs(
+            session,
+            RetrievalContext.empty(turn.query),
+            MemoryRetrievalResult.empty(),
+            ConversationContext.empty(),
+            turn,
+        )
 }

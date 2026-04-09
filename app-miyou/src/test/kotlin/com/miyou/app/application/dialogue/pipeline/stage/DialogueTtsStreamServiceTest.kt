@@ -4,11 +4,11 @@ import com.miyou.app.application.monitoring.service.PipelineTracer
 import com.miyou.app.domain.dialogue.port.TtsPort
 import com.miyou.app.domain.dialogue.service.SentenceAssembler
 import com.miyou.app.domain.voice.port.VoiceSelectionPort
+import com.miyou.app.support.anyValue
 import org.assertj.core.api.Assertions.assertThat
 import org.junit.jupiter.api.DisplayName
 import org.junit.jupiter.api.Test
 import org.junit.jupiter.api.extension.ExtendWith
-import org.mockito.ArgumentMatchers.any
 import org.mockito.Mock
 import org.mockito.Mockito.`when`
 import org.mockito.junit.jupiter.MockitoExtension
@@ -44,7 +44,7 @@ class DialogueTtsStreamServiceTest {
             }
         }
 
-        `when`(pipelineTracer.traceTtsPreparation(any())).thenAnswer { invocation ->
+        `when`(pipelineTracer.traceTtsPreparation(anyValue())).thenAnswer { invocation ->
             val supplier = invocation.getArgument<Supplier<Mono<Void>>>(0)
             supplier.get()
         }
