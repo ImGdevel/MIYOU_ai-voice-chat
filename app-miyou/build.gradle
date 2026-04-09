@@ -53,6 +53,7 @@ dependencies {
 	implementation 'org.springframework.ai:spring-ai-qdrant-store-spring-boot-starter'
 	implementation 'org.springdoc:springdoc-openapi-starter-webflux-ui:2.8.9'
 	implementation 'org.jetbrains.kotlin:kotlin-reflect'
+	implementation 'com.fasterxml.jackson.module:jackson-module-kotlin'
 	compileOnly 'org.projectlombok:lombok'
 	annotationProcessor 'org.springframework.boot:spring-boot-configuration-processor'
 	annotationProcessor 'org.projectlombok:lombok'
@@ -63,6 +64,27 @@ dependencies {
 	testImplementation 'org.testcontainers:mongodb:1.20.4'
 	testImplementation 'org.testcontainers:testcontainers:1.20.4'
 	testRuntimeOnly 'org.junit.platform:junit-platform-launcher'
+
+	testFixturesImplementation sourceSets.main.output
+}
+
+sourceSets {
+	main {
+		kotlin {
+			srcDirs = ['src/main/kotlin']
+		}
+		java {
+			srcDirs = ['src/main/java']
+		}
+	}
+	test {
+		kotlin {
+			srcDirs = ['src/test/java', 'src/test/kotlin']
+		}
+		java {
+			srcDirs = ['src/test/java']
+		}
+	}
 }
 
 ktlint {
