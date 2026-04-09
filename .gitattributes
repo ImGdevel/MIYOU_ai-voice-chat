@@ -3,9 +3,13 @@
 *.jar binary
 
 # Force UTF-8 for all text and Markdown files
+.gitattributes text eol=lf working-tree-encoding=UTF-8
+.gitignore text eol=lf working-tree-encoding=UTF-8
 *.md text eol=lf working-tree-encoding=UTF-8
 *.MD text eol=lf working-tree-encoding=UTF-8
 *.java text eol=lf working-tree-encoding=UTF-8
+*.kt text eol=lf working-tree-encoding=UTF-8
+*.kts text eol=lf working-tree-encoding=UTF-8
 *.groovy text eol=lf working-tree-encoding=UTF-8
 *.gradle text eol=lf working-tree-encoding=UTF-8
 *.properties text eol=lf working-tree-encoding=UTF-8
@@ -14,3 +18,5 @@
 *.xml text eol=lf working-tree-encoding=UTF-8
 *.json text eol=lf working-tree-encoding=UTF-8
 *.sh text eol=lf working-tree-encoding=UTF-8
+.editorconfig text eol=lf working-tree-encoding=UTF-8
+.husky/* text eol=lf
