@@ -3,13 +3,13 @@ package com.miyou.app.infrastructure.retrieval.adapter
 import com.miyou.app.domain.dialogue.model.ConversationTurn
 import com.miyou.app.domain.dialogue.port.ConversationRepository
 import com.miyou.app.fixture.ConversationSessionFixture
+import com.miyou.app.support.anyIntValue
+import com.miyou.app.support.eqValue
 import org.assertj.core.api.Assertions.assertThat
 import org.junit.jupiter.api.BeforeEach
 import org.junit.jupiter.api.DisplayName
 import org.junit.jupiter.api.Test
 import org.junit.jupiter.api.extension.ExtendWith
-import org.mockito.ArgumentMatchers.anyInt
-import org.mockito.ArgumentMatchers.eq
 import org.mockito.Mock
 import org.mockito.Mockito.`when`
 import org.mockito.junit.jupiter.MockitoExtension
@@ -39,7 +39,9 @@ class InMemoryRetrievalAdapterTest {
                 ConversationTurn.withId("id-2", sessionId, "파이썬 배우기", "재밌다", Instant.now()),
                 ConversationTurn.withId("id-3", sessionId, "spring 설정 정리", "ok", Instant.now()),
             )
-        `when`(conversationRepository.findRecent(eq(sessionId), anyInt())).thenReturn(Flux.fromIterable(turns))
+        `when`(
+            conversationRepository.findRecent(eqValue(sessionId), anyIntValue())
+        ).thenReturn(Flux.fromIterable(turns))
 
         StepVerifier
             .create(adapter.retrieve(sessionId, "spring boot tips", 5))
@@ -54,7 +56,7 @@ class InMemoryRetrievalAdapterTest {
     @DisplayName("대화가 없으면 빈 결과를 반환한다")
     fun retrieve_empty_conversations() {
         val sessionId = ConversationSessionFixture.createId()
-        `when`(conversationRepository.findRecent(eq(sessionId), anyInt())).thenReturn(Flux.empty())
+        `when`(conversationRepository.findRecent(eqValue(sessionId), anyIntValue())).thenReturn(Flux.empty())
 
         StepVerifier
             .create(adapter.retrieve(sessionId, "test", 5))
@@ -77,7 +79,7 @@ class InMemoryRetrievalAdapterTest {
     @DisplayName("저장소 오류를 그대로 전파한다")
     fun retrieve_error_propagates() {
         val sessionId = ConversationSessionFixture.createId()
-        `when`(conversationRepository.findRecent(eq(sessionId), anyInt()))
+        `when`(conversationRepository.findRecent(eqValue(sessionId), anyIntValue()))
             .thenReturn(Flux.error(RuntimeException("DB error")))
 
         StepVerifier

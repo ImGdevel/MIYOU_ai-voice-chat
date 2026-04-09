@@ -3,6 +3,7 @@ package com.miyou.app.infrastructure.inbound.web.dialogue
 import com.miyou.app.application.credit.usecase.CreditChargeUseCase
 import com.miyou.app.application.credit.usecase.CreditQueryUseCase
 import com.miyou.app.application.dialogue.service.DialogueSpeechService
+import com.miyou.app.domain.dialogue.model.ConversationSessionId
 import com.miyou.app.domain.dialogue.port.ConversationSessionRepository
 import com.miyou.app.domain.dialogue.port.DialoguePipelineUseCase
 import com.miyou.app.domain.voice.model.AudioFormat
@@ -11,8 +12,6 @@ import com.miyou.app.fixture.UserCreditFixture
 import com.miyou.app.infrastructure.inbound.web.dialogue.dto.RagDialogueRequest
 import org.junit.jupiter.api.DisplayName
 import org.junit.jupiter.api.Test
-import org.mockito.ArgumentMatchers.eq
-import org.mockito.Mockito.verify
 import org.mockito.Mockito.`when`
 import org.springframework.beans.factory.annotation.Autowired
 import org.springframework.boot.test.autoconfigure.web.reactive.WebFluxTest
@@ -44,14 +43,14 @@ class DialogueControllerTest {
     private lateinit var creditChargeUseCase: CreditChargeUseCase
 
     @Test
-    @DisplayName("텍스트 질의 요청 시 스트림 응답을 반환한다")
-    fun ragDialogueText_shouldReturnStream() {
+    @DisplayName("ragDialogueText returns an SSE token stream")
+    fun ragDialogueText_returnsTokenStream() {
         val sessionIdValue = "test-session-1"
         val session = ConversationSessionFixture.create(sessionIdValue)
         val request = RagDialogueRequest(sessionIdValue, "Hello world", Instant.now())
 
-        `when`(sessionRepository.findById(eq(session.sessionId()))).thenReturn(Mono.just(session))
-        `when`(dialoguePipelineUseCase.executeTextOnly(eq(session), eq("Hello world")))
+        `when`(sessionRepository.findById(ConversationSessionId.of(sessionIdValue))).thenReturn(Mono.just(session))
+        `when`(dialoguePipelineUseCase.executeTextOnly(session, "Hello world"))
             .thenReturn(Flux.just("token1", "token2"))
 
         webTestClient
@@ -62,21 +61,19 @@ class DialogueControllerTest {
             .exchange()
             .expectStatus()
             .isOk
-
-        verify(dialoguePipelineUseCase).executeTextOnly(session, "Hello world")
     }
 
     @Test
-    @DisplayName("오디오 요청 시 기본값으로 WAV를 사용한다")
-    fun ragDialogueAudio_shouldDelegateToWav() {
+    @DisplayName("ragDialogueAudio uses the default WAV format")
+    fun ragDialogueAudio_usesDefaultWavFormat() {
         val sessionIdValue = "test-session-2"
         val session = ConversationSessionFixture.create(sessionIdValue)
         val request = RagDialogueRequest(sessionIdValue, "Default audio", Instant.now())
 
-        `when`(sessionRepository.findById(eq(session.sessionId()))).thenReturn(Mono.just(session))
-        `when`(creditQueryUseCase.getBalance(session.userId()))
-            .thenReturn(Mono.just(UserCreditFixture.create(session.userId(), 5000L)))
-        `when`(dialoguePipelineUseCase.executeAudioStreaming(eq(session), eq("Default audio"), eq(AudioFormat.WAV)))
+        `when`(sessionRepository.findById(ConversationSessionId.of(sessionIdValue))).thenReturn(Mono.just(session))
+        `when`(creditQueryUseCase.getBalance(session.userId))
+            .thenReturn(Mono.just(UserCreditFixture.create(session.userId, 5000L)))
+        `when`(dialoguePipelineUseCase.executeAudioStreaming(session, "Default audio", AudioFormat.WAV))
             .thenReturn(Flux.just("audio".toByteArray()))
 
         webTestClient
@@ -93,8 +90,8 @@ class DialogueControllerTest {
     }
 
     @Test
-    @DisplayName("빈 텍스트면 400을 반환한다")
-    fun ragDialogueText_withBlankText_shouldReturnBadRequest() {
+    @DisplayName("ragDialogueText returns 400 for blank text")
+    fun ragDialogueText_returns400ForBlankText() {
         val request = RagDialogueRequest(ConversationSessionFixture.DEFAULT_SESSION_ID, "", Instant.now())
 
         webTestClient

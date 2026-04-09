@@ -17,13 +17,13 @@ import org.junit.jupiter.api.Nested
 import org.junit.jupiter.api.Test
 import java.time.Instant
 
-@DisplayName("CreditTransactionDocument 직렬화 역직렬화")
+@DisplayName("CreditTransactionDocument")
 class CreditTransactionDocumentTest {
     @Nested
     @DisplayName("ConversationDeduction 직렬화")
     inner class ConversationDeductionSerialization {
         @Test
-        @DisplayName("fromDomain() 후 toDomain() 시 모든 필드가 일치한다")
+        @DisplayName("대화 차감 거래를 문서로 변환한 뒤 복원한다")
         fun roundTrip_conversationDeduction() {
             val sessionId = ConversationSessionFixture.createId("session-abc")
             val original =
@@ -54,7 +54,7 @@ class CreditTransactionDocumentTest {
         }
 
         @Test
-        @DisplayName("Document의 sourceType 필드는 CONVERSATION_DEDUCTION으로 저장된다")
+        @DisplayName("대화 차감 출처 타입과 데이터를 올바르게 저장한다")
         fun fromDomain_setsCorrectSourceType() {
             val transaction =
                 CreditTransaction.of(
@@ -68,8 +68,8 @@ class CreditTransactionDocumentTest {
 
             val doc = CreditTransactionDocument.fromDomain(transaction)
 
-            assertThat(doc.sourceType()).isEqualTo("CONVERSATION_DEDUCTION")
-            assertThat(doc.sourceData()).containsKey("sessionId")
+            assertThat(doc.sourceType).isEqualTo("CONVERSATION_DEDUCTION")
+            assertThat(doc.sourceData).containsKey("sessionId")
         }
     }
 
@@ -77,7 +77,7 @@ class CreditTransactionDocumentTest {
     @DisplayName("SignupBonus 직렬화")
     inner class SignupBonusSerialization {
         @Test
-        @DisplayName("SignupBonus는 sourceType이 SIGNUP_BONUS다")
+        @DisplayName("가입 보너스는 빈 payload로 저장한다")
         fun roundTrip_signupBonus() {
             val original =
                 CreditTransaction.of(
@@ -92,8 +92,8 @@ class CreditTransactionDocumentTest {
             val doc = CreditTransactionDocument.fromDomain(original)
             val restored = doc.toDomain()
 
-            assertThat(doc.sourceType()).isEqualTo("SIGNUP_BONUS")
-            assertThat(doc.sourceData()).isEmpty()
+            assertThat(doc.sourceType).isEqualTo("SIGNUP_BONUS")
+            assertThat(doc.sourceData).isEmpty()
             assertThat(restored.source().sourceType()).isEqualTo(CreditSourceType.SIGNUP_BONUS)
             assertThat(restored.source()).isInstanceOf(SignupBonus::class.java)
         }
@@ -103,7 +103,7 @@ class CreditTransactionDocumentTest {
     @DisplayName("PaymentCharge 직렬화")
     inner class PaymentChargeSerialization {
         @Test
-        @DisplayName("PaymentCharge는 paymentId와 pgProvider가 유지된다")
+        @DisplayName("결제 ID와 제공자를 저장한다")
         fun roundTrip_paymentCharge() {
             val original =
                 CreditTransaction.of(
@@ -118,9 +118,9 @@ class CreditTransactionDocumentTest {
             val doc = CreditTransactionDocument.fromDomain(original)
             val restored = doc.toDomain()
 
-            assertThat(doc.sourceType()).isEqualTo("PAYMENT_CHARGE")
-            assertThat(doc.sourceData()).containsEntry("paymentId", "pay-xyz-123")
-            assertThat(doc.sourceData()).containsEntry("pgProvider", "toss")
+            assertThat(doc.sourceType).isEqualTo("PAYMENT_CHARGE")
+            assertThat(doc.sourceData).containsEntry("paymentId", "pay-xyz-123")
+            assertThat(doc.sourceData).containsEntry("pgProvider", "toss")
 
             val source = restored.source() as PaymentCharge
             assertThat(source.paymentId()).isEqualTo("pay-xyz-123")
@@ -132,7 +132,7 @@ class CreditTransactionDocumentTest {
     @DisplayName("MissionReward 직렬화")
     inner class MissionRewardSerialization {
         @Test
-        @DisplayName("MissionReward는 missionId와 missionType이 유지된다")
+        @DisplayName("미션 ID와 타입을 저장한다")
         fun roundTrip_missionReward() {
             val original =
                 CreditTransaction.of(
@@ -147,9 +147,9 @@ class CreditTransactionDocumentTest {
             val doc = CreditTransactionDocument.fromDomain(original)
             val restored = doc.toDomain()
 
-            assertThat(doc.sourceType()).isEqualTo("MISSION_REWARD")
-            assertThat(doc.sourceData()).containsEntry("missionId", "mission-share")
-            assertThat(doc.sourceData()).containsEntry("missionType", "SHARE_SERVICE")
+            assertThat(doc.sourceType).isEqualTo("MISSION_REWARD")
+            assertThat(doc.sourceData).containsEntry("missionId", "mission-share")
+            assertThat(doc.sourceData).containsEntry("missionType", "SHARE_SERVICE")
 
             val source = restored.source() as MissionReward
             assertThat(source.missionId().value()).isEqualTo("mission-share")
@@ -158,10 +158,10 @@ class CreditTransactionDocumentTest {
     }
 
     @Nested
-    @DisplayName("알 수 없는 sourceType")
+    @DisplayName("알 수 없는 출처 타입")
     inner class UnknownSourceType {
         @Test
-        @DisplayName("알 수 없는 sourceType이면 역직렬화 시 IllegalArgumentException이 발생한다")
+        @DisplayName("지원하지 않는 출처 타입이면 예외가 발생한다")
         fun toDomain_unknownSourceType_throws() {
             val document =
                 CreditTransactionDocument(

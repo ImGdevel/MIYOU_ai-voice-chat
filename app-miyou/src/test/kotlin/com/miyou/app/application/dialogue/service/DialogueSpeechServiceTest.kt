@@ -4,9 +4,10 @@ import com.miyou.app.application.dialogue.policy.SttPolicy
 import com.miyou.app.domain.dialogue.port.DialoguePipelineUseCase
 import com.miyou.app.domain.dialogue.port.SttPort
 import com.miyou.app.fixture.ConversationSessionFixture
+import com.miyou.app.support.anyValue
+import org.assertj.core.api.Assertions.assertThat
 import org.junit.jupiter.api.DisplayName
 import org.junit.jupiter.api.Test
-import org.mockito.ArgumentMatchers.any
 import org.mockito.Mockito.mock
 import org.mockito.Mockito.`when`
 import org.springframework.core.io.buffer.DefaultDataBufferFactory
@@ -20,7 +21,7 @@ import reactor.test.StepVerifier
 
 class DialogueSpeechServiceTest {
     @Test
-    @DisplayName("음성 파일을 전사하고 텍스트 응답까지 생성한다")
+    @DisplayName("음성을 변환한 텍스트와 결합된 응답을 함께 반환한다")
     fun transcribeAndRespond_shouldReturnTranscriptionAndResponse() {
         val sttPort = mock(SttPort::class.java)
         val dialoguePipelineUseCase = mock(DialoguePipelineUseCase::class.java)
@@ -38,22 +39,20 @@ class DialogueSpeechServiceTest {
             )
         val session = ConversationSessionFixture.create()
 
-        `when`(sttPort.transcribe(any())).thenReturn(Mono.just("회의 일정 알려줘"))
-        `when`(dialoguePipelineUseCase.executeTextOnly(any(), any()))
-            .thenReturn(Flux.just("오늘 회의는 ", "오후 2시입니다."))
-
-        val result = service.transcribeAndRespond(session, audioFile, null)
+        `when`(sttPort.transcribe(anyValue())).thenReturn(Mono.just("what is on the schedule?"))
+        `when`(dialoguePipelineUseCase.executeTextOnly(anyValue(), anyValue()))
+            .thenReturn(Flux.just("Today the meeting is ", "at 2pm."))
 
         StepVerifier
-            .create(result)
+            .create(service.transcribeAndRespond(session, audioFile, null))
             .expectNextMatches { response ->
-                response.transcription() == "회의 일정 알려줘" &&
-                    response.response() == "오늘 회의는 오후 2시입니다."
+                response.transcription == "what is on the schedule?" &&
+                    response.response == "Today the meeting is at 2pm."
             }.verifyComplete()
     }
 
     @Test
-    @DisplayName("오디오가 아닌 파일 업로드는 400 예외를 반환한다")
+    @DisplayName("오디오가 아닌 파일 업로드는 400 오류로 거부한다")
     fun transcribe_shouldRejectNonAudioFile() {
         val sttPort = mock(SttPort::class.java)
         val dialoguePipelineUseCase = mock(DialoguePipelineUseCase::class.java)
@@ -68,12 +67,8 @@ class DialogueSpeechServiceTest {
         StepVerifier
             .create(service.transcribe(textFile, "ko"))
             .expectErrorSatisfies { error ->
-                check(error is ResponseStatusException) {
-                    "ResponseStatusException이어야 합니다"
-                }
-                check(error.statusCode.is4xxClientError) {
-                    "4xx 오류여야 합니다"
-                }
+                assertThat(error).isInstanceOf(ResponseStatusException::class.java)
+                assertThat((error as ResponseStatusException).statusCode.is4xxClientError).isTrue()
             }.verify()
     }
 

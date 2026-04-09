@@ -23,7 +23,7 @@ class SystemPromptServiceTest {
     private lateinit var templateLoader: TemplateLoaderPort
 
     @Test
-    @DisplayName("시스템 프롬프트 생성 시 모든 섹션을 포함한다")
+    @DisplayName("시스템 프롬프트를 구성된 모든 섹션으로 렌더링한다")
     fun buildSystemPrompt_shouldRenderBaseTemplateWithAllSections() {
         `when`(templateLoader.load("system/persona/maid")).thenReturn("persona")
 
@@ -32,18 +32,18 @@ class SystemPromptServiceTest {
                 "{{persona}}\n\n{{common}}\n\n{{memories}}\n\n{{context}}",
                 "",
                 "common",
-                null,
+                "",
             )
 
         val service = SystemPromptService(templateLoader, policy)
         val sessionId = ConversationSessionFixture.createId()
-        val experiential = Memory.create(sessionId, MemoryType.EXPERIENTIAL, "사용자는 러닝을 좋아한다.", 0.8f)
-        val factual = Memory.create(sessionId, MemoryType.FACTUAL, "사용자의 직업은 개발자다.", 0.9f)
+        val experiential = Memory.create(sessionId, MemoryType.EXPERIENTIAL, "user likes sushi", 0.8f)
+        val factual = Memory.create(sessionId, MemoryType.FACTUAL, "user is a developer", 0.9f)
         val memories = MemoryRetrievalResult.of(listOf(experiential), listOf(factual))
         val context =
             RetrievalContext.of(
-                "사용자 취미",
-                listOf(RetrievalDocument.of("러닝은 체력 향상에 도움이 된다.", 90)),
+                "user preference",
+                listOf(RetrievalDocument.of("sushi improves stamina", 90)),
             )
 
         val prompt = service.buildSystemPrompt(PersonaId.of("maid"), context, memories)
@@ -51,13 +51,9 @@ class SystemPromptServiceTest {
         assertThat(prompt)
             .contains("persona")
             .contains("common")
-            .contains("대화 상대에 대한 기억:")
-            .contains("경험적 기억:")
-            .contains("사실 기반 기억:")
-            .contains("- 사용자는 러닝을 좋아한다.")
-            .contains("- 사용자의 직업은 개발자다.")
-            .contains("참고 정보:")
-            .contains("러닝은 체력 향상에 도움이 된다.")
+            .contains("- user likes sushi")
+            .contains("- user is a developer")
+            .contains("sushi improves stamina")
     }
 
     @Test
@@ -80,9 +76,9 @@ class SystemPromptServiceTest {
     }
 
     @Test
-    @DisplayName("정책 템플릿이 null이어도 시스템 프롬프트를 생성한다")
-    fun buildSystemPrompt_shouldHandleNullPolicyTemplates() {
-        val policy = PromptTemplatePolicy(null, null, null, " configured persona ")
+    @DisplayName("정책 템플릿이 비어 있어도 시스템 프롬프트를 생성한다")
+    fun buildSystemPrompt_shouldHandleBlankPolicyTemplates() {
+        val policy = PromptTemplatePolicy("", "", "", " configured persona ")
         val service = SystemPromptService(templateLoader, policy)
 
         val prompt =

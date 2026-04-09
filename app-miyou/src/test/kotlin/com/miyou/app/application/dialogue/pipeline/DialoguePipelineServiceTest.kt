@@ -4,15 +4,18 @@ import com.miyou.app.application.dialogue.pipeline.stage.DialogueInputService
 import com.miyou.app.application.dialogue.pipeline.stage.DialogueLlmStreamService
 import com.miyou.app.application.dialogue.pipeline.stage.DialoguePostProcessingService
 import com.miyou.app.application.dialogue.pipeline.stage.DialogueTtsStreamService
+import com.miyou.app.domain.dialogue.model.ConversationContext
 import com.miyou.app.domain.dialogue.model.ConversationTurn
+import com.miyou.app.domain.memory.model.MemoryRetrievalResult
+import com.miyou.app.domain.retrieval.model.RetrievalContext
 import com.miyou.app.domain.voice.model.AudioFormat
 import com.miyou.app.fixture.ConversationSessionFixture
+import com.miyou.app.support.anyValue
+import com.miyou.app.support.eqValue
 import org.junit.jupiter.api.BeforeEach
 import org.junit.jupiter.api.DisplayName
 import org.junit.jupiter.api.Test
 import org.junit.jupiter.api.extension.ExtendWith
-import org.mockito.ArgumentMatchers.any
-import org.mockito.ArgumentMatchers.eq
 import org.mockito.Mock
 import org.mockito.Mockito.times
 import org.mockito.Mockito.verify
@@ -51,61 +54,63 @@ class DialoguePipelineServiceTest {
     }
 
     @Test
-    @DisplayName("오디오 스트리밍 실행은 전체 파이프라인 단계를 위임 호출한다")
+    @DisplayName("오디오 스트리밍 실행 시 전체 파이프라인에 처리를 위임한다")
     fun executeAudioStreaming_shouldUseDelegatedFlows() {
         val session = ConversationSessionFixture.create()
-        val testText = "test"
+        val text = "test"
+        val currentTurn = ConversationTurn.create(session.sessionId, text)
         val inputs =
             PipelineInputs(
                 session,
-                null,
-                null,
-                null,
-                ConversationTurn.create(session.sessionId(), testText),
+                RetrievalContext.empty(text),
+                MemoryRetrievalResult.empty(),
+                ConversationContext.empty(),
+                currentTurn,
             )
 
-        `when`(inputService.prepareInputs(eq(session), eq(testText))).thenReturn(Mono.just(inputs))
+        `when`(inputService.prepareInputs(eqValue(session), eqValue(text))).thenReturn(Mono.just(inputs))
         `when`(ttsStreamService.prepareTtsWarmup()).thenReturn(Mono.empty())
-        `when`(llmStreamService.buildLlmTokenStream(any())).thenReturn(Flux.just("a", "b"))
-        `when`(ttsStreamService.assembleSentences(any())).thenReturn(Flux.just("ab"))
-        `when`(ttsStreamService.buildAudioStream(any(), any(), any(), any()))
+        `when`(llmStreamService.buildLlmTokenStream(anyValue())).thenReturn(Flux.just("a", "b"))
+        `when`(ttsStreamService.assembleSentences(anyValue())).thenReturn(Flux.just("ab"))
+        `when`(ttsStreamService.buildAudioStream(anyValue(), anyValue(), anyValue(), anyValue()))
             .thenReturn(Flux.just("audio".toByteArray()))
-        `when`(ttsStreamService.traceTtsSynthesis(any()))
+        `when`(ttsStreamService.traceTtsSynthesis(anyValue()))
             .thenReturn(Flux.just("audio".toByteArray()))
-        `when`(postProcessingService.persistAndExtract(any(), any())).thenReturn(Mono.empty())
+        `when`(postProcessingService.persistAndExtract(anyValue(), anyValue())).thenReturn(Mono.empty())
 
         StepVerifier
-            .create(service.executeAudioStreaming(session, testText, AudioFormat.MP3))
+            .create(service.executeAudioStreaming(session, text, AudioFormat.MP3))
             .expectNextMatches { bytes -> Arrays.equals(bytes, "audio".toByteArray()) }
             .verifyComplete()
 
-        verify(inputService).prepareInputs(session, testText)
-        verify(postProcessingService).persistAndExtract(any(), any())
+        verify(inputService).prepareInputs(session, text)
+        verify(postProcessingService).persistAndExtract(anyValue(), anyValue())
     }
 
     @Test
-    @DisplayName("텍스트 전용 실행은 LLM 토큰 스트림을 반환한다")
+    @DisplayName("텍스트 전용 실행 시 위임된 토큰 스트림을 반환한다")
     fun executeTextOnly_shouldDelegateToUseCase() {
         val session = ConversationSessionFixture.create()
-        val testText = "hello"
+        val text = "hello"
+        val currentTurn = ConversationTurn.create(session.sessionId, text)
         val inputs =
             PipelineInputs(
                 session,
-                null,
-                null,
-                null,
-                ConversationTurn.create(session.sessionId(), testText),
+                RetrievalContext.empty(text),
+                MemoryRetrievalResult.empty(),
+                ConversationContext.empty(),
+                currentTurn,
             )
 
-        `when`(inputService.prepareInputs(eq(session), eq(testText))).thenReturn(Mono.just(inputs))
-        `when`(llmStreamService.buildLlmTokenStream(any())).thenReturn(Flux.just("hi"))
-        `when`(postProcessingService.persistAndExtractText(any(), any())).thenReturn(Mono.empty())
+        `when`(inputService.prepareInputs(eqValue(session), eqValue(text))).thenReturn(Mono.just(inputs))
+        `when`(llmStreamService.buildLlmTokenStream(anyValue())).thenReturn(Flux.just("hi"))
+        `when`(postProcessingService.persistAndExtractText(anyValue(), anyValue())).thenReturn(Mono.empty())
 
         StepVerifier
-            .create(service.executeTextOnly(session, testText))
+            .create(service.executeTextOnly(session, text))
             .expectNext("hi")
             .verifyComplete()
 
-        verify(inputService, times(1)).prepareInputs(session, testText)
+        verify(inputService, times(1)).prepareInputs(session, text)
     }
 }
