@@ -31,137 +31,141 @@ import reactor.test.StepVerifier
 
 @ExtendWith(MockitoExtension::class)
 class DialoguePostProcessingServiceTest {
+    @Mock
+    private lateinit var conversationRepository: ConversationRepository
 
-	@Mock
-	private lateinit var conversationRepository: ConversationRepository
+    @Mock
+    private lateinit var conversationCounterPort: ConversationCounterPort
 
-	@Mock
-	private lateinit var conversationCounterPort: ConversationCounterPort
+    @Mock
+    private lateinit var memoryExtractionService: MemoryExtractionService
 
-	@Mock
-	private lateinit var memoryExtractionService: MemoryExtractionService
+    @Mock
+    private lateinit var llmPort: LlmPort
 
-	@Mock
-	private lateinit var llmPort: LlmPort
+    @Mock
+    private lateinit var pipelineTracer: PipelineTracer
 
-	@Mock
-	private lateinit var pipelineTracer: PipelineTracer
+    @Mock
+    private lateinit var conversationMetricsConfiguration: ConversationMetricsPort
 
-	@Mock
-	private lateinit var conversationMetricsConfiguration: ConversationMetricsPort
+    @Mock
+    private lateinit var creditDeductUseCase: CreditDeductUseCase
 
-	@Mock
-	private lateinit var creditDeductUseCase: CreditDeductUseCase
+    private lateinit var service: DialoguePostProcessingService
 
-	private lateinit var service: DialoguePostProcessingService
+    @BeforeEach
+    fun setUp() {
+        service =
+            DialoguePostProcessingService(
+                conversationRepository,
+                conversationCounterPort,
+                memoryExtractionService,
+                llmPort,
+                pipelineTracer,
+                conversationMetricsConfiguration,
+                creditDeductUseCase,
+                MemoryExtractionPolicy(5),
+            )
+        lenient()
+            .`when`(creditDeductUseCase.deductForConversation(any(), any()))
+            .thenReturn(Mono.just(mock(CreditTransaction::class.java)))
+    }
 
-	@BeforeEach
-	fun setUp() {
-		service = DialoguePostProcessingService(
-			conversationRepository,
-			conversationCounterPort,
-			memoryExtractionService,
-			llmPort,
-			pipelineTracer,
-			conversationMetricsConfiguration,
-			creditDeductUseCase,
-			MemoryExtractionPolicy(5),
-		)
-		lenient().`when`(creditDeductUseCase.deductForConversation(any(), any()))
-			.thenReturn(Mono.just(mock(CreditTransaction::class.java)))
-	}
+    @Test
+    @DisplayName("대화 저장 시 응답을 포함하여 저장한다")
+    fun persistAndExtract_shouldSaveConversationWithResponse() {
+        val session = ConversationSessionFixture.create()
+        val sessionId = session.sessionId()
+        val turn = ConversationTurn.create(sessionId, "질문")
+        val inputs = PipelineInputs(session, null, null, null, turn)
 
-	@Test
-	@DisplayName("대화 저장 시 응답을 포함하여 저장한다")
-	fun persistAndExtract_shouldSaveConversationWithResponse() {
-		val session = ConversationSessionFixture.create()
-		val sessionId = session.sessionId()
-		val turn = ConversationTurn.create(sessionId, "질문")
-		val inputs = PipelineInputs(session, null, null, null, turn)
+        `when`(pipelineTracer.tracePersistence<ConversationTurn>(any()))
+            .thenAnswer { Mono.just(turn.withResponse("응답 문장1 응답 문장2")) }
+        `when`(conversationCounterPort.increment(sessionId)).thenReturn(Mono.just(1L))
 
-		`when`(pipelineTracer.tracePersistence<ConversationTurn>(any()))
-			.thenAnswer { Mono.just(turn.withResponse("응답 문장1 응답 문장2")) }
-		`when`(conversationCounterPort.increment(sessionId)).thenReturn(Mono.just(1L))
+        StepVerifier
+            .create(
+                service.persistAndExtract(Mono.just(inputs), Flux.just("응답 문장1", "응답 문장2")),
+            ).verifyComplete()
 
-		StepVerifier.create(
-			service.persistAndExtract(Mono.just(inputs), Flux.just("응답 문장1", "응답 문장2")),
-		).verifyComplete()
+        verify(pipelineTracer).tracePersistence<ConversationTurn>(any())
+        verify(conversationCounterPort).increment(sessionId)
+    }
 
-		verify(pipelineTracer).tracePersistence<ConversationTurn>(any())
-		verify(conversationCounterPort).increment(sessionId)
-	}
+    @Test
+    @DisplayName("대화 저장 후 카운터를 증가시킨다")
+    fun persistAndExtract_shouldIncrementConversationCounter() {
+        val session = ConversationSessionFixture.create()
+        val sessionId = session.sessionId()
+        val turn = ConversationTurn.create(sessionId, "질문")
+        val inputs = PipelineInputs(session, null, null, null, turn)
 
-	@Test
-	@DisplayName("대화 저장 후 카운터를 증가시킨다")
-	fun persistAndExtract_shouldIncrementConversationCounter() {
-		val session = ConversationSessionFixture.create()
-		val sessionId = session.sessionId()
-		val turn = ConversationTurn.create(sessionId, "질문")
-		val inputs = PipelineInputs(session, null, null, null, turn)
+        `when`(pipelineTracer.tracePersistence<ConversationTurn>(any()))
+            .thenAnswer { Mono.just(turn.withResponse("응답")) }
+        `when`(conversationCounterPort.increment(sessionId)).thenReturn(Mono.just(3L))
 
-		`when`(pipelineTracer.tracePersistence<ConversationTurn>(any()))
-			.thenAnswer { Mono.just(turn.withResponse("응답")) }
-		`when`(conversationCounterPort.increment(sessionId)).thenReturn(Mono.just(3L))
+        StepVerifier
+            .create(service.persistAndExtract(Mono.just(inputs), Flux.just("응답")))
+            .verifyComplete()
 
-		StepVerifier.create(service.persistAndExtract(Mono.just(inputs), Flux.just("응답")))
-			.verifyComplete()
+        verify(conversationCounterPort).increment(sessionId)
+    }
 
-		verify(conversationCounterPort).increment(sessionId)
-	}
+    @Test
+    @DisplayName("임계값 도달 시 메모리 추출을 실행한다")
+    fun persistAndExtract_shouldTriggerMemoryExtractionAtThreshold() {
+        val session = ConversationSessionFixture.create()
+        val sessionId = session.sessionId()
+        val turn = ConversationTurn.create(sessionId, "질문")
+        val inputs = PipelineInputs(session, null, null, null, turn)
 
-	@Test
-	@DisplayName("임계값 도달 시 메모리 추출을 실행한다")
-	fun persistAndExtract_shouldTriggerMemoryExtractionAtThreshold() {
-		val session = ConversationSessionFixture.create()
-		val sessionId = session.sessionId()
-		val turn = ConversationTurn.create(sessionId, "질문")
-		val inputs = PipelineInputs(session, null, null, null, turn)
+        `when`(pipelineTracer.tracePersistence<ConversationTurn>(any()))
+            .thenAnswer { Mono.just(turn.withResponse("응답")) }
+        `when`(conversationCounterPort.increment(sessionId)).thenReturn(Mono.just(5L))
+        `when`(memoryExtractionService.checkAndExtract(sessionId)).thenReturn(Mono.empty())
 
-		`when`(pipelineTracer.tracePersistence<ConversationTurn>(any()))
-			.thenAnswer { Mono.just(turn.withResponse("응답")) }
-		`when`(conversationCounterPort.increment(sessionId)).thenReturn(Mono.just(5L))
-		`when`(memoryExtractionService.checkAndExtract(sessionId)).thenReturn(Mono.empty())
+        StepVerifier
+            .create(service.persistAndExtract(Mono.just(inputs), Flux.just("응답")))
+            .verifyComplete()
 
-		StepVerifier.create(service.persistAndExtract(Mono.just(inputs), Flux.just("응답")))
-			.verifyComplete()
+        verify(memoryExtractionService).checkAndExtract(sessionId)
+    }
 
-		verify(memoryExtractionService).checkAndExtract(sessionId)
-	}
+    @Test
+    @DisplayName("임계값 미만이면 메모리 추출을 건너뛴다")
+    fun persistAndExtract_shouldNotTriggerMemoryExtractionBelowThreshold() {
+        val session = ConversationSessionFixture.create()
+        val sessionId = session.sessionId()
+        val turn = ConversationTurn.create(sessionId, "질문")
+        val inputs = PipelineInputs(session, null, null, null, turn)
 
-	@Test
-	@DisplayName("임계값 미만이면 메모리 추출을 건너뛴다")
-	fun persistAndExtract_shouldNotTriggerMemoryExtractionBelowThreshold() {
-		val session = ConversationSessionFixture.create()
-		val sessionId = session.sessionId()
-		val turn = ConversationTurn.create(sessionId, "질문")
-		val inputs = PipelineInputs(session, null, null, null, turn)
+        `when`(pipelineTracer.tracePersistence<ConversationTurn>(any()))
+            .thenAnswer { Mono.just(turn.withResponse("응답")) }
+        `when`(conversationCounterPort.increment(sessionId)).thenReturn(Mono.just(3L))
 
-		`when`(pipelineTracer.tracePersistence<ConversationTurn>(any()))
-			.thenAnswer { Mono.just(turn.withResponse("응답")) }
-		`when`(conversationCounterPort.increment(sessionId)).thenReturn(Mono.just(3L))
+        StepVerifier
+            .create(service.persistAndExtract(Mono.just(inputs), Flux.just("응답")))
+            .verifyComplete()
 
-		StepVerifier.create(service.persistAndExtract(Mono.just(inputs), Flux.just("응답")))
-			.verifyComplete()
+        verify(memoryExtractionService, never()).checkAndExtract(any())
+    }
 
-		verify(memoryExtractionService, never()).checkAndExtract(any())
-	}
-
-	@Test
-	@DisplayName("conversationThreshold가 0 이하면 예외를 발생시킨다")
-	fun constructor_withInvalidThreshold_shouldThrowException() {
-		assertThatThrownBy {
-			DialoguePostProcessingService(
-				conversationRepository,
-				conversationCounterPort,
-				memoryExtractionService,
-				llmPort,
-				pipelineTracer,
-				conversationMetricsConfiguration,
-				creditDeductUseCase,
-				MemoryExtractionPolicy(0),
-			)
-		}
-			.isInstanceOf(IllegalArgumentException::class.java)
-			.hasMessageContaining("conversationThreshold")
-	}
+    @Test
+    @DisplayName("conversationThreshold가 0 이하면 예외를 발생시킨다")
+    fun constructor_withInvalidThreshold_shouldThrowException() {
+        assertThatThrownBy {
+            DialoguePostProcessingService(
+                conversationRepository,
+                conversationCounterPort,
+                memoryExtractionService,
+                llmPort,
+                pipelineTracer,
+                conversationMetricsConfiguration,
+                creditDeductUseCase,
+                MemoryExtractionPolicy(0),
+            )
+        }.isInstanceOf(IllegalArgumentException::class.java)
+            .hasMessageContaining("conversationThreshold")
+    }
 }

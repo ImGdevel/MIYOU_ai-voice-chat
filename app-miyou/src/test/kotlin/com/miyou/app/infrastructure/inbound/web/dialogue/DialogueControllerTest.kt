@@ -25,66 +25,85 @@ import java.time.Instant
 
 @WebFluxTest(DialogueController::class)
 class DialogueControllerTest {
+    @Autowired
+    private lateinit var webTestClient: WebTestClient
 
-	@Autowired
-	private lateinit var webTestClient: WebTestClient
+    @MockitoBean
+    private lateinit var dialoguePipelineUseCase: DialoguePipelineUseCase
 
-	@MockitoBean
-	private lateinit var dialoguePipelineUseCase: DialoguePipelineUseCase
+    @MockitoBean
+    private lateinit var dialogueSpeechService: DialogueSpeechService
 
-	@MockitoBean
-	private lateinit var dialogueSpeechService: DialogueSpeechService
+    @MockitoBean
+    private lateinit var sessionRepository: ConversationSessionRepository
 
-	@MockitoBean
-	private lateinit var sessionRepository: ConversationSessionRepository
+    @MockitoBean
+    private lateinit var creditQueryUseCase: CreditQueryUseCase
 
-	@MockitoBean
-	private lateinit var creditQueryUseCase: CreditQueryUseCase
+    @MockitoBean
+    private lateinit var creditChargeUseCase: CreditChargeUseCase
 
-	@MockitoBean
-	private lateinit var creditChargeUseCase: CreditChargeUseCase
+    @Test
+    @DisplayName("텍스트 질의 요청 시 스트림 응답을 반환한다")
+    fun ragDialogueText_shouldReturnStream() {
+        val sessionIdValue = "test-session-1"
+        val session = ConversationSessionFixture.create(sessionIdValue)
+        val request = RagDialogueRequest(sessionIdValue, "Hello world", Instant.now())
 
-	@Test
-	@DisplayName("텍스트 질의 요청 시 스트림 응답을 반환한다")
-	fun ragDialogueText_shouldReturnStream() {
-		val sessionIdValue = "test-session-1"
-		val session = ConversationSessionFixture.create(sessionIdValue)
-		val request = RagDialogueRequest(sessionIdValue, "Hello world", Instant.now())
+        `when`(sessionRepository.findById(eq(session.sessionId()))).thenReturn(Mono.just(session))
+        `when`(dialoguePipelineUseCase.executeTextOnly(eq(session), eq("Hello world")))
+            .thenReturn(Flux.just("token1", "token2"))
 
-		`when`(sessionRepository.findById(eq(session.sessionId()))).thenReturn(Mono.just(session))
-		`when`(dialoguePipelineUseCase.executeTextOnly(eq(session), eq("Hello world")))
-			.thenReturn(Flux.just("token1", "token2"))
+        webTestClient
+            .post()
+            .uri("/rag/dialogue/text")
+            .contentType(MediaType.APPLICATION_JSON)
+            .bodyValue(request)
+            .exchange()
+            .expectStatus()
+            .isOk
 
-		webTestClient.post().uri("/rag/dialogue/text").contentType(MediaType.APPLICATION_JSON)
-			.bodyValue(request).exchange().expectStatus().isOk
+        verify(dialoguePipelineUseCase).executeTextOnly(session, "Hello world")
+    }
 
-		verify(dialoguePipelineUseCase).executeTextOnly(session, "Hello world")
-	}
+    @Test
+    @DisplayName("오디오 요청 시 기본값으로 WAV를 사용한다")
+    fun ragDialogueAudio_shouldDelegateToWav() {
+        val sessionIdValue = "test-session-2"
+        val session = ConversationSessionFixture.create(sessionIdValue)
+        val request = RagDialogueRequest(sessionIdValue, "Default audio", Instant.now())
 
-	@Test
-	@DisplayName("오디오 요청 시 기본값으로 WAV를 사용한다")
-	fun ragDialogueAudio_shouldDelegateToWav() {
-		val sessionIdValue = "test-session-2"
-		val session = ConversationSessionFixture.create(sessionIdValue)
-		val request = RagDialogueRequest(sessionIdValue, "Default audio", Instant.now())
+        `when`(sessionRepository.findById(eq(session.sessionId()))).thenReturn(Mono.just(session))
+        `when`(creditQueryUseCase.getBalance(session.userId()))
+            .thenReturn(Mono.just(UserCreditFixture.create(session.userId(), 5000L)))
+        `when`(dialoguePipelineUseCase.executeAudioStreaming(eq(session), eq("Default audio"), eq(AudioFormat.WAV)))
+            .thenReturn(Flux.just("audio".toByteArray()))
 
-		`when`(sessionRepository.findById(eq(session.sessionId()))).thenReturn(Mono.just(session))
-		`when`(creditQueryUseCase.getBalance(session.userId()))
-			.thenReturn(Mono.just(UserCreditFixture.create(session.userId(), 5000L)))
-		`when`(dialoguePipelineUseCase.executeAudioStreaming(eq(session), eq("Default audio"), eq(AudioFormat.WAV)))
-			.thenReturn(Flux.just("audio".toByteArray()))
+        webTestClient
+            .post()
+            .uri("/rag/dialogue/audio")
+            .contentType(MediaType.APPLICATION_JSON)
+            .accept(MediaType.parseMediaType("audio/wav"))
+            .bodyValue(request)
+            .exchange()
+            .expectStatus()
+            .isOk
+            .expectHeader()
+            .contentType("audio/wav")
+    }
 
-		webTestClient.post().uri("/rag/dialogue/audio").contentType(MediaType.APPLICATION_JSON)
-			.accept(MediaType.parseMediaType("audio/wav"))
-			.bodyValue(request).exchange().expectStatus().isOk.expectHeader().contentType("audio/wav")
-	}
+    @Test
+    @DisplayName("빈 텍스트면 400을 반환한다")
+    fun ragDialogueText_withBlankText_shouldReturnBadRequest() {
+        val request = RagDialogueRequest(ConversationSessionFixture.DEFAULT_SESSION_ID, "", Instant.now())
 
-	@Test
-	@DisplayName("빈 텍스트면 400을 반환한다")
-	fun ragDialogueText_withBlankText_shouldReturnBadRequest() {
-		val request = RagDialogueRequest(ConversationSessionFixture.DEFAULT_SESSION_ID, "", Instant.now())
-
-		webTestClient.post().uri("/rag/dialogue/text").contentType(MediaType.APPLICATION_JSON)
-			.bodyValue(request).exchange().expectStatus().isBadRequest
-	}
+        webTestClient
+            .post()
+            .uri("/rag/dialogue/text")
+            .contentType(MediaType.APPLICATION_JSON)
+            .bodyValue(request)
+            .exchange()
+            .expectStatus()
+            .isBadRequest
+    }
 }

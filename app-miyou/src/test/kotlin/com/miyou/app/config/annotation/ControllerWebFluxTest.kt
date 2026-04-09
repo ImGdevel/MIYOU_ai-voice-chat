@@ -10,6 +10,6 @@ import kotlin.reflect.KClass
 @WebFluxTest
 @Tag("controller")
 annotation class ControllerWebFluxTest(
-	@get:AliasFor(annotation = WebFluxTest::class, attribute = "controllers")
-	val value: Array<KClass<*>> = [],
+    @get:AliasFor(annotation = WebFluxTest::class, attribute = "controllers")
+    val value: Array<KClass<*>> = [],
 )

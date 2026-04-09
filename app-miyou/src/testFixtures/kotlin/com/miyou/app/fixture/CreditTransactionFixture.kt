@@ -7,28 +7,33 @@ import com.miyou.app.domain.credit.model.SignupBonus
 import com.miyou.app.domain.dialogue.model.UserId
 
 object CreditTransactionFixture {
+    const val DEFAULT_AMOUNT = 100L
 
-	const val DEFAULT_AMOUNT = 100L
+    @JvmStatic
+    fun deduction(
+        userId: UserId,
+        balanceBefore: Long,
+    ): CreditTransaction =
+        CreditTransaction.of(
+            userId,
+            CreditTransactionType.DEDUCT,
+            ConversationDeduction(ConversationSessionFixture.createId()),
+            DEFAULT_AMOUNT,
+            balanceBefore,
+            balanceBefore - DEFAULT_AMOUNT,
+        )
 
-	@JvmStatic
-	fun deduction(userId: UserId, balanceBefore: Long): CreditTransaction =
-		CreditTransaction.of(
-			userId,
-			CreditTransactionType.DEDUCT,
-			ConversationDeduction(ConversationSessionFixture.createId()),
-			DEFAULT_AMOUNT,
-			balanceBefore,
-			balanceBefore - DEFAULT_AMOUNT,
-		)
-
-	@JvmStatic
-	fun signupBonus(userId: UserId, bonusAmount: Long): CreditTransaction =
-		CreditTransaction.of(
-			userId,
-			CreditTransactionType.CHARGE,
-			SignupBonus(),
-			bonusAmount,
-			0L,
-			bonusAmount,
-		)
+    @JvmStatic
+    fun signupBonus(
+        userId: UserId,
+        bonusAmount: Long,
+    ): CreditTransaction =
+        CreditTransaction.of(
+            userId,
+            CreditTransactionType.CHARGE,
+            SignupBonus(),
+            bonusAmount,
+            0L,
+            bonusAmount,
+        )
 }
