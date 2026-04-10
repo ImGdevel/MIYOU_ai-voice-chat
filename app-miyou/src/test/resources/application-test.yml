@@ -6,7 +6,7 @@ spring:
       uri: mongodb://localhost:27018/ragdb-test?directConnection=true
     redis:
       host: localhost
-      port: 6379
+      port: 16379
   ai:
     openai:
       api-key: REDACTED_API_KEY
@@ -60,4 +60,3 @@ rag:
       conversation-threshold: 5
       importance-boost: 0.05
       importance-threshold: 0.3
-
