@@ -27,8 +27,8 @@
 - Nginx 배포 시 `.active_color`와 실제 실행 슬롯 불일치 자동 보정
 - `remote_app_self_heal.sh` + cron(1분 주기)로 이중 슬롯 다운 자동 복구
 - compose 경로 계약 파일(`.compose_app_file`)로 root/deploy 경로 자동 호환
-- blue-green/nginx 배포 시 nginx 컨테이너 재생성 대신 `nginx -s reload` 사용
-- CI에서 Gradle/Buildx 캐시 최적화 적용
+- nginx 설정 반영은 `nginx -s reload` 중심이며, 컨테이너가 없거나 compose reconcile이 필요할 때만 `docker compose up -d --no-deps nginx` 수행
+- CI에서 frontend S3 업로드, Gradle 검증 분리, Buildx/GHCR 푸시 최적화 적용
 
 미래 상태(TODO):
 - cron 기반 self-heal을 `systemd timer`로 전환
@@ -36,16 +36,25 @@
 
 ```mermaid
 flowchart LR
-  A["GitHub Actions<br/>ci-cd.yml"] --> B["gradle-build<br/>test + bootJar"]
-  B --> C["build-and-push<br/>GHCR"]
-  C --> D["deploy"]
-  D --> E["deploy_remote_blue_green.sh<br/>or deploy_remote_compose.sh"]
-  E --> F["EC2 Docker Compose"]
-  F --> G["app_blue / app_green"]
-  F --> H["miyou-nginx"]
-  H --> I["Client Traffic :80"]
-  J["deploy_remote_nginx.sh"] --> H
-  K["remote_app_self_heal.sh (cron)"] --> G
+  A["workflow_dispatch<br/>deploy_scope / deploy_strategy"] --> B["validate-deploy-contract"]
+  A --> C["frontend-build<br/>npm build + S3 + artifact"]
+  A --> D["gradle-test"]
+  A --> E["gradle-compile"]
+  B --> F["deploy_nginx"]
+  C --> G["build-and-push<br/>app-miyou/Dockerfile + GHCR"]
+  E --> G
+  D --> H["deploy"]
+  B --> H
+  F --> H
+  G --> H
+  H --> I["deploy_remote_blue_green.sh<br/>or deploy_remote_compose.sh"]
+  I --> J["EC2 Docker Compose"]
+  F --> J
+  J --> K["app_blue / app_green"]
+  J --> L["miyou-nginx"]
+  J --> M["mongodb / redis / qdrant"]
+  N["remote_app_self_heal.sh (cron)"] --> K
+  O["notify"] --> P["Discord webhook"]
 ```
 
 ## 3) Runtime flow

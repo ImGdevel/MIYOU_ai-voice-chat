@@ -8,6 +8,7 @@
 - 이미지 저장소: GHCR (`ghcr.io/<owner>/miyou-dialogue`)
 - 서버: EC2 (Ubuntu + Docker + Docker Compose)
 - 설정/시크릿: AWS SSM Parameter Store (`/miyou/prod/*`)
+- 프론트 정적 자산: S3 + Spring static artifact
 - 진입점: Nginx(80) -> App(8081, 내부 노출)
 - 앱 배포 토폴로지: `app_blue` / `app_green` 2개 슬롯 기반
 
@@ -23,19 +24,29 @@
 
 잡 순서:
 1. `detect-nginx-changes`: 직전 커밋 대비 Nginx 변경 감지
+   - 현재 `nginx_changed` 출력을 만들지만 downstream에서 사용하지 않음
 2. `validate-deploy-contract`: 배포 스크립트 계약 정적 검증
-3. `deploy_nginx`: Nginx 선배포(게이트)
-   - `deploy_scope=full`/`nginx_only` 모두 실행
-   - 실패 시 이후 앱 배포(`deploy`) 차단
-4. `gradle-build`: 테스트 + `bootJar`
-   - Gradle build cache 사용(`--build-cache`)
-5. `build-and-push`: Docker 이미지 빌드/푸시
+3. `frontend-build`
+   - `frontend`에서 `npm ci`, `npm run build`
+   - `frontend/dist -> app-miyou/src/main/resources/static` 동기화
+   - `frontend/dist -> S3` 업로드
+   - 빌드 산출물을 `frontend-dist` artifact로 업로드
+4. `gradle-test`
+   - `./gradlew --no-daemon --build-cache :app-miyou:test`
+5. `gradle-compile`
+   - `./gradlew --no-daemon --build-cache :app-miyou:compileJava`
+6. `build-and-push`
+   - `frontend-dist` artifact 다운로드
+   - `app-miyou/Dockerfile` 기준 이미지 빌드
+   - GHCR에 `sha-${GITHUB_SHA}`와 `latest` 태그 푸시
    - Buildx GHA cache scope 고정(`miyou-dialogue-image`)
-   - `webflux-dialogue/Dockerfile` Gradle 캐시 마운트 적용
-6. `deploy`: 서버 앱/스토리지 스택 배포
+7. `deploy_nginx`: Nginx 선배포(게이트)
+   - `deploy_scope=full`/`nginx_only` 모두 실행
+   - 현재 `deploy_nginx` 입력값과 무관하게 조건이 고정돼 있음
+8. `deploy`: 서버 앱/스토리지 스택 배포
    - `blue_green`: `deploy_remote_blue_green.sh` 실행
    - `rolling`: `deploy_remote_compose.sh` 실행
-7. `notify`: Discord Embed 알림 전송
+9. `notify`: Discord Embed 알림 전송
 
 ## 3. 배포 스크립트 역할
 - `deploy/aws/remote_compose_contract.sh`
@@ -113,7 +124,7 @@
 - 엔드포인트: `GET /actuator/health`
 - 외부 점검 URL: `http://<EC2_PUBLIC_IP>/actuator/health`
 - 현재 앱 설정에서 actuator health/info 노출 활성화:
-  - `webflux-dialogue/src/main/resources/application.yml`
+  - `app-miyou/src/main/resources/application.yml`
 
 ## 8. 실행 방법
 1) GitHub Actions > `CI-CD` > `Run workflow`
