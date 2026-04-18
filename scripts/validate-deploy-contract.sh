@@ -9,6 +9,7 @@ TARGET_SCRIPTS=(
   deploy/aws/deploy_remote_compose.sh
   deploy/aws/deploy_remote_nginx.sh
   deploy/aws/remote_app_self_heal.sh
+  deploy/aws/verify_remote_backend.sh
 )
 
 check_contains() {

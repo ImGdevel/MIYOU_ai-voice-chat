@@ -193,6 +193,13 @@ jobs:
             ./deploy/aws/deploy_remote_blue_green.sh "deploy-target"
           fi
 
+      - name: 배포된 서버 버전 검증
+        env:
+          APP_IMAGE: ${{ needs.build-and-push.outputs.image_ref }}
+        shell: bash
+        run: |
+          ./deploy/aws/verify_remote_backend.sh "deploy-target"
+
   deploy-private-runner:
     if: ${{ github.event.inputs.deploy_mode == 'private_runner' }}
     runs-on: [self-hosted, linux, miyou-private]
@@ -207,7 +214,6 @@ jobs:
       - name: 배포 시크릿 사전 검증
         shell: bash
         run: |
-          test -n "${{ secrets.EC2_PRIVATE_HOST }}" || (echo "EC2_PRIVATE_HOST 시크릿이 비어 있습니다." >&2; exit 1)
           test -n "${{ secrets.EC2_USER }}" || (echo "EC2_USER 시크릿이 비어 있습니다." >&2; exit 1)
           test -n "${{ secrets.EC2_SSH_PRIVATE_KEY }}" || (echo "EC2_SSH_PRIVATE_KEY 시크릿이 비어 있습니다." >&2; exit 1)
           test -n "${{ secrets.GHCR_TOKEN }}" || (echo "GHCR_TOKEN 시크릿이 비어 있습니다." >&2; exit 1)
@@ -223,10 +229,14 @@ jobs:
           printf '%s\n' "${{ secrets.EC2_SSH_PRIVATE_KEY }}" | tr -d '\r' > ~/.ssh/deploy_key
           chmod 600 ~/.ssh/deploy_key
           ssh-keygen -y -f ~/.ssh/deploy_key >/dev/null
+          deploy_host="${{ secrets.EC2_PRIVATE_HOST }}"
+          if [[ -z "${deploy_host}" ]]; then
+            deploy_host="127.0.0.1"
+          fi
 
           cat > ~/.ssh/config <<EOF
           Host deploy-target
-            HostName ${{ secrets.EC2_PRIVATE_HOST }}
+            HostName ${deploy_host}
             User ${{ secrets.EC2_USER }}
             IdentityFile ~/.ssh/deploy_key
             IdentitiesOnly yes
@@ -254,3 +264,10 @@ jobs:
           else
             ./deploy/aws/deploy_remote_blue_green.sh "deploy-target"
           fi
+
+      - name: 배포된 서버 버전 검증
+        env:
+          APP_IMAGE: ${{ needs.build-and-push.outputs.image_ref }}
+        shell: bash
+        run: |
+          ./deploy/aws/verify_remote_backend.sh "deploy-target"
