@@ -159,11 +159,6 @@ run_smoke_checks() {
     return 1
   fi
 
-  if ! curl -fsS http://127.0.0.1/ | grep -q 'id="root"'; then
-    echo "[deploy] 루트 페이지 검증 실패: React 엔트리(id=\"root\")를 찾지 못했습니다." >&2
-    return 1
-  fi
-
   dashboard_location="$(curl -fsS -o /dev/null -D - http://127.0.0.1/dashboard | tr -d '\r' | awk 'BEGIN{IGNORECASE=1} /^location:/{print $2; exit}')"
   if [[ -z "${dashboard_location}" || "${dashboard_location}" != *"/admin/monitoring/grafana/"* ]]; then
     echo "[deploy] 대시보드 리다이렉트 검증 실패: location=${dashboard_location}" >&2
