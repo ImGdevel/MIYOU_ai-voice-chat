@@ -1,15 +1,4 @@
 services:
-  mongodb:
-    image: mongo:7.0
-    container_name: miyou-mongodb
-    restart: unless-stopped
-    environment:
-      MONGO_INITDB_DATABASE: ragdb
-    volumes:
-      - mongodb-data:/data/db
-    networks:
-      - miyou-network
-
   redis:
     image: redis:7.2-alpine
     container_name: miyou-redis
@@ -17,15 +6,6 @@ services:
     command: redis-server --appendonly yes
     volumes:
       - redis-data:/data
-    networks:
-      - miyou-network
-
-  qdrant:
-    image: qdrant/qdrant:latest
-    container_name: miyou-qdrant
-    restart: unless-stopped
-    volumes:
-      - qdrant-data:/qdrant/storage
     networks:
       - miyou-network
 
@@ -70,9 +50,7 @@ services:
       - miyou-network
 
 volumes:
-  mongodb-data:
   redis-data:
-  qdrant-data:
 
 networks:
   miyou-network:

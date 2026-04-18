@@ -223,7 +223,7 @@ jobs:
       - build-and-push
       - validate-deploy-contract
       - deploy_nginx
-    if: ${{ github.event.inputs.deploy_scope != 'nginx_only' }}
+    if: ${{ always() && github.event.inputs.deploy_scope != 'nginx_only' && needs.gradle-test.result == 'success' && needs.build-and-push.result == 'success' && needs.validate-deploy-contract.result == 'success' && (needs.deploy_nginx.result == 'success' || needs.deploy_nginx.result == 'skipped') }}
     steps:
       - name: 체크아웃
         uses: actions/checkout@v4
@@ -279,7 +279,8 @@ jobs:
     runs-on: ubuntu-latest
     needs:
       - validate-deploy-contract
-    if: ${{ needs['validate-deploy-contract'].result == 'success' && (github.event.inputs.deploy_scope == 'full' || github.event.inputs.deploy_scope == 'nginx_only') }}
+      - detect-nginx-changes
+    if: ${{ needs['validate-deploy-contract'].result == 'success' && (github.event.inputs.deploy_scope == 'nginx_only' || github.event.inputs.deploy_nginx == 'true' || needs.detect-nginx-changes.outputs.nginx_changed == 'true') }}
     steps:
       - name: 체크아웃
         uses: actions/checkout@v4

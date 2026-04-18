@@ -21,24 +21,30 @@ check_contains() {
   fi
 }
 
+search_fixed() {
+  local pattern="$1"
+  shift
+  grep -nF -- "${pattern}" "$@"
+}
+
 echo "[validate-deploy-contract] 하드코딩 compose 경로 검사"
-if rg -n --fixed-strings -- '-f deploy/docker-compose.app.yml' "${TARGET_SCRIPTS[@]}"; then
+if search_fixed '-f deploy/docker-compose.app.yml' "${TARGET_SCRIPTS[@]}"; then
   echo "[validate-deploy-contract] 실패: 하드코딩된 compose 경로가 남아 있습니다." >&2
   exit 1
 fi
 
 echo "[validate-deploy-contract] nginx 재생성 금지 검사"
-if rg -n --fixed-strings -- '--force-recreate nginx' deploy/aws/deploy_remote_blue_green.sh deploy/aws/deploy_remote_nginx.sh; then
+if search_fixed '--force-recreate nginx' deploy/aws/deploy_remote_blue_green.sh deploy/aws/deploy_remote_nginx.sh; then
   echo "[validate-deploy-contract] 실패: nginx --force-recreate 사용이 남아 있습니다. reload 방식만 허용됩니다." >&2
   exit 1
 fi
 
 echo "[validate-deploy-contract] nginx 파일 바인드 마운트 금지 검사"
-if rg -n --fixed-strings -- './deploy/nginx/default.conf:/etc/nginx/conf.d/default.conf' deploy/docker-compose.app.yml; then
+if search_fixed './deploy/nginx/default.conf:/etc/nginx/conf.d/default.conf' deploy/docker-compose.app.yml; then
   echo "[validate-deploy-contract] 실패: default.conf 파일 단위 바인드 마운트는 inode 교체 시 컨테이너 반영이 누락될 수 있습니다." >&2
   exit 1
 fi
-if rg -n --fixed-strings -- './deploy/nginx/.htpasswd:/etc/nginx/.htpasswd' deploy/docker-compose.app.yml; then
+if search_fixed './deploy/nginx/.htpasswd:/etc/nginx/.htpasswd' deploy/docker-compose.app.yml; then
   echo "[validate-deploy-contract] 실패: .htpasswd 파일 단위 바인드 마운트는 디렉터리 마운트로 대체해야 합니다." >&2
   exit 1
 fi

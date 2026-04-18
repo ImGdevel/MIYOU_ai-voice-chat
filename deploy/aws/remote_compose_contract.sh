@@ -35,9 +35,7 @@ detect_compose_file_from_labels() {
   local services=(
     miyou-dialogue-app-blue
     miyou-dialogue-app-green
-    miyou-mongodb
     miyou-redis
-    miyou-qdrant
     miyou-nginx
   )
 

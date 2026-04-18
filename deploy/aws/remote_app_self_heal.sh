@@ -126,9 +126,9 @@ fi
 if [[ "${blue_running}" != "true" && "${green_running}" != "true" ]]; then
   echo "[self-heal] No app slot running, start ${active_service}"
   if [[ -n "${app_image}" ]]; then
-    APP_IMAGE="${app_image}" docker compose -f "${compose_file}" up -d mongodb redis qdrant "${active_service}" nginx
+    APP_IMAGE="${app_image}" docker compose -f "${compose_file}" up -d redis "${active_service}" nginx
   else
-    docker compose -f "${compose_file}" up -d mongodb redis qdrant "${active_service}" nginx
+    docker compose -f "${compose_file}" up -d redis "${active_service}" nginx
   fi
 fi
 

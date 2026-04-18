@@ -185,8 +185,8 @@ fi
 
 sed -i -E "s/app_(blue|green):8081/${active_service}:8081/g" deploy/nginx/default.conf
 
-APP_IMAGE="${app_image}" docker compose -f "${compose_file}" pull "${active_service}" nginx mongodb redis qdrant
-APP_IMAGE="${app_image}" docker compose -f "${compose_file}" up -d mongodb redis qdrant nginx "${active_service}"
+APP_IMAGE="${app_image}" docker compose -f "${compose_file}" pull "${active_service}" nginx redis
+APP_IMAGE="${app_image}" docker compose -f "${compose_file}" up -d redis nginx "${active_service}"
 
 run_smoke_checks
 

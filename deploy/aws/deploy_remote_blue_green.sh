@@ -296,7 +296,7 @@ rollback() {
 trap 'rollback' ERR
 
 APP_IMAGE="${app_image}" docker compose -f "${compose_file}" pull "${candidate_service}"
-APP_IMAGE="${app_image}" docker compose -f "${compose_file}" up -d mongodb redis qdrant nginx
+APP_IMAGE="${app_image}" docker compose -f "${compose_file}" up -d redis nginx
 APP_IMAGE="${app_image}" docker compose -f "${compose_file}" up -d --no-deps "${candidate_service}"
 
 health_ok="false"
