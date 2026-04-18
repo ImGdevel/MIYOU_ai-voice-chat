@@ -2,6 +2,15 @@ name: Nginx-Deploy
 
 on:
   workflow_dispatch:
+    inputs:
+      deploy_mode:
+        description: "배포 실행 모드"
+        type: choice
+        required: false
+        default: private_runner
+        options:
+          - private_runner
+          - public_ssh
 
 permissions:
   contents: read
@@ -22,7 +31,8 @@ jobs:
         run: |
           bash ./scripts/validate-deploy-contract.sh
 
-  deploy:
+  deploy-public-ssh:
+    if: ${{ github.event.inputs.deploy_mode == 'public_ssh' }}
     runs-on: ubuntu-latest
     needs:
       - validate-deploy-contract
@@ -49,6 +59,48 @@ jobs:
           cat > ~/.ssh/config <<EOF
           Host deploy-target
             HostName ${{ secrets.EC2_HOST }}
+            User ${{ secrets.EC2_USER }}
+            IdentityFile ~/.ssh/deploy_key
+            IdentitiesOnly yes
+            StrictHostKeyChecking accept-new
+            ServerAliveInterval 30
+            ConnectTimeout 10
+          EOF
+          chmod 600 ~/.ssh/config
+
+      - name: Nginx 설정 배포 실행
+        shell: bash
+        run: |
+          bash ./deploy/aws/deploy_remote_nginx.sh "deploy-target"
+
+  deploy-private-runner:
+    if: ${{ github.event.inputs.deploy_mode == 'private_runner' }}
+    runs-on: [self-hosted, linux, miyou-private]
+    needs:
+      - validate-deploy-contract
+    steps:
+      - name: 체크아웃
+        uses: actions/checkout@v4
+
+      - name: 배포 시크릿 사전 검증
+        shell: bash
+        run: |
+          test -n "${{ secrets.EC2_PRIVATE_HOST }}" || (echo "EC2_PRIVATE_HOST 시크릿이 비어 있습니다." >&2; exit 1)
+          test -n "${{ secrets.EC2_USER }}" || (echo "EC2_USER 시크릿이 비어 있습니다." >&2; exit 1)
+          test -n "${{ secrets.EC2_SSH_PRIVATE_KEY }}" || (echo "EC2_SSH_PRIVATE_KEY 시크릿이 비어 있습니다." >&2; exit 1)
+
+      - name: SSH 키/호스트 설정
+        shell: bash
+        run: |
+          mkdir -p ~/.ssh
+          chmod 700 ~/.ssh
+          printf '%s\n' "${{ secrets.EC2_SSH_PRIVATE_KEY }}" | tr -d '\r' > ~/.ssh/deploy_key
+          chmod 600 ~/.ssh/deploy_key
+          ssh-keygen -y -f ~/.ssh/deploy_key >/dev/null
+
+          cat > ~/.ssh/config <<EOF
+          Host deploy-target
+            HostName ${{ secrets.EC2_PRIVATE_HOST }}
             User ${{ secrets.EC2_USER }}
             IdentityFile ~/.ssh/deploy_key
             IdentitiesOnly yes
