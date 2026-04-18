@@ -5,7 +5,6 @@ on:
 
 permissions:
   contents: read
-  id-token: write
 
 concurrency:
   group: frontend-deploy-${{ github.ref }}
@@ -33,20 +32,20 @@ jobs:
       - name: S3 업로드 사전 검증
         shell: bash
         run: |
-          test -n "${{ secrets.AWS_ROLE_ARN }}" || (echo "AWS_ROLE_ARN secret is missing." >&2; exit 1)
           test -n "${{ secrets.AWS_REGION }}" || (echo "AWS_REGION secret is missing." >&2; exit 1)
-          test -n "${{ secrets.FRONTEND_S3_BUCKET }}" || (echo "FRONTEND_S3_BUCKET secret is missing." >&2; exit 1)
+          test -n "${{ secrets.AWS_ACCESS_KEY_ID }}" || (echo "AWS_ACCESS_KEY_ID secret is missing." >&2; exit 1)
+          test -n "${{ secrets.AWS_SECRET_ACCESS_KEY }}" || (echo "AWS_SECRET_ACCESS_KEY secret is missing." >&2; exit 1)
 
       - name: AWS 자격증명 설정
         uses: aws-actions/configure-aws-credentials@v4
         with:
-          role-to-assume: ${{ secrets.AWS_ROLE_ARN }}
+          aws-access-key-id: ${{ secrets.AWS_ACCESS_KEY_ID }}
+          aws-secret-access-key: ${{ secrets.AWS_SECRET_ACCESS_KEY }}
           aws-region: ${{ secrets.AWS_REGION }}
-          role-session-name: github-actions-frontend-upload
 
       - name: 프론트엔드 S3 업로드
         env:
-          FRONTEND_S3_BUCKET: ${{ secrets.FRONTEND_S3_BUCKET }}
+          FRONTEND_S3_BUCKET: miyou-895400567575-ap-northeast-2-an
         shell: bash
         run: |
           aws s3 sync "frontend/dist" "s3://${FRONTEND_S3_BUCKET}/" --delete
