@@ -26,6 +26,8 @@ interface ChatRoomState extends ChatRoom {
 }
 
 const API_BASE_URL = (import.meta.env.VITE_API_BASE_URL || "").replace(/\/$/, "");
+const MIN_STT_RECORDING_DURATION_MS = 700;
+const MIN_STT_RECORDING_BYTES = 1024;
 
 function buildApiUrl(path: string): string {
   if (!API_BASE_URL) return path;
@@ -308,6 +310,7 @@ export default function App() {
   const mediaRecorderRef = useRef<MediaRecorder | null>(null);
   const recordStreamRef = useRef<MediaStream | null>(null);
   const recordedChunksRef = useRef<BlobPart[]>([]);
+  const recordingStartedAtRef = useRef(0);
   const recordingStartPendingRef = useRef(false);
   const stopAfterRecordingStartRef = useRef(false);
   const toastTimerRef = useRef<number | null>(null);
@@ -487,9 +490,12 @@ export default function App() {
       recordedChunksRef.current = [];
       recordStreamRef.current = stream;
       mediaRecorderRef.current = mediaRecorder;
+      recordingStartedAtRef.current = Date.now();
 
       mediaRecorder.addEventListener("dataavailable", (event) => {
-        recordedChunksRef.current.push(event.data);
+        if (event.data.size > 0) {
+          recordedChunksRef.current.push(event.data);
+        }
       });
 
       mediaRecorder.addEventListener("stop", async () => {
@@ -498,6 +504,13 @@ export default function App() {
           setIsBusy(true);
 
           const blob = new Blob(recordedChunksRef.current, { type: mimeType });
+          const recordingDuration = Date.now() - recordingStartedAtRef.current;
+
+          if (recordingDuration < MIN_STT_RECORDING_DURATION_MS || blob.size < MIN_STT_RECORDING_BYTES) {
+            showToast("음성이 너무 짧습니다. 조금 더 길게 말한 뒤 전송해 주세요.", "error");
+            return;
+          }
+
           const transcription = await transcribeAudio(blob, mimeType);
 
           if (!activeRoomId) {
@@ -524,6 +537,7 @@ export default function App() {
           mediaRecorderRef.current = null;
           recordStreamRef.current = null;
           recordedChunksRef.current = [];
+          recordingStartedAtRef.current = 0;
         }
       });
 
@@ -756,27 +770,20 @@ export default function App() {
 
             <button
               type="button"
-              onPointerDown={(event) => {
-                event.preventDefault();
-                if (!activeRoomId || isBusy) return;
-                event.currentTarget.setPointerCapture(event.pointerId);
+              onClick={() => {
+                if (status === "listening") {
+                  stopRecordingAndSend();
+                  return;
+                }
                 void startRecording();
               }}
-              onPointerUp={(event) => {
-                event.preventDefault();
-                if (!activeRoomId || isBusy) return;
-                stopRecordingAndSend();
-                event.currentTarget.releasePointerCapture(event.pointerId);
-              }}
-              onPointerCancel={stopRecordingAndSend}
-              onPointerLeave={stopRecordingAndSend}
-              disabled={!activeRoomId || isBusy}
+              disabled={!activeRoomId || (isBusy && status !== "listening")}
               className={`w-9 h-9 rounded-full flex items-center justify-center border transition-colors disabled:opacity-40 disabled:cursor-not-allowed ${
                 status === "listening"
                   ? "bg-white text-zinc-950 border-white"
                   : "bg-zinc-800 text-zinc-300 border-white/10 hover:bg-zinc-700 hover:text-white"
               }`}
-              title={status === "listening" ? "놓으면 전송" : "길게 눌러 음성 입력"}
+              title={status === "listening" ? "다시 누르면 전송" : "누르면 음성 입력 시작"}
               aria-label={status === "listening" ? "음성 입력 종료" : "음성 입력 시작"}
             >
               {status === "listening" ? <Loader2 size={16} className="animate-spin" /> : <Mic size={16} />}

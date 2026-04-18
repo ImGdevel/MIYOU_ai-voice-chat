@@ -35,7 +35,7 @@ class DialogueSpeechServiceTest {
             createFilePart(
                 "voice.mp3",
                 MediaType.parseMediaType("audio/mpeg"),
-                "dummy-audio".toByteArray(),
+                ByteArray(2048) { 1 },
             )
         val session = ConversationSessionFixture.create()
 
@@ -69,6 +69,27 @@ class DialogueSpeechServiceTest {
             .expectErrorSatisfies { error ->
                 assertThat(error).isInstanceOf(ResponseStatusException::class.java)
                 assertThat((error as ResponseStatusException).statusCode.is4xxClientError).isTrue()
+            }.verify()
+    }
+
+    @Test
+    @DisplayName("너무 짧은 오디오 업로드는 400 오류로 거부한다")
+    fun transcribe_shouldRejectTooShortAudioFile() {
+        val sttPort = mock(SttPort::class.java)
+        val dialoguePipelineUseCase = mock(DialoguePipelineUseCase::class.java)
+        val service =
+            DialogueSpeechService(
+                sttPort,
+                dialoguePipelineUseCase,
+                SttPolicy(25L * 1024L * 1024L, "ko"),
+            )
+        val audioFile = createFilePart("short.webm", MediaType.parseMediaType("audio/webm"), ByteArray(310) { 1 })
+
+        StepVerifier
+            .create(service.transcribe(audioFile, "ko"))
+            .expectErrorSatisfies { error ->
+                assertThat(error).isInstanceOf(ResponseStatusException::class.java)
+                assertThat((error as ResponseStatusException).statusCode.value()).isEqualTo(400)
             }.verify()
     }
 

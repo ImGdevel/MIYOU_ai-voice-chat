@@ -5,10 +5,12 @@ import com.miyou.app.domain.dialogue.port.SttPort
 import org.slf4j.LoggerFactory
 import org.springframework.core.io.ByteArrayResource
 import org.springframework.http.HttpHeaders
+import org.springframework.http.HttpStatus
 import org.springframework.http.MediaType
 import org.springframework.http.client.MultipartBodyBuilder
 import org.springframework.web.reactive.function.BodyInserters
 import org.springframework.web.reactive.function.client.WebClient
+import org.springframework.web.server.ResponseStatusException
 import reactor.core.publisher.Mono
 
 /**
@@ -62,7 +64,20 @@ class OpenAiWhisperSttAdapter(
                     .bodyToMono(String::class.java)
                     .doOnNext { body ->
                         log.error("OpenAI API error - status: {}, body: {}", response.statusCode(), body)
-                    }.then(Mono.error(RuntimeException("OpenAI API error: ${response.statusCode()}")))
+                    }.then(
+                        Mono.error(
+                            ResponseStatusException(
+                                if (response.statusCode().value() ==
+                                    400
+                                ) {
+                                    HttpStatus.BAD_REQUEST
+                                } else {
+                                    HttpStatus.BAD_GATEWAY
+                                },
+                                "STT provider request failed: ${response.statusCode()}",
+                            ),
+                        ),
+                    )
             })
             .bodyToMono(OpenAiTranscriptionResponse::class.java)
             .map { response -> checkNotNull(response.text) { "OpenAI STT response text is null" } }

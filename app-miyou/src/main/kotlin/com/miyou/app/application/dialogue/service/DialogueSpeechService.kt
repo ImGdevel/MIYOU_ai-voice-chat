@@ -13,6 +13,8 @@ import org.springframework.stereotype.Service
 import org.springframework.web.server.ResponseStatusException
 import reactor.core.publisher.Mono
 
+private const val MIN_STT_AUDIO_BYTES = 1024
+
 @Service
 class DialogueSpeechService(
     private val sttPort: SttPort,
@@ -74,6 +76,13 @@ class DialogueSpeechService(
     }
 
     private fun validateAudioSize(size: Int) {
+        if (size < MIN_STT_AUDIO_BYTES) {
+            throw ResponseStatusException(
+                HttpStatus.BAD_REQUEST,
+                "음성이 너무 짧습니다. 조금 더 길게 말한 뒤 전송해 주세요.",
+            )
+        }
+
         val maxFileSizeBytes = sttPolicy.maxFileSizeBytes
         if (size > maxFileSizeBytes) {
             throw ResponseStatusException(
