@@ -85,15 +85,9 @@ check_contains "deploy/aws/remote_app_self_heal.sh" "resolve_app_compose_file" "
 check_contains "deploy/aws/remote_app_self_heal.sh" "verify_compose_contract" "self-heal 스크립트에서 compose 계약 검증 호출이 누락되었습니다."
 check_contains "deploy/aws/remote_app_self_heal.sh" "sync_env_files" "self-heal 스크립트에서 env 동기화 호출이 누락되었습니다."
 
-echo "[validate-deploy-contract] blue-green 롤백 트리거 회귀 검사"
-if awk '
-  BEGIN { trap_seen=0; found=0 }
-  /trap '\''rollback'\'' ERR/ { trap_seen=1; next }
-  trap_seen && /exit 1/ { print NR ":" $0; found=1 }
-  END { exit(found ? 0 : 1) }
-' deploy/aws/deploy_remote_blue_green.sh; then
-  echo "[validate-deploy-contract] 실패: rollback trap 이후 exit 1 사용이 감지되었습니다. false/return 기반 실패를 사용하세요." >&2
-  exit 1
-fi
+echo "[validate-deploy-contract] blue-green 롤백 종료 검사"
+check_contains "deploy/aws/deploy_remote_blue_green.sh" "trap 'rollback; exit 1' ERR" "blue-green 스크립트에서 ERR trap이 rollback 후 실패 종료하지 않습니다."
+check_contains "deploy/aws/deploy_remote_blue_green.sh" "rollback" "blue-green 스크립트에서 명시적 rollback 호출이 누락되었습니다."
+check_contains "deploy/aws/deploy_remote_blue_green.sh" "exit 1" "blue-green 스크립트에서 rollback 후 실패 종료가 누락되었습니다."
 
 echo "[validate-deploy-contract] OK"

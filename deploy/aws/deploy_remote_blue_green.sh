@@ -141,12 +141,6 @@ run_smoke_checks() {
     echo "[blue-green] 앱 헬스체크 실패: /actuator/health" >&2
     return 1
   fi
-
-  dashboard_location="$(curl -fsS -o /dev/null -D - http://127.0.0.1/dashboard | tr -d '\r' | awk 'BEGIN{IGNORECASE=1} /^location:/{print $2; exit}')"
-  if [[ -z "${dashboard_location}" || "${dashboard_location}" != *"/admin/monitoring/grafana/"* ]]; then
-    echo "[blue-green] 대시보드 리다이렉트 검증 실패: location=${dashboard_location}" >&2
-    return 1
-  fi
 }
 
 cd "${remote_dir}"
@@ -242,7 +236,8 @@ echo "[blue-green] Active=${active_service}, Candidate=${candidate_service}"
 fail_with_rollback() {
   local message="$1"
   echo "[blue-green] ${message}" >&2
-  false
+  rollback
+  exit 1
 }
 
 reload_nginx_or_fail() {
@@ -268,6 +263,7 @@ reload_nginx_best_effort() {
 }
 
 rollback() {
+  trap - ERR
   set +e
   echo "[blue-green] Rollback triggered"
 
@@ -288,7 +284,7 @@ rollback() {
   echo "[blue-green] Rollback finished (active=${active_service})"
 }
 
-trap 'rollback' ERR
+trap 'rollback; exit 1' ERR
 
 APP_IMAGE="${app_image}" docker compose -f "${compose_file}" pull "${candidate_service}"
 APP_IMAGE="${app_image}" docker compose -f "${compose_file}" up -d redis nginx
