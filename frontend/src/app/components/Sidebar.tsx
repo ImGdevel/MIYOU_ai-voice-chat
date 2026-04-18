@@ -191,9 +191,15 @@ export function Sidebar({
                     </span>
                   </button>
                 </div>
-                <div className="flex items-center gap-3 p-3 rounded-lg hover:bg-zinc-800 transition-colors cursor-pointer text-zinc-400 hover:text-white mt-1">
+                <div
+                  className="flex items-center gap-3 p-3 rounded-lg text-zinc-600 mt-1 cursor-not-allowed"
+                  aria-disabled="true"
+                >
                     <User size={18} />
-                    <span className="text-sm font-medium">Profile</span>
+                    <span className="text-sm font-medium flex-1">Profile</span>
+                    <span className="text-[10px] font-semibold text-zinc-600 border border-zinc-800 rounded-full px-2 py-0.5">
+                      준비 중
+                    </span>
                 </div>
             </div>
           </motion.div>
