@@ -1,5 +1,5 @@
 import { motion, AnimatePresence } from "motion/react";
-import { X, MessageSquare, Plus, Settings, User, Trash2, Coins } from "lucide-react";
+import { X, MessageSquare, Plus, Settings, User, Trash2, Coins, Volume2, VolumeX } from "lucide-react";
 import { Persona } from "./PersonaSelector";
 
 export interface ChatRoom {
@@ -18,9 +18,22 @@ interface SidebarProps {
   activeRoomId?: string;
   rooms: ChatRoom[];
   creditBalance?: number | null;
+  isVoiceOutputEnabled: boolean;
+  onVoiceOutputChange: (enabled: boolean) => void;
 }
 
-export function Sidebar({ isOpen, onClose, onSelectRoom, onNewChat, onDeleteRoom, activeRoomId, rooms, creditBalance }: SidebarProps) {
+export function Sidebar({
+  isOpen,
+  onClose,
+  onSelectRoom,
+  onNewChat,
+  onDeleteRoom,
+  activeRoomId,
+  rooms,
+  creditBalance,
+  isVoiceOutputEnabled,
+  onVoiceOutputChange,
+}: SidebarProps) {
   return (
     <AnimatePresence>
       {isOpen && (
@@ -141,9 +154,42 @@ export function Sidebar({ isOpen, onClose, onSelectRoom, onNewChat, onDeleteRoom
                     </span>
                   </div>
                 )}
-                <div className="flex items-center gap-3 p-3 rounded-lg hover:bg-zinc-800 transition-colors cursor-pointer text-zinc-400 hover:text-white group">
-                    <Settings size={18} className="group-hover:rotate-90 transition-transform duration-500" />
+                <div className="rounded-lg bg-zinc-950/40 border border-zinc-800/80 overflow-hidden">
+                  <div className="flex items-center gap-3 px-3 py-3 text-zinc-300">
+                    <Settings size={18} />
                     <span className="text-sm font-medium">Settings</span>
+                  </div>
+                  <button
+                    type="button"
+                    onClick={() => onVoiceOutputChange(!isVoiceOutputEnabled)}
+                    className="w-full flex items-center gap-3 px-3 py-3 border-t border-zinc-800 text-left text-zinc-400 hover:text-white hover:bg-zinc-800/70 transition-colors"
+                    aria-pressed={isVoiceOutputEnabled}
+                  >
+                    <span
+                      className={`w-8 h-8 rounded-full flex items-center justify-center shrink-0 ${
+                        isVoiceOutputEnabled ? "bg-blue-500/20 text-blue-300" : "bg-zinc-800 text-zinc-500"
+                      }`}
+                    >
+                      {isVoiceOutputEnabled ? <Volume2 size={16} /> : <VolumeX size={16} />}
+                    </span>
+                    <span className="flex-1 min-w-0">
+                      <span className="block text-sm font-medium text-inherit">TTS 음성 응답</span>
+                      <span className="block text-[10px] text-zinc-500">
+                        {isVoiceOutputEnabled ? "켜짐" : "꺼짐"}
+                      </span>
+                    </span>
+                    <span
+                      className={`relative w-10 h-6 rounded-full transition-colors ${
+                        isVoiceOutputEnabled ? "bg-blue-500" : "bg-zinc-700"
+                      }`}
+                    >
+                      <span
+                        className={`absolute top-1 w-4 h-4 rounded-full bg-white transition-transform ${
+                          isVoiceOutputEnabled ? "translate-x-5" : "translate-x-1"
+                        }`}
+                      />
+                    </span>
+                  </button>
                 </div>
                 <div className="flex items-center gap-3 p-3 rounded-lg hover:bg-zinc-800 transition-colors cursor-pointer text-zinc-400 hover:text-white mt-1">
                     <User size={18} />

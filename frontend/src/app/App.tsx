@@ -1,5 +1,5 @@
 import React, { useCallback, useEffect, useMemo, useRef, useState } from "react";
-import { Menu, Plus, Send, Loader2, Mic, MicOff } from "lucide-react";
+import { Menu, Plus, Send, Loader2, Mic } from "lucide-react";
 import { VoiceEqualizer } from "./components/VoiceEqualizer";
 import type { Message } from "./components/ConversationDisplay";
 import { Sidebar, ChatRoom } from "./components/Sidebar";
@@ -308,6 +308,8 @@ export default function App() {
   const mediaRecorderRef = useRef<MediaRecorder | null>(null);
   const recordStreamRef = useRef<MediaStream | null>(null);
   const recordedChunksRef = useRef<BlobPart[]>([]);
+  const recordingStartPendingRef = useRef(false);
+  const stopAfterRecordingStartRef = useRef(false);
   const toastTimerRef = useRef<number | null>(null);
 
   const activeRoom = useMemo(
@@ -476,6 +478,8 @@ export default function App() {
     }
 
     try {
+      recordingStartPendingRef.current = true;
+      stopAfterRecordingStartRef.current = false;
       const stream = await navigator.mediaDevices.getUserMedia({ audio: true });
       const mimeType = chooseRecordingMimeType();
       const mediaRecorder = new MediaRecorder(stream, { mimeType });
@@ -525,16 +529,29 @@ export default function App() {
 
       mediaRecorder.start();
       setStatus("listening");
+
+      if (stopAfterRecordingStartRef.current) {
+        mediaRecorder.stop();
+      }
     } catch (error) {
       console.error(error);
       showToast("마이크 접근 권한이 필요합니다.", "error");
       setStatus("idle");
+    } finally {
+      recordingStartPendingRef.current = false;
     }
   }, [activeRoom, activeRoomId, isBusy, pushMessage, runDialogue, showToast, status]);
 
   const stopRecordingAndSend = useCallback(() => {
     const recorder = mediaRecorderRef.current;
-    if (!recorder || recorder.state === "inactive") return;
+    if (!recorder) {
+      if (recordingStartPendingRef.current) {
+        stopAfterRecordingStartRef.current = true;
+      }
+      return;
+    }
+
+    if (recorder.state === "inactive") return;
 
     recorder.stop();
   }, []);
@@ -723,16 +740,6 @@ export default function App() {
 
         <div className="w-full max-w-2xl px-4 md:px-6 space-y-3 mb-5 pointer-events-auto">
           <div className="flex items-center gap-2 bg-zinc-900/85 border border-white/10 rounded-2xl px-3 py-2 backdrop-blur">
-            <button
-              onClick={() => setIsVoiceOutputEnabled((prev) => !prev)}
-              className={`w-9 h-9 rounded-full flex items-center justify-center transition-colors ${
-                isVoiceOutputEnabled ? "bg-blue-500 text-white" : "bg-zinc-800 text-zinc-400"
-              }`}
-              title="음성 출력 토글"
-            >
-              {isVoiceOutputEnabled ? <Mic size={16} /> : <MicOff size={16} />}
-            </button>
-
             <input
               value={inputText}
               onChange={(event) => setInputText(event.target.value)}
@@ -746,6 +753,34 @@ export default function App() {
               disabled={!activeRoomId || isBusy}
               className="flex-1 bg-transparent text-sm text-white placeholder:text-zinc-500 outline-none px-1"
             />
+
+            <button
+              type="button"
+              onPointerDown={(event) => {
+                event.preventDefault();
+                if (!activeRoomId || isBusy) return;
+                event.currentTarget.setPointerCapture(event.pointerId);
+                void startRecording();
+              }}
+              onPointerUp={(event) => {
+                event.preventDefault();
+                if (!activeRoomId || isBusy) return;
+                stopRecordingAndSend();
+                event.currentTarget.releasePointerCapture(event.pointerId);
+              }}
+              onPointerCancel={stopRecordingAndSend}
+              onPointerLeave={stopRecordingAndSend}
+              disabled={!activeRoomId || isBusy}
+              className={`w-9 h-9 rounded-full flex items-center justify-center border transition-colors disabled:opacity-40 disabled:cursor-not-allowed ${
+                status === "listening"
+                  ? "bg-white text-zinc-950 border-white"
+                  : "bg-zinc-800 text-zinc-300 border-white/10 hover:bg-zinc-700 hover:text-white"
+              }`}
+              title={status === "listening" ? "놓으면 전송" : "길게 눌러 음성 입력"}
+              aria-label={status === "listening" ? "음성 입력 종료" : "음성 입력 시작"}
+            >
+              {status === "listening" ? <Loader2 size={16} className="animate-spin" /> : <Mic size={16} />}
+            </button>
 
             <button
               onClick={() => void sendTypedMessage()}
@@ -780,6 +815,8 @@ export default function App() {
         activeRoomId={activeRoomId}
         rooms={rooms}
         creditBalance={creditBalance}
+        isVoiceOutputEnabled={isVoiceOutputEnabled}
+        onVoiceOutputChange={setIsVoiceOutputEnabled}
       />
 
       <PersonaSelector
