@@ -50,3 +50,43 @@ jobs:
         shell: bash
         run: |
           aws s3 sync "frontend/dist" "s3://${FRONTEND_S3_BUCKET}/" --delete
+
+      - name: CloudFront 캐시 무효화
+        env:
+          CLOUDFRONT_DISTRIBUTION_ID: E1HBASKN20532O
+        shell: bash
+        run: |
+          invalidation_id="$(
+            aws cloudfront create-invalidation \
+              --distribution-id "${CLOUDFRONT_DISTRIBUTION_ID}" \
+              --paths "/*" \
+              --query "Invalidation.Id" \
+              --output text
+          )"
+          echo "invalidation_id=${invalidation_id}"
+          aws cloudfront wait invalidation-completed \
+            --distribution-id "${CLOUDFRONT_DISTRIBUTION_ID}" \
+            --id "${invalidation_id}"
+
+      - name: 실제 프론트엔드 반영 검증
+        env:
+          FRONTEND_URL: https://miyou.kr/
+        shell: bash
+        run: |
+          expected_asset="$(grep -oE '/assets/[^"]+\.js' frontend/dist/index.html | head -n1)"
+          test -n "${expected_asset}" || (echo "빌드된 index.html에서 JS asset을 찾지 못했습니다." >&2; exit 1)
+
+          for attempt in $(seq 1 20); do
+            live_html="$(curl -fsSL "${FRONTEND_URL}")"
+            if printf '%s' "${live_html}" | grep -Fq "${expected_asset}"; then
+              curl -fsSL "${FRONTEND_URL%/}${expected_asset}" >/dev/null
+              echo "verified_asset=${expected_asset}"
+              exit 0
+            fi
+
+            echo "프론트엔드 반영 대기 ${attempt}/20: expected_asset=${expected_asset}"
+            sleep 10
+          done
+
+          echo "CloudFront live HTML에서 배포 asset을 확인하지 못했습니다: ${expected_asset}" >&2
+          exit 1
