@@ -12,7 +12,7 @@ concurrency:
 
 jobs:
   deploy:
-    runs-on: ubuntu-latest
+    runs-on: [self-hosted, linux, miyou-private]
     steps:
       - name: 체크아웃
         uses: actions/checkout@v4
@@ -32,16 +32,8 @@ jobs:
       - name: S3 업로드 사전 검증
         shell: bash
         run: |
-          test -n "${{ secrets.AWS_REGION }}" || (echo "AWS_REGION secret is missing." >&2; exit 1)
-          test -n "${{ secrets.AWS_ACCESS_KEY_ID }}" || (echo "AWS_ACCESS_KEY_ID secret is missing." >&2; exit 1)
-          test -n "${{ secrets.AWS_SECRET_ACCESS_KEY }}" || (echo "AWS_SECRET_ACCESS_KEY secret is missing." >&2; exit 1)
-
-      - name: AWS 자격증명 설정
-        uses: aws-actions/configure-aws-credentials@v4
-        with:
-          aws-access-key-id: ${{ secrets.AWS_ACCESS_KEY_ID }}
-          aws-secret-access-key: ${{ secrets.AWS_SECRET_ACCESS_KEY }}
-          aws-region: ${{ secrets.AWS_REGION }}
+          aws sts get-caller-identity >/dev/null
+          aws s3 ls "s3://miyou-895400567575-ap-northeast-2-an/" >/dev/null
 
       - name: 프론트엔드 S3 업로드
         env:
