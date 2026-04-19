@@ -1,8 +1,22 @@
-/gradlew text eol=lf
-*.bat text eol=crlf
-*.jar binary
+* text=auto eol=lf
 
-# Force UTF-8 for all text and Markdown files
+# Windows launchers must keep CRLF.
+*.bat text eol=crlf
+
+# Binary artifacts must not be normalized.
+*.jar binary
+*.png binary
+*.jpg binary
+*.jpeg binary
+*.gif binary
+*.ico binary
+*.pdf binary
+*.zip binary
+*.gz binary
+*.tar binary
+
+# Force UTF-8 and LF for project text files.
+/gradlew text eol=lf
 .gitattributes text eol=lf working-tree-encoding=UTF-8
 .gitignore text eol=lf working-tree-encoding=UTF-8
 *.md text eol=lf working-tree-encoding=UTF-8
