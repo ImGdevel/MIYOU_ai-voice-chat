@@ -21,7 +21,6 @@ import org.springframework.beans.factory.annotation.Value
 import org.springframework.dao.DuplicateKeyException
 import org.springframework.data.domain.Pageable
 import org.springframework.stereotype.Service
-import org.springframework.transaction.annotation.Transactional
 import reactor.core.publisher.Flux
 import reactor.core.publisher.Mono
 
@@ -46,7 +45,6 @@ class CreditApplicationService(
         pageable: Pageable,
     ): Flux<CreditTransaction> = creditTransactionRepository.findByUserIdOrderByCreatedAtDesc(userId, pageable)
 
-    @Transactional
     override fun deductForConversation(
         userId: UserId,
         sessionId: ConversationSessionId,
@@ -74,7 +72,6 @@ class CreditApplicationService(
                     .flatMap { creditTransactionRepository.save(tx) }
             }
 
-    @Transactional
     override fun chargeByPayment(
         userId: UserId,
         amount: Long,
@@ -100,7 +97,6 @@ class CreditApplicationService(
                     .flatMap { creditTransactionRepository.save(tx) }
             }
 
-    @Transactional
     override fun grantSignupBonus(userId: UserId): Mono<CreditTransaction> {
         val initial = UserCredit.initialize(userId, signupBonus)
         val tx =
@@ -118,7 +114,6 @@ class CreditApplicationService(
             .flatMap { creditTransactionRepository.save(tx) }
     }
 
-    @Transactional
     override fun grantMissionReward(
         userId: UserId,
         missionId: MissionId,
@@ -145,7 +140,6 @@ class CreditApplicationService(
                     .flatMap { creditTransactionRepository.save(tx) }
             }
 
-    @Transactional
     override fun initializeIfAbsent(userId: UserId): Mono<Void> =
         userCreditRepository
             .findByUserId(userId)
