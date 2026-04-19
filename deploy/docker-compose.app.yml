@@ -37,19 +37,8 @@ services:
       - "8081"
     env_file:
       - .env.deploy
-    environment:
-      MONGODB_URI: ${MONGODB_URI:-mongodb://mongodb:27017/ragdb}
-      REDIS_HOST: ${REDIS_HOST:-redis}
-      REDIS_PORT: ${REDIS_PORT:-6379}
-      QDRANT_HOST: ${QDRANT_HOST:-qdrant}
-      QDRANT_PORT: ${QDRANT_PORT:-6334}
-      QDRANT_URL: ${QDRANT_URL:-http://qdrant:6333}
-      QDRANT_COLLECTION: ${QDRANT_COLLECTION:-user_memories}
-      MONITORING_PERSISTENT_ENABLED: ${MONITORING_PERSISTENT_ENABLED:-true}
     depends_on:
-      - mongodb
       - redis
-      - qdrant
     networks:
       - miyou-network
 
@@ -61,19 +50,8 @@ services:
       - "8081"
     env_file:
       - .env.deploy
-    environment:
-      MONGODB_URI: ${MONGODB_URI:-mongodb://mongodb:27017/ragdb}
-      REDIS_HOST: ${REDIS_HOST:-redis}
-      REDIS_PORT: ${REDIS_PORT:-6379}
-      QDRANT_HOST: ${QDRANT_HOST:-qdrant}
-      QDRANT_PORT: ${QDRANT_PORT:-6334}
-      QDRANT_URL: ${QDRANT_URL:-http://qdrant:6333}
-      QDRANT_COLLECTION: ${QDRANT_COLLECTION:-user_memories}
-      MONITORING_PERSISTENT_ENABLED: ${MONITORING_PERSISTENT_ENABLED:-true}
     depends_on:
-      - mongodb
       - redis
-      - qdrant
     networks:
       - miyou-network
 
