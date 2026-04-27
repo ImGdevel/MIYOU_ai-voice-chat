@@ -4,7 +4,7 @@
 
 MIYOU는 사용자가 캐릭터나 면접관 같은 페르소나를 선택하고, 텍스트 또는 음성으로 대화할 수 있는 한국어 AI 대화 애플리케이션입니다. 백엔드는 Spring WebFlux 기반 스트리밍 파이프라인으로 LLM 응답과 TTS 음성 응답을 처리하고, 프론트엔드는 브라우저에서 녹음, STT, 텍스트 스트리밍, 오디오 재생을 제공합니다.
 
-![MIYOU preview](docs/assets/readme/miyou-preview.png)
+![MIYOU preview](docs/assets/readme/miyou-header-20260427.png)
 
 ## 서비스 기능
 
