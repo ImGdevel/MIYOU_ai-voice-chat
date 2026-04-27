@@ -1,223 +1,184 @@
-# Spring WebFlux RAG 음성 대화 시스템
+# MIYOU
 
-Spring WebFlux 기반 RAG(Retrieval-Augmented Generation) 음성 대화 플랫폼.
-OpenAI LLM과 벡터 DB를 결합한 반응형 파이프라인으로 실시간 스트리밍 TTS 음성 응답을 제공합니다.
+페르소나와 음성으로 대화하는 AI voice chat 서비스입니다.
 
----
+MIYOU는 사용자가 캐릭터나 면접관 같은 페르소나를 선택하고, 텍스트 또는 음성으로 대화할 수 있는 한국어 AI 대화 애플리케이션입니다. 백엔드는 Spring WebFlux 기반 스트리밍 파이프라인으로 LLM 응답과 TTS 음성 응답을 처리하고, 프론트엔드는 브라우저에서 녹음, STT, 텍스트 스트리밍, 오디오 재생을 제공합니다.
 
-## 주요 성과
+![MIYOU preview](docs/assets/readme/miyou-preview.png)
 
-| 지표 | Before | After | 개선율 |
-|------|--------|-------|--------|
-| 처리량 | 100 req/s | 200 req/s | **2배 향상** |
-| P99 레이턴시 | 2,000ms | 800ms | **60% 감소** |
-| 시스템 가용성 | 99.5% | 99.99% | SLA 달성 |
-| 입력 준비 시간 | 180ms | 100ms | **44% 단축** (병렬화) |
-| MongoDB 쿼리 | 5,000ms | 50ms | **100배 향상** |
-| TTS 장애 복구 | 30~60초 (수동) | 즉시 (자동) | **100배 향상** |
-| API 비용 오차 | ±$2,000/월 | $0 | **완전 제거** |
+## 서비스 기능
 
----
+- 페르소나 기반 대화: `메이드 리리아`, `기술 면접관` 등 대화 모드를 선택합니다.
+- 음성 입력: 브라우저 녹음 데이터를 `/rag/dialogue/stt`로 보내 OpenAI Whisper 기반 STT를 수행합니다.
+- 텍스트 스트리밍: `/rag/dialogue/text`에서 SSE 형식으로 LLM 토큰을 스트리밍합니다.
+- 음성 응답: `/rag/dialogue/audio`에서 LLM 응답을 문장 단위로 TTS 합성해 MP3/WAV 스트림으로 반환합니다.
+- 장기 메모리: 대화 이력과 추출 메모리를 MongoDB, Redis, Qdrant를 조합해 관리합니다.
+- 크레딧/미션: 대화 비용 차감, 가입 보너스, 미션 보상 모델을 도메인으로 분리했습니다.
+- 운영 관찰: 파이프라인 단계별 지표와 사용량을 MongoDB 및 Prometheus 지표로 수집합니다.
 
 ## 기술 스택
 
-| 분류 | 기술 |
+| 영역 | 구성 |
 |------|------|
-| **백엔드** | Java 21, Spring Boot 3.4, Spring WebFlux, Project Reactor |
-| **AI/LLM** | OpenAI GPT-4o-mini, text-embedding-3-small, Spring AI 1.0 |
-| **벡터 DB** | Qdrant (1536차원 임베딩, 의미 기반 유사도 검색) |
-| **데이터베이스** | MongoDB 7 Reactive, Redis 7 Reactive |
-| **TTS** | Supertone API (5개 엔드포인트 로드밸런싱) |
-| **모니터링** | Prometheus + Grafana + Loki + Micrometer |
-| **인프라** | Docker, Nginx, Blue-Green 무중단 배포, AWS SSM |
+| Backend | Kotlin, Java 21, Spring Boot 3.4.12, Spring WebFlux, Project Reactor |
+| AI | OpenAI `gpt-4o-mini`, `whisper-1`, `text-embedding-3-small`, Spring AI `1.0.0-M5` |
+| Voice | Supertone TTS, 5개 endpoint 설정, persona별 voice 설정 |
+| Data | MongoDB 7, Redis 7.2, Qdrant |
+| Frontend | Vite 6, React 18, TypeScript, Tailwind CSS 4, Radix UI, MUI, Motion |
+| Observability | Spring Actuator, Micrometer, Prometheus endpoint, MongoDB persistent metrics, Grafana reverse redirect |
+| Infra | Docker Compose, Nginx, Blue-Green 배포 문서, AWS SSM 기반 배포 문서 |
 
----
-
-## 시스템 아키텍처
-
-```mermaid
-graph TB
-    Client["클라이언트"]
-
-    subgraph App["Spring WebFlux Application (헥사고날 아키텍처)"]
-        Controller["DialogueController"]
-
-        subgraph Pipeline["반응형 파이프라인"]
-            S1["① RAG + 메모리 검색\nMono.zip 병렬 실행"]
-            S2["② 시스템 프롬프트 조립"]
-            S3["③ LLM 토큰 스트리밍"]
-            S4["④ 문장 조립 → TTS 합성"]
-            S5["⑤ 오디오 스트리밍 응답"]
-            S6["⑥ 대화 저장 + 메모리 추출\n비동기 후처리"]
-        end
-    end
-
-    subgraph Infra["인프라"]
-        MongoDB[("MongoDB")]
-        Redis[("Redis")]
-        Qdrant[("Qdrant 벡터 DB")]
-        OpenAI["OpenAI API"]
-        Supertone["Supertone TTS × 5"]
-    end
-
-    Client -->|"HTTP Streaming"| Controller
-    Controller --> S1 --> S2 --> S3 --> S4 --> S5
-    S5 -.->|"concatWith 비동기"| S6
-
-    S1 <-->|"벡터 검색"| Qdrant
-    S3 <-->|"스트리밍"| OpenAI
-    S4 <-->|"TTS 합성"| Supertone
-    S6 --> MongoDB & Qdrant
-    App <-->|"카운터"| Redis
-```
-
-→ **[아키텍처 상세 문서](https://github.com/ImGdevel/MIYOU_ai-voice-chat/wiki/아키텍처-설계)** — 헥사고날 구조, Before/After 비교, SOLID 원칙 적용
-
----
-
-## 핵심 구현
-
-### 헥사고날 아키텍처 — 프로바이더 교체 가능 설계
-
-```mermaid
-graph LR
-    PipelineService -->|"LlmPort"| OpenAiAdapter
-    PipelineService -->|"TtsPort"| SupertoneAdapter
-    PipelineService -->|"VectorMemoryPort"| QdrantAdapter
-
-    OpenAiAdapter -.->|"교체 가능"| ClaudeAdapter["Claude stub"]
-    SupertoneAdapter -.->|"교체 가능"| ElevenLabsAdapter["ElevenLabs"]
-    QdrantAdapter -.->|"교체 가능"| PineconeAdapter["Pinecone"]
-```
-
-도메인 레이어는 순수 Java + `Mono`/`Flux`만 허용. Spring 프레임워크 의존 없음.
-
----
-
-### 반응형 파이프라인 최적화
-
-병렬 입력 준비 (`Mono.zip`):
-
-```java
-return Mono.zip(
-    retrievalPort.retrieve(text, 3),         // RAG 검색   50ms
-    memoryPort.retrieveMemories(text, 5),    // 메모리 검색 100ms
-    loadConversationHistory().cache()        // 대화 이력   30ms
-).map(tuple -> new PipelineInputs(...));
-// 순차 180ms → 병렬 100ms (44% 단축)
-```
-
-문장이 완성될 때마다 TTS를 즉시 기동하여 LLM 응답 완료를 기다리지 않습니다.
-
-→ **[성능 최적화 상세 문서](https://github.com/ImGdevel/MIYOU_ai-voice-chat/wiki/성능-최적화)** — 병렬화, TTS 로드밸런서, MongoDB 인덱스, 토큰 추적
-
----
-
-### TTS 로드밸런서 & Circuit Breaker
-
-```mermaid
-stateDiagram-v2
-    [*] --> HEALTHY
-    HEALTHY --> TEMPORARY_FAILURE : 5xx / Timeout
-    TEMPORARY_FAILURE --> HEALTHY : 30초 자동 복구
-    TEMPORARY_FAILURE --> PERMANENT_FAILURE : 반복 실패
-    HEALTHY --> CLIENT_ERROR_SKIP : 4xx 재시도 없음
-```
-
-5개 엔드포인트 Health-aware 로드밸런서 직접 구현.
-`AtomicInteger` Lock-free 동시성 제어 + 에러 분류 기반 재시도 전략.
-
----
-
-### 장기 메모리 관리 (RAG + 벡터 DB)
+## 서비스 흐름
 
 ```mermaid
 flowchart LR
-    Input["사용자 입력"] --> EMB["임베딩 생성"]
-    EMB --> SEARCH["Qdrant 유사도 검색"]
-    SEARCH --> SCORE["중요도 가중 스코어링\nscore × (1 + importance × boost)"]
-    SCORE --> INJECT["시스템 프롬프트 주입"]
+    Client["Browser client"] --> Session["POST /rag/dialogue/session"]
+    Client --> Input["Text or recorded audio"]
+    Input --> STT["POST /rag/dialogue/stt"]
+    Input --> Dialogue["DialogueController"]
 
-    CONVO["N회 대화 완료"] --> EXTRACT["LLM 메모리 추출 (비동기)"]
-    EXTRACT --> STORE["Qdrant 저장"]
+    subgraph Pipeline["WebFlux dialogue pipeline"]
+        Prepare["RAG / memory / history prepare<br />Mono.zip"]
+        Prompt["System prompt assembly"]
+        LLM["LLM token streaming"]
+        Sentence["Sentence assembly"]
+        TTS["Supertone TTS streaming"]
+        Persist["Conversation save<br />memory extraction"]
+    end
+
+    Dialogue --> Prepare --> Prompt --> LLM --> Sentence --> TTS --> Client
+    Sentence --> Persist
+    Prepare <--> MongoDB[("MongoDB")]
+    Prepare <--> Redis[("Redis")]
+    Prepare <--> Qdrant[("Qdrant")]
+    LLM <--> OpenAI["OpenAI"]
+    TTS <--> Supertone["Supertone"]
 ```
 
-`PersonaId` 기반으로 사용자·캐릭터별 메모리를 독립 관리.
+대화 요청은 세션을 기준으로 처리됩니다. 입력 준비 단계에서는 RAG 검색, 메모리 검색, 최근 대화 이력 조회, 현재 turn 생성을 `Mono.zip(...)`으로 묶어 파이프라인 입력을 구성합니다. 이후 시스템 프롬프트를 조립하고 LLM 토큰을 스트리밍하며, 음성 응답 모드에서는 문장 단위로 TTS 합성을 수행합니다. 응답이 끝난 뒤에는 대화 저장과 메모리 추출 후처리가 이어집니다.
 
-→ **[메모리 & RAG 상세 문서](https://github.com/ImGdevel/MIYOU_ai-voice-chat/wiki/메모리-관리-&-RAG-시스템)** — 벡터 검색, 메모리 추출, 중요도 스코어링
+## 주요 API
 
----
+| Method | Path | 설명 |
+|--------|------|------|
+| `POST` | `/rag/dialogue/session` | 페르소나 기준 대화 세션 생성 |
+| `POST` | `/rag/dialogue/text` | 텍스트 응답 SSE 스트리밍 |
+| `POST` | `/rag/dialogue/audio?format=mp3` | 음성 응답 오디오 스트리밍 |
+| `POST` | `/rag/dialogue/stt` | 녹음 파일 STT 변환 |
+| `GET` | `/metrics/performance`, `/metrics/usage`, `/metrics/pipeline/{pipelineId}` | 파이프라인 성능/사용량 조회 |
+| `GET` | `/actuator/prometheus` | Prometheus scrape endpoint |
 
-### AOP 기반 파이프라인 모니터링
+## 아키텍처
 
-```mermaid
-graph LR
-    AOP["@MonitoredPipeline\nAOP Aspect"] -->|"Reactor Context 주입"| Tracer["PipelineTracer"]
-    Tracer -->|"스테이지별\n처리 시간·토큰·오류"| Reporter
-    Reporter --> Log["LoggingReporter"]
-    Reporter --> DB["PersistentReporter\nMongoDB + Prometheus"]
-    DB --> Grafana["Grafana 대시보드"]
-```
+백엔드는 포트/어댑터 구조를 따릅니다. 애플리케이션 서비스는 `LlmPort`, `TtsPort`, `RetrievalPort`, `ConversationRepository`, `VectorMemoryPort` 같은 포트에 의존하고, OpenAI, Supertone, MongoDB, Redis, Qdrant 연동은 infrastructure adapter에서 처리합니다.
 
-→ **[모니터링 상세 문서](https://github.com/ImGdevel/MIYOU_ai-voice-chat/wiki/모니터링-&-관찰-가능성)** — AOP 계측, Prometheus/Grafana, 비용 추적
+현재 저장소의 핵심 모듈은 다음과 같습니다.
 
----
-
-### Blue-Green 무중단 배포
-
-```mermaid
-graph LR
-    Internet --> Nginx
-    Nginx -->|"활성"| Blue["Blue :8081"]
-    Nginx -.->|"대기"| Green["Green :8081"]
-    Blue & Green --> SharedDB[("MongoDB / Redis / Qdrant 공유")]
-```
-
-Nginx upstream 전환으로 다운타임 없이 배포. 시크릿은 AWS SSM Parameter Store에서 주입.
-
-→ **[배포 & 인프라 상세 문서](https://github.com/ImGdevel/MIYOU_ai-voice-chat/wiki/배포-&-인프라)** — Blue-Green 배포 절차, Docker 멀티 스테이지, AWS SSM
-
----
+- `app-miyou`: Kotlin/Spring WebFlux 백엔드 애플리케이션
+- `frontend`: Vite/React 기반 브라우저 클라이언트
+- `deploy`: 로컬 인프라와 배포 관련 Compose/Nginx 설정
+- `MIYOU_ai-voice-chat.wiki`: 아키텍처, 성능 개선, 배포, 모니터링 문서
 
 ## 로컬 실행
 
+### Backend
+
 ```bash
-# 인프라 기동 (MongoDB, Redis, Qdrant)
+# MongoDB, Redis, Qdrant 실행
 docker compose -f deploy/docker-compose.yml up -d
 
-# 앱 실행
-./gradlew :webflux-dialogue:bootRun
+# Spring Boot 애플리케이션 실행
+./gradlew :app-miyou:bootRun
 ```
 
-`.env` 파일 필요:
+Windows PowerShell에서는 Gradle wrapper를 다음처럼 실행할 수 있습니다.
+
+```powershell
+.\gradlew.bat :app-miyou:bootRun
 ```
+
+### Frontend
+
+```bash
+cd frontend
+npm install
+npm run dev
+```
+
+프론트엔드는 `VITE_API_BASE_URL`이 비어 있으면 같은 origin으로 API를 호출합니다. 백엔드를 별도 origin에서 실행할 경우 `frontend/.env.production` 또는 로컬 환경 변수로 API base URL을 지정합니다.
+
+## 환경 변수
+
+필수:
+
+```env
 OPENAI_API_KEY=...
 SUPERTONE_API_KEY=...
 ```
 
-API:
-- `POST /rag/dialogue/audio` — 오디오 스트리밍 응답
-- `POST /rag/dialogue/text`  — 텍스트 토큰 스트리밍 응답
+Supertone endpoint별 키를 분리할 수도 있습니다.
 
----
+```env
+SUPERTONE_API_KEY_1=...
+SUPERTONE_API_KEY_2=...
+SUPERTONE_API_KEY_3=...
+SUPERTONE_API_KEY_4=...
+SUPERTONE_API_KEY_5=...
+```
 
-## 문서 목차
+주요 선택값:
 
-### 포트폴리오 요약
+```env
+MONGODB_URI=mongodb://localhost:27018/ragdb?directConnection=true
+REDIS_HOST=localhost
+REDIS_PORT=16379
+QDRANT_HOST=localhost
+QDRANT_PORT=6334
+WEB_CORS_ALLOWED_ORIGINS=https://example.com
+VITE_API_BASE_URL=http://localhost:8081
+```
 
-| 문서 | 내용 |
-|------|------|
-| [01 아키텍처 설계](https://github.com/ImGdevel/MIYOU_ai-voice-chat/wiki/아키텍처-설계) | 헥사고날 아키텍처, 파이프라인 흐름, SOLID 원칙 적용 |
-| [02 성능 최적화](https://github.com/ImGdevel/MIYOU_ai-voice-chat/wiki/성능-최적화) | 병렬화, TTS 로드밸런서, MongoDB 인덱스, 토큰 추적 |
-| [03 메모리 & RAG](https://github.com/ImGdevel/MIYOU_ai-voice-chat/wiki/메모리-관리-&-RAG-시스템) | 벡터 검색, 장기 메모리 추출·저장, 중요도 스코어링 |
-| [04 모니터링](https://github.com/ImGdevel/MIYOU_ai-voice-chat/wiki/모니터링-&-관찰-가능성) | AOP 계측, Prometheus/Grafana, 비용 추적 |
-| [05 배포 & 인프라](https://github.com/ImGdevel/MIYOU_ai-voice-chat/wiki/배포-&-인프라) | Blue-Green 배포, Docker 멀티 스테이지, AWS SSM |
+## 코드와 문서로 확인 가능한 개선
 
-### 기술 문서 (Wiki)
+README에는 실제 코드 또는 Wiki의 근거가 확인되는 항목만 적습니다. 운영 측정 로그가 없는 수치는 단정하지 않습니다.
 
-| 문서 | 내용 |
-|------|------|
-| [위키 홈](https://github.com/ImGdevel/MIYOU_ai-voice-chat/wiki) | 프로젝트 기술 문서 전체 인덱스 |
-| [로드 밸런서 구축기](https://github.com/ImGdevel/MIYOU_ai-voice-chat/wiki/로드-밸런서-구축기) | 로드밸런서/Circuit Breaker 설계와 장애 대응 |
-| [아키텍처 설계](https://github.com/ImGdevel/MIYOU_ai-voice-chat/wiki/아키텍처-설계) | 헥사고날 구조와 리팩토링 배경 |
-| [운영 필수 로컬 문서](docs/README.md) | 배포 런북/테스트 가이드/배포 스펙 |
+| 개선 | 현재 근거 | 설명 |
+|------|-----------|------|
+| 입력 준비 병렬화 | `DialogueInputService.prepareInputs()` | RAG 검색, 메모리 검색, 최근 이력 조회, 현재 turn 생성을 `Mono.zip(...)`으로 결합합니다. 순차 합산 구조가 아니라 가장 늦게 끝나는 준비 작업에 맞춰 다음 단계로 넘어갈 수 있는 구조입니다. |
+| 실제 토큰 기반 비용 계산 | `TokenAwareLlmAdapter`, `CostCalculationService` | OpenAI streaming usage를 `streamUsage(true)`로 요청하고, `promptTokens`와 `completionTokens`를 분리해 비용 계산에 사용합니다. |
+| 요청 단위 토큰 격리 | `TokenAwareLlmAdapter` | `correlationId`별로 토큰 사용량을 저장하고 조회 시 제거해 동시 스트리밍 요청의 사용량이 섞이는 위험을 줄였습니다. |
+| 최근 대화 조회 제한 | `DialogueInputService.loadConversationHistory()` | 대화 이력은 `findRecent(sessionId, 10)`으로 제한해 프롬프트 입력 범위를 고정합니다. DB 성능 개선 배수는 실제 `explain` 결과 없이는 단정하지 않습니다. |
+| TTS endpoint 구성 | `application.yml`, `LoadBalancedSupertoneTtsAdapter` | Supertone endpoint 5개를 설정하고 persona별 voice를 선택할 수 있게 구성했습니다. 현재 오디오 합성 경로는 코드 기준 `concatMap` 순차 스트리밍입니다. |
+| 파이프라인 모니터링 | `@MonitoredPipeline`, `MetricsController`, Micrometer config | 단계별 처리 지표, 토큰/비용 정보, 최근 성능 지표를 `/metrics/*` 및 Prometheus endpoint로 조회할 수 있습니다. |
+| 크레딧 집계 상한 | `MetricsController.MAX_CREDIT_SAMPLE = 10_000` | 전체 크레딧 추정 조회가 무제한 샘플을 읽지 않도록 최근 사용량 샘플 상한을 둡니다. |
+
+## 테스트
+
+```bash
+./gradlew :app-miyou:test
+```
+
+Windows PowerShell:
+
+```powershell
+.\gradlew.bat :app-miyou:test
+```
+
+프론트엔드 빌드:
+
+```bash
+cd frontend
+npm run build
+```
+
+## 문서
+
+- [Wiki 홈](https://github.com/ImGdevel/MIYOU_ai-voice-chat/wiki)
+- [아키텍처 설계](https://github.com/ImGdevel/MIYOU_ai-voice-chat/wiki/아키텍처-설계)
+- [성능 최적화](https://github.com/ImGdevel/MIYOU_ai-voice-chat/wiki/성능-최적화)
+- [성능 개선 이력](https://github.com/ImGdevel/MIYOU_ai-voice-chat/wiki/성능-개선-이력)
+- [메모리 관리 & RAG 시스템](https://github.com/ImGdevel/MIYOU_ai-voice-chat/wiki/메모리-관리-&-RAG-시스템)
+- [모니터링 & 관찰 가능성](https://github.com/ImGdevel/MIYOU_ai-voice-chat/wiki/모니터링-&-관찰-가능성)
+- [배포 & 인프라](https://github.com/ImGdevel/MIYOU_ai-voice-chat/wiki/배포-&-인프라)
+- [로컬 운영 문서](docs/README.md)
+- [테스트 클라이언트 가이드](docs/guides/TEST-CLIENT-GUIDE.md)
