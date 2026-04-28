@@ -507,6 +507,8 @@ export default function App() {
 
           if (recordingDuration < MIN_STT_RECORDING_DURATION_MS || blob.size < MIN_STT_RECORDING_BYTES) {
             showToast("음성이 너무 짧습니다. 조금 더 길게 말한 뒤 전송해 주세요.", "error");
+            setStatus("idle");
+            setIsBusy(false);
             return;
           }
 
@@ -514,6 +516,8 @@ export default function App() {
 
           if (!activeRoomId) {
             showToast("활성 대화방이 없어 요청을 취소했습니다.", "error");
+            setStatus("idle");
+            setIsBusy(false);
             return;
           }
 

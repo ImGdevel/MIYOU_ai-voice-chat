@@ -18,7 +18,8 @@ scp .env.deploy.example "${HOST_ALIAS}:${REMOTE_DIR}/.env.deploy.example"
 scp deploy/nginx/default.conf "${HOST_ALIAS}:${REMOTE_DIR}/deploy/nginx/default.conf"
 scp deploy/aws/remote_app_self_heal.sh "${HOST_ALIAS}:${REMOTE_DIR}/scripts/remote_app_self_heal.sh"
 scp deploy/aws/remote_compose_contract.sh "${HOST_ALIAS}:${REMOTE_DIR}/scripts/remote_compose_contract.sh"
-ssh "${HOST_ALIAS}" "chmod +x '${REMOTE_DIR}/scripts/remote_app_self_heal.sh' '${REMOTE_DIR}/scripts/remote_compose_contract.sh'"
+scp deploy/aws/remote_runtime_cleanup.sh "${HOST_ALIAS}:${REMOTE_DIR}/scripts/remote_runtime_cleanup.sh"
+ssh "${HOST_ALIAS}" "chmod +x '${REMOTE_DIR}/scripts/remote_app_self_heal.sh' '${REMOTE_DIR}/scripts/remote_compose_contract.sh' '${REMOTE_DIR}/scripts/remote_runtime_cleanup.sh'"
 
 if [[ "${USE_SSM}" == "true" ]]; then
   if [[ -z "${SSM_PATH}" ]]; then
@@ -162,6 +163,7 @@ run_smoke_checks() {
 
 cd "${remote_dir}"
 source "${remote_dir}/scripts/remote_compose_contract.sh"
+source "${remote_dir}/scripts/remote_runtime_cleanup.sh"
 sync_env_files "${remote_dir}"
 compose_file="$(resolve_app_compose_file "${remote_dir}")"
 verify_compose_contract "${remote_dir}" "${compose_file}"
@@ -180,6 +182,7 @@ APP_IMAGE="${app_image}" docker compose -f "${compose_file}" up -d redis nginx "
 run_smoke_checks
 
 echo "${app_image}" > .app_image
+run_runtime_cleanup "${remote_dir}" || true
 EOF
 
 echo "[deploy] Container status"
