@@ -3,6 +3,7 @@ package com.miyou.app.infrastructure.inbound.web.dialogue
 import com.miyou.app.application.credit.usecase.CreditChargeUseCase
 import com.miyou.app.application.credit.usecase.CreditQueryUseCase
 import com.miyou.app.application.dialogue.service.DialogueSpeechService
+import com.miyou.app.domain.dialogue.model.ConversationSession
 import com.miyou.app.domain.dialogue.model.ConversationSessionId
 import com.miyou.app.domain.dialogue.port.ConversationSessionRepository
 import com.miyou.app.domain.dialogue.port.DialoguePipelineUseCase
@@ -11,6 +12,7 @@ import com.miyou.app.fixture.ConversationSessionFixture
 import com.miyou.app.fixture.UserCreditFixture
 import com.miyou.app.infrastructure.inbound.web.dialogue.dto.CreateSessionRequest
 import com.miyou.app.infrastructure.inbound.web.dialogue.dto.RagDialogueRequest
+import com.miyou.app.support.anyValue
 import org.junit.jupiter.api.DisplayName
 import org.junit.jupiter.api.Test
 import org.mockito.Mockito.`when`
@@ -68,6 +70,45 @@ class DialogueControllerTest {
     @DisplayName("createSession returns 400 when userId is blank")
     fun createSession_returns400ForBlankUserId() {
         val request = CreateSessionRequest(userId = "", personaId = "default")
+
+        webTestClient
+            .post()
+            .uri("/rag/dialogue/session")
+            .contentType(MediaType.APPLICATION_JSON)
+            .bodyValue(request)
+            .exchange()
+            .expectStatus()
+            .isBadRequest
+    }
+
+    @Test
+    @DisplayName("createSession accepts a 128 character userId")
+    fun createSession_acceptsMaxLengthUserId() {
+        val userId = "u".repeat(128)
+        val request = CreateSessionRequest(userId = userId, personaId = "default")
+
+        `when`(sessionRepository.save(anyValue())).thenAnswer { invocation ->
+            Mono.just(invocation.arguments[0] as ConversationSession)
+        }
+        `when`(creditChargeUseCase.initializeIfAbsent(anyValue())).thenReturn(Mono.empty())
+
+        webTestClient
+            .post()
+            .uri("/rag/dialogue/session")
+            .contentType(MediaType.APPLICATION_JSON)
+            .bodyValue(request)
+            .exchange()
+            .expectStatus()
+            .isOk
+            .expectBody()
+            .jsonPath("$.userId")
+            .isEqualTo(userId)
+    }
+
+    @Test
+    @DisplayName("createSession returns 400 when userId exceeds 128 characters")
+    fun createSession_returns400ForTooLongUserId() {
+        val request = CreateSessionRequest(userId = "u".repeat(129), personaId = "default")
 
         webTestClient
             .post()
