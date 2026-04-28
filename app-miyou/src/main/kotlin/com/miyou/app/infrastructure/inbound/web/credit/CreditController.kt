@@ -33,10 +33,13 @@ class CreditController(
     @GetMapping("/balance")
     fun getBalance(
         @RequestParam @NotBlank userId: String,
-    ): Mono<UserCreditResponse> =
-        creditQueryUseCase
-            .getBalance(UserId.of(userId))
+    ): Mono<UserCreditResponse> {
+        val resolvedUserId = UserId.of(userId)
+        return creditChargeUseCase
+            .initializeIfAbsent(resolvedUserId)
+            .then(creditQueryUseCase.getBalance(resolvedUserId))
             .map(UserCreditResponse::from)
+    }
 
     @GetMapping("/transactions")
     fun getTransactions(

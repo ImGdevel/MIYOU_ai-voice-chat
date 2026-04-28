@@ -41,6 +41,7 @@ class CreditControllerTest {
     fun getBalance_returnsUserBalance() {
         val userId = UserIdFixture.create()
 
+        `when`(creditChargeUseCase.initializeIfAbsent(userId)).thenReturn(Mono.empty())
         `when`(creditQueryUseCase.getBalance(userId))
             .thenReturn(Mono.just(UserCreditFixture.create(userId, 4900L)))
 
