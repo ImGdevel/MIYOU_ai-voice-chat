@@ -8,6 +8,7 @@ import { PersonaSelector, Persona } from "./components/PersonaSelector";
 import { DeleteConfirmationModal } from "./components/DeleteConfirmationModal";
 import { CreditBadge } from "./components/CreditBadge";
 import { useCreditBalance } from "./hooks/useCreditBalance";
+import { getMiyouUserId } from "./utils/userIdentity";
 import { motion, AnimatePresence } from "motion/react";
 
 type AppStatus = "idle" | "listening" | "processing" | "speaking";
@@ -50,6 +51,7 @@ function chooseRecordingMimeType() {
 }
 
 async function createSession(personaId: string): Promise<SessionResponse> {
+  const userId = await getMiyouUserId();
   const response = await fetch(buildApiUrl("/rag/dialogue/session"), {
     method: "POST",
     headers: {
@@ -57,6 +59,7 @@ async function createSession(personaId: string): Promise<SessionResponse> {
     },
     body: JSON.stringify({
       personaId,
+      userId,
     }),
   });
 
@@ -65,10 +68,6 @@ async function createSession(personaId: string): Promise<SessionResponse> {
   }
 
   const session: SessionResponse = await response.json();
-
-  // 백엔드가 생성한 userId를 로컬스토리지에 저장
-  localStorage.setItem("miyou-user-id", session.userId);
-
   return session;
 }
 
