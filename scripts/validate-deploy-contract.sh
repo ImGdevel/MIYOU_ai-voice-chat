@@ -23,6 +23,16 @@ check_contains() {
   fi
 }
 
+check_regex() {
+  local file="$1"
+  local pattern="$2"
+  local message="$3"
+  if ! grep -Eq "${pattern}" "${file}"; then
+    printf '[validate-deploy-contract] %s (%s)\n' "${message}" "${file}" >&2
+    exit 1
+  fi
+}
+
 search_fixed() {
   local pattern="$1"
   shift
@@ -68,10 +78,11 @@ echo "[validate-deploy-contract] 런타임 정리 스크립트 연결 검사"
 check_contains "deploy/aws/deploy_remote_blue_green.sh" "scp deploy/aws/remote_runtime_cleanup.sh" "blue-green 스크립트에서 런타임 정리 스크립트 업로드가 누락되었습니다."
 check_contains "deploy/aws/deploy_remote_compose.sh" "scp deploy/aws/remote_runtime_cleanup.sh" "rolling 스크립트에서 런타임 정리 스크립트 업로드가 누락되었습니다."
 check_contains "deploy/aws/deploy_remote_nginx.sh" "scp deploy/aws/remote_runtime_cleanup.sh" "nginx 스크립트에서 런타임 정리 스크립트 업로드가 누락되었습니다."
-check_contains "deploy/aws/deploy_remote_blue_green.sh" "run_runtime_cleanup" "blue-green 스크립트에서 배포 후 런타임 정리 호출이 누락되었습니다."
-check_contains "deploy/aws/deploy_remote_compose.sh" "run_runtime_cleanup" "rolling 스크립트에서 배포 후 런타임 정리 호출이 누락되었습니다."
-check_contains "deploy/aws/deploy_remote_nginx.sh" "run_runtime_cleanup" "nginx 스크립트에서 배포 후 런타임 정리 호출이 누락되었습니다."
+check_regex "deploy/aws/deploy_remote_blue_green.sh" '^[[:space:]]*run_runtime_cleanup[[:space:]]+"\$\{remote_dir\}"' "blue-green 스크립트에서 배포 후 런타임 정리 호출이 누락되었습니다."
+check_regex "deploy/aws/deploy_remote_compose.sh" '^[[:space:]]*run_runtime_cleanup[[:space:]]+"\$\{remote_dir\}"' "rolling 스크립트에서 배포 후 런타임 정리 호출이 누락되었습니다."
+check_regex "deploy/aws/deploy_remote_nginx.sh" '^[[:space:]]*run_runtime_cleanup[[:space:]]+"\$\{remote_dir\}"' "nginx 스크립트에서 배포 후 런타임 정리 호출이 누락되었습니다."
 check_contains "deploy/aws/remote_runtime_cleanup.sh" "docker image prune -af" "런타임 정리 스크립트에서 미사용 이미지 정리가 누락되었습니다."
+check_contains "deploy/aws/remote_runtime_cleanup.sh" "DOCKER_IMAGE_PRUNE_UNTIL" "런타임 정리 스크립트에서 이미지 정리 보존 기간 설정이 누락되었습니다."
 check_contains "deploy/aws/remote_runtime_cleanup.sh" "docker builder prune -af" "런타임 정리 스크립트에서 빌더 캐시 정리가 누락되었습니다."
 if search_fixed '--volumes' deploy/aws/remote_runtime_cleanup.sh; then
   echo "[validate-deploy-contract] 실패: 런타임 정리 스크립트는 Docker volume을 삭제하면 안 됩니다." >&2

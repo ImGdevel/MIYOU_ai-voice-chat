@@ -24,6 +24,7 @@ runtime_cleanup_show_disk() {
 run_runtime_cleanup() {
   local remote_dir="${1:-}"
   local fail_threshold="${DISK_USAGE_FAIL_THRESHOLD:-95}"
+  local has_docker="true"
 
   if [[ "${SKIP_RUNTIME_CLEANUP:-false}" == "true" ]]; then
     runtime_cleanup_log "SKIP_RUNTIME_CLEANUP=true, skip cleanup"
@@ -31,8 +32,8 @@ run_runtime_cleanup() {
   fi
 
   if ! command -v docker >/dev/null 2>&1; then
+    has_docker="false"
     runtime_cleanup_log "docker command is missing, skip docker cleanup"
-    return 0
   fi
 
   if [[ -n "${remote_dir}" && -d "${remote_dir}" ]]; then
@@ -41,17 +42,19 @@ run_runtime_cleanup() {
 
   runtime_cleanup_show_disk "before"
 
-  runtime_cleanup_log "prune stopped containers"
-  docker container prune -f --filter "until=${DOCKER_CONTAINER_PRUNE_UNTIL:-24h}" \
-    || runtime_cleanup_log "stopped container prune failed"
+  if [[ "${has_docker}" == "true" ]]; then
+    runtime_cleanup_log "prune stopped containers"
+    docker container prune -f --filter "until=${DOCKER_CONTAINER_PRUNE_UNTIL:-24h}" \
+      || runtime_cleanup_log "stopped container prune failed"
 
-  runtime_cleanup_log "prune unused images"
-  docker image prune -af \
-    || runtime_cleanup_log "unused image prune failed"
+    runtime_cleanup_log "prune unused images"
+    docker image prune -af --filter "until=${DOCKER_IMAGE_PRUNE_UNTIL:-24h}" \
+      || runtime_cleanup_log "unused image prune failed"
 
-  runtime_cleanup_log "prune build cache"
-  docker builder prune -af --filter "until=${DOCKER_BUILDER_PRUNE_UNTIL:-24h}" \
-    || runtime_cleanup_log "build cache prune failed"
+    runtime_cleanup_log "prune build cache"
+    docker builder prune -af --filter "until=${DOCKER_BUILDER_PRUNE_UNTIL:-24h}" \
+      || runtime_cleanup_log "build cache prune failed"
+  fi
 
   if command -v sudo >/dev/null 2>&1 && sudo -n true 2>/dev/null; then
     if command -v apt-get >/dev/null 2>&1; then
