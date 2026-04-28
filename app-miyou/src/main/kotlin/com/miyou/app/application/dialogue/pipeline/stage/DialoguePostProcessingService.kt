@@ -1,6 +1,5 @@
 package com.miyou.app.application.dialogue.pipeline.stage
 
-import com.miyou.app.application.credit.usecase.CreditDeductUseCase
 import com.miyou.app.application.dialogue.pipeline.PipelineInputs
 import com.miyou.app.application.memory.policy.MemoryExtractionPolicy
 import com.miyou.app.application.memory.service.MemoryExtractionService
@@ -9,13 +8,11 @@ import com.miyou.app.application.monitoring.port.ConversationMetricsPort
 import com.miyou.app.application.monitoring.service.PipelineTracer
 import com.miyou.app.domain.dialogue.model.ConversationSessionId
 import com.miyou.app.domain.dialogue.model.ConversationTurn
-import com.miyou.app.domain.dialogue.model.UserId
 import com.miyou.app.domain.dialogue.port.ConversationRepository
 import com.miyou.app.domain.dialogue.port.LlmPort
 import com.miyou.app.domain.dialogue.port.TokenUsageProvider
 import com.miyou.app.domain.memory.port.ConversationCounterPort
 import com.miyou.app.domain.monitoring.model.DialoguePipelineStage
-import org.slf4j.LoggerFactory
 import org.springframework.stereotype.Service
 import reactor.core.publisher.Flux
 import reactor.core.publisher.Mono
@@ -30,10 +27,8 @@ class DialoguePostProcessingService(
     private val llmPort: LlmPort,
     private val pipelineTracer: PipelineTracer,
     private val conversationMetrics: ConversationMetricsPort,
-    private val creditDeductUseCase: CreditDeductUseCase,
     policy: MemoryExtractionPolicy,
 ) {
-    private val logger = LoggerFactory.getLogger(DialoguePostProcessingService::class.java)
     private val conversationThreshold: Long = policy.conversationThreshold.toLong()
 
     init {
@@ -77,8 +72,7 @@ class DialoguePostProcessingService(
                         conversationMetrics.recordQueryLength(inputs.currentTurn.query.length)
                         conversationMetrics.recordResponseLength(response.length)
                         persistConversation(inputsMono, response)
-                    }.flatMap { deductCreditSafely(session.userId, sessionId) }
-                    .flatMap { conversationCounterPort.increment(sessionId) }
+                    }.flatMap { conversationCounterPort.increment(sessionId) }
                     .doOnNext { count ->
                         conversationMetrics.recordConversationIncrement()
                         conversationMetrics.recordConversationCount(count)
@@ -86,23 +80,6 @@ class DialoguePostProcessingService(
                     .flatMap { count -> memoryExtractionService.checkAndExtract(sessionId) }
             }.subscribeOn(Schedulers.boundedElastic())
             .then()
-
-    private fun deductCreditSafely(
-        userId: UserId,
-        sessionId: ConversationSessionId,
-    ): Mono<Any> =
-        creditDeductUseCase
-            .deductForConversation(userId, sessionId)
-            .cast(Any::class.java)
-            .onErrorResume { exception ->
-                logger.error(
-                    "Credit deduction failed - userId={}, sessionId={}: {}",
-                    userId.value,
-                    sessionId.value,
-                    exception.message,
-                )
-                Mono.just(false)
-            }
 
     private fun persistConversation(
         inputsMono: Mono<PipelineInputs>,
