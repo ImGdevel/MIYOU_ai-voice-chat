@@ -1,14 +1,12 @@
 package com.miyou.app.infrastructure.inbound.web.dialogue
 
 import com.miyou.app.application.credit.usecase.CreditChargeUseCase
-import com.miyou.app.application.credit.usecase.CreditQueryUseCase
 import com.miyou.app.application.dialogue.service.DialogueSpeechService
 import com.miyou.app.domain.dialogue.model.ConversationSessionId
 import com.miyou.app.domain.dialogue.port.ConversationSessionRepository
 import com.miyou.app.domain.dialogue.port.DialoguePipelineUseCase
 import com.miyou.app.domain.voice.model.AudioFormat
 import com.miyou.app.fixture.ConversationSessionFixture
-import com.miyou.app.fixture.UserCreditFixture
 import com.miyou.app.infrastructure.inbound.web.dialogue.dto.CreateSessionRequest
 import com.miyou.app.infrastructure.inbound.web.dialogue.dto.RagDialogueRequest
 import org.junit.jupiter.api.DisplayName
@@ -36,9 +34,6 @@ class DialogueControllerTest {
 
     @MockitoBean
     private lateinit var sessionRepository: ConversationSessionRepository
-
-    @MockitoBean
-    private lateinit var creditQueryUseCase: CreditQueryUseCase
 
     @MockitoBean
     private lateinit var creditChargeUseCase: CreditChargeUseCase
@@ -87,8 +82,6 @@ class DialogueControllerTest {
         val request = RagDialogueRequest(sessionIdValue, "Default audio", Instant.now())
 
         `when`(sessionRepository.findById(ConversationSessionId.of(sessionIdValue))).thenReturn(Mono.just(session))
-        `when`(creditQueryUseCase.getBalance(session.userId))
-            .thenReturn(Mono.just(UserCreditFixture.create(session.userId, 5000L)))
         `when`(dialoguePipelineUseCase.executeAudioStreaming(session, "Default audio", AudioFormat.WAV))
             .thenReturn(Flux.just("audio".toByteArray()))
 

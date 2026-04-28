@@ -1,12 +1,10 @@
 package com.miyou.app.application.dialogue.pipeline.stage
 
-import com.miyou.app.application.credit.usecase.CreditDeductUseCase
 import com.miyou.app.application.dialogue.pipeline.PipelineInputs
 import com.miyou.app.application.memory.policy.MemoryExtractionPolicy
 import com.miyou.app.application.memory.service.MemoryExtractionService
 import com.miyou.app.application.monitoring.port.ConversationMetricsPort
 import com.miyou.app.application.monitoring.service.PipelineTracer
-import com.miyou.app.domain.credit.model.CreditTransaction
 import com.miyou.app.domain.dialogue.model.ConversationContext
 import com.miyou.app.domain.dialogue.model.ConversationSession
 import com.miyou.app.domain.dialogue.model.ConversationTurn
@@ -23,8 +21,6 @@ import org.junit.jupiter.api.DisplayName
 import org.junit.jupiter.api.Test
 import org.junit.jupiter.api.extension.ExtendWith
 import org.mockito.Mock
-import org.mockito.Mockito.lenient
-import org.mockito.Mockito.mock
 import org.mockito.Mockito.never
 import org.mockito.Mockito.verify
 import org.mockito.Mockito.`when`
@@ -53,9 +49,6 @@ class DialoguePostProcessingServiceTest {
     @Mock
     private lateinit var conversationMetricsConfiguration: ConversationMetricsPort
 
-    @Mock
-    private lateinit var creditDeductUseCase: CreditDeductUseCase
-
     private lateinit var service: DialoguePostProcessingService
 
     @BeforeEach
@@ -68,12 +61,8 @@ class DialoguePostProcessingServiceTest {
                 llmPort,
                 pipelineTracer,
                 conversationMetricsConfiguration,
-                creditDeductUseCase,
                 MemoryExtractionPolicy(5),
             )
-        lenient()
-            .`when`(creditDeductUseCase.deductForConversation(anyValue(), anyValue()))
-            .thenReturn(Mono.just(mock(CreditTransaction::class.java)))
     }
 
     @Test
@@ -165,7 +154,6 @@ class DialoguePostProcessingServiceTest {
                 llmPort,
                 pipelineTracer,
                 conversationMetricsConfiguration,
-                creditDeductUseCase,
                 MemoryExtractionPolicy(0),
             )
         }.isInstanceOf(IllegalArgumentException::class.java)

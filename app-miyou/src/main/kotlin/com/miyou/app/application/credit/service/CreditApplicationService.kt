@@ -72,6 +72,30 @@ class CreditApplicationService(
                     .flatMap { creditTransactionRepository.save(tx) }
             }
 
+    override fun refundForConversation(
+        userId: UserId,
+        sessionId: ConversationSessionId,
+    ): Mono<CreditTransaction> =
+        userCreditRepository
+            .findByUserId(userId)
+            .defaultIfEmpty(UserCredit.initialize(userId, 0L))
+            .flatMap { credit ->
+                val updated = credit.charge(conversationCost)
+                val tx =
+                    CreditTransaction.of(
+                        userId,
+                        CreditTransactionType.REFUND,
+                        ConversationDeduction(sessionId),
+                        conversationCost,
+                        credit.balance,
+                        updated.balance,
+                        sessionId.value,
+                    )
+                userCreditRepository
+                    .save(updated)
+                    .flatMap { creditTransactionRepository.save(tx) }
+            }
+
     override fun chargeByPayment(
         userId: UserId,
         amount: Long,
