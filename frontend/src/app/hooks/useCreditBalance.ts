@@ -1,15 +1,14 @@
 import { useState, useCallback, useEffect } from "react";
+import { getMiyouUserId } from "../utils/userIdentity";
 
 export function useCreditBalance(buildApiUrl: (path: string) => string) {
   const [balance, setBalance] = useState<number | null>(null);
   const [isLoading, setIsLoading] = useState(false);
 
   const refresh = useCallback(async () => {
-    const userId = localStorage.getItem("miyou-user-id");
-    if (!userId) return;
-
     setIsLoading(true);
     try {
+      const userId = await getMiyouUserId();
       const res = await fetch(
         buildApiUrl(`/credit/balance?userId=${encodeURIComponent(userId)}`),
       );

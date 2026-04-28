@@ -9,6 +9,7 @@ import com.miyou.app.domain.dialogue.port.DialoguePipelineUseCase
 import com.miyou.app.domain.voice.model.AudioFormat
 import com.miyou.app.fixture.ConversationSessionFixture
 import com.miyou.app.fixture.UserCreditFixture
+import com.miyou.app.infrastructure.inbound.web.dialogue.dto.CreateSessionRequest
 import com.miyou.app.infrastructure.inbound.web.dialogue.dto.RagDialogueRequest
 import org.junit.jupiter.api.DisplayName
 import org.junit.jupiter.api.Test
@@ -61,6 +62,21 @@ class DialogueControllerTest {
             .exchange()
             .expectStatus()
             .isOk
+    }
+
+    @Test
+    @DisplayName("createSession returns 400 when userId is blank")
+    fun createSession_returns400ForBlankUserId() {
+        val request = CreateSessionRequest(userId = "", personaId = "default")
+
+        webTestClient
+            .post()
+            .uri("/rag/dialogue/session")
+            .contentType(MediaType.APPLICATION_JSON)
+            .bodyValue(request)
+            .exchange()
+            .expectStatus()
+            .isBadRequest
     }
 
     @Test

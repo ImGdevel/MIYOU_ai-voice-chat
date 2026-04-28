@@ -63,7 +63,7 @@ class DialogueController(
             } else {
                 PersonaId.defaultPersona()
             }
-        val userId = if (request.userId.isNotBlank()) UserId.of(request.userId) else UserId.generate()
+        val userId = UserId.of(request.userId)
 
         val session = ConversationSession.create(personaId, userId)
         return sessionRepository
