@@ -182,6 +182,26 @@ class CreditApplicationServiceTest {
     }
 
     @Test
+    @DisplayName("refundForConversation fails when the credit record is missing")
+    fun refundForConversation_failsWhenCreditRecordIsMissing() {
+        val userId = UserIdFixture.create()
+        val sessionId = ConversationSessionFixture.createId("session-123")
+
+        `when`(userCreditRepository.findByUserId(userId)).thenReturn(Mono.empty())
+
+        StepVerifier
+            .create(service.refundForConversation(userId, sessionId))
+            .expectErrorSatisfies { error ->
+                assertThat(error)
+                    .isInstanceOf(IllegalStateException::class.java)
+                    .hasMessageContaining("User credit record not found")
+            }.verify()
+
+        verify(userCreditRepository, never()).save(anyValue())
+        verify(creditTransactionRepository, never()).save(anyValue())
+    }
+
+    @Test
     @DisplayName("chargeByPayment adds the payment amount to the balance")
     fun chargeByPayment_addsPaymentAmountToBalance() {
         val userId = UserIdFixture.create()
