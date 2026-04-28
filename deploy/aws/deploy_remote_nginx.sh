@@ -12,7 +12,8 @@ scp deploy/docker-compose.app.yml "${HOST_ALIAS}:${REMOTE_DIR}/docker-compose.ap
 scp deploy/docker-compose.app.yml "${HOST_ALIAS}:${REMOTE_DIR}/deploy/docker-compose.app.yml"
 scp deploy/nginx/default.conf "${HOST_ALIAS}:${REMOTE_DIR}/deploy/nginx/default.conf"
 scp deploy/aws/remote_compose_contract.sh "${HOST_ALIAS}:${REMOTE_DIR}/scripts/remote_compose_contract.sh"
-ssh "${HOST_ALIAS}" "chmod +x '${REMOTE_DIR}/scripts/remote_compose_contract.sh'"
+scp deploy/aws/remote_runtime_cleanup.sh "${HOST_ALIAS}:${REMOTE_DIR}/scripts/remote_runtime_cleanup.sh"
+ssh "${HOST_ALIAS}" "chmod +x '${REMOTE_DIR}/scripts/remote_compose_contract.sh' '${REMOTE_DIR}/scripts/remote_runtime_cleanup.sh'"
 
 echo "[nginx] Apply nginx config"
 ssh "${HOST_ALIAS}" "bash -s" -- "${REMOTE_DIR}" <<'EOF'
@@ -25,6 +26,7 @@ if [[ ! -f ".env.deploy" ]]; then
   exit 1
 fi
 source "${remote_dir}/scripts/remote_compose_contract.sh"
+source "${remote_dir}/scripts/remote_runtime_cleanup.sh"
 sync_env_files "${remote_dir}"
 compose_file="$(resolve_app_compose_file "${remote_dir}")"
 verify_compose_contract "${remote_dir}" "${compose_file}"
@@ -114,6 +116,7 @@ if ! docker exec miyou-nginx nginx -s reload >/dev/null 2>&1; then
 fi
 
 rm -f deploy/nginx/default.conf.backup
+run_runtime_cleanup "${remote_dir}" || true
 EOF
 
 echo "[nginx] Container status"

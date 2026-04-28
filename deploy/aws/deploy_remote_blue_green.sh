@@ -23,7 +23,8 @@ scp .env.deploy.example "${HOST_ALIAS}:${REMOTE_DIR}/.env.deploy.example"
 scp deploy/nginx/default.conf "${HOST_ALIAS}:${REMOTE_DIR}/deploy/nginx/default.conf"
 scp deploy/aws/remote_app_self_heal.sh "${HOST_ALIAS}:${REMOTE_DIR}/scripts/remote_app_self_heal.sh"
 scp deploy/aws/remote_compose_contract.sh "${HOST_ALIAS}:${REMOTE_DIR}/scripts/remote_compose_contract.sh"
-ssh "${HOST_ALIAS}" "chmod +x '${REMOTE_DIR}/scripts/remote_app_self_heal.sh' '${REMOTE_DIR}/scripts/remote_compose_contract.sh'"
+scp deploy/aws/remote_runtime_cleanup.sh "${HOST_ALIAS}:${REMOTE_DIR}/scripts/remote_runtime_cleanup.sh"
+ssh "${HOST_ALIAS}" "chmod +x '${REMOTE_DIR}/scripts/remote_app_self_heal.sh' '${REMOTE_DIR}/scripts/remote_compose_contract.sh' '${REMOTE_DIR}/scripts/remote_runtime_cleanup.sh'"
 
 if [[ "${USE_SSM}" == "true" ]]; then
   if [[ -z "${SSM_PATH}" ]]; then
@@ -157,6 +158,7 @@ echo "[blue-green] Deployment lock acquired"
 touch .deploy_in_progress
 
 source "${remote_dir}/scripts/remote_compose_contract.sh"
+source "${remote_dir}/scripts/remote_runtime_cleanup.sh"
 sync_env_files "${remote_dir}"
 compose_file="$(resolve_app_compose_file "${remote_dir}")"
 verify_compose_contract "${remote_dir}" "${compose_file}"
@@ -354,9 +356,12 @@ docker rm -f miyou-dialogue-app >/dev/null 2>&1 || true
 echo "${candidate}" > .active_color
 echo "${app_image}" > .app_image
 
+trap - ERR
+# 배포 완료 후 이전 이미지와 캐시를 정리한다. 정리 실패로 성공 배포를 롤백하지는 않는다.
+run_runtime_cleanup "${remote_dir}" || true
+
 # 배포 완료 - 플래그 제거 및 락 해제
 rm -f .deploy_in_progress
-trap - ERR
 flock -u 200 || true
 
 echo "[blue-green] Switched active app to ${candidate_service}"
