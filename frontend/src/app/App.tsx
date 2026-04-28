@@ -27,6 +27,7 @@ interface ChatRoomState extends ChatRoom {
 }
 
 const API_BASE_URL = (import.meta.env.VITE_API_BASE_URL || "").replace(/\/$/, "");
+const CONVERSATION_CREDIT_COST = 100;
 const MIN_STT_RECORDING_DURATION_MS = 700;
 const MIN_STT_RECORDING_BYTES = 1024;
 
@@ -48,6 +49,14 @@ function chooseRecordingMimeType() {
   const candidates = ["audio/webm", "audio/mp4", "audio/wav"];
   const mimeType = candidates.find((type) => MediaRecorder.isTypeSupported(type));
   return mimeType || "audio/webm";
+}
+
+function responseError(prefix: string, response: Response): Error {
+  if (response.status === 402) {
+    return new Error("크레딧이 부족합니다. 크레딧을 충전하세요.");
+  }
+
+  return new Error(`${prefix} (${response.status})`);
 }
 
 async function createSession(personaId: string): Promise<SessionResponse> {
@@ -116,7 +125,7 @@ async function streamText(
   });
 
   if (!response.ok || !response.body) {
-    throw new Error(`텍스트 응답 실패 (${response.status})`);
+    throw responseError("텍스트 응답 실패", response);
   }
 
   const reader = response.body.getReader();
@@ -257,7 +266,7 @@ async function streamAudioAndPlay(
           });
 
           if (!response.ok || !response.body) {
-            throw new Error(`음성 응답 실패 (${response.status})`);
+            throw responseError("음성 응답 실패", response);
           }
 
           const reader = response.body.getReader();
@@ -298,7 +307,14 @@ export default function App() {
   const [toast, setToast] = useState<{ message: string; kind: ToastKind } | null>(null);
   const [isBusy, setIsBusy] = useState(false);
 
-  const { balance: creditBalance, isLoading: creditLoading, refresh: refreshCredit } = useCreditBalance(buildApiUrl);
+  const {
+    balance: creditBalance,
+    isLoading: creditLoading,
+    refresh: refreshCredit,
+    applyOptimisticDelta: applyCreditDelta,
+    lastDelta: creditLastDelta,
+    changeId: creditChangeId,
+  } = useCreditBalance(buildApiUrl);
 
   const [rooms, setRooms] = useState<ChatRoomState[]>([]);
   const [activeRoomId, setActiveRoomId] = useState<string>("");
@@ -402,6 +418,11 @@ export default function App() {
       const normalized = query.trim();
       if (!normalized) return;
 
+      if (creditBalance !== null && creditBalance < CONVERSATION_CREDIT_COST) {
+        showToast("크레딧이 부족합니다. 크레딧을 충전하세요.", "error");
+        return;
+      }
+
       const roomId = activeRoom.id;
       const sessionId = activeRoom.sessionId;
       const appendUser = options?.appendUser ?? true;
@@ -416,6 +437,7 @@ export default function App() {
       }
 
       touchRoom(roomId);
+      applyCreditDelta(-CONVERSATION_CREDIT_COST);
       setStatus("processing");
       setIsBusy(true);
 
@@ -462,7 +484,18 @@ export default function App() {
         void refreshCredit();
       }
     },
-    [activeRoom, isVoiceOutputEnabled, patchMessage, patchMessageThrottled, pushMessage, refreshCredit, showToast, touchRoom],
+    [
+      activeRoom,
+      applyCreditDelta,
+      creditBalance,
+      isVoiceOutputEnabled,
+      patchMessage,
+      patchMessageThrottled,
+      pushMessage,
+      refreshCredit,
+      showToast,
+      touchRoom,
+    ],
   );
 
   const startRecording = useCallback(async () => {
@@ -708,7 +741,12 @@ export default function App() {
           )}
         </AnimatePresence>
 
-        <CreditBadge balance={creditBalance} isLoading={creditLoading} />
+        <CreditBadge
+          balance={creditBalance}
+          isLoading={creditLoading}
+          lastDelta={creditLastDelta}
+          changeId={creditChangeId}
+        />
       </header>
 
       <main className="flex-1 flex flex-col items-center justify-between w-full relative z-10 pt-20 pb-4">
