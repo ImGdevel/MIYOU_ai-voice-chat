@@ -151,6 +151,37 @@ class CreditApplicationServiceTest {
     }
 
     @Test
+    @DisplayName("refundForConversation restores the conversation cost")
+    fun refundForConversation_restoresConversationCost() {
+        val userId = UserIdFixture.create()
+        val sessionId = ConversationSessionFixture.createId("session-123")
+        val existing = UserCreditFixture.create(userId, 4900L)
+        val updated = existing.charge(100L)
+        var savedTransaction: CreditTransaction? = null
+
+        `when`(userCreditRepository.findByUserId(userId)).thenReturn(Mono.just(existing))
+        `when`(userCreditRepository.save(updated)).thenReturn(Mono.just(updated))
+        `when`(creditTransactionRepository.save(anyValue()))
+            .thenAnswer { invocation: InvocationOnMock ->
+                val transaction = invocation.getArgument<CreditTransaction>(0)
+                savedTransaction = transaction
+                Mono.just(transaction)
+            }
+
+        StepVerifier
+            .create(service.refundForConversation(userId, sessionId))
+            .assertNext { result ->
+                assertThat(result.type).isEqualTo(CreditTransactionType.REFUND)
+                assertThat(result.amount).isEqualTo(100L)
+            }.verifyComplete()
+
+        assertThat(savedTransaction).isNotNull
+        assertThat(savedTransaction!!.referenceId).isEqualTo("session-123")
+        assertThat(savedTransaction!!.balanceBefore).isEqualTo(4900L)
+        assertThat(savedTransaction!!.balanceAfter).isEqualTo(5000L)
+    }
+
+    @Test
     @DisplayName("chargeByPayment adds the payment amount to the balance")
     fun chargeByPayment_addsPaymentAmountToBalance() {
         val userId = UserIdFixture.create()

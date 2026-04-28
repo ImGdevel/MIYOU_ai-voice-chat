@@ -10,4 +10,9 @@ interface CreditDeductUseCase {
         userId: UserId,
         sessionId: ConversationSessionId,
     ): Mono<CreditTransaction>
+
+    fun refundForConversation(
+        userId: UserId,
+        sessionId: ConversationSessionId,
+    ): Mono<CreditTransaction>
 }

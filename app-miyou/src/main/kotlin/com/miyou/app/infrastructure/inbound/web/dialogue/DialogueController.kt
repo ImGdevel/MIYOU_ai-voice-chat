@@ -1,8 +1,8 @@
 package com.miyou.app.infrastructure.inbound.web.dialogue
 
 import com.miyou.app.application.credit.usecase.CreditChargeUseCase
-import com.miyou.app.application.credit.usecase.CreditQueryUseCase
 import com.miyou.app.application.dialogue.service.DialogueSpeechService
+import com.miyou.app.domain.credit.exception.InsufficientCreditException
 import com.miyou.app.domain.dialogue.model.ConversationSession
 import com.miyou.app.domain.dialogue.model.ConversationSessionId
 import com.miyou.app.domain.dialogue.model.PersonaId
@@ -36,8 +36,6 @@ import org.springframework.web.server.ResponseStatusException
 import reactor.core.publisher.Flux
 import reactor.core.publisher.Mono
 
-private const val CONVERSATION_COST = 100L
-
 @Validated
 @RestController
 @RequestMapping("/rag/dialogue")
@@ -45,7 +43,6 @@ class DialogueController(
     private val dialoguePipelineUseCase: DialoguePipelineUseCase,
     private val sessionRepository: ConversationSessionRepository,
     private val dialogueSpeechService: DialogueSpeechService,
-    private val creditQueryUseCase: CreditQueryUseCase,
     private val creditChargeUseCase: CreditChargeUseCase,
     private val bufferFactory: DataBufferFactory = DefaultDataBufferFactory(),
 ) : DialogueApi {
@@ -109,19 +106,9 @@ class DialogueController(
                     ),
                 ),
             ).flatMapMany { session ->
-                creditQueryUseCase
-                    .getBalance(session.userId)
-                    .filter { credit -> credit.balance >= CONVERSATION_COST }
-                    .switchIfEmpty(
-                        Mono.error(
-                            ResponseStatusException(
-                                HttpStatus.PAYMENT_REQUIRED,
-                                "크레딧이 부족합니다. 크레딧을 충전하세요.",
-                            ),
-                        ),
-                    ).flatMapMany {
-                        dialoguePipelineUseCase.executeAudioStreaming(session, request.text, targetFormat)
-                    }
+                dialoguePipelineUseCase.executeAudioStreaming(session, request.text, targetFormat)
+            }.onErrorMap(InsufficientCreditException::class.java) {
+                insufficientCreditException()
             }.map(bufferFactory::wrap)
     }
 
@@ -141,6 +128,8 @@ class DialogueController(
                 ),
             ).flatMapMany { session ->
                 dialoguePipelineUseCase.executeTextOnly(session, request.text)
+            }.onErrorMap(InsufficientCreditException::class.java) {
+                insufficientCreditException()
             }
     }
 
@@ -179,8 +168,16 @@ class DialogueController(
                 ),
             ).flatMap { session ->
                 dialogueSpeechService.transcribeAndRespond(session, audioFile, language)
+            }.onErrorMap(InsufficientCreditException::class.java) {
+                insufficientCreditException()
             }.map { result ->
                 SttDialogueResponse(result.transcription, result.response)
             }
     }
+
+    private fun insufficientCreditException(): ResponseStatusException =
+        ResponseStatusException(
+            HttpStatus.PAYMENT_REQUIRED,
+            "크레딧이 부족합니다. 크레딧을 충전하세요.",
+        )
 }

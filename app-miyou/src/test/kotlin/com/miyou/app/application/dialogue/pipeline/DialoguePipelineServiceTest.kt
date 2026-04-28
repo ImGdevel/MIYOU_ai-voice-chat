@@ -1,9 +1,11 @@
 package com.miyou.app.application.dialogue.pipeline
 
+import com.miyou.app.application.credit.usecase.CreditDeductUseCase
 import com.miyou.app.application.dialogue.pipeline.stage.DialogueInputService
 import com.miyou.app.application.dialogue.pipeline.stage.DialogueLlmStreamService
 import com.miyou.app.application.dialogue.pipeline.stage.DialoguePostProcessingService
 import com.miyou.app.application.dialogue.pipeline.stage.DialogueTtsStreamService
+import com.miyou.app.domain.credit.model.CreditTransaction
 import com.miyou.app.domain.dialogue.model.ConversationContext
 import com.miyou.app.domain.dialogue.model.ConversationTurn
 import com.miyou.app.domain.memory.model.MemoryRetrievalResult
@@ -12,11 +14,14 @@ import com.miyou.app.domain.voice.model.AudioFormat
 import com.miyou.app.fixture.ConversationSessionFixture
 import com.miyou.app.support.anyValue
 import com.miyou.app.support.eqValue
+import org.assertj.core.api.Assertions.assertThat
 import org.junit.jupiter.api.BeforeEach
 import org.junit.jupiter.api.DisplayName
 import org.junit.jupiter.api.Test
 import org.junit.jupiter.api.extension.ExtendWith
 import org.mockito.Mock
+import org.mockito.Mockito.mock
+import org.mockito.Mockito.never
 import org.mockito.Mockito.times
 import org.mockito.Mockito.verify
 import org.mockito.Mockito.`when`
@@ -40,6 +45,9 @@ class DialoguePipelineServiceTest {
     @Mock
     private lateinit var postProcessingService: DialoguePostProcessingService
 
+    @Mock
+    private lateinit var creditDeductUseCase: CreditDeductUseCase
+
     private lateinit var service: DialoguePipelineService
 
     @BeforeEach
@@ -50,6 +58,7 @@ class DialoguePipelineServiceTest {
                 llmStreamService,
                 ttsStreamService,
                 postProcessingService,
+                creditDeductUseCase,
             )
     }
 
@@ -77,6 +86,8 @@ class DialoguePipelineServiceTest {
         `when`(ttsStreamService.traceTtsSynthesis(anyValue()))
             .thenReturn(Flux.just("audio".toByteArray()))
         `when`(postProcessingService.persistAndExtract(anyValue(), anyValue())).thenReturn(Mono.empty())
+        `when`(creditDeductUseCase.deductForConversation(session.userId, session.sessionId))
+            .thenReturn(Mono.just(mock(CreditTransaction::class.java)))
 
         StepVerifier
             .create(service.executeAudioStreaming(session, text, AudioFormat.MP3))
@@ -105,6 +116,8 @@ class DialoguePipelineServiceTest {
         `when`(inputService.prepareInputs(eqValue(session), eqValue(text))).thenReturn(Mono.just(inputs))
         `when`(llmStreamService.buildLlmTokenStream(anyValue())).thenReturn(Flux.just("hi"))
         `when`(postProcessingService.persistAndExtractText(anyValue(), anyValue())).thenReturn(Mono.empty())
+        `when`(creditDeductUseCase.deductForConversation(session.userId, session.sessionId))
+            .thenReturn(Mono.just(mock(CreditTransaction::class.java)))
 
         StepVerifier
             .create(service.executeTextOnly(session, text))
@@ -112,5 +125,67 @@ class DialoguePipelineServiceTest {
             .verifyComplete()
 
         verify(inputService, times(1)).prepareInputs(session, text)
+    }
+
+    @Test
+    @DisplayName("스트림 실패 시 선차감한 크레딧을 환불한다")
+    fun executeTextOnly_refundsPrechargedCreditOnFailure() {
+        val session = ConversationSessionFixture.create()
+        val text = "hello"
+        val currentTurn = ConversationTurn.create(session.sessionId, text)
+        val inputs =
+            PipelineInputs(
+                session,
+                RetrievalContext.empty(text),
+                MemoryRetrievalResult.empty(),
+                ConversationContext.empty(),
+                currentTurn,
+            )
+        val failure = IllegalStateException("llm failed")
+
+        `when`(inputService.prepareInputs(eqValue(session), eqValue(text))).thenReturn(Mono.just(inputs))
+        `when`(llmStreamService.buildLlmTokenStream(anyValue())).thenReturn(Flux.error(failure))
+        `when`(postProcessingService.persistAndExtractText(anyValue(), anyValue())).thenReturn(Mono.empty())
+        `when`(creditDeductUseCase.deductForConversation(session.userId, session.sessionId))
+            .thenReturn(Mono.just(mock(CreditTransaction::class.java)))
+        `when`(creditDeductUseCase.refundForConversation(session.userId, session.sessionId))
+            .thenReturn(Mono.just(mock(CreditTransaction::class.java)))
+
+        StepVerifier
+            .create(service.executeTextOnly(session, text))
+            .expectErrorSatisfies { error -> assertThat(error).isSameAs(failure) }
+            .verify()
+
+        verify(creditDeductUseCase).deductForConversation(session.userId, session.sessionId)
+        verify(creditDeductUseCase).refundForConversation(session.userId, session.sessionId)
+    }
+
+    @Test
+    @DisplayName("정상 완료 시 선차감한 크레딧을 환불하지 않는다")
+    fun executeTextOnly_keepsPrechargedCreditOnSuccess() {
+        val session = ConversationSessionFixture.create()
+        val text = "hello"
+        val currentTurn = ConversationTurn.create(session.sessionId, text)
+        val inputs =
+            PipelineInputs(
+                session,
+                RetrievalContext.empty(text),
+                MemoryRetrievalResult.empty(),
+                ConversationContext.empty(),
+                currentTurn,
+            )
+
+        `when`(inputService.prepareInputs(eqValue(session), eqValue(text))).thenReturn(Mono.just(inputs))
+        `when`(llmStreamService.buildLlmTokenStream(anyValue())).thenReturn(Flux.just("hi"))
+        `when`(postProcessingService.persistAndExtractText(anyValue(), anyValue())).thenReturn(Mono.empty())
+        `when`(creditDeductUseCase.deductForConversation(session.userId, session.sessionId))
+            .thenReturn(Mono.just(mock(CreditTransaction::class.java)))
+
+        StepVerifier
+            .create(service.executeTextOnly(session, text))
+            .expectNext("hi")
+            .verifyComplete()
+
+        verify(creditDeductUseCase, never()).refundForConversation(anyValue(), anyValue())
     }
 }

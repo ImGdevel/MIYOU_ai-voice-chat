@@ -1,19 +1,16 @@
 package com.miyou.app.infrastructure.inbound.web.dialogue
 
 import com.miyou.app.application.credit.usecase.CreditChargeUseCase
-import com.miyou.app.application.credit.usecase.CreditQueryUseCase
 import com.miyou.app.application.dialogue.service.DialogueSpeechService
+import com.miyou.app.domain.credit.exception.InsufficientCreditException
 import com.miyou.app.domain.dialogue.model.ConversationSessionId
 import com.miyou.app.domain.dialogue.port.ConversationSessionRepository
 import com.miyou.app.domain.dialogue.port.DialoguePipelineUseCase
 import com.miyou.app.domain.voice.model.AudioFormat
 import com.miyou.app.fixture.ConversationSessionFixture
-import com.miyou.app.fixture.UserCreditFixture
 import com.miyou.app.infrastructure.inbound.web.dialogue.dto.RagDialogueRequest
-import com.miyou.app.support.anyValue
 import org.junit.jupiter.api.DisplayName
 import org.junit.jupiter.api.Test
-import org.mockito.Mockito.never
 import org.mockito.Mockito.verify
 import org.mockito.Mockito.`when`
 import org.springframework.beans.factory.annotation.Autowired
@@ -40,9 +37,6 @@ class DialogueControllerCreditTest {
     private lateinit var dialogueSpeechService: DialogueSpeechService
 
     @MockitoBean
-    private lateinit var creditQueryUseCase: CreditQueryUseCase
-
-    @MockitoBean
     private lateinit var creditChargeUseCase: CreditChargeUseCase
 
     @Test
@@ -53,8 +47,6 @@ class DialogueControllerCreditTest {
         val request = RagDialogueRequest(sessionIdValue, "hello", Instant.now())
 
         `when`(sessionRepository.findById(ConversationSessionId.of(sessionIdValue))).thenReturn(Mono.just(session))
-        `when`(creditQueryUseCase.getBalance(session.userId))
-            .thenReturn(Mono.just(UserCreditFixture.create(session.userId, 4900L)))
         `when`(dialoguePipelineUseCase.executeAudioStreaming(session, "hello", AudioFormat.WAV))
             .thenReturn(Flux.just("audio-bytes".toByteArray()))
 
@@ -77,8 +69,8 @@ class DialogueControllerCreditTest {
         val request = RagDialogueRequest(sessionIdValue, "hello", Instant.now())
 
         `when`(sessionRepository.findById(ConversationSessionId.of(sessionIdValue))).thenReturn(Mono.just(session))
-        `when`(creditQueryUseCase.getBalance(session.userId))
-            .thenReturn(Mono.just(UserCreditFixture.create(session.userId, 99L)))
+        `when`(dialoguePipelineUseCase.executeAudioStreaming(session, "hello", AudioFormat.WAV))
+            .thenReturn(Flux.error(InsufficientCreditException(session.userId, 99L, 100L)))
 
         webTestClient
             .post()
@@ -90,6 +82,6 @@ class DialogueControllerCreditTest {
             .expectStatus()
             .isEqualTo(402)
 
-        verify(dialoguePipelineUseCase, never()).executeAudioStreaming(anyValue(), anyValue(), anyValue())
+        verify(dialoguePipelineUseCase).executeAudioStreaming(session, "hello", AudioFormat.WAV)
     }
 }
