@@ -78,8 +78,11 @@ class CreditApplicationService(
     ): Mono<CreditTransaction> =
         userCreditRepository
             .findByUserId(userId)
-            .defaultIfEmpty(UserCredit.initialize(userId, 0L))
-            .flatMap { credit ->
+            .switchIfEmpty(
+                Mono.error(
+                    IllegalStateException("Refund failed: User credit record not found for userId=${userId.value}"),
+                ),
+            ).flatMap { credit ->
                 val updated = credit.charge(conversationCost)
                 val tx =
                     CreditTransaction.of(
