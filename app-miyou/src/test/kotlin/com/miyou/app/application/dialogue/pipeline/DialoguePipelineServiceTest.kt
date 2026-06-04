@@ -17,6 +17,7 @@ import com.miyou.app.support.eqValue
 import org.assertj.core.api.Assertions.assertThat
 import org.junit.jupiter.api.BeforeEach
 import org.junit.jupiter.api.DisplayName
+import org.junit.jupiter.api.Nested
 import org.junit.jupiter.api.Test
 import org.junit.jupiter.api.extension.ExtendWith
 import org.mockito.Mock
@@ -33,20 +34,15 @@ import java.util.Arrays
 
 @ExtendWith(MockitoExtension::class)
 class DialoguePipelineServiceTest {
-    @Mock
-    private lateinit var inputService: DialogueInputService
+    @Mock private lateinit var inputService: DialogueInputService
 
-    @Mock
-    private lateinit var llmStreamService: DialogueLlmStreamService
+    @Mock private lateinit var llmStreamService: DialogueLlmStreamService
 
-    @Mock
-    private lateinit var ttsStreamService: DialogueTtsStreamService
+    @Mock private lateinit var ttsStreamService: DialogueTtsStreamService
 
-    @Mock
-    private lateinit var postProcessingService: DialoguePostProcessingService
+    @Mock private lateinit var postProcessingService: DialoguePostProcessingService
 
-    @Mock
-    private lateinit var creditDeductUseCase: CreditDeductUseCase
+    @Mock private lateinit var creditDeductUseCase: CreditDeductUseCase
 
     private lateinit var service: DialoguePipelineService
 
@@ -62,130 +58,290 @@ class DialoguePipelineServiceTest {
             )
     }
 
-    @Test
-    @DisplayName("오디오 스트리밍 실행 시 전체 파이프라인에 처리를 위임한다")
-    fun executeAudioStreaming_shouldUseDelegatedFlows() {
-        val session = ConversationSessionFixture.create()
-        val text = "test"
-        val currentTurn = ConversationTurn.create(session.sessionId, text)
-        val inputs =
-            PipelineInputs(
-                session,
-                RetrievalContext.empty(text),
-                MemoryRetrievalResult.empty(),
-                ConversationContext.empty(),
-                currentTurn,
-            )
+    // ──────────────────────────────────────────────
+    //  executeAudioStreaming
+    // ──────────────────────────────────────────────
 
-        `when`(inputService.prepareInputs(eqValue(session), eqValue(text))).thenReturn(Mono.just(inputs))
-        `when`(ttsStreamService.prepareTtsWarmup()).thenReturn(Mono.empty())
-        `when`(llmStreamService.buildLlmTokenStream(anyValue())).thenReturn(Flux.just("a", "b"))
-        `when`(ttsStreamService.assembleSentences(anyValue())).thenReturn(Flux.just("ab"))
-        `when`(ttsStreamService.buildAudioStream(anyValue(), anyValue(), anyValue(), anyValue()))
-            .thenReturn(Flux.just("audio".toByteArray()))
-        `when`(ttsStreamService.traceTtsSynthesis(anyValue()))
-            .thenReturn(Flux.just("audio".toByteArray()))
-        `when`(postProcessingService.persistAndExtract(anyValue(), anyValue())).thenReturn(Mono.empty())
-        `when`(creditDeductUseCase.deductForConversation(session.userId, session.sessionId))
-            .thenReturn(Mono.just(mock(CreditTransaction::class.java)))
+    @Nested
+    @DisplayName("executeAudioStreaming")
+    inner class ExecuteAudioStreaming {
+        @Test
+        @DisplayName("오디오 스트리밍 실행 시 전체 파이프라인에 처리를 위임한다")
+        fun executeAudioStreaming_shouldUseDelegatedFlows() {
+            val session = ConversationSessionFixture.create()
+            val text = "test"
+            val currentTurn = ConversationTurn.create(session.sessionId, text)
+            val inputs =
+                PipelineInputs(
+                    session,
+                    RetrievalContext.empty(text),
+                    MemoryRetrievalResult.empty(),
+                    ConversationContext.empty(),
+                    currentTurn,
+                )
 
-        StepVerifier
-            .create(service.executeAudioStreaming(session, text, AudioFormat.MP3))
-            .expectNextMatches { bytes -> Arrays.equals(bytes, "audio".toByteArray()) }
-            .verifyComplete()
+            `when`(inputService.prepareInputs(eqValue(session), eqValue(text))).thenReturn(Mono.just(inputs))
+            `when`(ttsStreamService.prepareTtsWarmup()).thenReturn(Mono.empty())
+            `when`(llmStreamService.buildLlmTokenStream(anyValue())).thenReturn(Flux.just("a", "b"))
+            `when`(ttsStreamService.assembleSentences(anyValue())).thenReturn(Flux.just("ab"))
+            `when`(ttsStreamService.buildAudioStream(anyValue(), anyValue(), anyValue(), anyValue()))
+                .thenReturn(Flux.just("audio".toByteArray()))
+            `when`(ttsStreamService.traceTtsSynthesis(anyValue()))
+                .thenReturn(Flux.just("audio".toByteArray()))
+            `when`(postProcessingService.persistAndExtract(anyValue(), anyValue())).thenReturn(Mono.empty())
+            `when`(creditDeductUseCase.deductForConversation(session.userId, session.sessionId))
+                .thenReturn(Mono.just(mock(CreditTransaction::class.java)))
 
-        verify(inputService).prepareInputs(session, text)
-        verify(postProcessingService).persistAndExtract(anyValue(), anyValue())
+            StepVerifier
+                .create(service.executeAudioStreaming(session, text, AudioFormat.MP3))
+                .expectNextMatches { bytes -> Arrays.equals(bytes, "audio".toByteArray()) }
+                .verifyComplete()
+
+            verify(inputService).prepareInputs(session, text)
+            verify(postProcessingService).persistAndExtract(anyValue(), anyValue())
+        }
+
+        @Test
+        @DisplayName("LLM/TTS 실패 시 선차감한 크레딧을 환불한다")
+        fun executeAudioStreaming_refundsOnServiceFailure() {
+            val session = ConversationSessionFixture.create()
+            val text = "test"
+            val currentTurn = ConversationTurn.create(session.sessionId, text)
+            val inputs =
+                PipelineInputs(
+                    session,
+                    RetrievalContext.empty(text),
+                    MemoryRetrievalResult.empty(),
+                    ConversationContext.empty(),
+                    currentTurn,
+                )
+            val failure = RuntimeException("tts failed")
+
+            `when`(inputService.prepareInputs(eqValue(session), eqValue(text))).thenReturn(Mono.just(inputs))
+            `when`(ttsStreamService.prepareTtsWarmup()).thenReturn(Mono.empty())
+            `when`(llmStreamService.buildLlmTokenStream(anyValue())).thenReturn(Flux.just("a"))
+            `when`(ttsStreamService.assembleSentences(anyValue())).thenReturn(Flux.just("a"))
+            `when`(ttsStreamService.buildAudioStream(anyValue(), anyValue(), anyValue(), anyValue()))
+                .thenReturn(Flux.error(failure))
+            `when`(ttsStreamService.traceTtsSynthesis(anyValue())).thenReturn(Flux.error(failure))
+            `when`(postProcessingService.persistAndExtract(anyValue(), anyValue())).thenReturn(Mono.empty())
+            `when`(creditDeductUseCase.deductForConversation(session.userId, session.sessionId))
+                .thenReturn(Mono.just(mock(CreditTransaction::class.java)))
+            `when`(creditDeductUseCase.refundForConversation(session.userId, session.sessionId))
+                .thenReturn(Mono.just(mock(CreditTransaction::class.java)))
+
+            StepVerifier
+                .create(service.executeAudioStreaming(session, text, AudioFormat.MP3))
+                .expectErrorSatisfies { error -> assertThat(error).isSameAs(failure) }
+                .verify()
+
+            verify(creditDeductUseCase).deductForConversation(session.userId, session.sessionId)
+            verify(creditDeductUseCase).refundForConversation(session.userId, session.sessionId)
+        }
+
+        @Test
+        @DisplayName("대화 저장(postProcessing) 실패 시 크레딧을 환불하지 않는다")
+        fun executeAudioStreaming_doesNotRefundWhenPostProcessingFails() {
+            val session = ConversationSessionFixture.create()
+            val text = "test"
+            val currentTurn = ConversationTurn.create(session.sessionId, text)
+            val inputs =
+                PipelineInputs(
+                    session,
+                    RetrievalContext.empty(text),
+                    MemoryRetrievalResult.empty(),
+                    ConversationContext.empty(),
+                    currentTurn,
+                )
+
+            `when`(inputService.prepareInputs(eqValue(session), eqValue(text))).thenReturn(Mono.just(inputs))
+            `when`(ttsStreamService.prepareTtsWarmup()).thenReturn(Mono.empty())
+            `when`(llmStreamService.buildLlmTokenStream(anyValue())).thenReturn(Flux.just("a"))
+            `when`(ttsStreamService.assembleSentences(anyValue())).thenReturn(Flux.just("a"))
+            `when`(ttsStreamService.buildAudioStream(anyValue(), anyValue(), anyValue(), anyValue()))
+                .thenReturn(Flux.just("audio".toByteArray()))
+            `when`(ttsStreamService.traceTtsSynthesis(anyValue()))
+                .thenReturn(Flux.just("audio".toByteArray()))
+            // postProcessing 실패
+            `when`(postProcessingService.persistAndExtract(anyValue(), anyValue()))
+                .thenReturn(Mono.error(RuntimeException("mongodb unavailable")))
+            `when`(creditDeductUseCase.deductForConversation(session.userId, session.sessionId))
+                .thenReturn(Mono.just(mock(CreditTransaction::class.java)))
+
+            StepVerifier
+                .create(service.executeAudioStreaming(session, text, AudioFormat.MP3))
+                .expectNextMatches { bytes -> Arrays.equals(bytes, "audio".toByteArray()) }
+                .expectError(RuntimeException::class.java)
+                .verify()
+
+            // postProcessing 실패는 크레딧 환불을 유발하지 않는다
+            verify(creditDeductUseCase, never()).refundForConversation(anyValue(), anyValue())
+        }
     }
 
-    @Test
-    @DisplayName("텍스트 전용 실행 시 위임된 토큰 스트림을 반환한다")
-    fun executeTextOnly_shouldDelegateToUseCase() {
-        val session = ConversationSessionFixture.create()
-        val text = "hello"
-        val currentTurn = ConversationTurn.create(session.sessionId, text)
-        val inputs =
-            PipelineInputs(
-                session,
-                RetrievalContext.empty(text),
-                MemoryRetrievalResult.empty(),
-                ConversationContext.empty(),
-                currentTurn,
-            )
+    // ──────────────────────────────────────────────
+    //  executeTextOnly
+    // ──────────────────────────────────────────────
 
-        `when`(inputService.prepareInputs(eqValue(session), eqValue(text))).thenReturn(Mono.just(inputs))
-        `when`(llmStreamService.buildLlmTokenStream(anyValue())).thenReturn(Flux.just("hi"))
-        `when`(postProcessingService.persistAndExtractText(anyValue(), anyValue())).thenReturn(Mono.empty())
-        `when`(creditDeductUseCase.deductForConversation(session.userId, session.sessionId))
-            .thenReturn(Mono.just(mock(CreditTransaction::class.java)))
+    @Nested
+    @DisplayName("executeTextOnly")
+    inner class ExecuteTextOnly {
+        @Test
+        @DisplayName("텍스트 전용 실행 시 위임된 토큰 스트림을 반환한다")
+        fun executeTextOnly_shouldDelegateToUseCase() {
+            val session = ConversationSessionFixture.create()
+            val text = "hello"
+            val currentTurn = ConversationTurn.create(session.sessionId, text)
+            val inputs =
+                PipelineInputs(
+                    session,
+                    RetrievalContext.empty(text),
+                    MemoryRetrievalResult.empty(),
+                    ConversationContext.empty(),
+                    currentTurn,
+                )
 
-        StepVerifier
-            .create(service.executeTextOnly(session, text))
-            .expectNext("hi")
-            .verifyComplete()
+            `when`(inputService.prepareInputs(eqValue(session), eqValue(text))).thenReturn(Mono.just(inputs))
+            `when`(llmStreamService.buildLlmTokenStream(anyValue())).thenReturn(Flux.just("hi"))
+            `when`(postProcessingService.persistAndExtractText(anyValue(), anyValue())).thenReturn(Mono.empty())
+            `when`(creditDeductUseCase.deductForConversation(session.userId, session.sessionId))
+                .thenReturn(Mono.just(mock(CreditTransaction::class.java)))
 
-        verify(inputService, times(1)).prepareInputs(session, text)
-    }
+            StepVerifier
+                .create(service.executeTextOnly(session, text))
+                .expectNext("hi")
+                .verifyComplete()
 
-    @Test
-    @DisplayName("스트림 실패 시 선차감한 크레딧을 환불한다")
-    fun executeTextOnly_refundsPrechargedCreditOnFailure() {
-        val session = ConversationSessionFixture.create()
-        val text = "hello"
-        val currentTurn = ConversationTurn.create(session.sessionId, text)
-        val inputs =
-            PipelineInputs(
-                session,
-                RetrievalContext.empty(text),
-                MemoryRetrievalResult.empty(),
-                ConversationContext.empty(),
-                currentTurn,
-            )
-        val failure = IllegalStateException("llm failed")
+            verify(inputService, times(1)).prepareInputs(session, text)
+        }
 
-        `when`(inputService.prepareInputs(eqValue(session), eqValue(text))).thenReturn(Mono.just(inputs))
-        `when`(llmStreamService.buildLlmTokenStream(anyValue())).thenReturn(Flux.error(failure))
-        `when`(postProcessingService.persistAndExtractText(anyValue(), anyValue())).thenReturn(Mono.empty())
-        `when`(creditDeductUseCase.deductForConversation(session.userId, session.sessionId))
-            .thenReturn(Mono.just(mock(CreditTransaction::class.java)))
-        `when`(creditDeductUseCase.refundForConversation(session.userId, session.sessionId))
-            .thenReturn(Mono.just(mock(CreditTransaction::class.java)))
+        @Test
+        @DisplayName("LLM 스트림 실패 시 선차감한 크레딧을 환불한다")
+        fun executeTextOnly_refundsPrechargedCreditOnServiceFailure() {
+            val session = ConversationSessionFixture.create()
+            val text = "hello"
+            val currentTurn = ConversationTurn.create(session.sessionId, text)
+            val inputs =
+                PipelineInputs(
+                    session,
+                    RetrievalContext.empty(text),
+                    MemoryRetrievalResult.empty(),
+                    ConversationContext.empty(),
+                    currentTurn,
+                )
+            val failure = IllegalStateException("llm failed")
 
-        StepVerifier
-            .create(service.executeTextOnly(session, text))
-            .expectErrorSatisfies { error -> assertThat(error).isSameAs(failure) }
-            .verify()
+            `when`(inputService.prepareInputs(eqValue(session), eqValue(text))).thenReturn(Mono.just(inputs))
+            `when`(llmStreamService.buildLlmTokenStream(anyValue())).thenReturn(Flux.error(failure))
+            `when`(postProcessingService.persistAndExtractText(anyValue(), anyValue())).thenReturn(Mono.empty())
+            `when`(creditDeductUseCase.deductForConversation(session.userId, session.sessionId))
+                .thenReturn(Mono.just(mock(CreditTransaction::class.java)))
+            `when`(creditDeductUseCase.refundForConversation(session.userId, session.sessionId))
+                .thenReturn(Mono.just(mock(CreditTransaction::class.java)))
 
-        verify(creditDeductUseCase).deductForConversation(session.userId, session.sessionId)
-        verify(creditDeductUseCase).refundForConversation(session.userId, session.sessionId)
-    }
+            StepVerifier
+                .create(service.executeTextOnly(session, text))
+                .expectErrorSatisfies { error -> assertThat(error).isSameAs(failure) }
+                .verify()
 
-    @Test
-    @DisplayName("정상 완료 시 선차감한 크레딧을 환불하지 않는다")
-    fun executeTextOnly_keepsPrechargedCreditOnSuccess() {
-        val session = ConversationSessionFixture.create()
-        val text = "hello"
-        val currentTurn = ConversationTurn.create(session.sessionId, text)
-        val inputs =
-            PipelineInputs(
-                session,
-                RetrievalContext.empty(text),
-                MemoryRetrievalResult.empty(),
-                ConversationContext.empty(),
-                currentTurn,
-            )
+            verify(creditDeductUseCase).deductForConversation(session.userId, session.sessionId)
+            verify(creditDeductUseCase).refundForConversation(session.userId, session.sessionId)
+        }
 
-        `when`(inputService.prepareInputs(eqValue(session), eqValue(text))).thenReturn(Mono.just(inputs))
-        `when`(llmStreamService.buildLlmTokenStream(anyValue())).thenReturn(Flux.just("hi"))
-        `when`(postProcessingService.persistAndExtractText(anyValue(), anyValue())).thenReturn(Mono.empty())
-        `when`(creditDeductUseCase.deductForConversation(session.userId, session.sessionId))
-            .thenReturn(Mono.just(mock(CreditTransaction::class.java)))
+        @Test
+        @DisplayName("정상 완료 시 선차감한 크레딧을 환불하지 않는다")
+        fun executeTextOnly_keepsPrechargedCreditOnSuccess() {
+            val session = ConversationSessionFixture.create()
+            val text = "hello"
+            val currentTurn = ConversationTurn.create(session.sessionId, text)
+            val inputs =
+                PipelineInputs(
+                    session,
+                    RetrievalContext.empty(text),
+                    MemoryRetrievalResult.empty(),
+                    ConversationContext.empty(),
+                    currentTurn,
+                )
 
-        StepVerifier
-            .create(service.executeTextOnly(session, text))
-            .expectNext("hi")
-            .verifyComplete()
+            `when`(inputService.prepareInputs(eqValue(session), eqValue(text))).thenReturn(Mono.just(inputs))
+            `when`(llmStreamService.buildLlmTokenStream(anyValue())).thenReturn(Flux.just("hi"))
+            `when`(postProcessingService.persistAndExtractText(anyValue(), anyValue())).thenReturn(Mono.empty())
+            `when`(creditDeductUseCase.deductForConversation(session.userId, session.sessionId))
+                .thenReturn(Mono.just(mock(CreditTransaction::class.java)))
 
-        verify(creditDeductUseCase, never()).refundForConversation(anyValue(), anyValue())
+            StepVerifier
+                .create(service.executeTextOnly(session, text))
+                .expectNext("hi")
+                .verifyComplete()
+
+            verify(creditDeductUseCase, never()).refundForConversation(anyValue(), anyValue())
+        }
+
+        @Test
+        @DisplayName("대화 저장(postProcessing) 실패 시 크레딧을 환불하지 않는다")
+        fun executeTextOnly_doesNotRefundWhenPostProcessingFails() {
+            val session = ConversationSessionFixture.create()
+            val text = "hello"
+            val currentTurn = ConversationTurn.create(session.sessionId, text)
+            val inputs =
+                PipelineInputs(
+                    session,
+                    RetrievalContext.empty(text),
+                    MemoryRetrievalResult.empty(),
+                    ConversationContext.empty(),
+                    currentTurn,
+                )
+
+            `when`(inputService.prepareInputs(eqValue(session), eqValue(text))).thenReturn(Mono.just(inputs))
+            `when`(llmStreamService.buildLlmTokenStream(anyValue())).thenReturn(Flux.just("hi"))
+            // postProcessing 실패
+            `when`(postProcessingService.persistAndExtractText(anyValue(), anyValue()))
+                .thenReturn(Mono.error(RuntimeException("mongodb unavailable")))
+            `when`(creditDeductUseCase.deductForConversation(session.userId, session.sessionId))
+                .thenReturn(Mono.just(mock(CreditTransaction::class.java)))
+
+            StepVerifier
+                .create(service.executeTextOnly(session, text))
+                .expectNext("hi")
+                .expectError(RuntimeException::class.java)
+                .verify()
+
+            // postProcessing 실패는 크레딧 환불을 유발하지 않는다
+            verify(creditDeductUseCase, never()).refundForConversation(anyValue(), anyValue())
+        }
+
+        @Test
+        @DisplayName("사용자가 스트림을 취소해도 크레딧을 환불하지 않는다")
+        fun executeTextOnly_doesNotRefundOnUserCancellation() {
+            val session = ConversationSessionFixture.create()
+            val text = "hello"
+            val currentTurn = ConversationTurn.create(session.sessionId, text)
+            val inputs =
+                PipelineInputs(
+                    session,
+                    RetrievalContext.empty(text),
+                    MemoryRetrievalResult.empty(),
+                    ConversationContext.empty(),
+                    currentTurn,
+                )
+
+            `when`(inputService.prepareInputs(eqValue(session), eqValue(text))).thenReturn(Mono.just(inputs))
+            // 무한 스트림: 사용자가 구독을 취소하기 전까지 토큰을 계속 발행
+            `when`(llmStreamService.buildLlmTokenStream(anyValue()))
+                .thenReturn(Flux.just("tok1", "tok2", "tok3").concatWith(Flux.never()))
+            `when`(postProcessingService.persistAndExtractText(anyValue(), anyValue())).thenReturn(Mono.empty())
+            `when`(creditDeductUseCase.deductForConversation(session.userId, session.sessionId))
+                .thenReturn(Mono.just(mock(CreditTransaction::class.java)))
+
+            StepVerifier
+                .create(service.executeTextOnly(session, text))
+                .expectNext("tok1")
+                .thenCancel() // 구독자가 직접 취소 (클라이언트 연결 끊김 시뮬레이션)
+                .verify()
+
+            verify(creditDeductUseCase).deductForConversation(session.userId, session.sessionId)
+            // cancel 핸들러는 환불하지 않는다
+            verify(creditDeductUseCase, never()).refundForConversation(anyValue(), anyValue())
+        }
     }
 }
