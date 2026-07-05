@@ -2,6 +2,7 @@ package com.miyou.app.infrastructure.memory.adapter
 
 import com.miyou.app.domain.dialogue.model.ConversationSessionId
 import com.miyou.app.domain.memory.model.Memory
+import com.miyou.app.domain.memory.model.MemoryEmotion
 import com.miyou.app.domain.memory.model.MemoryType
 import com.miyou.app.domain.memory.port.VectorMemoryPort
 import com.miyou.app.infrastructure.dialogue.config.properties.RagDialogueProperties
@@ -55,6 +56,7 @@ class SpringAiVectorDbAdapter(
                 metadata["sessionId"] = memory.sessionId.value
                 metadata["type"] = memory.type.name
                 memory.importance?.let { metadata["importance"] = it }
+                memory.emotion?.let { metadata["emotion"] = it.name }
                 // Spring AI QdrantVectorStore(1.0.0-M5)의 payload 변환은 Long을 지원하지 않는다
                 // (String/Integer/Double/Float/Boolean/Map만 허용) - epoch millis를 Double로 저장.
                 metadata["createdAt"] = memory.createdAt.toEpochMilli().toDouble()
@@ -263,6 +265,7 @@ class SpringAiVectorDbAdapter(
         val lastAccessedAt = payload["lastAccessedAt"]?.doubleValue?.let { Instant.ofEpochMilli(it.toLong()) }
         val accessCount = payload["accessCount"]?.doubleValue?.toInt()
         val archivedAt = payload[ARCHIVED_AT_KEY]?.doubleValue?.let { Instant.ofEpochMilli(it.toLong()) }
+        val emotion = payload["emotion"]?.stringValue?.let { runCatching { MemoryEmotion.valueOf(it) }.getOrNull() }
 
         return Memory(
             id,
@@ -274,6 +277,7 @@ class SpringAiVectorDbAdapter(
             lastAccessedAt = lastAccessedAt,
             accessCount = accessCount,
             archivedAt = archivedAt,
+            emotion = emotion,
         )
     }
 

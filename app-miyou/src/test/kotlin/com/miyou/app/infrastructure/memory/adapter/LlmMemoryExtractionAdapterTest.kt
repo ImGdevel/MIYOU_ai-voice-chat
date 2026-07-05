@@ -4,6 +4,7 @@ import com.fasterxml.jackson.module.kotlin.jacksonObjectMapper
 import com.miyou.app.domain.dialogue.model.ConversationTurn
 import com.miyou.app.domain.dialogue.port.LlmPort
 import com.miyou.app.domain.memory.model.Memory
+import com.miyou.app.domain.memory.model.MemoryEmotion
 import com.miyou.app.domain.memory.model.MemoryExtractionContext
 import com.miyou.app.domain.memory.model.MemoryType
 import com.miyou.app.fixture.ConversationSessionFixture
@@ -205,6 +206,48 @@ class LlmMemoryExtractionAdapterTest {
         StepVerifier
             .create(adapter.extractMemories(context))
             .assertNext { result -> assertThat(result.supersedesMemoryId).isNull() }
+            .verifyComplete()
+    }
+
+    @Test
+    @DisplayName("emotion 필드를 MemoryEmotion으로 파싱한다")
+    fun extractMemories_parsesEmotionField() {
+        val sessionId = ConversationSessionFixture.createId()
+        val context =
+            MemoryExtractionContext.of(
+                sessionId,
+                listOf(ConversationTurn.create(sessionId, "어제 반려동물을 잃었어")),
+                emptyList(),
+            )
+        val response =
+            """[{"type":"EXPERIENTIAL","content":"사용자가 반려동물을 잃었다","importance":0.9,"reasoning":"충격적 상실","emotion":"SHOCKING"}]"""
+
+        `when`(llmPort.complete(anyValue())).thenReturn(Mono.just(response))
+
+        StepVerifier
+            .create(adapter.extractMemories(context))
+            .assertNext { result -> assertThat(result.emotion).isEqualTo(MemoryEmotion.SHOCKING) }
+            .verifyComplete()
+    }
+
+    @Test
+    @DisplayName("알 수 없는 emotion 값은 무시하고 null로 처리한다")
+    fun extractMemories_ignoresUnknownEmotionValue() {
+        val sessionId = ConversationSessionFixture.createId()
+        val context =
+            MemoryExtractionContext.of(
+                sessionId,
+                listOf(ConversationTurn.create(sessionId, "그냥 평범한 하루였어")),
+                emptyList(),
+            )
+        val response =
+            """[{"type":"FACTUAL","content":"사용자는 평범한 하루를 보냈다","importance":0.2,"reasoning":"일상","emotion":"UNKNOWN_VALUE"}]"""
+
+        `when`(llmPort.complete(anyValue())).thenReturn(Mono.just(response))
+
+        StepVerifier
+            .create(adapter.extractMemories(context))
+            .assertNext { result -> assertThat(result.emotion).isNull() }
             .verifyComplete()
     }
 }
