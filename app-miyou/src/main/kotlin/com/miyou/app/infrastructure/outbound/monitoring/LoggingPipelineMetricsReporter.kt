@@ -30,7 +30,8 @@ class LoggingPipelineMetricsReporter : PipelineMetricsReporter {
             }
         } else {
             log.info {
-                "Dialogue pipeline ${summary.pipelineId} status=${summary.status} duration=${summary.durationMillis()}ms " +
+                "Dialogue pipeline ${summary.pipelineId} " +
+                    "status=${summary.status} duration=${summary.durationMillis()}ms " +
                     "firstLatency=${safeLatency(summary.firstResponseLatencyMillis)}ms " +
                     "lastLatency=${safeLatency(summary.lastResponseLatencyMillis)}ms " +
                     "attributes=${summary.attributes} stages=[$stageSummary] llmResults=$llmOutputs"

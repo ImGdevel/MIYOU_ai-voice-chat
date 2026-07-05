@@ -5,6 +5,7 @@ import com.miyou.app.domain.memory.model.Memory
 import com.miyou.app.domain.memory.model.MemoryType
 import com.miyou.app.domain.memory.port.VectorMemoryPort
 import com.miyou.app.infrastructure.dialogue.config.properties.RagDialogueProperties
+import io.github.oshai.kotlinlogging.KotlinLogging
 import io.qdrant.client.QdrantClient
 import io.qdrant.client.grpc.Points.Condition
 import io.qdrant.client.grpc.Points.FieldCondition
@@ -14,7 +15,6 @@ import io.qdrant.client.grpc.Points.Range
 import io.qdrant.client.grpc.Points.ScoredPoint
 import io.qdrant.client.grpc.Points.SearchPoints
 import io.qdrant.client.grpc.Points.WithPayloadSelector
-import io.github.oshai.kotlinlogging.KotlinLogging
 import org.springframework.ai.document.Document
 import org.springframework.ai.vectorstore.VectorStore
 import org.springframework.context.annotation.Primary

@@ -1,9 +1,9 @@
 package com.miyou.app.infrastructure.dialogue.adapter.tts.loadbalancer
 
 import com.miyou.app.infrastructure.dialogue.config.properties.RagDialogueProperties
+import io.github.oshai.kotlinlogging.KotlinLogging
 import io.micrometer.core.instrument.Gauge
 import io.micrometer.core.instrument.MeterRegistry
-import io.github.oshai.kotlinlogging.KotlinLogging
 import org.springframework.context.ApplicationEventPublisher
 import org.springframework.scheduling.annotation.Scheduled
 import org.springframework.stereotype.Component

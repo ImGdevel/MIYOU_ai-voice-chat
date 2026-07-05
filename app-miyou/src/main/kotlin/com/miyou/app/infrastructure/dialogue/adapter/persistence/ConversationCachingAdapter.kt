@@ -43,7 +43,11 @@ class ConversationCachingAdapter(
                 Mono
                     .defer { appendToCache(saved) }
                     .onErrorResume { e ->
-                        log.warn(e) { "Redis cache write failed for session ${saved.sessionId().value()}, continuing without cache" }
+                        log.warn(
+                            e
+                        ) {
+                            "Redis cache write failed for session ${saved.sessionId().value()}, continuing without cache"
+                        }
                         Mono.empty()
                     }.thenReturn(saved)
             }
