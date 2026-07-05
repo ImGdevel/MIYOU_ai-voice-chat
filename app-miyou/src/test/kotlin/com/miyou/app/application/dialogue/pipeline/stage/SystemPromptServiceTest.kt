@@ -51,8 +51,9 @@ class SystemPromptServiceTest {
         assertThat(prompt)
             .contains("persona")
             .contains("common")
-            .contains("- user likes sushi")
-            .contains("- user is a developer")
+            .containsPattern("- \\[\\d{2}월 \\d{2}일] user likes sushi")
+            .containsPattern("- \\[\\d{2}월 \\d{2}일] user is a developer")
+            .containsPattern("오늘은 \\d{2}월 \\d{2}일입니다\\.")
             .contains("sushi improves stamina")
     }
 

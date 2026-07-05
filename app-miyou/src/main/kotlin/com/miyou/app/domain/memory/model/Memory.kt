@@ -37,11 +37,15 @@ data class Memory(
         )
     }
 
+    /**
+     * 검색 랭킹용 recency는 접근 시점(lastAccessedAt)이 아니라 사건/생성 시점(createdAt)
+     * 기준이다 - 자주 조회된다고 해서 오래된 기억이 최신처럼 랭킹되면 안 되기 때문.
+     * (정리/아카이브 목적의 decayImportance/shouldArchive는 접근 시점 기준을 그대로 쓴다.)
+     */
     fun calculateRankedScore(recencyWeight: Float): Float {
         val baseImportance = importance ?: 0.5f
-        val lastAccessedAtValue = lastAccessedAt ?: return baseImportance
-        val hoursSinceAccess = (Instant.now().epochSecond - lastAccessedAtValue.epochSecond) / 3600
-        val recencyFactor = exp(-recencyWeight * hoursSinceAccess / 24.0).toFloat()
+        val hoursSinceCreated = maxOf(0.0, (Instant.now().epochSecond - createdAt.epochSecond) / 3600.0)
+        val recencyFactor = exp(-recencyWeight * hoursSinceCreated / 24.0).toFloat()
         return baseImportance * recencyFactor
     }
 

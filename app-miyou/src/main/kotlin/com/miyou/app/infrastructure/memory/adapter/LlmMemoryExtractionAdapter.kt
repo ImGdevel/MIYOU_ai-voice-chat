@@ -50,6 +50,10 @@ class LlmMemoryExtractionAdapter(
         - If existing memory needs importance update, output it with new importance
         - Set importance (0.0-1.0): personal/emotional = higher, general facts = lower
         - Provide brief reasoning for each memory
+        - The content MUST start with an explicit grammatical subject: "사용자" (the user)
+          or "AI" (the persona). Never use a personal name/nickname, and never write a
+          subjectless predicate. Write "사용자는 노래 부르는 것을 좋아한다", not "노래
+          부르는 것을 좋아함" or a name.
 
         Output ONLY valid JSON array:
         [

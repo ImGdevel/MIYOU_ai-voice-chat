@@ -124,6 +124,58 @@ class MemoryRetrievalServiceTest {
     }
 
     @Test
+    @DisplayName("반복 조회로 lastAccessedAt이 갱신된 오래된 메모리보다 최근 생성된 메모리를 우선한다")
+    fun retrieveMemories_ranksRecentlyCreatedMemoryAboveStaleFrequentlyAccessedOne() {
+        val sessionId = ConversationSessionFixture.createId()
+        val now = Instant.now()
+        val recent =
+            Memory(
+                "m-recent",
+                sessionId,
+                MemoryType.FACTUAL,
+                "user ate ramen yesterday",
+                0.6f,
+                now,
+                now,
+                1,
+            )
+        // 90일 전 사건이지만 반복 조회로 lastAccessedAt만 계속 최신화된 상황 재현.
+        val staleButFrequentlyAccessed =
+            Memory(
+                "m-stale",
+                sessionId,
+                MemoryType.FACTUAL,
+                "user ate salad a while ago",
+                0.6f,
+                now.minusSeconds(90L * 24 * 3600),
+                now,
+                10,
+            )
+
+        `when`(embeddingPort.embed("query")).thenReturn(
+            Mono.just(MemoryEmbedding.of("query", listOf(0.1f, 0.2f))),
+        )
+        `when`(
+            vectorMemoryPort.search(
+                sessionId,
+                listOf(0.1f, 0.2f),
+                listOf(MemoryType.EXPERIENTIAL, MemoryType.FACTUAL),
+                0.3f,
+                2
+            ),
+        ).thenReturn(Flux.just(staleButFrequentlyAccessed, recent))
+        `when`(vectorMemoryPort.updateImportance(anyStringValue(), anyFloatValue(), anyValue(), anyIntValue()))
+            .thenReturn(Mono.empty())
+
+        StepVerifier
+            .create(service.retrieveMemories(sessionId, "query", 1))
+            .assertNext { result ->
+                assertThat(result.factualMemories).hasSize(1)
+                assertThat(result.factualMemories[0].id).isEqualTo("m-recent")
+            }.verifyComplete()
+    }
+
+    @Test
     @DisplayName("검색 결과가 없으면 빈 메모리 결과를 반환한다")
     fun retrieveMemories_shouldReturnEmptyWithoutUpdateWhenSearchIsEmpty() {
         val sessionId = ConversationSessionFixture.createId()
