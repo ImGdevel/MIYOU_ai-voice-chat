@@ -14,6 +14,7 @@ data class Memory(
     val createdAt: Instant,
     val lastAccessedAt: Instant?,
     val accessCount: Int?,
+    val archivedAt: Instant? = null,
 ) {
     init {
         require(content.isNotBlank()) { "content cannot be null or blank" }
@@ -44,7 +45,45 @@ data class Memory(
         return baseImportance * recencyFactor
     }
 
+    /**
+     * 저장된 importance를 실제로 깎는다 (calculateRankedScore와 달리 랭킹용 계산이 아니라 저장값 자체를 갱신).
+     * importance >= decayExemptThreshold(생일/트라우마급 핵심 기억)는 감쇠 면제.
+     */
+    fun decayImportance(
+        now: Instant,
+        decayRateHigh: Float,
+        decayRateLow: Float,
+        decayExemptThreshold: Float,
+    ): Memory {
+        val current = importance ?: return this
+        if (current >= decayExemptThreshold) return this
+
+        val lastAccess = lastAccessedAt ?: createdAt
+        val hoursSinceAccess = (now.epochSecond - lastAccess.epochSecond) / 3600.0
+        val rate = if (current >= MID_IMPORTANCE_THRESHOLD) decayRateHigh else decayRateLow
+        val decayed = (current * exp(-rate * hoursSinceAccess / 24.0)).toFloat()
+        return copy(importance = decayed.coerceIn(0.0f, 1.0f))
+    }
+
+    /** 소프트 아카이브 대상 여부. 이미 아카이브된 메모리는 대상에서 제외한다. */
+    fun shouldArchive(
+        now: Instant,
+        archiveImportanceThreshold: Float,
+        archiveIdleDays: Long,
+    ): Boolean {
+        if (archivedAt != null) return false
+        val current = importance ?: return false
+        val lastAccess = lastAccessedAt ?: createdAt
+        val idleDays = (now.epochSecond - lastAccess.epochSecond) / SECONDS_PER_DAY
+        return current < archiveImportanceThreshold || idleDays >= archiveIdleDays
+    }
+
+    fun archive(now: Instant): Memory = copy(archivedAt = now)
+
     companion object {
+        private const val MID_IMPORTANCE_THRESHOLD = 0.5f
+        private const val SECONDS_PER_DAY = 86400L
+
         fun create(
             sessionId: ConversationSessionId,
             type: MemoryType,

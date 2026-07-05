@@ -3,6 +3,7 @@ package com.miyou.app.infrastructure.dialogue.config
 import com.miyou.app.application.dialogue.policy.DialogueExecutionPolicy
 import com.miyou.app.application.dialogue.policy.PromptTemplatePolicy
 import com.miyou.app.application.dialogue.policy.SttPolicy
+import com.miyou.app.application.memory.policy.MemoryCuratorPolicy
 import com.miyou.app.application.memory.policy.MemoryExtractionPolicy
 import com.miyou.app.application.memory.policy.MemoryRetrievalPolicy
 import com.miyou.app.domain.dialogue.port.TemplateLoaderPort
@@ -37,6 +38,18 @@ class DialoguePolicyConfiguration {
     @Bean
     fun memoryExtractionPolicy(properties: RagDialogueProperties): MemoryExtractionPolicy =
         MemoryExtractionPolicy(properties.memory.conversationThreshold)
+
+    @Bean
+    fun memoryCuratorPolicy(properties: RagDialogueProperties): MemoryCuratorPolicy {
+        val memory = properties.memory
+        return MemoryCuratorPolicy(
+            memory.decayRateHigh,
+            memory.decayRateLow,
+            memory.decayExemptThreshold,
+            memory.archiveImportanceThreshold,
+            memory.archiveIdleDays,
+        )
+    }
 
     @Bean
     fun sttPolicy(properties: RagDialogueProperties): SttPolicy {

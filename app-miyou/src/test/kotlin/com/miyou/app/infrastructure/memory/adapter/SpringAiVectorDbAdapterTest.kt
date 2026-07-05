@@ -5,11 +5,16 @@ import com.miyou.app.domain.memory.model.Memory
 import com.miyou.app.domain.memory.model.MemoryType
 import com.miyou.app.fixture.ConversationSessionFixture
 import com.miyou.app.infrastructure.dialogue.config.properties.RagDialogueProperties
+import com.miyou.app.support.anyValue
+import com.miyou.app.support.eqValue
 import io.qdrant.client.QdrantClient
 import io.qdrant.client.grpc.JsonWithInt
 import io.qdrant.client.grpc.Points
 import io.qdrant.client.grpc.Points.ScoredPoint
+import io.qdrant.client.grpc.Points.ScrollPoints
+import io.qdrant.client.grpc.Points.ScrollResponse
 import io.qdrant.client.grpc.Points.SearchPoints
+import io.qdrant.client.grpc.Points.UpdateResult
 import org.assertj.core.api.Assertions.assertThat
 import org.junit.jupiter.api.BeforeEach
 import org.junit.jupiter.api.DisplayName
@@ -17,6 +22,7 @@ import org.junit.jupiter.api.Test
 import org.junit.jupiter.api.extension.ExtendWith
 import org.mockito.ArgumentCaptor
 import org.mockito.ArgumentMatchers.any
+import org.mockito.ArgumentMatchers.nullable
 import org.mockito.Mock
 import org.mockito.Mockito.verify
 import org.mockito.Mockito.`when`
@@ -127,10 +133,106 @@ class SpringAiVectorDbAdapterTest {
     }
 
     @Test
-    @DisplayName("updateImportance는 별도 작업 없이 정상 완료된다")
-    fun updateImportance_completesAsNoOp() {
+    @DisplayName("updateImportance는 Qdrant payload를 갱신한다")
+    fun updateImportance_writesPayloadToQdrant() {
+        val memoryId = "550e8400-e29b-41d4-a716-446655440000"
+        `when`(
+            qdrantClient.setPayloadAsync(
+                anyValue<String>(),
+                anyValue<Map<String, JsonWithInt.Value>>(),
+                anyValue<List<Points.PointId>>(),
+                eqValue(true),
+                nullable(Points.WriteOrderingType::class.java),
+                nullable(java.time.Duration::class.java),
+            ),
+        ).thenReturn(Futures.immediateFuture(UpdateResult.getDefaultInstance()))
+
         StepVerifier
-            .create(vectorDbAdapter.updateImportance("test-id", 0.9f, Instant.now(), 10))
+            .create(vectorDbAdapter.updateImportance(memoryId, 0.9f, Instant.now(), 10))
+            .verifyComplete()
+    }
+
+    @Test
+    @DisplayName("findAllActive는 archivedAt이 없는 포인트만 스크롤로 조회한다")
+    fun findAllActive_scrollsOnlyNonArchivedPoints() {
+        val point =
+            Points.RetrievedPoint
+                .newBuilder()
+                .setId(
+                    Points.PointId
+                        .newBuilder()
+                        .setUuid("mem-1")
+                        .build()
+                ).putPayload(
+                    "sessionId",
+                    JsonWithInt.Value
+                        .newBuilder()
+                        .setStringValue("session-1")
+                        .build()
+                ).putPayload(
+                    "content",
+                    JsonWithInt.Value
+                        .newBuilder()
+                        .setStringValue("content")
+                        .build()
+                ).putPayload(
+                    "type",
+                    JsonWithInt.Value
+                        .newBuilder()
+                        .setStringValue("FACTUAL")
+                        .build()
+                ).putPayload(
+                    "importance",
+                    JsonWithInt.Value
+                        .newBuilder()
+                        .setDoubleValue(0.2)
+                        .build()
+                ).build()
+        val response = ScrollResponse.newBuilder().addResult(point).build()
+
+        `when`(qdrantClient.scrollAsync(any(ScrollPoints::class.java)))
+            .thenReturn(Futures.immediateFuture(response))
+
+        StepVerifier
+            .create(vectorDbAdapter.findAllActive(100))
+            .assertNext { memory ->
+                assertThat(memory.id).isEqualTo("mem-1")
+                assertThat(memory.sessionId.value).isEqualTo("session-1")
+                assertThat(memory.archivedAt).isNull()
+            }.verifyComplete()
+    }
+
+    @Test
+    @DisplayName("applyDecayAndArchive는 importance와 archivedAt을 함께 반영한다")
+    fun applyDecayAndArchive_writesImportanceAndArchivedAt() {
+        val sessionId = ConversationSessionFixture.createId()
+        val now = Instant.now()
+        val archivedMemory =
+            Memory(
+                id = "550e8400-e29b-41d4-a716-446655440000",
+                sessionId = sessionId,
+                type = MemoryType.FACTUAL,
+                content = "content",
+                importance = 0.05f,
+                createdAt = now,
+                lastAccessedAt = now,
+                accessCount = 1,
+                archivedAt = now,
+            )
+
+        `when`(
+            qdrantClient.setPayloadAsync(
+                anyValue<String>(),
+                anyValue<Map<String, JsonWithInt.Value>>(),
+                anyValue<List<Points.PointId>>(),
+                eqValue(true),
+                nullable(Points.WriteOrderingType::class.java),
+                nullable(java.time.Duration::class.java),
+            ),
+        ).thenReturn(Futures.immediateFuture(UpdateResult.getDefaultInstance()))
+
+        StepVerifier
+            .create(vectorDbAdapter.applyDecayAndArchive(archivedMemory))
             .verifyComplete()
     }
 }
