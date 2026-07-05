@@ -9,7 +9,7 @@ import com.miyou.app.domain.monitoring.model.DialoguePipelineStage
 import com.miyou.app.domain.voice.model.AudioFormat
 import com.miyou.app.domain.voice.model.Voice
 import com.miyou.app.domain.voice.port.VoiceSelectionPort
-import org.slf4j.LoggerFactory
+import io.github.oshai.kotlinlogging.KotlinLogging
 import org.springframework.stereotype.Service
 import reactor.core.publisher.Flux
 import reactor.core.publisher.Mono
@@ -27,7 +27,7 @@ class DialogueTtsStreamService(
     private val pipelineTracer: PipelineTracer,
     private val voiceProvider: VoiceSelectionPort,
 ) {
-    private val logger = LoggerFactory.getLogger(DialogueTtsStreamService::class.java)
+    private val logger = KotlinLogging.logger {}
 
     /**
      * TTS 준비 (웜업).
@@ -44,7 +44,7 @@ class DialogueTtsStreamService(
                     ttsPort
                         .prepare()
                         .doOnError { error ->
-                            logger.warn("Speech synthesis warmup failed for {}: {}", pipelineId, error.message)
+                            logger.warn { "Speech synthesis warmup failed for $pipelineId: ${error.message}" }
                         }.onErrorResume { Mono.empty() }
                 }
             }.cache()
@@ -60,7 +60,7 @@ class DialogueTtsStreamService(
             { sentenceAssembler.assemble(llmTokens) },
             { tracker, sentence ->
                 tracker.recordLlmOutput(sentence)
-                logger.debug("Sentence: [{}]", sentence)
+                logger.debug { "Sentence: [$sentence]" }
             },
         )
 

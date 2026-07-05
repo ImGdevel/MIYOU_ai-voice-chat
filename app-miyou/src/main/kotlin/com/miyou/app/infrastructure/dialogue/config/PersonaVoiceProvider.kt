@@ -8,7 +8,7 @@ import com.miyou.app.domain.voice.model.VoiceStyle
 import com.miyou.app.domain.voice.port.VoiceSelectionPort
 import com.miyou.app.infrastructure.dialogue.config.properties.RagDialogueProperties
 import com.miyou.app.infrastructure.dialogue.config.properties.RagDialogueProperties.PersonaVoiceConfig
-import org.slf4j.LoggerFactory
+import io.github.oshai.kotlinlogging.KotlinLogging
 import org.springframework.stereotype.Service
 
 @Service
@@ -16,7 +16,7 @@ class PersonaVoiceProvider(
     private val properties: RagDialogueProperties,
     private val defaultVoice: Voice,
 ) : VoiceSelectionPort {
-    private val log = LoggerFactory.getLogger(javaClass)
+    private val log = KotlinLogging.logger {}
 
     override fun getVoiceForPersona(personaId: PersonaId): Voice {
         if (personaId == PersonaId.DEFAULT) {
@@ -30,7 +30,7 @@ class PersonaVoiceProvider(
             return buildVoiceFromConfig(personaKey, config)
         }
 
-        log.warn("페르소나 '{}'에 대한 설정을 찾지 못해 기본 음성 반환", personaKey)
+        log.warn { "페르소나 '$personaKey'에 대한 설정을 찾지 못해 기본 음성 반환" }
         return defaultVoice
     }
 

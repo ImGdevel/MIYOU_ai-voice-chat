@@ -19,7 +19,7 @@ import com.miyou.app.infrastructure.inbound.web.dialogue.dto.CreateSessionRespon
 import com.miyou.app.infrastructure.inbound.web.dialogue.dto.RagDialogueRequest
 import com.miyou.app.infrastructure.inbound.web.dialogue.dto.SttTranscriptionResponse
 import jakarta.validation.Valid
-import org.slf4j.LoggerFactory
+import io.github.oshai.kotlinlogging.KotlinLogging
 import org.springframework.core.io.buffer.DataBuffer
 import org.springframework.core.io.buffer.DataBufferFactory
 import org.springframework.core.io.buffer.DefaultDataBufferFactory
@@ -47,7 +47,7 @@ class DialogueController(
     private val creditChargeUseCase: CreditChargeUseCase,
     private val bufferFactory: DataBufferFactory = DefaultDataBufferFactory(),
 ) : DialogueApi {
-    private val logger = LoggerFactory.getLogger(DialogueController::class.java)
+    private val logger = KotlinLogging.logger {}
 
     @PostMapping("/session")
     override fun createSession(
@@ -139,7 +139,7 @@ class DialogueController(
         @RequestPart("audio") audioFile: FilePart,
         @RequestParam(required = false) language: String?,
     ): Mono<SttTranscriptionResponse> {
-        logger.info("STT request - language: {}, filename: {}", language, audioFile.filename())
+        logger.info { "STT request - language: $language, filename: ${audioFile.filename()}" }
         return dialogueSpeechService
             .transcribe(audioFile, language)
             .map(::SttTranscriptionResponse)

@@ -2,7 +2,7 @@ package com.miyou.app.infrastructure.dialogue.adapter.stt
 
 import com.miyou.app.domain.dialogue.model.AudioTranscriptionInput
 import com.miyou.app.domain.dialogue.port.SttPort
-import org.slf4j.LoggerFactory
+import io.github.oshai.kotlinlogging.KotlinLogging
 import org.springframework.core.io.ByteArrayResource
 import org.springframework.http.HttpHeaders
 import org.springframework.http.HttpStatus
@@ -22,7 +22,7 @@ class OpenAiWhisperSttAdapter(
     baseUrl: String,
     private val model: String,
 ) : SttPort {
-    private val log = LoggerFactory.getLogger(javaClass)
+    private val log = KotlinLogging.logger {}
     private val webClient: WebClient =
         webClientBuilder
             .baseUrl(normalizeBaseUrl(baseUrl))
@@ -30,12 +30,9 @@ class OpenAiWhisperSttAdapter(
             .build()
 
     override fun transcribe(input: AudioTranscriptionInput): Mono<String> {
-        log.info(
-            "STT request - fileName: {}, contentType: {}, size: {} bytes",
-            input.fileName(),
-            input.contentType(),
-            input.audioBytes().size,
-        )
+        log.info {
+            "STT request - fileName: ${input.fileName()}, contentType: ${input.contentType()}, size: ${input.audioBytes().size} bytes"
+        }
 
         val builder =
             MultipartBodyBuilder().apply {
@@ -63,7 +60,7 @@ class OpenAiWhisperSttAdapter(
                 response
                     .bodyToMono(String::class.java)
                     .doOnNext { body ->
-                        log.error("OpenAI API error - status: {}, body: {}", response.statusCode(), body)
+                        log.error { "OpenAI API error - status: ${response.statusCode()}, body: $body" }
                     }.then(
                         Mono.error(
                             ResponseStatusException(
@@ -81,7 +78,7 @@ class OpenAiWhisperSttAdapter(
             })
             .bodyToMono(OpenAiTranscriptionResponse::class.java)
             .map { response -> checkNotNull(response.text) { "OpenAI STT response text is null" } }
-            .doOnSuccess { text -> log.info("STT completed: {} chars", text.length) }
+            .doOnSuccess { text -> log.info { "STT completed: ${text.length} chars" } }
     }
 
     private fun normalizeBaseUrl(baseUrl: String): String {

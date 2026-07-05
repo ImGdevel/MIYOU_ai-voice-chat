@@ -1,7 +1,7 @@
 package com.miyou.app.infrastructure.memory.config
 
 import com.miyou.app.infrastructure.dialogue.config.properties.RagDialogueProperties
-import org.slf4j.LoggerFactory
+import io.github.oshai.kotlinlogging.KotlinLogging
 import org.springframework.boot.ApplicationArguments
 import org.springframework.boot.ApplicationRunner
 import org.springframework.http.HttpStatusCode
@@ -20,7 +20,7 @@ class QdrantCollectionInitializer(
     private val properties: RagDialogueProperties,
     webClientBuilder: WebClient.Builder,
 ) : ApplicationRunner {
-    private val log = LoggerFactory.getLogger(QdrantCollectionInitializer::class.java)
+    private val log = KotlinLogging.logger {}
     private val webClient: WebClient
 
     init {
@@ -35,15 +35,12 @@ class QdrantCollectionInitializer(
     override fun run(args: ApplicationArguments) {
         val qdrant = properties.qdrant
         if (!qdrant.autoCreateCollection) {
-            log.info(
-                "Qdrant auto-create is disabled. Skip collection init. collection={}",
-                qdrant.collectionName,
-            )
+            log.info { "Qdrant auto-create is disabled. Skip collection init. collection=${qdrant.collectionName}" }
             return
         }
 
         if (collectionExists(qdrant.collectionName)) {
-            log.info("Qdrant collection already exists. collection={}", qdrant.collectionName)
+            log.info { "Qdrant collection already exists. collection=${qdrant.collectionName}" }
             return
         }
 
@@ -124,11 +121,7 @@ class QdrantCollectionInitializer(
                 }
             }.block(REQUEST_TIMEOUT)
 
-        log.info(
-            "Qdrant collection is ready. collection={}, vectorDimension={}",
-            collectionName,
-            vectorDimension,
-        )
+        log.info { "Qdrant collection is ready. collection=$collectionName, vectorDimension=$vectorDimension" }
     }
 
     private fun trimTrailingSlash(url: String): String {

@@ -14,7 +14,7 @@ import io.qdrant.client.grpc.Points.Range
 import io.qdrant.client.grpc.Points.ScoredPoint
 import io.qdrant.client.grpc.Points.SearchPoints
 import io.qdrant.client.grpc.Points.WithPayloadSelector
-import org.slf4j.LoggerFactory
+import io.github.oshai.kotlinlogging.KotlinLogging
 import org.springframework.ai.document.Document
 import org.springframework.ai.vectorstore.VectorStore
 import org.springframework.context.annotation.Primary
@@ -33,7 +33,7 @@ class SpringAiVectorDbAdapter(
     private val qdrantClient: QdrantClient,
     properties: RagDialogueProperties,
 ) : VectorMemoryPort {
-    private val log = LoggerFactory.getLogger(SpringAiVectorDbAdapter::class.java)
+    private val log = KotlinLogging.logger {}
     private val collectionName = properties.qdrant.collectionName
 
     override fun upsert(
@@ -141,7 +141,7 @@ class SpringAiVectorDbAdapter(
     ): Mono<Void> =
         Mono
             .fromCallable<Void> {
-                log.warn("Memory ID={} importance update is not supported by current Spring AI config", memoryId)
+                log.warn { "Memory ID=$memoryId importance update is not supported by current Spring AI config" }
                 null
             }.subscribeOn(Schedulers.boundedElastic())
             .then()

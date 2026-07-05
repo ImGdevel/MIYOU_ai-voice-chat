@@ -16,7 +16,7 @@ import com.miyou.app.domain.credit.port.UserCreditRepository
 import com.miyou.app.domain.dialogue.model.ConversationSessionId
 import com.miyou.app.domain.dialogue.model.UserId
 import com.miyou.app.domain.mission.model.MissionId
-import org.slf4j.LoggerFactory
+import io.github.oshai.kotlinlogging.KotlinLogging
 import org.springframework.beans.factory.annotation.Value
 import org.springframework.dao.DuplicateKeyException
 import org.springframework.data.domain.Pageable
@@ -39,7 +39,7 @@ class CreditApplicationService(
 ) : CreditQueryUseCase,
     CreditChargeUseCase,
     CreditDeductUseCase {
-    private val log = LoggerFactory.getLogger(javaClass)
+    private val log = KotlinLogging.logger {}
 
     /**
      * 사용자 크레딧 잔액 조회.
@@ -245,10 +245,7 @@ class CreditApplicationService(
                     grantSignupBonus(userId).then()
                 }
             }.onErrorResume(DuplicateKeyException::class.java) { e ->
-                log.debug(
-                    "Signup bonus already granted for userId={} (race condition handled)",
-                    userId.value,
-                )
+                log.debug { "Signup bonus already granted for userId=${userId.value} (race condition handled)" }
                 Mono.empty()
             }
 }

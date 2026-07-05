@@ -10,7 +10,7 @@ import com.miyou.app.domain.credit.model.CreditTransaction
 import com.miyou.app.domain.dialogue.model.ConversationSession
 import com.miyou.app.domain.dialogue.port.DialoguePipelineUseCase
 import com.miyou.app.domain.voice.model.AudioFormat
-import org.slf4j.LoggerFactory
+import io.github.oshai.kotlinlogging.KotlinLogging
 import org.springframework.stereotype.Service
 import reactor.core.publisher.Flux
 import reactor.core.publisher.Mono
@@ -29,7 +29,7 @@ class DialoguePipelineService(
     private val postProcessingService: DialoguePostProcessingService,
     private val creditDeductUseCase: CreditDeductUseCase,
 ) : DialoguePipelineUseCase {
-    private val logger = LoggerFactory.getLogger(DialoguePipelineService::class.java)
+    private val logger = KotlinLogging.logger {}
     private val defaultAudioFormat: AudioFormat = AudioFormat.MP3
 
     /**
@@ -122,22 +122,16 @@ class DialoguePipelineService(
         creditDeductUseCase
             .refundForConversation(session.userId, session.sessionId)
             .doOnNext { tx ->
-                logger.warn(
-                    "Conversation credit refunded - userId={}, sessionId={}, transactionId={}, cause={}",
-                    session.userId.value,
-                    session.sessionId.value,
-                    tx.transactionId.value,
-                    cause.message,
-                )
+                logger.warn {
+                    "Conversation credit refunded - userId=${session.userId.value}, sessionId=${session.sessionId.value}, " +
+                        "transactionId=${tx.transactionId.value}, cause=${cause.message}"
+                }
             }.then()
             .onErrorResume { refundError ->
-                logger.error(
-                    "Conversation credit refund failed - userId={}, sessionId={}, cause={}, refundError={}",
-                    session.userId.value,
-                    session.sessionId.value,
-                    cause.message,
-                    refundError.message,
-                )
+                logger.error {
+                    "Conversation credit refund failed - userId=${session.userId.value}, sessionId=${session.sessionId.value}, " +
+                        "cause=${cause.message}, refundError=${refundError.message}"
+                }
                 Mono.empty()
             }
 
@@ -149,11 +143,9 @@ class DialoguePipelineService(
      * @return 로깅 완료
      */
     private fun logUserCancellation(session: ConversationSession): Mono<Void> {
-        logger.info(
-            "Conversation cancelled by user - credit kept - userId={}, sessionId={}",
-            session.userId.value,
-            session.sessionId.value,
-        )
+        logger.info {
+            "Conversation cancelled by user - credit kept - userId=${session.userId.value}, sessionId=${session.sessionId.value}"
+        }
         return Mono.empty()
     }
 }

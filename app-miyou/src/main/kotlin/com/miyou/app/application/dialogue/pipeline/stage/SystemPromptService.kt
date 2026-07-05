@@ -6,7 +6,7 @@ import com.miyou.app.domain.dialogue.port.TemplateLoaderPort
 import com.miyou.app.domain.memory.model.Memory
 import com.miyou.app.domain.memory.model.MemoryRetrievalResult
 import com.miyou.app.domain.retrieval.model.RetrievalContext
-import org.slf4j.LoggerFactory
+import io.github.oshai.kotlinlogging.KotlinLogging
 import org.springframework.stereotype.Service
 import java.util.StringJoiner
 
@@ -67,7 +67,7 @@ class SystemPromptService(
         return try {
             templateLoader.load(templatePath).trim()
         } catch (exception: RuntimeException) {
-            logger.warn("Persona template load failed: {} ({})", templatePath, exception.message)
+            logger.warn { "Persona template load failed: $templatePath (${exception.message})" }
             ""
         }
     }
@@ -173,6 +173,6 @@ class SystemPromptService(
         const val FACTUAL_MEMORY_TITLE = "사실 기억:"
         const val CONTEXT_TITLE = "지금 상황:"
 
-        private val logger by lazy { LoggerFactory.getLogger(SystemPromptService::class.java) }
+        private val logger = KotlinLogging.logger {}
     }
 }

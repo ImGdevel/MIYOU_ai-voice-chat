@@ -9,7 +9,7 @@ import com.miyou.app.domain.monitoring.port.MetricsRollupRepository
 import com.miyou.app.domain.monitoring.port.PerformanceMetricsRepository
 import com.miyou.app.domain.monitoring.port.StagePerformanceRollupRepository
 import com.miyou.app.domain.monitoring.port.UsageAnalyticsRepository
-import org.slf4j.LoggerFactory
+import io.github.oshai.kotlinlogging.KotlinLogging
 import org.springframework.scheduling.annotation.Scheduled
 import org.springframework.stereotype.Service
 import reactor.core.publisher.Flux
@@ -26,7 +26,7 @@ class MetricsRollupScheduler(
     private val stagePerformanceRollupRepository: StagePerformanceRollupRepository,
     private val clock: Clock,
 ) {
-    private val logger = LoggerFactory.getLogger(MetricsRollupScheduler::class.java)
+    private val logger = KotlinLogging.logger {}
 
     @Scheduled(cron = "0 * * * * *")
     fun rollupMinuteMetrics() {
@@ -36,9 +36,9 @@ class MetricsRollupScheduler(
         Mono
             .zip(buildUsageRollup(bucketStart, bucketEnd), buildStageRollup(bucketStart, bucketEnd))
             .doOnSuccess {
-                logger.debug("분단위 집계 완료: bucketStart={}", bucketStart)
+                logger.debug { "분단위 집계 완료: bucketStart=$bucketStart" }
             }.doOnError { error ->
-                logger.error("분단위 집계 실패: bucketStart={}, error={}", bucketStart, error.message, error)
+                logger.error(error) { "분단위 집계 실패: bucketStart=$bucketStart, error=${error.message}" }
             }.onErrorResume { Mono.empty() }
             .subscribe()
     }

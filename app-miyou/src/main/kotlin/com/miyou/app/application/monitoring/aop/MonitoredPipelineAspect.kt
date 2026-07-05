@@ -5,7 +5,7 @@ import com.miyou.app.application.monitoring.monitor.DialoguePipelineMonitor
 import org.aspectj.lang.ProceedingJoinPoint
 import org.aspectj.lang.annotation.Around
 import org.aspectj.lang.annotation.Aspect
-import org.slf4j.LoggerFactory
+import io.github.oshai.kotlinlogging.KotlinLogging
 import org.springframework.stereotype.Component
 import reactor.core.publisher.Flux
 import reactor.core.publisher.Mono
@@ -15,7 +15,7 @@ import reactor.core.publisher.Mono
 class MonitoredPipelineAspect(
     private val pipelineMonitor: DialoguePipelineMonitor,
 ) {
-    private val logger = LoggerFactory.getLogger(MonitoredPipelineAspect::class.java)
+    private val logger = KotlinLogging.logger {}
 
     @Around("@annotation(monitoredPipeline)")
     fun wrapPipeline(
@@ -53,7 +53,7 @@ class MonitoredPipelineAspect(
     ): String {
         val index = monitoredPipeline.inputArgIndex
         if (args.isEmpty() || index < 0 || index >= args.size) {
-            logger.debug("Monitored pipeline input arg index {} is out of bounds.", index)
+            logger.debug { "Monitored pipeline input arg index $index is out of bounds." }
             return ""
         }
 

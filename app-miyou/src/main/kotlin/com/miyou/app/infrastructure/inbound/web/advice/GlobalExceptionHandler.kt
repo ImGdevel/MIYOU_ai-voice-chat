@@ -5,7 +5,7 @@ import com.miyou.app.domain.common.error.CreditErrorCode
 import com.miyou.app.domain.common.error.DialogueErrorCode
 import com.miyou.app.domain.common.error.ErrorResponse
 import com.miyou.app.domain.credit.exception.InsufficientCreditException
-import org.slf4j.LoggerFactory
+import io.github.oshai.kotlinlogging.KotlinLogging
 import org.springframework.http.HttpStatus
 import org.springframework.http.ResponseEntity
 import org.springframework.web.bind.annotation.ExceptionHandler
@@ -21,7 +21,7 @@ import java.time.LocalDateTime
  */
 @RestControllerAdvice
 class GlobalExceptionHandler : ResponseEntityExceptionHandler() {
-    private val logger = LoggerFactory.getLogger(javaClass)
+    private val logger = KotlinLogging.logger {}
 
     /**
      * InsufficientCreditException 처리.
@@ -30,12 +30,9 @@ class GlobalExceptionHandler : ResponseEntityExceptionHandler() {
     fun handleInsufficientCredit(
         ex: InsufficientCreditException,
     ): ResponseEntity<ErrorResponse> {
-        logger.warn(
-            "Insufficient credit - userId={}, current={}, required={}",
-            ex.userId.value,
-            ex.currentBalance,
-            ex.requiredAmount,
-        )
+        logger.warn {
+            "Insufficient credit - userId=${ex.userId.value}, current=${ex.currentBalance}, required=${ex.requiredAmount}"
+        }
         val errorResponse = ErrorResponse(
             code = CreditErrorCode.INSUFFICIENT_CREDIT.code,
             message = CreditErrorCode.INSUFFICIENT_CREDIT.message,
@@ -54,7 +51,7 @@ class GlobalExceptionHandler : ResponseEntityExceptionHandler() {
     fun handleResponseStatusException(
         ex: ResponseStatusException,
     ): ResponseEntity<ErrorResponse> {
-        logger.warn("Response status exception - status={}, reason={}", ex.statusCode, ex.reason)
+        logger.warn { "Response status exception - status=${ex.statusCode}, reason=${ex.reason}" }
         val errorResponse = ErrorResponse(
             code = determineErrorCode(ex.statusCode, ex.reason),
             message = ex.reason ?: "요청 처리 중 오류가 발생했습니다.",
@@ -70,7 +67,7 @@ class GlobalExceptionHandler : ResponseEntityExceptionHandler() {
     fun handleGenericException(
         ex: Exception,
     ): ResponseEntity<ErrorResponse> {
-        logger.error("Unexpected exception", ex)
+        logger.error(ex) { "Unexpected exception" }
         val errorResponse = ErrorResponse(
             code = CommonErrorCode.INTERNAL_SERVER_ERROR.code,
             message = CommonErrorCode.INTERNAL_SERVER_ERROR.message,

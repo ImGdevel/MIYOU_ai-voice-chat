@@ -3,7 +3,7 @@ package com.miyou.app.infrastructure.dialogue.adapter.tts.loadbalancer
 import com.miyou.app.infrastructure.dialogue.config.properties.RagDialogueProperties
 import io.micrometer.core.instrument.Gauge
 import io.micrometer.core.instrument.MeterRegistry
-import org.slf4j.LoggerFactory
+import io.github.oshai.kotlinlogging.KotlinLogging
 import org.springframework.context.ApplicationEventPublisher
 import org.springframework.scheduling.annotation.Scheduled
 import org.springframework.stereotype.Component
@@ -20,7 +20,7 @@ class TtsCreditMonitor(
     properties: RagDialogueProperties,
     private val meterRegistry: MeterRegistry,
 ) {
-    private val log = LoggerFactory.getLogger(javaClass)
+    private val log = KotlinLogging.logger {}
     private val config: RagDialogueProperties.CreditMonitorConfig = properties.supertone.creditMonitor
     private val creditGauges = ConcurrentHashMap<String, Gauge>()
     private val circuitStateGauges = ConcurrentHashMap<String, Gauge>()
@@ -71,14 +71,14 @@ class TtsCreditMonitor(
         }
 
         val endpoints = loadBalancer.endpoints
-        log.debug("크레딧 모니터링 시작: {}개 엔드포인트", endpoints.size)
+        log.debug { "크레딧 모니터링 시작: ${endpoints.size}개 엔드포인트" }
 
         endpoints.forEach { endpoint ->
             pollEndpointCredits(endpoint)
                 .subscribe(
                     { credits -> handleCreditUpdate(endpoint, credits) },
                     { error ->
-                        log.warn("엔드포인트 {} 크레딧 조회 실패: {}", endpoint.id, error.message)
+                        log.warn { "엔드포인트 ${endpoint.id} 크레딧 조회 실패: ${error.message}" }
                     },
                 )
         }
@@ -94,7 +94,7 @@ class TtsCreditMonitor(
             .map(CreditResponse::credits)
             .timeout(Duration.ofSeconds(5))
             .doOnError { error ->
-                log.debug("엔드포인트 {} 크레딧 조회 오류: {}", endpoint.id, error.message)
+                log.debug { "엔드포인트 ${endpoint.id} 크레딧 조회 오류: ${error.message}" }
             }
     }
 
@@ -116,10 +116,10 @@ class TtsCreditMonitor(
         }
 
         endpoint.updateCredits(credits)
-        log.debug("엔드포인트 {} 최신 크레딧: {}", endpoint.id, credits)
+        log.debug { "엔드포인트 ${endpoint.id} 최신 크레딧: $credits" }
 
         if (credits < config.lowCreditThreshold) {
-            log.warn("엔드포인트 {} 크레딧 부족: {} < {}", endpoint.id, credits, config.lowCreditThreshold)
+            log.warn { "엔드포인트 ${endpoint.id} 크레딧 부족: $credits < ${config.lowCreditThreshold}" }
             endpoint.health = TtsEndpoint.EndpointHealth.PERMANENT_FAILURE
 
             eventPublisher.publishEvent(

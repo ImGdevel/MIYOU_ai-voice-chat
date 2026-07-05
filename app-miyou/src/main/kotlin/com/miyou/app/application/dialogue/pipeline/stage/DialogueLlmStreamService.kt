@@ -7,7 +7,7 @@ import com.miyou.app.application.monitoring.service.PipelineTracer
 import com.miyou.app.domain.dialogue.model.CompletionRequest
 import com.miyou.app.domain.dialogue.port.LlmPort
 import com.miyou.app.domain.monitoring.model.DialoguePipelineStage
-import org.slf4j.LoggerFactory
+import io.github.oshai.kotlinlogging.KotlinLogging
 import org.springframework.stereotype.Service
 import reactor.core.publisher.Flux
 import reactor.core.publisher.Mono
@@ -25,7 +25,7 @@ class DialogueLlmStreamService(
     private val messageService: DialogueMessageService,
     policy: DialogueExecutionPolicy,
 ) {
-    private val logger = LoggerFactory.getLogger(DialogueLlmStreamService::class.java)
+    private val logger = KotlinLogging.logger {}
     private val llmModel: String = policy.llmModel
 
     /**
@@ -78,5 +78,5 @@ class DialogueLlmStreamService(
                 DialoguePipelineStage.LLM_COMPLETION,
                 "tokenCount",
                 1,
-            ).doOnNext { token -> logger.debug("LLM Token: [{}]", token) }
+            ).doOnNext { token -> logger.debug { "LLM Token: [$token]" } }
 }
