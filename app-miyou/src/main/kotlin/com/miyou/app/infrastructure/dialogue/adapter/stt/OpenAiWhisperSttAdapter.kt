@@ -1,6 +1,6 @@
 package com.miyou.app.infrastructure.dialogue.adapter.stt
 
-import com.miyou.app.domain.common.error.DialogueErrorCode
+import com.miyou.app.application.common.error.DialogueErrorCode
 import com.miyou.app.domain.dialogue.model.AudioTranscriptionInput
 import com.miyou.app.domain.dialogue.port.SttPort
 import io.github.oshai.kotlinlogging.KotlinLogging

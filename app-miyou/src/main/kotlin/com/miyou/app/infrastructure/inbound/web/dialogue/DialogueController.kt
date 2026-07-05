@@ -1,11 +1,11 @@
 package com.miyou.app.infrastructure.inbound.web.dialogue
 
+import com.miyou.app.application.common.error.CommonErrorCode
+import com.miyou.app.application.common.error.CreditErrorCode
+import com.miyou.app.application.common.error.DialogueErrorCode
 import com.miyou.app.application.credit.usecase.CreditChargeUseCase
 import com.miyou.app.application.dialogue.service.DialogueSpeechService
 import com.miyou.app.domain.auth.model.AuthenticatedUser
-import com.miyou.app.domain.common.error.CommonErrorCode
-import com.miyou.app.domain.common.error.CreditErrorCode
-import com.miyou.app.domain.common.error.DialogueErrorCode
 import com.miyou.app.domain.credit.exception.InsufficientCreditException
 import com.miyou.app.domain.dialogue.model.ConversationSession
 import com.miyou.app.domain.dialogue.model.ConversationSessionId

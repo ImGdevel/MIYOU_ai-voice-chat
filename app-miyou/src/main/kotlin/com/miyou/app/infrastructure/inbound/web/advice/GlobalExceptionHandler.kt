@@ -1,9 +1,9 @@
 package com.miyou.app.infrastructure.inbound.web.advice
 
-import com.miyou.app.domain.common.error.CommonErrorCode
-import com.miyou.app.domain.common.error.CreditErrorCode
-import com.miyou.app.domain.common.error.DialogueErrorCode
-import com.miyou.app.domain.common.error.ErrorResponse
+import com.miyou.app.application.common.error.CommonErrorCode
+import com.miyou.app.application.common.error.CreditErrorCode
+import com.miyou.app.application.common.error.DialogueErrorCode
+import com.miyou.app.application.common.error.ErrorResponse
 import com.miyou.app.domain.credit.exception.InsufficientCreditException
 import io.github.oshai.kotlinlogging.KotlinLogging
 import org.springframework.http.HttpStatus
@@ -11,7 +11,6 @@ import org.springframework.http.HttpStatusCode
 import org.springframework.http.ResponseEntity
 import org.springframework.web.bind.annotation.ExceptionHandler
 import org.springframework.web.bind.annotation.RestControllerAdvice
-import org.springframework.web.reactive.result.method.annotation.ResponseEntityExceptionHandler
 import org.springframework.web.server.ResponseStatusException
 import java.time.LocalDateTime
 
@@ -21,7 +20,7 @@ import java.time.LocalDateTime
  * 모든 예외를 표준화된 ErrorResponse로 변환.
  */
 @RestControllerAdvice
-class GlobalExceptionHandler : ResponseEntityExceptionHandler() {
+class GlobalExceptionHandler {
     private val logger = KotlinLogging.logger {}
 
     /**
@@ -38,10 +37,10 @@ class GlobalExceptionHandler : ResponseEntityExceptionHandler() {
                 message = CreditErrorCode.INSUFFICIENT_CREDIT.message,
                 timestamp = LocalDateTime.now(),
             )
-        return ResponseEntity(
-            errorResponse,
-            CreditErrorCode.INSUFFICIENT_CREDIT.httpStatus,
-        )
+        return ResponseEntity
+            .status(CreditErrorCode.INSUFFICIENT_CREDIT.httpStatus)
+            .contentType(org.springframework.http.MediaType.APPLICATION_JSON)
+            .body(errorResponse)
     }
 
     /**
@@ -56,7 +55,10 @@ class GlobalExceptionHandler : ResponseEntityExceptionHandler() {
                 message = ex.reason ?: "요청 처리 중 오류가 발생했습니다.",
                 timestamp = LocalDateTime.now(),
             )
-        return ResponseEntity(errorResponse, ex.statusCode)
+        return ResponseEntity
+            .status(ex.statusCode)
+            .contentType(org.springframework.http.MediaType.APPLICATION_JSON)
+            .body(errorResponse)
     }
 
     /**
@@ -71,10 +73,10 @@ class GlobalExceptionHandler : ResponseEntityExceptionHandler() {
                 message = CommonErrorCode.INTERNAL_SERVER_ERROR.message,
                 timestamp = LocalDateTime.now(),
             )
-        return ResponseEntity(
-            errorResponse,
-            HttpStatus.INTERNAL_SERVER_ERROR,
-        )
+        return ResponseEntity
+            .status(HttpStatus.INTERNAL_SERVER_ERROR)
+            .contentType(org.springframework.http.MediaType.APPLICATION_JSON)
+            .body(errorResponse)
     }
 
     /**
