@@ -1,5 +1,6 @@
 package com.miyou.app.infrastructure.dialogue.adapter.stt
 
+import com.miyou.app.domain.common.error.DialogueErrorCode
 import com.miyou.app.domain.dialogue.model.AudioTranscriptionInput
 import com.miyou.app.domain.dialogue.port.SttPort
 import io.github.oshai.kotlinlogging.KotlinLogging
@@ -64,20 +65,14 @@ class OpenAiWhisperSttAdapter(
                     }.then(
                         Mono.error(
                             ResponseStatusException(
-                                if (response.statusCode().value() ==
-                                    400
-                                ) {
-                                    HttpStatus.BAD_REQUEST
-                                } else {
-                                    HttpStatus.BAD_GATEWAY
-                                },
-                                "STT provider request failed: ${response.statusCode()}",
+                                DialogueErrorCode.STT_FAILED.httpStatus,
+                                DialogueErrorCode.STT_FAILED.message,
                             ),
                         ),
                     )
             })
             .bodyToMono(OpenAiTranscriptionResponse::class.java)
-            .map { response -> checkNotNull(response.text) { "OpenAI STT response text is null" } }
+            .map { response -> checkNotNull(response.text) { DialogueErrorCode.STT_FAILED.message } }
             .doOnSuccess { text -> log.info { "STT completed: ${text.length} chars" } }
     }
 
