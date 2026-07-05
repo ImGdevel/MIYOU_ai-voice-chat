@@ -55,8 +55,10 @@ class SpringAiVectorDbAdapter(
                 metadata["sessionId"] = memory.sessionId.value
                 metadata["type"] = memory.type.name
                 memory.importance?.let { metadata["importance"] = it }
-                metadata["createdAt"] = memory.createdAt.toEpochMilli()
-                memory.lastAccessedAt?.let { metadata["lastAccessedAt"] = it.toEpochMilli() }
+                // Spring AI QdrantVectorStore(1.0.0-M5)의 payload 변환은 Long을 지원하지 않는다
+                // (String/Integer/Double/Float/Boolean/Map만 허용) - epoch millis를 Double로 저장.
+                metadata["createdAt"] = memory.createdAt.toEpochMilli().toDouble()
+                memory.lastAccessedAt?.let { metadata["lastAccessedAt"] = it.toEpochMilli().toDouble() }
                 memory.accessCount?.let { metadata["accessCount"] = it }
 
                 val document = Document(id, memory.content, metadata)
@@ -243,7 +245,9 @@ class SpringAiVectorDbAdapter(
         sessionId: ConversationSessionId,
         payload: Map<String, Value>,
     ): Memory {
-        val content = payload["content"]?.stringValue ?: ""
+        // Spring AI QdrantVectorStore는 Document 텍스트를 "content"가 아니라 "doc_content" 페이로드
+        // 키에 저장한다(내부 상수 CONTENT_FIELD_NAME) - 실제 Qdrant에서는 이 키로만 읽힌다.
+        val content = payload[CONTENT_FIELD_NAME]?.stringValue ?: ""
 
         val typeStr =
             payload["type"]?.stringValue
@@ -271,5 +275,6 @@ class SpringAiVectorDbAdapter(
 
     private companion object {
         const val ARCHIVED_AT_KEY = "archivedAt"
+        const val CONTENT_FIELD_NAME = "doc_content"
     }
 }

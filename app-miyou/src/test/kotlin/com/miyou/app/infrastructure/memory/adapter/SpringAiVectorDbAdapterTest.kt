@@ -94,7 +94,7 @@ class SpringAiVectorDbAdapterTest {
                         .setUuid("doc-1")
                         .build(),
                 ).putPayload(
-                    "content",
+                    "doc_content",
                     JsonWithInt.Value
                         .newBuilder()
                         .setStringValue("test content")
@@ -170,7 +170,7 @@ class SpringAiVectorDbAdapterTest {
                         .setStringValue("session-1")
                         .build()
                 ).putPayload(
-                    "content",
+                    "doc_content",
                     JsonWithInt.Value
                         .newBuilder()
                         .setStringValue("content")
