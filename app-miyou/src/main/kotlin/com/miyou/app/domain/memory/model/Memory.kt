@@ -44,7 +44,7 @@ data class Memory(
      */
     fun calculateRankedScore(recencyWeight: Float): Float {
         val baseImportance = importance ?: 0.5f
-        val hoursSinceCreated = (Instant.now().epochSecond - createdAt.epochSecond) / 3600.0
+        val hoursSinceCreated = maxOf(0.0, (Instant.now().epochSecond - createdAt.epochSecond) / 3600.0)
         val recencyFactor = exp(-recencyWeight * hoursSinceCreated / 24.0).toFloat()
         return baseImportance * recencyFactor
     }
