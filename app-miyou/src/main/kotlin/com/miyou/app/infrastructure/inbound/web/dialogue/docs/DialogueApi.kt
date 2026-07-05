@@ -1,5 +1,6 @@
 package com.miyou.app.infrastructure.inbound.web.dialogue.docs
 
+import com.miyou.app.domain.auth.model.AuthenticatedUser
 import com.miyou.app.infrastructure.inbound.web.dialogue.dto.CreateSessionRequest
 import com.miyou.app.infrastructure.inbound.web.dialogue.dto.CreateSessionResponse
 import com.miyou.app.infrastructure.inbound.web.dialogue.dto.RagDialogueRequest
@@ -14,6 +15,7 @@ import org.springframework.core.io.buffer.DataBuffer
 import org.springframework.http.MediaType
 import org.springframework.http.codec.multipart.FilePart
 import org.springframework.http.server.reactive.ServerHttpResponse
+import org.springframework.security.core.annotation.AuthenticationPrincipal
 import org.springframework.web.bind.annotation.RequestParam
 import org.springframework.web.bind.annotation.RequestPart
 import reactor.core.publisher.Flux
@@ -32,6 +34,7 @@ interface DialogueApi {
     )
     fun createSession(
         @Valid request: CreateSessionRequest,
+        @AuthenticationPrincipal principal: AuthenticatedUser?,
     ): Mono<CreateSessionResponse>
 
     @Operation(

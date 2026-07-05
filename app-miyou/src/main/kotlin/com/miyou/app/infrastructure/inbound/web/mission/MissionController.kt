@@ -2,12 +2,14 @@ package com.miyou.app.infrastructure.inbound.web.mission
 
 import com.miyou.app.application.mission.usecase.MissionCompletionUseCase
 import com.miyou.app.application.mission.usecase.MissionQueryUseCase
+import com.miyou.app.domain.auth.model.AuthenticatedUser
 import com.miyou.app.domain.dialogue.model.UserId
 import com.miyou.app.domain.mission.model.MissionId
 import com.miyou.app.infrastructure.inbound.web.mission.dto.MissionResponse
 import com.miyou.app.infrastructure.inbound.web.mission.dto.UserMissionResponse
 import jakarta.validation.constraints.NotBlank
 import org.springframework.http.HttpStatus
+import org.springframework.security.core.annotation.AuthenticationPrincipal
 import org.springframework.validation.annotation.Validated
 import org.springframework.web.bind.annotation.GetMapping
 import org.springframework.web.bind.annotation.PathVariable
@@ -32,17 +34,24 @@ class MissionController(
     @GetMapping("/my")
     fun getUserMissions(
         @RequestParam @NotBlank userId: String,
-    ): Flux<UserMissionResponse> = missionQueryUseCase.getUserMissions(UserId.of(userId)).map(UserMissionResponse::from)
+        @AuthenticationPrincipal principal: AuthenticatedUser?,
+    ): Flux<UserMissionResponse> {
+        val resolvedUserId = principal?.userId ?: UserId.of(userId)
+        return missionQueryUseCase.getUserMissions(resolvedUserId).map(UserMissionResponse::from)
+    }
 
     @PostMapping("/{missionId}/complete")
     @ResponseStatus(HttpStatus.OK)
     fun completeMission(
         @PathVariable missionId: String,
         @RequestParam @NotBlank userId: String,
-    ): Mono<UserMissionResponse> =
-        missionCompletionUseCase
+        @AuthenticationPrincipal principal: AuthenticatedUser?,
+    ): Mono<UserMissionResponse> {
+        val resolvedUserId = principal?.userId ?: UserId.of(userId)
+        return missionCompletionUseCase
             .completeMission(
-                UserId.of(userId),
+                resolvedUserId,
                 MissionId.of(missionId),
             ).map(UserMissionResponse::from)
+    }
 }
