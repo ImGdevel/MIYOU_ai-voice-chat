@@ -126,12 +126,13 @@ tasks.named('test') {
 	}
 }
 
-// 메모리 큐레이터 검색 품질 벤치마크 - 실제 OpenAI 임베딩 API + Docker(Qdrant Testcontainers) 필요.
-// 비용이 들고 결과가 매번 조금씩 달라질 수 있어 기본 test 태스크(CI)에서는 제외하고
-// 필요할 때 `./gradlew memoryCuratorBenchmark`로 수동 실행한다.
+// 메모리 시스템 벤치마크 모음(@Tag("benchmark")) - 큐레이터 검색 품질 비교 +
+// 추출 reasoning/importance confidence 커버리지. 실제 OpenAI API(일부는 Docker/Qdrant
+// Testcontainers)를 사용해 비용이 들고 결과가 매번 조금씩 달라질 수 있어 기본 test
+// 태스크(CI)에서는 제외하고 필요할 때 `./gradlew memoryCuratorBenchmark`로 수동 실행한다.
 tasks.register('memoryCuratorBenchmark', Test) {
 	group = 'verification'
-	description = '메모리 큐레이터 적용 전/후 검색 품질(노이즈 혼입률) 비교 벤치마크. OPENAI_API_KEY, Docker 필요. CI 미포함.'
+	description = '메모리 시스템 벤치마크 모음(큐레이터 검색 품질 + 추출 confidence 커버리지). OPENAI_API_KEY, 일부 Docker 필요. CI 미포함.'
 	testClassesDirs = sourceSets.test.output.classesDirs
 	classpath = sourceSets.test.runtimeClasspath
 	useJUnitPlatform {
