@@ -8,6 +8,9 @@ import com.miyou.app.domain.memory.model.MemoryRetrievalResult
 import com.miyou.app.domain.retrieval.model.RetrievalContext
 import io.github.oshai.kotlinlogging.KotlinLogging
 import org.springframework.stereotype.Service
+import java.time.Instant
+import java.time.ZoneId
+import java.time.format.DateTimeFormatter
 import java.util.StringJoiner
 
 @Service
@@ -78,6 +81,12 @@ class SystemPromptService(
         }
 
         val builder = StringBuilder(MEMORIES_TITLE).append('\n')
+        builder
+            .append(
+                TODAY_LABEL_PREFIX
+            ).append(formatMemoryDate(Instant.now()))
+            .append(TODAY_LABEL_SUFFIX)
+            .append('\n')
         appendMemorySection(builder, EXPERIENTIAL_MEMORY_TITLE, memories.experientialMemories)
         appendMemorySection(builder, FACTUAL_MEMORY_TITLE, memories.factualMemories)
         return builder.toString().trim()
@@ -131,9 +140,8 @@ class SystemPromptService(
         }
         val lines =
             memories
-                .mapNotNull { it.content }
-                .filter { it.isNotBlank() }
-                .map { "- $it" }
+                .filter { it.content.isNotBlank() }
+                .map { "- [${formatMemoryDate(it.createdAt)}] ${it.content}" }
                 .toList()
         if (lines.isEmpty()) {
             return
@@ -143,6 +151,8 @@ class SystemPromptService(
             builder.append(line).append('\n')
         }
     }
+
+    private fun formatMemoryDate(instant: Instant): String = instant.atZone(MEMORY_ZONE).format(MEMORY_DATE_FORMATTER)
 
     private fun normalizeBlock(block: String): String = block.trim()
 
@@ -172,6 +182,11 @@ class SystemPromptService(
         const val EXPERIENTIAL_MEMORY_TITLE = "체험 기억:"
         const val FACTUAL_MEMORY_TITLE = "사실 기억:"
         const val CONTEXT_TITLE = "지금 상황:"
+        const val TODAY_LABEL_PREFIX = "오늘은 "
+        const val TODAY_LABEL_SUFFIX = "입니다."
+
+        private val MEMORY_ZONE: ZoneId = ZoneId.of("Asia/Seoul")
+        private val MEMORY_DATE_FORMATTER: DateTimeFormatter = DateTimeFormatter.ofPattern("MM월 dd일")
 
         private val logger = KotlinLogging.logger {}
     }
