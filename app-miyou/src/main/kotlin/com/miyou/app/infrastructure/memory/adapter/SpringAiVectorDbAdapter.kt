@@ -162,10 +162,14 @@ class SpringAiVectorDbAdapter(
 
     override fun applyDecayAndArchive(memory: Memory): Mono<Void> {
         val memoryId = memory.id ?: return Mono.empty()
-        val payload = mutableMapOf<String, Value>("importance" to value(memory.importance?.toDouble() ?: 0.0))
+        val payload = mutableMapOf<String, Value>()
+        memory.importance?.let { payload["importance"] = value(it.toDouble()) }
         memory.archivedAt?.let {
             payload[ARCHIVED_AT_KEY] = value(it.toEpochMilli())
             log.info { "메모리 아카이브 처리 id=$memoryId importance=${memory.importance}" }
+        }
+        if (payload.isEmpty()) {
+            return Mono.empty()
         }
         return writePayload(memoryId, payload)
     }

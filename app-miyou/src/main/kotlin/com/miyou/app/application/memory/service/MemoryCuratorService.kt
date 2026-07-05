@@ -25,8 +25,12 @@ class MemoryCuratorService(
         vectorMemoryPort
             .findAllActive(BATCH_SIZE)
             .map(this::applyPolicy)
-            .flatMap(vectorMemoryPort::applyDecayAndArchive)
-            .doOnComplete { logger.info { "메모리 큐레이터 배치 완료" } }
+            .flatMap { memory ->
+                vectorMemoryPort
+                    .applyDecayAndArchive(memory)
+                    .doOnError { error -> logger.error(error) { "메모리 업데이트 실패: id=${memory.id}" } }
+                    .onErrorResume { Mono.empty() }
+            }.doOnComplete { logger.info { "메모리 큐레이터 배치 완료" } }
             .doOnError { error -> logger.error(error) { "메모리 큐레이터 배치 실패" } }
             .then()
 

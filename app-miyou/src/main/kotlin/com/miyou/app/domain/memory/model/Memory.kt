@@ -59,7 +59,7 @@ data class Memory(
         if (current >= decayExemptThreshold) return this
 
         val lastAccess = lastAccessedAt ?: createdAt
-        val hoursSinceAccess = (now.epochSecond - lastAccess.epochSecond) / 3600.0
+        val hoursSinceAccess = maxOf(0.0, (now.epochSecond - lastAccess.epochSecond) / 3600.0)
         val rate = if (current >= MID_IMPORTANCE_THRESHOLD) decayRateHigh else decayRateLow
         val decayed = (current * exp(-rate * hoursSinceAccess / 24.0)).toFloat()
         return copy(importance = decayed.coerceIn(0.0f, 1.0f))
@@ -74,7 +74,7 @@ data class Memory(
         if (archivedAt != null) return false
         val current = importance ?: return false
         val lastAccess = lastAccessedAt ?: createdAt
-        val idleDays = (now.epochSecond - lastAccess.epochSecond) / SECONDS_PER_DAY
+        val idleDays = maxOf(0L, (now.epochSecond - lastAccess.epochSecond) / SECONDS_PER_DAY)
         return current < archiveImportanceThreshold || idleDays >= archiveIdleDays
     }
 
