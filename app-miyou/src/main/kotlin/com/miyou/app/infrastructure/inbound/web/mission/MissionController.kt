@@ -33,10 +33,16 @@ class MissionController(
 
     @GetMapping("/my")
     fun getUserMissions(
-        @RequestParam @NotBlank userId: String,
+        @RequestParam(required = false) userId: String?,
         @AuthenticationPrincipal principal: AuthenticatedUser?,
     ): Flux<UserMissionResponse> {
-        val resolvedUserId = principal?.userId ?: UserId.of(userId)
+        val resolvedUserId =
+            principal?.userId
+                ?: userId?.takeIf { it.isNotBlank() }?.let { UserId.of(it) }
+                ?: return Flux.error(
+                    org.springframework.web.server
+                        .ResponseStatusException(HttpStatus.BAD_REQUEST, "userId is required")
+                )
         return missionQueryUseCase.getUserMissions(resolvedUserId).map(UserMissionResponse::from)
     }
 
@@ -44,10 +50,16 @@ class MissionController(
     @ResponseStatus(HttpStatus.OK)
     fun completeMission(
         @PathVariable missionId: String,
-        @RequestParam @NotBlank userId: String,
+        @RequestParam(required = false) userId: String?,
         @AuthenticationPrincipal principal: AuthenticatedUser?,
     ): Mono<UserMissionResponse> {
-        val resolvedUserId = principal?.userId ?: UserId.of(userId)
+        val resolvedUserId =
+            principal?.userId
+                ?: userId?.takeIf { it.isNotBlank() }?.let { UserId.of(it) }
+                ?: return Mono.error(
+                    org.springframework.web.server
+                        .ResponseStatusException(HttpStatus.BAD_REQUEST, "userId is required")
+                )
         return missionCompletionUseCase
             .completeMission(
                 resolvedUserId,

@@ -4,7 +4,7 @@ import jakarta.validation.constraints.NotBlank
 import jakarta.validation.constraints.Positive
 
 data class ChargeByPaymentRequest(
-    val userId: String,
+    val userId: String?,
     val paymentKey: String,
     val orderId: String,
     val pgProvider: String,

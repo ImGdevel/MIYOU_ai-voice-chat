@@ -35,10 +35,13 @@ class CreditController(
 ) {
     @GetMapping("/balance")
     fun getBalance(
-        @RequestParam @NotBlank userId: String,
+        @RequestParam(required = false) userId: String?,
         @AuthenticationPrincipal principal: AuthenticatedUser?,
     ): Mono<UserCreditResponse> {
-        val resolvedUserId = principal?.userId ?: UserId.of(userId)
+        val resolvedUserId =
+            principal?.userId
+                ?: userId?.takeIf { it.isNotBlank() }?.let { UserId.of(it) }
+                ?: return Mono.error(ResponseStatusException(HttpStatus.BAD_REQUEST, "userId is required"))
         return creditChargeUseCase
             .initializeIfAbsent(resolvedUserId)
             .then(creditQueryUseCase.getBalance(resolvedUserId))
@@ -47,12 +50,15 @@ class CreditController(
 
     @GetMapping("/transactions")
     fun getTransactions(
-        @RequestParam @NotBlank userId: String,
+        @RequestParam(required = false) userId: String?,
         @RequestParam(defaultValue = "0") page: Int,
         @RequestParam(defaultValue = "20") size: Int,
         @AuthenticationPrincipal principal: AuthenticatedUser?,
     ): Flux<CreditTransactionResponse> {
-        val resolvedUserId = principal?.userId ?: UserId.of(userId)
+        val resolvedUserId =
+            principal?.userId
+                ?: userId?.takeIf { it.isNotBlank() }?.let { UserId.of(it) }
+                ?: return Flux.error(ResponseStatusException(HttpStatus.BAD_REQUEST, "userId is required"))
         return creditQueryUseCase
             .getTransactions(
                 resolvedUserId,
@@ -66,7 +72,10 @@ class CreditController(
         @Valid @RequestBody request: ChargeByPaymentRequest,
         @AuthenticationPrincipal principal: AuthenticatedUser?,
     ): Mono<CreditTransactionResponse> {
-        val resolvedUserId = principal?.userId ?: UserId.of(request.userId)
+        val resolvedUserId =
+            principal?.userId
+                ?: request.userId?.takeIf { it.isNotBlank() }?.let { UserId.of(it) }
+                ?: return Mono.error(ResponseStatusException(HttpStatus.BAD_REQUEST, "userId is required"))
         val gateway =
             paymentGatewayMap[request.pgProvider]
                 ?: return Mono.error(
