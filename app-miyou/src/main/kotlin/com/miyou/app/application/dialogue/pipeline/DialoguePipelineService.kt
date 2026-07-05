@@ -123,13 +123,15 @@ class DialoguePipelineService(
             .refundForConversation(session.userId, session.sessionId)
             .doOnNext { tx ->
                 logger.warn {
-                    "Conversation credit refunded - userId=${session.userId.value}, sessionId=${session.sessionId.value}, " +
+                    "Conversation credit refunded - " +
+                        "userId=${session.userId.value}, sessionId=${session.sessionId.value}, " +
                         "transactionId=${tx.transactionId.value}, cause=${cause.message}"
                 }
             }.then()
             .onErrorResume { refundError ->
-                logger.error {
-                    "Conversation credit refund failed - userId=${session.userId.value}, sessionId=${session.sessionId.value}, " +
+                logger.error(refundError) {
+                    "Conversation credit refund failed - " +
+                        "userId=${session.userId.value}, sessionId=${session.sessionId.value}, " +
                         "cause=${cause.message}, refundError=${refundError.message}"
                 }
                 Mono.empty()

@@ -30,20 +30,10 @@ enum class CommonErrorCode(
         HttpStatus.NOT_FOUND,
         "해당 대화 세션을 찾을 수 없습니다.",
     ),
-    MISSION_NOT_FOUND(
-        "MISSION_NOT_FOUND",
-        HttpStatus.NOT_FOUND,
-        "해당 미션을 찾을 수 없습니다.",
-    ),
     CONFLICT(
         "CONFLICT",
         HttpStatus.CONFLICT,
         "요청이 현재 상태와 충돌합니다.",
-    ),
-    ALREADY_COMPLETED_MISSION(
-        "ALREADY_COMPLETED_MISSION",
-        HttpStatus.CONFLICT,
-        "이미 완료된 미션입니다.",
     ),
     INTERNAL_SERVER_ERROR(
         "INTERNAL_SERVER_ERROR",
