@@ -57,6 +57,11 @@ class RagDialogueProperties {
         var conversationThreshold: Int = 5
         var importanceBoost: Float = 0.05f
         var importanceThreshold: Float = 0.3f
+        var decayRateHigh: Float = 0.05f
+        var decayRateLow: Float = 0.1f
+        var decayExemptThreshold: Float = 0.9f
+        var archiveImportanceThreshold: Float = 0.1f
+        var archiveIdleDays: Long = 90
     }
 
     class TtsEndpointConfig {

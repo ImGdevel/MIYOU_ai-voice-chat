@@ -79,7 +79,9 @@ tasks.withType(JavaCompile).configureEach {
 }
 
 tasks.named('test') {
-	useJUnitPlatform()
+	useJUnitPlatform {
+		excludeTags 'benchmark'
+	}
 	binaryResultsDirectory = file("${buildDir}/test-results/test/binary-${System.currentTimeMillis()}")
 
 	// Workaround: On Windows with a Korean locale (native.encoding=MS949), Java's C
@@ -111,6 +113,41 @@ tasks.named('test') {
 			// silently corrupted. With percent-encoding the value is pure ASCII.
 			f.toURI().toASCIIString()
 		}.join(' ')
+
+		def mf = new java.util.jar.Manifest()
+		mf.mainAttributes.put(java.util.jar.Attributes.Name.MANIFEST_VERSION, '1.0')
+		mf.mainAttributes.put(java.util.jar.Attributes.Name.CLASS_PATH, cpUris)
+
+		manifestJar.withOutputStream { os ->
+			new java.util.jar.JarOutputStream(os, mf).close()
+		}
+
+		classpath = files(manifestJar)
+	}
+}
+
+// 메모리 큐레이터 검색 품질 벤치마크 - 실제 OpenAI 임베딩 API + Docker(Qdrant Testcontainers) 필요.
+// 비용이 들고 결과가 매번 조금씩 달라질 수 있어 기본 test 태스크(CI)에서는 제외하고
+// 필요할 때 `./gradlew memoryCuratorBenchmark`로 수동 실행한다.
+tasks.register('memoryCuratorBenchmark', Test) {
+	group = 'verification'
+	description = '메모리 큐레이터 적용 전/후 검색 품질(노이즈 혼입률) 비교 벤치마크. OPENAI_API_KEY, Docker 필요. CI 미포함.'
+	testClassesDirs = sourceSets.test.output.classesDirs
+	classpath = sourceSets.test.runtimeClasspath
+	useJUnitPlatform {
+		includeTags 'benchmark'
+	}
+	outputs.upToDateWhen { false }
+	testLogging {
+		events 'passed', 'skipped', 'failed', 'standardOut'
+		showStandardStreams = true
+	}
+
+	doFirst {
+		def manifestJar = new File(System.getProperty('java.io.tmpdir'), "miyou-benchmark-classpath-${project.name}.jar")
+		manifestJar.parentFile.mkdirs()
+
+		def cpUris = classpath.files.collect { f -> f.toURI().toASCIIString() }.join(' ')
 
 		def mf = new java.util.jar.Manifest()
 		mf.mainAttributes.put(java.util.jar.Attributes.Name.MANIFEST_VERSION, '1.0')
