@@ -1,7 +1,7 @@
 global:
   resolve_timeout: 5m
-  # Slack webhook URL (환경변수로 설정)
-  slack_api_url: '${SLACK_WEBHOOK_URL}'
+  # Slack webhook URL (환경변수로 설정) — Alertmanager는 자체 env 치환이 없어 로컬 실행 시 더미 값으로 대체함
+  slack_api_url: 'https://hooks.slack.com/services/T00000000/B00000000/local-dev-placeholder'
 
 route:
   group_by: ['alertname', 'severity']
