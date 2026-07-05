@@ -11,7 +11,6 @@ import org.springframework.http.ResponseEntity
 import org.springframework.web.bind.annotation.ExceptionHandler
 import org.springframework.web.bind.annotation.RestControllerAdvice
 import org.springframework.web.server.ResponseStatusException
-import org.springframework.web.servlet.mvc.method.annotation.ResponseEntityExceptionHandler
 import java.time.LocalDateTime
 
 /**
@@ -20,7 +19,7 @@ import java.time.LocalDateTime
  * 모든 예외를 표준화된 ErrorResponse로 변환.
  */
 @RestControllerAdvice
-class GlobalExceptionHandler : ResponseEntityExceptionHandler() {
+class GlobalExceptionHandler {
     private val logger = KotlinLogging.logger {}
 
     /**
@@ -51,13 +50,15 @@ class GlobalExceptionHandler : ResponseEntityExceptionHandler() {
     fun handleResponseStatusException(
         ex: ResponseStatusException,
     ): ResponseEntity<ErrorResponse> {
-        logger.warn { "Response status exception - status=${ex.statusCode}, reason=${ex.reason}" }
+        val statusCode = ex.statusCode?.value() ?: 500
+        val httpStatus = HttpStatus.resolve(statusCode) ?: HttpStatus.INTERNAL_SERVER_ERROR
+        logger.warn { "Response status exception - status=$statusCode, reason=${ex.reason}" }
         val errorResponse = ErrorResponse(
-            code = determineErrorCode(ex.statusCode, ex.reason),
+            code = determineErrorCode(httpStatus, ex.reason),
             message = ex.reason ?: "요청 처리 중 오류가 발생했습니다.",
             timestamp = LocalDateTime.now(),
         )
-        return ResponseEntity(errorResponse, ex.statusCode)
+        return ResponseEntity(errorResponse, httpStatus)
     }
 
     /**
