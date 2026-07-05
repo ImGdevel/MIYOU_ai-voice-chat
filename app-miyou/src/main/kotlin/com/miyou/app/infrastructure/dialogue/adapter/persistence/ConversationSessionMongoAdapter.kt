@@ -7,7 +7,7 @@ import com.miyou.app.domain.dialogue.model.UserId
 import com.miyou.app.domain.dialogue.port.ConversationSessionRepository
 import com.miyou.app.infrastructure.dialogue.adapter.persistence.document.ConversationSessionDocument
 import com.miyou.app.infrastructure.dialogue.repository.ConversationSessionMongoRepository
-import org.slf4j.LoggerFactory
+import io.github.oshai.kotlinlogging.KotlinLogging
 import org.springframework.beans.factory.annotation.Qualifier
 import org.springframework.data.domain.Sort
 import org.springframework.data.redis.core.ReactiveRedisTemplate
@@ -20,7 +20,7 @@ class ConversationSessionMongoAdapter(
     private val mongoRepository: ConversationSessionMongoRepository,
     @Qualifier("reactiveRedisStringTemplate") private val redisTemplate: ReactiveRedisTemplate<String, String>,
 ) : ConversationSessionRepository {
-    private val log = LoggerFactory.getLogger(javaClass)
+    private val log = KotlinLogging.logger {}
 
     override fun save(session: ConversationSession): Mono<ConversationSession> {
         val document = toDocument(session)
@@ -58,11 +58,7 @@ class ConversationSessionMongoAdapter(
             }.flatMap { deleted ->
                 evictHistoryCache(sessionId)
                     .onErrorResume { e ->
-                        log.warn(
-                            "Failed to evict history cache for session {} on soft-delete",
-                            sessionId.value(),
-                            e,
-                        )
+                        log.warn(e) { "Failed to evict history cache for session ${sessionId.value()} on soft-delete" }
                         Mono.empty()
                     }.thenReturn(deleted)
             }

@@ -10,11 +10,17 @@ import com.miyou.app.domain.credit.model.CreditTransaction
 import com.miyou.app.domain.dialogue.model.ConversationSession
 import com.miyou.app.domain.dialogue.port.DialoguePipelineUseCase
 import com.miyou.app.domain.voice.model.AudioFormat
-import org.slf4j.LoggerFactory
+import io.github.oshai.kotlinlogging.KotlinLogging
 import org.springframework.stereotype.Service
 import reactor.core.publisher.Flux
 import reactor.core.publisher.Mono
 
+/**
+ * 대화 처리 파이프라인 (음성/텍스트).
+ *
+ * 입력 준비 → LLM 스트리밍 → TTS/텍스트 변환 → 크레딧 차감 & 후처리 순서로 실행.
+ * 크레딧 정책: 스트림 시작 시 사전차감, 오류 발생 시 환불, 사용자 취소는 차감 유지.
+ */
 @Service
 class DialoguePipelineService(
     private val inputService: DialogueInputService,
@@ -23,9 +29,17 @@ class DialoguePipelineService(
     private val postProcessingService: DialoguePostProcessingService,
     private val creditDeductUseCase: CreditDeductUseCase,
 ) : DialoguePipelineUseCase {
-    private val logger = LoggerFactory.getLogger(DialoguePipelineService::class.java)
+    private val logger = KotlinLogging.logger {}
     private val defaultAudioFormat: AudioFormat = AudioFormat.MP3
 
+    /**
+     * 음성 스트리밍 실행.
+     *
+     * @param session 대화 세션
+     * @param text 사용자 입력 텍스트
+     * @param format 음성 포맷 (기본값: MP3)
+     * @return 음성 데이터 스트림
+     */
     override fun executeAudioStreaming(
         session: ConversationSession,
         text: String,
@@ -48,6 +62,13 @@ class DialoguePipelineService(
             .concatWith(postProcessing.thenMany(Flux.empty()))
     }
 
+    /**
+     * 텍스트 전용 스트리밍 실행.
+     *
+     * @param session 대화 세션
+     * @param text 사용자 입력 텍스트
+     * @return LLM 응답 토큰 스트림
+     */
     @MonitoredPipeline
     override fun executeTextOnly(
         session: ConversationSession,
@@ -86,6 +107,14 @@ class DialoguePipelineService(
             { _: CreditTransaction -> logUserCancellation(session) },
         )
 
+    /**
+     * 크레딧 환불 처리.
+     * 서비스 내부 오류(LLM/TTS 실패 등)로 스트림이 중단된 경우에만 호출.
+     *
+     * @param session 대화 세션
+     * @param cause 예외 원인
+     * @return 환불 처리 결과
+     */
     private fun refundConversation(
         session: ConversationSession,
         cause: Throwable,
@@ -93,31 +122,32 @@ class DialoguePipelineService(
         creditDeductUseCase
             .refundForConversation(session.userId, session.sessionId)
             .doOnNext { tx ->
-                logger.warn(
-                    "Conversation credit refunded - userId={}, sessionId={}, transactionId={}, cause={}",
-                    session.userId.value,
-                    session.sessionId.value,
-                    tx.transactionId.value,
-                    cause.message,
-                )
+                logger.warn {
+                    "Conversation credit refunded - " +
+                        "userId=${session.userId.value}, sessionId=${session.sessionId.value}, " +
+                        "transactionId=${tx.transactionId.value}, cause=${cause.message}"
+                }
             }.then()
             .onErrorResume { refundError ->
-                logger.error(
-                    "Conversation credit refund failed - userId={}, sessionId={}, cause={}, refundError={}",
-                    session.userId.value,
-                    session.sessionId.value,
-                    cause.message,
-                    refundError.message,
-                )
+                logger.error(refundError) {
+                    "Conversation credit refund failed - " +
+                        "userId=${session.userId.value}, sessionId=${session.sessionId.value}, " +
+                        "cause=${cause.message}, refundError=${refundError.message}"
+                }
                 Mono.empty()
             }
 
+    /**
+     * 사용자 취소 로깅.
+     * 클라이언트 연결 종료로 스트림이 중단된 경우, 크레딧은 유지하고 로그만 기록.
+     *
+     * @param session 대화 세션
+     * @return 로깅 완료
+     */
     private fun logUserCancellation(session: ConversationSession): Mono<Void> {
-        logger.info(
-            "Conversation cancelled by user - credit kept - userId={}, sessionId={}",
-            session.userId.value,
-            session.sessionId.value,
-        )
+        logger.info {
+            "Conversation cancelled by user - credit kept - userId=${session.userId.value}, sessionId=${session.sessionId.value}"
+        }
         return Mono.empty()
     }
 }

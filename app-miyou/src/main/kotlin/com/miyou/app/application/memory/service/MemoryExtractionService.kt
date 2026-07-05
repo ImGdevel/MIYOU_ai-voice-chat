@@ -11,11 +11,17 @@ import com.miyou.app.domain.memory.port.ConversationCounterPort
 import com.miyou.app.domain.memory.port.EmbeddingPort
 import com.miyou.app.domain.memory.port.MemoryExtractionPort
 import com.miyou.app.domain.memory.port.VectorMemoryPort
-import org.slf4j.LoggerFactory
+import io.github.oshai.kotlinlogging.KotlinLogging
 import org.springframework.stereotype.Service
 import reactor.core.publisher.Flux
 import reactor.core.publisher.Mono
 
+/**
+ * 메모리 추출 서비스.
+ *
+ * 주기적으로 대화 이력에서 의미있는 정보(인물, 선호도, 사건 등)를 추출하여 벡터 저장소에 저장.
+ * 사용자 선호도 학습 및 개인화 맥락 강화 목적.
+ */
 @Service
 class MemoryExtractionService(
     private val conversationRepository: ConversationRepository,
@@ -27,14 +33,21 @@ class MemoryExtractionService(
     private val extractionMetrics: MemoryExtractionMetricsPort,
     private val conversationThreshold: Int,
 ) {
-    private val logger = LoggerFactory.getLogger(javaClass)
+    private val logger = KotlinLogging.logger {}
 
+    /**
+     * 주기 도달 시 메모리 추출 수행.
+     * 임계값(conversationThreshold) 도달마다 트리거됨.
+     *
+     * @param sessionId 대화 세션 ID
+     * @return 추출 완료 (실패해도 무시)
+     */
     fun checkAndExtract(sessionId: ConversationSessionId): Mono<Void> =
         counterPort
             .get(sessionId)
             .filter(::isExtractionTurn)
             .flatMap { count ->
-                logger.info("메모리 추출 트리거 sessionId={}, count={}", sessionId.value, count)
+                logger.info { "메모리 추출 트리거 sessionId=${sessionId.value}, count=$count" }
                 extractionMetrics.recordExtractionTriggered()
                 performExtraction(sessionId)
             }.then()
@@ -62,16 +75,13 @@ class MemoryExtractionService(
                 }
             }.doOnError { error ->
                 extractionMetrics.recordExtractionFailure()
-                logger.error("메모리 추출 실패", error)
+                logger.error(error) { "메모리 추출 실패" }
             }.flatMapMany(Flux<ExtractedMemory>::fromIterable)
             .flatMap(this::saveExtractedMemory)
             .doOnNext { memory ->
-                logger.info(
-                    "추출된 메모리 저장 완료 type={}, importance={}, content={}",
-                    memory.type,
-                    memory.importance,
-                    memory.content,
-                )
+                logger.info {
+                    "추출된 메모리 저장 완료 type=${memory.type}, importance=${memory.importance}, content=${memory.content}"
+                }
             }.then()
 
     private fun saveExtractedMemory(extracted: ExtractedMemory): Mono<Memory> {

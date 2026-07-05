@@ -6,7 +6,7 @@ import com.miyou.app.domain.monitoring.model.PipelineSummary
 import com.miyou.app.domain.monitoring.model.StageSnapshot
 import com.miyou.app.domain.monitoring.model.StageStatus
 import com.miyou.app.domain.monitoring.port.PipelineMetricsReporter
-import org.slf4j.LoggerFactory
+import io.github.oshai.kotlinlogging.KotlinLogging
 import reactor.core.publisher.Flux
 import reactor.core.publisher.Mono
 import java.time.Clock
@@ -24,7 +24,7 @@ class DialoguePipelineTracker(
     private val reporter: PipelineMetricsReporter,
     private val clock: Clock,
 ) {
-    private val logger = LoggerFactory.getLogger(DialoguePipelineTracker::class.java)
+    private val logger = KotlinLogging.logger {}
     private val pipelineId: String =
         java.util.UUID
             .randomUUID()

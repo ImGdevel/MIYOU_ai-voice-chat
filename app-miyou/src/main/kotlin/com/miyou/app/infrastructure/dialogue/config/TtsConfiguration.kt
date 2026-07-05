@@ -8,7 +8,7 @@ import com.miyou.app.infrastructure.dialogue.adapter.tts.SupertoneConfig
 import com.miyou.app.infrastructure.dialogue.adapter.tts.loadbalancer.TtsEndpoint
 import com.miyou.app.infrastructure.dialogue.adapter.tts.loadbalancer.TtsLoadBalancer
 import com.miyou.app.infrastructure.dialogue.config.properties.RagDialogueProperties
-import org.slf4j.LoggerFactory
+import io.github.oshai.kotlinlogging.KotlinLogging
 import org.springframework.context.ApplicationEventPublisher
 import org.springframework.context.annotation.Bean
 import org.springframework.context.annotation.Configuration
@@ -19,7 +19,7 @@ import org.springframework.web.reactive.function.client.WebClient
 @Configuration
 @EnableScheduling
 class TtsConfiguration {
-    private val log = LoggerFactory.getLogger(javaClass)
+    private val log = KotlinLogging.logger {}
 
     @Bean
     fun supertoneConfig(properties: RagDialogueProperties): SupertoneConfig {
@@ -54,9 +54,9 @@ class TtsConfiguration {
         loadBalancer.setFailureEventPublisher { event ->
             eventPublisher.publishEvent(event)
             if (event.errorType == "PERMANENT_FAILURE") {
-                log.error("TTS 엔드포인트 {} 영구 실패 감지: {}", event.endpointId, event)
+                log.error { "TTS 엔드포인트 ${event.endpointId} 영구 실패 감지: $event" }
             } else {
-                log.warn("TTS 엔드포인트 {} 일시 실패: {}", event.endpointId, event)
+                log.warn { "TTS 엔드포인트 ${event.endpointId} 일시 실패: $event" }
             }
         }
         return loadBalancer

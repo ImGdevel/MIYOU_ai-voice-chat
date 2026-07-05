@@ -1,6 +1,6 @@
 package com.miyou.app.infrastructure.dialogue.adapter.tts.loadbalancer
 
-import org.slf4j.LoggerFactory
+import io.github.oshai.kotlinlogging.KotlinLogging
 import org.springframework.web.reactive.function.client.WebClientResponseException
 import java.time.Duration
 import java.time.Instant
@@ -11,7 +11,7 @@ import java.util.function.Consumer
 class TtsLoadBalancer(
     private val endpointList: List<TtsEndpoint>,
 ) {
-    private val log = LoggerFactory.getLogger(javaClass)
+    private val log = KotlinLogging.logger {}
     private val roundRobinIndex = AtomicInteger(0)
     private val weightCalculator = EndpointWeightCalculator()
     private val temporaryRecoveryInterval = Duration.ofSeconds(30)
@@ -72,11 +72,11 @@ class TtsLoadBalancer(
         endpointList
             .firstOrNull { it.health == TtsEndpoint.EndpointHealth.TEMPORARY_FAILURE }
             ?.let { endpoint ->
-                log.warn("No healthy TTS endpoint. Fallback temporary-failure endpoint: {}", endpoint.id)
+                log.warn { "No healthy TTS endpoint. Fallback temporary-failure endpoint: ${endpoint.id}" }
                 return endpoint
             }
 
-        log.error("No available TTS endpoint for fallback")
+        log.error { "No available TTS endpoint for fallback" }
         throw IllegalStateException("No available TTS endpoint. Fallback failed.")
     }
 
@@ -88,7 +88,7 @@ class TtsLoadBalancer(
             .forEach { endpoint ->
                 val openedAt = endpoint.circuitOpenedAt
                 if (openedAt != null && Duration.between(openedAt, now) > temporaryRecoveryInterval) {
-                    log.info("Recovering temporary-failure endpoint={}", endpoint.id)
+                    log.info { "Recovering temporary-failure endpoint=${endpoint.id}" }
                     endpoint.health = TtsEndpoint.EndpointHealth.HEALTHY
                 }
             }
@@ -97,7 +97,7 @@ class TtsLoadBalancer(
     fun reportSuccess(endpoint: TtsEndpoint) {
         endpoint.circuitBreaker.recordSuccess()
         if (endpoint.health == TtsEndpoint.EndpointHealth.TEMPORARY_FAILURE) {
-            log.info("Endpoint recovered: {}", endpoint.id)
+            log.info { "Endpoint recovered: ${endpoint.id}" }
             endpoint.health = TtsEndpoint.EndpointHealth.HEALTHY
         }
     }
@@ -121,7 +121,7 @@ class TtsLoadBalancer(
         error: Throwable,
     ) {
         val description = getErrorDescription(error)
-        log.warn("Endpoint {} temporary failure: {}", endpoint.id, description)
+        log.warn { "Endpoint ${endpoint.id} temporary failure: $description" }
         endpoint.health = TtsEndpoint.EndpointHealth.TEMPORARY_FAILURE
         publishFailureEvent(endpoint, "TEMPORARY_FAILURE", description)
     }
@@ -131,7 +131,7 @@ class TtsLoadBalancer(
         error: Throwable,
     ) {
         val description = getErrorDescription(error)
-        log.error("Endpoint {} permanent failure: {}", endpoint.id, description)
+        log.error { "Endpoint ${endpoint.id} permanent failure: $description" }
         endpoint.health = TtsEndpoint.EndpointHealth.PERMANENT_FAILURE
         publishFailureEvent(endpoint, "PERMANENT_FAILURE", description)
     }
@@ -141,7 +141,7 @@ class TtsLoadBalancer(
         error: Throwable,
     ) {
         val description = getErrorDescription(error)
-        log.warn("Endpoint {} client error ignored: {}", endpoint.id, description)
+        log.warn { "Endpoint ${endpoint.id} client error ignored: $description" }
         publishFailureEvent(endpoint, "CLIENT_ERROR", description)
     }
 

@@ -9,7 +9,7 @@ import com.miyou.app.domain.dialogue.port.LlmPort
 import com.miyou.app.domain.memory.model.ExtractedMemory
 import com.miyou.app.domain.memory.model.MemoryExtractionContext
 import com.miyou.app.domain.memory.port.MemoryExtractionPort
-import org.slf4j.LoggerFactory
+import io.github.oshai.kotlinlogging.KotlinLogging
 import org.springframework.stereotype.Component
 import reactor.core.publisher.Flux
 
@@ -19,7 +19,7 @@ class LlmMemoryExtractionAdapter(
     private val objectMapper: ObjectMapper,
     config: MemoryExtractionConfig,
 ) : MemoryExtractionPort {
-    private val log = LoggerFactory.getLogger(LlmMemoryExtractionAdapter::class.java)
+    private val log = KotlinLogging.logger {}
     private val extractionModel = config.model
 
     override fun extractMemories(context: MemoryExtractionContext): Flux<ExtractedMemory> {
@@ -110,7 +110,7 @@ class LlmMemoryExtractionAdapter(
                 )
             Flux.fromIterable(dtos).map { dto -> dto.toExtractedMemory(sessionId) }
         } catch (e: Exception) {
-            log.warn("Failed to parse memory extraction response: $jsonResponse", e)
+            log.warn(e) { "Failed to parse memory extraction response: $jsonResponse" }
             Flux.empty()
         }
 }

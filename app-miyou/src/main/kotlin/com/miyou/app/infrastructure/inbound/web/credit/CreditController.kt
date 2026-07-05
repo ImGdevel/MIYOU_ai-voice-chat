@@ -2,6 +2,7 @@ package com.miyou.app.infrastructure.inbound.web.credit
 
 import com.miyou.app.application.credit.usecase.CreditChargeUseCase
 import com.miyou.app.application.credit.usecase.CreditQueryUseCase
+import com.miyou.app.domain.common.error.CreditErrorCode
 import com.miyou.app.domain.credit.model.PaymentCharge
 import com.miyou.app.domain.dialogue.model.UserId
 import com.miyou.app.infrastructure.inbound.web.credit.dto.ChargeByPaymentRequest
@@ -62,8 +63,8 @@ class CreditController(
             paymentGatewayMap[request.pgProvider]
                 ?: return Mono.error(
                     ResponseStatusException(
-                        HttpStatus.BAD_REQUEST,
-                        "지원하지 않는 PG 제공자입니다: ${request.pgProvider}",
+                        CreditErrorCode.UNSUPPORTED_PAYMENT_PROVIDER.httpStatus,
+                        CreditErrorCode.UNSUPPORTED_PAYMENT_PROVIDER.message,
                     ),
                 )
 

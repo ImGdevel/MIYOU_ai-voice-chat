@@ -9,12 +9,17 @@ import com.miyou.app.domain.monitoring.model.DialoguePipelineStage
 import com.miyou.app.domain.voice.model.AudioFormat
 import com.miyou.app.domain.voice.model.Voice
 import com.miyou.app.domain.voice.port.VoiceSelectionPort
-import org.slf4j.LoggerFactory
+import io.github.oshai.kotlinlogging.KotlinLogging
 import org.springframework.stereotype.Service
 import reactor.core.publisher.Flux
 import reactor.core.publisher.Mono
 import reactor.core.scheduler.Schedulers
 
+/**
+ * TTS 스트리밍 단계.
+ *
+ * 문장 조립 → TTS 준비 → 음성 합성 → 오디오 스트림 생성 및 모니터링.
+ */
 @Service
 class DialogueTtsStreamService(
     private val ttsPort: TtsPort,
@@ -22,8 +27,14 @@ class DialogueTtsStreamService(
     private val pipelineTracer: PipelineTracer,
     private val voiceProvider: VoiceSelectionPort,
 ) {
-    private val logger = LoggerFactory.getLogger(DialogueTtsStreamService::class.java)
+    private val logger = KotlinLogging.logger {}
 
+    /**
+     * TTS 준비 (웜업).
+     * 첫 합성 요청 전 리소스 초기화.
+     *
+     * @return 준비 완료
+     */
     fun prepareTtsWarmup(): Mono<Void> =
         Mono
             .deferContextual { contextView ->
@@ -33,20 +44,34 @@ class DialogueTtsStreamService(
                     ttsPort
                         .prepare()
                         .doOnError { error ->
-                            logger.warn("Speech synthesis warmup failed for {}: {}", pipelineId, error.message)
+                            logger.warn { "Speech synthesis warmup failed for $pipelineId: ${error.message}" }
                         }.onErrorResume { Mono.empty() }
                 }
             }.cache()
 
+    /**
+     * LLM 토큰을 완전한 문장으로 조립.
+     *
+     * @param llmTokens LLM 토큰 스트림
+     * @return 완전한 문장 스트림
+     */
     fun assembleSentences(llmTokens: Flux<String>): Flux<String> =
         pipelineTracer.traceSentenceAssembly(
             { sentenceAssembler.assemble(llmTokens) },
             { tracker, sentence ->
                 tracker.recordLlmOutput(sentence)
-                logger.debug("Sentence: [{}]", sentence)
+                logger.debug { "Sentence: [$sentence]" }
             },
         )
 
+    /**
+     * 오디오 스트림 생성 (기본 음성).
+     *
+     * @param sentences 문장 스트림
+     * @param ttsWarmup TTS 준비 완료 신호
+     * @param targetFormat 음성 포맷 (MP3, WAV 등)
+     * @return 오디오 데이터 스트림
+     */
     fun buildAudioStream(
         sentences: Flux<String>,
         ttsWarmup: Mono<Void>,
@@ -58,6 +83,15 @@ class DialogueTtsStreamService(
                 ttsWarmup.thenMany(ttsPort.streamSynthesize(sentence, targetFormat))
             }
 
+    /**
+     * 오디오 스트림 생성 (페르소나별 음성).
+     *
+     * @param sentences 문장 스트림
+     * @param ttsWarmup TTS 준비 완료 신호
+     * @param targetFormat 음성 포맷
+     * @param personaId 페르소나 ID (음성 선택용)
+     * @return 오디오 데이터 스트림
+     */
     fun buildAudioStream(
         sentences: Flux<String>,
         ttsWarmup: Mono<Void>,
@@ -72,6 +106,13 @@ class DialogueTtsStreamService(
             }
     }
 
+    /**
+     * TTS 합성 모니터링.
+     * 오디오 청크 카운팅 및 응답 전송 시점 기록.
+     *
+     * @param audioFlux 오디오 데이터 스트림
+     * @return 모니터링이 적용된 오디오 스트림
+     */
     fun traceTtsSynthesis(audioFlux: Flux<ByteArray>): Flux<ByteArray> =
         pipelineTracer.traceTtsSynthesis({ audioFlux }) { tracker, chunk ->
             tracker.incrementStageCounter(

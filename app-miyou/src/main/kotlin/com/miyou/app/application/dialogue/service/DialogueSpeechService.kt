@@ -1,10 +1,10 @@
 package com.miyou.app.application.dialogue.service
 
 import com.miyou.app.application.dialogue.policy.SttPolicy
+import com.miyou.app.domain.common.error.DialogueErrorCode
 import com.miyou.app.domain.dialogue.model.AudioTranscriptionInput
 import com.miyou.app.domain.dialogue.port.SttPort
 import org.springframework.core.io.buffer.DataBufferUtils
-import org.springframework.http.HttpStatus
 import org.springframework.http.MediaType
 import org.springframework.http.codec.multipart.FilePart
 import org.springframework.stereotype.Service
@@ -33,8 +33,8 @@ class DialogueSpeechService(
         if (contentType == null || contentType.type != "audio") {
             return Mono.error(
                 ResponseStatusException(
-                    HttpStatus.BAD_REQUEST,
-                    "오디오 파일만 업로드해 주세요",
+                    DialogueErrorCode.INVALID_AUDIO_FILE.httpStatus,
+                    DialogueErrorCode.INVALID_AUDIO_FILE.message,
                 ),
             )
         }
@@ -57,16 +57,16 @@ class DialogueSpeechService(
     private fun validateAudioSize(size: Int) {
         if (size < MIN_STT_AUDIO_BYTES) {
             throw ResponseStatusException(
-                HttpStatus.BAD_REQUEST,
-                "음성이 너무 짧습니다. 조금 더 길게 말한 뒤 전송해 주세요.",
+                DialogueErrorCode.AUDIO_TOO_SHORT.httpStatus,
+                DialogueErrorCode.AUDIO_TOO_SHORT.message,
             )
         }
 
         val maxFileSizeBytes = sttPolicy.maxFileSizeBytes
         if (size > maxFileSizeBytes) {
             throw ResponseStatusException(
-                HttpStatus.PAYLOAD_TOO_LARGE,
-                "음성 파일 크기가 너무 큽니다. 최대값: $maxFileSizeBytes bytes",
+                DialogueErrorCode.AUDIO_FILE_TOO_LARGE.httpStatus,
+                DialogueErrorCode.AUDIO_FILE_TOO_LARGE.message,
             )
         }
     }

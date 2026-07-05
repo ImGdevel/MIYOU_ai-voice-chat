@@ -10,7 +10,7 @@ import com.miyou.app.domain.dialogue.port.ConversationRepository
 import com.miyou.app.infrastructure.dialogue.adapter.persistence.document.ConversationDocument
 import com.miyou.app.infrastructure.dialogue.config.properties.RagDialogueProperties
 import com.miyou.app.infrastructure.dialogue.repository.ConversationMongoRepository
-import org.slf4j.LoggerFactory
+import io.github.oshai.kotlinlogging.KotlinLogging
 import org.springframework.beans.factory.annotation.Qualifier
 import org.springframework.data.domain.PageRequest
 import org.springframework.data.redis.core.ReactiveRedisTemplate
@@ -26,7 +26,7 @@ class ConversationCachingAdapter(
     @Qualifier("reactiveRedisStringTemplate") private val redisTemplate: ReactiveRedisTemplate<String, String>,
     properties: RagDialogueProperties,
 ) : ConversationRepository {
-    private val log = LoggerFactory.getLogger(javaClass)
+    private val log = KotlinLogging.logger {}
     private val maxCacheSize = properties.cache.maxHistorySize
     private val cacheTtl = Duration.ofHours(properties.cache.ttlHours.toLong())
     private val objectMapper =
@@ -44,10 +44,10 @@ class ConversationCachingAdapter(
                     .defer { appendToCache(saved) }
                     .onErrorResume { e ->
                         log.warn(
-                            "Redis cache write failed for session {}, continuing without cache",
-                            saved.sessionId().value(),
                             e
-                        )
+                        ) {
+                            "Redis cache write failed for session ${saved.sessionId().value()}, continuing without cache"
+                        }
                         Mono.empty()
                     }.thenReturn(saved)
             }
@@ -63,7 +63,7 @@ class ConversationCachingAdapter(
             .range(key, (-limit).toLong(), -1)
             .map(::deserialize)
             .onErrorResume { e ->
-                log.warn("Redis cache read failed for session {}, falling back to MongoDB", sessionId.value(), e)
+                log.warn(e) { "Redis cache read failed for session ${sessionId.value()}, falling back to MongoDB" }
                 Flux.empty()
             }.switchIfEmpty(Flux.defer { loadFromMongoAndWarmup(sessionId, key, limit) })
     }
@@ -80,7 +80,7 @@ class ConversationCachingAdapter(
             .flatMapMany { list ->
                 warmupCache(key, list)
                     .onErrorResume { e ->
-                        log.warn("Redis cache warmup failed for session {}", sessionId.value(), e)
+                        log.warn(e) { "Redis cache warmup failed for session ${sessionId.value()}" }
                         Mono.empty()
                     }.thenMany(Flux.fromIterable(list))
             }

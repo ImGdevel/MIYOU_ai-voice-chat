@@ -6,8 +6,7 @@ import com.miyou.app.domain.memory.model.MemoryRetrievalResult
 import com.miyou.app.domain.memory.port.MemoryRetrievalPort
 import com.miyou.app.domain.retrieval.model.RetrievalContext
 import com.miyou.app.domain.retrieval.port.RetrievalPort
-import org.slf4j.Logger
-import org.slf4j.LoggerFactory
+import io.github.oshai.kotlinlogging.KotlinLogging
 import org.springframework.context.annotation.Primary
 import org.springframework.stereotype.Component
 import reactor.core.publisher.Mono
@@ -18,7 +17,7 @@ class VectorMemoryRetrievalAdapter(
     private val memoryRetrievalPort: MemoryRetrievalPort,
     private val conversationRepository: ConversationRepository,
 ) : RetrievalPort {
-    private val log: Logger = LoggerFactory.getLogger(VectorMemoryRetrievalAdapter::class.java)
+    private val log = KotlinLogging.logger {}
 
     override fun retrieve(
         sessionId: ConversationSessionId,
@@ -39,7 +38,7 @@ class VectorMemoryRetrievalAdapter(
         memoryRetrievalPort
             .retrieveMemories(sessionId, query, topK)
             .onErrorResume { error ->
-                log.warn("Memory retrieval failed for query '{}': {}", query, error.message, error)
+                log.warn(error) { "Memory retrieval failed for query '$query': ${error.message}" }
                 Mono.just(MemoryRetrievalResult.empty())
             }
 }

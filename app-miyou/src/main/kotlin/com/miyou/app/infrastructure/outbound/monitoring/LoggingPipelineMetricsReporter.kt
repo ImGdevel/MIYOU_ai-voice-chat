@@ -2,12 +2,12 @@ package com.miyou.app.infrastructure.outbound.monitoring
 
 import com.miyou.app.domain.monitoring.model.PipelineSummary
 import com.miyou.app.domain.monitoring.port.PipelineMetricsReporter
-import org.slf4j.LoggerFactory
+import io.github.oshai.kotlinlogging.KotlinLogging
 import org.springframework.stereotype.Component
 
 @Component
 class LoggingPipelineMetricsReporter : PipelineMetricsReporter {
-    private val log = LoggerFactory.getLogger(LoggingPipelineMetricsReporter::class.java)
+    private val log = KotlinLogging.logger {}
 
     override fun report(summary: PipelineSummary) {
         val ideaActive = System.getProperty("idea.active", "false").toBoolean()
@@ -15,7 +15,7 @@ class LoggingPipelineMetricsReporter : PipelineMetricsReporter {
         val llmOutputs = formatOutputs(summary, ideaActive)
 
         if (ideaActive) {
-            log.info(
+            log.info {
                 """
                 Dialogue pipeline ${summary.pipelineId}
                 status=${summary.status} duration=${summary.durationMillis()}ms
@@ -26,20 +26,16 @@ class LoggingPipelineMetricsReporter : PipelineMetricsReporter {
                 $stageSummary
                 llmResults:
                 $llmOutputs
-                """.trimIndent(),
-            )
+                """.trimIndent()
+            }
         } else {
-            log.info(
-                "Dialogue pipeline {} status={} duration={}ms firstLatency={}ms lastLatency={}ms attributes={} stages=[{}] llmResults={}",
-                summary.pipelineId,
-                summary.status,
-                summary.durationMillis(),
-                safeLatency(summary.firstResponseLatencyMillis),
-                safeLatency(summary.lastResponseLatencyMillis),
-                summary.attributes,
-                stageSummary,
-                llmOutputs,
-            )
+            log.info {
+                "Dialogue pipeline ${summary.pipelineId} " +
+                    "status=${summary.status} duration=${summary.durationMillis()}ms " +
+                    "firstLatency=${safeLatency(summary.firstResponseLatencyMillis)}ms " +
+                    "lastLatency=${safeLatency(summary.lastResponseLatencyMillis)}ms " +
+                    "attributes=${summary.attributes} stages=[$stageSummary] llmResults=$llmOutputs"
+            }
         }
     }
 

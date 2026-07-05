@@ -8,7 +8,7 @@ import com.miyou.app.domain.monitoring.model.UsageAnalytics
 import com.miyou.app.domain.monitoring.port.PerformanceMetricsRepository
 import com.miyou.app.domain.monitoring.port.PipelineMetricsReporter
 import com.miyou.app.domain.monitoring.port.UsageAnalyticsRepository
-import org.slf4j.LoggerFactory
+import io.github.oshai.kotlinlogging.KotlinLogging
 import reactor.core.publisher.Mono
 
 class PersistentPipelineMetricsReporter(
@@ -16,7 +16,7 @@ class PersistentPipelineMetricsReporter(
     private val usageAnalyticsRepository: UsageAnalyticsRepository,
     private val loggingReporter: LoggingPipelineMetricsReporter,
 ) : PipelineMetricsReporter {
-    private val log = LoggerFactory.getLogger(PersistentPipelineMetricsReporter::class.java)
+    private val log = KotlinLogging.logger {}
 
     override fun report(summary: PipelineSummary) {
         loggingReporter.report(summary)
@@ -188,8 +188,8 @@ class PersistentPipelineMetricsReporter(
         idExtractor: (T) -> String,
     ) {
         source.subscribe(
-            { result -> log.debug("{} saved: {}", label, idExtractor(result)) },
-            { error -> log.error("Failed to save {} for {}", label, pipelineId, error) },
+            { result -> log.debug { "$label saved: ${idExtractor(result)}" } },
+            { error -> log.error(error) { "Failed to save $label for $pipelineId" } },
         )
     }
 
