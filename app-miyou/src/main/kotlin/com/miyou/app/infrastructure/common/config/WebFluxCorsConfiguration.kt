@@ -25,5 +25,12 @@ class WebFluxCorsConfiguration(
             .allowedMethods("GET", "POST", "PUT", "PATCH", "DELETE", "OPTIONS")
             .allowedHeaders("*")
             .maxAge(3600)
+
+        registry
+            .addMapping("/credit/**")
+            .allowedOrigins(*allowedOrigins.toTypedArray())
+            .allowedMethods("GET", "POST", "PUT", "PATCH", "DELETE", "OPTIONS")
+            .allowedHeaders("*")
+            .maxAge(3600)
     }
 }
