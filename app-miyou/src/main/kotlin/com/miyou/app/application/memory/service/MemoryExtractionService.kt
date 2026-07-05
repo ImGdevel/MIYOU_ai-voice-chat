@@ -72,6 +72,10 @@ class MemoryExtractionService(
 
                 extractedList.forEach { extracted ->
                     extractionMetrics.recordExtractedImportance(extracted.importance.toDouble())
+                    logger.info {
+                        "메모리 추출 근거 sessionId=${sessionId.value}, type=${extracted.type}, " +
+                            "importance=${extracted.importance}, reasoning=${extracted.reasoning}"
+                    }
                 }
             }.doOnError { error ->
                 extractionMetrics.recordExtractionFailure()
