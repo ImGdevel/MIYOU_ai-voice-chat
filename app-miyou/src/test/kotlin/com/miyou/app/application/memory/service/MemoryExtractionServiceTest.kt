@@ -122,5 +122,56 @@ class MemoryExtractionServiceTest {
         verify(extractionMetrics).recordExtractionTriggered()
         verify(extractionMetrics).recordExtractionSuccess(1)
         verify(extractionMetrics).recordExtractedMemoryType("FACTUAL", 1)
+        verify(vectorMemoryPort, never()).applyDecayAndArchive(anyValue())
+    }
+
+    @Test
+    @DisplayName("supersedesMemoryId가 컨텍스트의 기존 메모리를 가리키면 즉시 소프트 아카이브한다")
+    fun checkAndExtract_withSupersedesMemoryId_archivesExistingMemory() {
+        val sessionId = ConversationSessionFixture.createId()
+        val turn = ConversationTurn.create(sessionId, "이제 라면 안 먹어, 질려서")
+        val existingMemory =
+            Memory(
+                id = "mem-1",
+                sessionId = sessionId,
+                type = MemoryType.FACTUAL,
+                content = "사용자는 라면을 좋아한다",
+                importance = 0.6f,
+                createdAt = java.time.Instant.now(),
+                lastAccessedAt = java.time.Instant.now(),
+                accessCount = 1,
+            )
+        val extracted =
+            ExtractedMemory(
+                sessionId,
+                MemoryType.FACTUAL,
+                "사용자는 라면을 싫어한다",
+                0.6f,
+                "선호도 변경",
+                supersedesMemoryId = "mem-1",
+            )
+
+        `when`(counterPort.get(sessionId)).thenReturn(Mono.just(5L))
+        `when`(conversationRepository.findRecent(sessionId, CONVERSATION_THRESHOLD))
+            .thenReturn(Flux.just(turn))
+        `when`(retrievalService.retrieveMemories(sessionId, turn.query, 10))
+            .thenReturn(Mono.just(MemoryRetrievalResult.of(emptyList(), listOf(existingMemory))))
+        `when`(extractionPort.extractMemories(anyValue())).thenReturn(Flux.just(extracted))
+        `when`(embeddingPort.embed(extracted.content))
+            .thenReturn(Mono.just(MemoryEmbedding(extracted.content, listOf(0.1f, 0.2f))))
+        `when`(vectorMemoryPort.upsert(anyValue(), anyValue())).thenAnswer { invocation ->
+            Mono.just(invocation.getArgument<Memory>(0))
+        }
+
+        var archivedMemory: Memory? = null
+        `when`(vectorMemoryPort.applyDecayAndArchive(anyValue())).thenAnswer { invocation ->
+            archivedMemory = invocation.getArgument(0)
+            Mono.empty<Void>()
+        }
+
+        StepVerifier.create(service.checkAndExtract(sessionId)).verifyComplete()
+
+        assertThat(archivedMemory?.id).isEqualTo("mem-1")
+        assertThat(archivedMemory?.archivedAt).isNotNull()
     }
 }

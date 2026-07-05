@@ -8,6 +8,7 @@ data class ExtractedMemory(
     val content: String,
     val importance: Float,
     val reasoning: String,
+    val supersedesMemoryId: String? = null,
 ) {
     init {
         require(content.isNotBlank()) { "content cannot be null or blank" }
