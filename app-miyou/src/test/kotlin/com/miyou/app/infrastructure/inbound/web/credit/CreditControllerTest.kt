@@ -2,26 +2,33 @@ package com.miyou.app.infrastructure.inbound.web.credit
 
 import com.miyou.app.application.credit.usecase.CreditChargeUseCase
 import com.miyou.app.application.credit.usecase.CreditQueryUseCase
+import com.miyou.app.domain.auth.model.AuthenticatedUser
 import com.miyou.app.domain.credit.model.CreditTransaction
 import com.miyou.app.domain.credit.model.CreditTransactionType
 import com.miyou.app.domain.credit.model.PaymentCharge
+import com.miyou.app.domain.dialogue.model.UserId
 import com.miyou.app.fixture.CreditTransactionFixture
 import com.miyou.app.fixture.UserCreditFixture
 import com.miyou.app.fixture.UserIdFixture
 import com.miyou.app.infrastructure.inbound.web.credit.dto.ChargeByPaymentRequest
 import com.miyou.app.infrastructure.payment.port.PaymentGatewayPort
+import com.miyou.app.support.PermitAllSecurityTestConfig
 import org.junit.jupiter.api.DisplayName
 import org.junit.jupiter.api.Test
 import org.mockito.Mockito.`when`
 import org.springframework.beans.factory.annotation.Autowired
 import org.springframework.boot.test.autoconfigure.web.reactive.WebFluxTest
+import org.springframework.context.annotation.Import
 import org.springframework.data.domain.PageRequest
 import org.springframework.http.MediaType
+import org.springframework.security.authentication.UsernamePasswordAuthenticationToken
+import org.springframework.security.test.web.reactive.server.SecurityMockServerConfigurers.mockAuthentication
 import org.springframework.test.context.bean.override.mockito.MockitoBean
 import org.springframework.test.web.reactive.server.WebTestClient
 import reactor.core.publisher.Flux
 import reactor.core.publisher.Mono
 
+@Import(PermitAllSecurityTestConfig::class)
 @WebFluxTest(CreditController::class)
 class CreditControllerTest {
     @Autowired
@@ -116,5 +123,32 @@ class CreditControllerTest {
             .isEqualTo(10000)
             .jsonPath("$.sourceType")
             .isEqualTo("PAYMENT_CHARGE")
+    }
+
+    @Test
+    @DisplayName(
+        "getBalance prefers the authenticated principal's userId over the query param userId (anonymous+OAuth coexistence)"
+    )
+    fun getBalance_authenticatedPrincipal_overridesQueryParamUserId() {
+        val authenticatedUserId = UserId.of("authenticated-user-1")
+        val queryParamUserId = "different-anonymous-user"
+        val principal = AuthenticatedUser(authenticatedUserId)
+
+        `when`(creditChargeUseCase.initializeIfAbsent(authenticatedUserId)).thenReturn(Mono.empty())
+        `when`(creditQueryUseCase.getBalance(authenticatedUserId))
+            .thenReturn(Mono.just(UserCreditFixture.create(authenticatedUserId, 1234L)))
+
+        webTestClient
+            .mutateWith(mockAuthentication(UsernamePasswordAuthenticationToken(principal, null, emptyList())))
+            .get()
+            .uri("/credit/balance?userId={id}", queryParamUserId)
+            .exchange()
+            .expectStatus()
+            .isOk
+            .expectBody()
+            .jsonPath("$.userId")
+            .isEqualTo(authenticatedUserId.value)
+            .jsonPath("$.balance")
+            .isEqualTo(1234)
     }
 }

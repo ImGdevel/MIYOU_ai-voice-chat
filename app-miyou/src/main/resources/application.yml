@@ -4,6 +4,11 @@ spring:
   data:
     mongodb:
       uri: ${MONGODB_URI:mongodb://localhost:27018/ragdb?directConnection=true}
+      # 기본값 false — @Indexed/@CompoundIndex 애노테이션이 있어도 인덱스가 실제로
+      # 생성되지 않는다 (예: UserCreditDocument.userId 유니크 인덱스, 새로 추가한
+      # OAuthAccountDocument의 (provider, providerUserId) 복합 유니크 인덱스). 켜지
+      # 않으면 동시 로그인 레이스에서 같은 계정이 중복 생성될 수 있어 명시적으로 켠다.
+      auto-index-creation: true
     redis:
       host: ${REDIS_HOST:localhost}
       port: ${REDIS_PORT:16379}
@@ -20,7 +25,6 @@ spring:
         host: ${QDRANT_HOST:localhost}
         port: ${QDRANT_PORT:6334}
         collection-name: ${QDRANT_COLLECTION:user_memories}
-
 server:
   port: 8081
 
@@ -29,6 +33,30 @@ web:
     # 서비스의 기본은 Nginx 단일 오리진만 허용하도록 의도됨. 기본값은 비움.
     # 프론트-백엔드 분리 배포 시에는 WEB_CORS_ALLOWED_ORIGINS를 지정한다.
     allowed-origins: ${WEB_CORS_ALLOWED_ORIGINS:}
+
+# spring.security.oauth2.client.registration.* 는 일부러 안 씀 — Boot의
+# OAuth2ClientProperties가 이 네임스페이스 아래 선언된 모든 registration의
+# client-id를 무조건 non-blank로 검증해서(우리 자체 ReactiveClientRegistrationRepository
+# 빈으로 Boot의 auto-wiring 경로를 안 타도 이 검증만은 항상 실행됨), provider
+# 미설정 상태를 표현할 수 없다. 그래서 커스텀 프리픽스를 쓴다.
+app:
+  oauth2:
+    redirect-base-uri: ${OAUTH2_REDIRECT_BASE_URI:http://localhost:8081}
+    google:
+      client-id: ${GOOGLE_CLIENT_ID:}
+      client-secret: ${GOOGLE_CLIENT_SECRET:}
+    kakao:
+      client-id: ${KAKAO_CLIENT_ID:}
+      client-secret: ${KAKAO_CLIENT_SECRET:}
+    naver:
+      client-id: ${NAVER_CLIENT_ID:}
+      client-secret: ${NAVER_CLIENT_SECRET:}
+
+jwt:
+  secret: ${JWT_SECRET:}
+  access-token-ttl-minutes: ${JWT_ACCESS_TTL_MINUTES:15}
+  refresh-token-ttl-days: ${JWT_REFRESH_TTL_DAYS:14}
+  issuer: miyou-app
 
 rag:
   dialogue:

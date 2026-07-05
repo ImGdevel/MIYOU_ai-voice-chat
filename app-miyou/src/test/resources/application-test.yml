@@ -19,6 +19,15 @@ spring:
 server:
   port: 0
 
+# 테스트 전용 시크릿 — 실 운영 키 아님, 전체 컨텍스트를 로드하는
+# @SpringBootTest(RagApplicationTests, AuthFlowIntegrationTest 등)가
+# JWT_SECRET 환경변수 없이도 항상 통과하도록 함.
+jwt:
+  secret: test-only-jwt-secret-must-be-at-least-32-bytes-long-for-hs256
+  access-token-ttl-minutes: 15
+  refresh-token-ttl-days: 14
+  issuer: miyou-app-test
+
 rag:
   dialogue:
     openai:

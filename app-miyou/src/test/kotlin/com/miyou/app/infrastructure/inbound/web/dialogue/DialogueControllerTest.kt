@@ -9,11 +9,13 @@ import com.miyou.app.domain.voice.model.AudioFormat
 import com.miyou.app.fixture.ConversationSessionFixture
 import com.miyou.app.infrastructure.inbound.web.dialogue.dto.CreateSessionRequest
 import com.miyou.app.infrastructure.inbound.web.dialogue.dto.RagDialogueRequest
+import com.miyou.app.support.PermitAllSecurityTestConfig
 import org.junit.jupiter.api.DisplayName
 import org.junit.jupiter.api.Test
 import org.mockito.Mockito.`when`
 import org.springframework.beans.factory.annotation.Autowired
 import org.springframework.boot.test.autoconfigure.web.reactive.WebFluxTest
+import org.springframework.context.annotation.Import
 import org.springframework.http.MediaType
 import org.springframework.test.context.bean.override.mockito.MockitoBean
 import org.springframework.test.web.reactive.server.WebTestClient
@@ -21,6 +23,7 @@ import reactor.core.publisher.Flux
 import reactor.core.publisher.Mono
 import java.time.Instant
 
+@Import(PermitAllSecurityTestConfig::class)
 @WebFluxTest(DialogueController::class)
 class DialogueControllerTest {
     @Autowired

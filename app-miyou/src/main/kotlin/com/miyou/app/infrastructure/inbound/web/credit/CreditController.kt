@@ -1,8 +1,9 @@
 package com.miyou.app.infrastructure.inbound.web.credit
 
+import com.miyou.app.application.common.error.CreditErrorCode
 import com.miyou.app.application.credit.usecase.CreditChargeUseCase
 import com.miyou.app.application.credit.usecase.CreditQueryUseCase
-import com.miyou.app.domain.common.error.CreditErrorCode
+import com.miyou.app.domain.auth.model.AuthenticatedUser
 import com.miyou.app.domain.credit.model.PaymentCharge
 import com.miyou.app.domain.dialogue.model.UserId
 import com.miyou.app.infrastructure.inbound.web.credit.dto.ChargeByPaymentRequest
@@ -13,6 +14,7 @@ import jakarta.validation.Valid
 import jakarta.validation.constraints.NotBlank
 import org.springframework.data.domain.PageRequest
 import org.springframework.http.HttpStatus
+import org.springframework.security.core.annotation.AuthenticationPrincipal
 import org.springframework.web.bind.annotation.GetMapping
 import org.springframework.web.bind.annotation.PostMapping
 import org.springframework.web.bind.annotation.RequestBody
@@ -33,9 +35,13 @@ class CreditController(
 ) {
     @GetMapping("/balance")
     fun getBalance(
-        @RequestParam @NotBlank userId: String,
+        @RequestParam(required = false) userId: String?,
+        @AuthenticationPrincipal principal: AuthenticatedUser?,
     ): Mono<UserCreditResponse> {
-        val resolvedUserId = UserId.of(userId)
+        val resolvedUserId =
+            principal?.userId
+                ?: userId?.takeIf { it.isNotBlank() }?.let { UserId.of(it) }
+                ?: return Mono.error(ResponseStatusException(HttpStatus.BAD_REQUEST, "userId is required"))
         return creditChargeUseCase
             .initializeIfAbsent(resolvedUserId)
             .then(creditQueryUseCase.getBalance(resolvedUserId))
@@ -44,21 +50,32 @@ class CreditController(
 
     @GetMapping("/transactions")
     fun getTransactions(
-        @RequestParam @NotBlank userId: String,
+        @RequestParam(required = false) userId: String?,
         @RequestParam(defaultValue = "0") page: Int,
         @RequestParam(defaultValue = "20") size: Int,
-    ): Flux<CreditTransactionResponse> =
-        creditQueryUseCase
+        @AuthenticationPrincipal principal: AuthenticatedUser?,
+    ): Flux<CreditTransactionResponse> {
+        val resolvedUserId =
+            principal?.userId
+                ?: userId?.takeIf { it.isNotBlank() }?.let { UserId.of(it) }
+                ?: return Flux.error(ResponseStatusException(HttpStatus.BAD_REQUEST, "userId is required"))
+        return creditQueryUseCase
             .getTransactions(
-                UserId.of(userId),
+                resolvedUserId,
                 PageRequest.of(page, size),
             ).map(CreditTransactionResponse::from)
+    }
 
     @PostMapping("/charge/payment")
     @ResponseStatus(HttpStatus.CREATED)
     fun chargeByPayment(
         @Valid @RequestBody request: ChargeByPaymentRequest,
+        @AuthenticationPrincipal principal: AuthenticatedUser?,
     ): Mono<CreditTransactionResponse> {
+        val resolvedUserId =
+            principal?.userId
+                ?: request.userId?.takeIf { it.isNotBlank() }?.let { UserId.of(it) }
+                ?: return Mono.error(ResponseStatusException(HttpStatus.BAD_REQUEST, "userId is required"))
         val gateway =
             paymentGatewayMap[request.pgProvider]
                 ?: return Mono.error(
@@ -77,7 +94,7 @@ class CreditController(
                 ),
             ).flatMap { result ->
                 creditChargeUseCase.chargeByPayment(
-                    UserId.of(request.userId),
+                    resolvedUserId,
                     result.amount,
                     PaymentCharge(result.paymentId, request.pgProvider),
                 )

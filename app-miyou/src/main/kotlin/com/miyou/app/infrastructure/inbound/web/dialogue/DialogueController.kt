@@ -1,10 +1,11 @@
 package com.miyou.app.infrastructure.inbound.web.dialogue
 
+import com.miyou.app.application.common.error.CommonErrorCode
+import com.miyou.app.application.common.error.CreditErrorCode
+import com.miyou.app.application.common.error.DialogueErrorCode
 import com.miyou.app.application.credit.usecase.CreditChargeUseCase
 import com.miyou.app.application.dialogue.service.DialogueSpeechService
-import com.miyou.app.domain.common.error.CommonErrorCode
-import com.miyou.app.domain.common.error.CreditErrorCode
-import com.miyou.app.domain.common.error.DialogueErrorCode
+import com.miyou.app.domain.auth.model.AuthenticatedUser
 import com.miyou.app.domain.credit.exception.InsufficientCreditException
 import com.miyou.app.domain.dialogue.model.ConversationSession
 import com.miyou.app.domain.dialogue.model.ConversationSessionId
@@ -26,6 +27,7 @@ import org.springframework.core.io.buffer.DefaultDataBufferFactory
 import org.springframework.http.MediaType
 import org.springframework.http.codec.multipart.FilePart
 import org.springframework.http.server.reactive.ServerHttpResponse
+import org.springframework.security.core.annotation.AuthenticationPrincipal
 import org.springframework.validation.annotation.Validated
 import org.springframework.web.bind.annotation.PostMapping
 import org.springframework.web.bind.annotation.RequestBody
@@ -52,6 +54,7 @@ class DialogueController(
     @PostMapping("/session")
     override fun createSession(
         @Valid @RequestBody request: CreateSessionRequest,
+        @AuthenticationPrincipal principal: AuthenticatedUser?,
     ): Mono<CreateSessionResponse> {
         val personaId =
             if (request.personaId.isNotBlank()) {
@@ -61,7 +64,7 @@ class DialogueController(
             } else {
                 PersonaId.defaultPersona()
             }
-        val userId = UserId.of(request.userId)
+        val userId = principal?.userId ?: UserId.of(request.userId)
 
         val session = ConversationSession.create(personaId, userId)
         return sessionRepository

@@ -1,7 +1,7 @@
 package com.miyou.app.application.dialogue.service
 
+import com.miyou.app.application.common.error.DialogueErrorCode
 import com.miyou.app.application.dialogue.policy.SttPolicy
-import com.miyou.app.domain.common.error.DialogueErrorCode
 import com.miyou.app.domain.dialogue.model.AudioTranscriptionInput
 import com.miyou.app.domain.dialogue.port.SttPort
 import org.springframework.core.io.buffer.DataBufferUtils

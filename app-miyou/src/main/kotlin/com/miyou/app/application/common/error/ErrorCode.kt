@@ -1,4 +1,4 @@
-package com.miyou.app.domain.common.error
+package com.miyou.app.application.common.error
 
 import org.springframework.http.HttpStatus
 

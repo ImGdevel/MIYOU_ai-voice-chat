@@ -2,18 +2,24 @@ package com.miyou.app.infrastructure.inbound.web.mission
 
 import com.miyou.app.application.mission.usecase.MissionCompletionUseCase
 import com.miyou.app.application.mission.usecase.MissionQueryUseCase
+import com.miyou.app.domain.auth.model.AuthenticatedUser
+import com.miyou.app.domain.dialogue.model.UserId
 import com.miyou.app.domain.mission.model.MissionId
 import com.miyou.app.domain.mission.model.MissionStatus
 import com.miyou.app.domain.mission.model.MissionType
 import com.miyou.app.domain.mission.model.UserMission
 import com.miyou.app.fixture.MissionFixture
 import com.miyou.app.fixture.UserIdFixture
+import com.miyou.app.support.PermitAllSecurityTestConfig
 import org.junit.jupiter.api.DisplayName
 import org.junit.jupiter.api.Test
 import org.mockito.Mockito.`when`
 import org.springframework.beans.factory.annotation.Autowired
 import org.springframework.boot.test.autoconfigure.web.reactive.WebFluxTest
+import org.springframework.context.annotation.Import
 import org.springframework.http.HttpStatus
+import org.springframework.security.authentication.UsernamePasswordAuthenticationToken
+import org.springframework.security.test.web.reactive.server.SecurityMockServerConfigurers.mockAuthentication
 import org.springframework.test.context.bean.override.mockito.MockitoBean
 import org.springframework.test.web.reactive.server.WebTestClient
 import org.springframework.web.server.ResponseStatusException
@@ -21,6 +27,7 @@ import reactor.core.publisher.Flux
 import reactor.core.publisher.Mono
 import java.time.Instant
 
+@Import(PermitAllSecurityTestConfig::class)
 @WebFluxTest(MissionController::class)
 class MissionControllerTest {
     @Autowired
@@ -86,5 +93,30 @@ class MissionControllerTest {
             .exchange()
             .expectStatus()
             .isNotFound
+    }
+
+    @Test
+    @DisplayName(
+        "completeMission prefers the authenticated principal's userId over the query param userId (anonymous+OAuth coexistence)"
+    )
+    fun completeMission_authenticatedPrincipal_overridesQueryParamUserId() {
+        val authenticatedUserId = UserId.of("authenticated-mission-user")
+        val queryParamUserId = "different-anonymous-user"
+        val missionId = MissionId.of(MissionFixture.DEFAULT_MISSION_ID)
+        val principal = AuthenticatedUser(authenticatedUserId)
+        val rewarded = UserMission(authenticatedUserId, missionId, MissionStatus.REWARDED, Instant.now(), Instant.now())
+
+        `when`(missionCompletionUseCase.completeMission(authenticatedUserId, missionId)).thenReturn(Mono.just(rewarded))
+
+        webTestClient
+            .mutateWith(mockAuthentication(UsernamePasswordAuthenticationToken(principal, null, emptyList())))
+            .post()
+            .uri("/missions/{missionId}/complete?userId={userId}", missionId.value, queryParamUserId)
+            .exchange()
+            .expectStatus()
+            .isOk
+            .expectBody()
+            .jsonPath("$.status")
+            .isEqualTo("REWARDED")
     }
 }
