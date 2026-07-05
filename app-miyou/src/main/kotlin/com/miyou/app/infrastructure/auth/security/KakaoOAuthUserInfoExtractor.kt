@@ -13,7 +13,7 @@ class KakaoOAuthUserInfoExtractor : OAuthUserInfoExtractor {
         val profile = account?.get("profile") as? Map<*, *>
         return OAuthLoginResult(
             provider = Provider.KAKAO,
-            providerUserId = attributes["id"].toString(),
+            providerUserId = attributes["id"]?.toString() ?: "",
             email = account?.get("email") as? String,
             displayName = profile?.get("nickname") as? String,
         )

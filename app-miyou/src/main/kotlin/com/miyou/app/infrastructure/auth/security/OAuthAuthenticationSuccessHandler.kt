@@ -30,10 +30,9 @@ class OAuthAuthenticationSuccessHandler(
         val token = authentication as OAuth2AuthenticationToken
         val registrationId = token.authorizedClientRegistrationId
         val attributes = token.principal.attributes
-        val loginResult = oAuthLoginResultMapper.from(registrationId, attributes)
-
-        return oAuthLoginUseCase
-            .loginOrRegister(loginResult)
+        return Mono
+            .fromCallable { oAuthLoginResultMapper.from(registrationId, attributes) }
+            .flatMap { loginResult -> oAuthLoginUseCase.loginOrRegister(loginResult) }
             .flatMap { authTokens ->
                 val body = objectMapper.writeValueAsBytes(AuthTokenResponse.from(authTokens))
                 val response = webFilterExchange.exchange.response

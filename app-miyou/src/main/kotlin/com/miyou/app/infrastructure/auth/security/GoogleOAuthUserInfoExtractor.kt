@@ -11,7 +11,7 @@ class GoogleOAuthUserInfoExtractor : OAuthUserInfoExtractor {
     override fun extract(attributes: Map<String, Any?>): OAuthLoginResult =
         OAuthLoginResult(
             provider = Provider.GOOGLE,
-            providerUserId = attributes["sub"] as String,
+            providerUserId = attributes["sub"]?.toString() ?: "",
             email = attributes["email"] as? String,
             displayName = attributes["name"] as? String,
         )

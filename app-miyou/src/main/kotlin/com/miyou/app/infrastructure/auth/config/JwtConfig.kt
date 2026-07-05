@@ -22,7 +22,7 @@ class JwtConfig(
 ) {
     private fun secretKey(): SecretKeySpec {
         require(jwtProperties.secret.isNotBlank()) { "jwt.secret must be configured" }
-        return SecretKeySpec(jwtProperties.secret.toByteArray(), "HmacSHA256")
+        return SecretKeySpec(jwtProperties.secret.toByteArray(Charsets.UTF_8), "HmacSHA256")
     }
 
     @Bean
