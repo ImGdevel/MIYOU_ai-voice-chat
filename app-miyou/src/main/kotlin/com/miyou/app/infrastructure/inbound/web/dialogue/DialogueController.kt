@@ -2,6 +2,9 @@ package com.miyou.app.infrastructure.inbound.web.dialogue
 
 import com.miyou.app.application.credit.usecase.CreditChargeUseCase
 import com.miyou.app.application.dialogue.service.DialogueSpeechService
+import com.miyou.app.domain.common.error.CommonErrorCode
+import com.miyou.app.domain.common.error.CreditErrorCode
+import com.miyou.app.domain.common.error.DialogueErrorCode
 import com.miyou.app.domain.credit.exception.InsufficientCreditException
 import com.miyou.app.domain.dialogue.model.ConversationSession
 import com.miyou.app.domain.dialogue.model.ConversationSessionId
@@ -20,7 +23,6 @@ import org.slf4j.LoggerFactory
 import org.springframework.core.io.buffer.DataBuffer
 import org.springframework.core.io.buffer.DataBufferFactory
 import org.springframework.core.io.buffer.DefaultDataBufferFactory
-import org.springframework.http.HttpStatus
 import org.springframework.http.MediaType
 import org.springframework.http.codec.multipart.FilePart
 import org.springframework.http.server.reactive.ServerHttpResponse
@@ -86,8 +88,8 @@ class DialogueController(
                 AudioFormat.fromString(format)
             } catch (ex: IllegalArgumentException) {
                 throw ResponseStatusException(
-                    HttpStatus.BAD_REQUEST,
-                    "지원하지 않는 오디오 포맷입니다: $format",
+                    CommonErrorCode.UNSUPPORTED_AUDIO_FORMAT.httpStatus,
+                    CommonErrorCode.UNSUPPORTED_AUDIO_FORMAT.message,
                     ex,
                 )
             }
@@ -100,8 +102,8 @@ class DialogueController(
             .switchIfEmpty(
                 Mono.error(
                     ResponseStatusException(
-                        HttpStatus.NOT_FOUND,
-                        "해당 세션을 찾을 수 없습니다: ${request.sessionId}",
+                        CommonErrorCode.SESSION_NOT_FOUND.httpStatus,
+                        CommonErrorCode.SESSION_NOT_FOUND.message,
                     ),
                 ),
             ).flatMapMany { session ->
@@ -121,8 +123,8 @@ class DialogueController(
             .switchIfEmpty(
                 Mono.error(
                     ResponseStatusException(
-                        HttpStatus.NOT_FOUND,
-                        "해당 세션을 찾을 수 없습니다: ${request.sessionId}",
+                        CommonErrorCode.SESSION_NOT_FOUND.httpStatus,
+                        CommonErrorCode.SESSION_NOT_FOUND.message,
                     ),
                 ),
             ).flatMapMany { session ->
@@ -145,7 +147,7 @@ class DialogueController(
 
     private fun insufficientCreditException(): ResponseStatusException =
         ResponseStatusException(
-            HttpStatus.PAYMENT_REQUIRED,
-            "크레딧이 부족합니다. 크레딧을 충전하세요.",
+            CreditErrorCode.INSUFFICIENT_CREDIT.httpStatus,
+            CreditErrorCode.INSUFFICIENT_CREDIT.message,
         )
 }
