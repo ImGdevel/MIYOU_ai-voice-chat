@@ -2,8 +2,6 @@ package com.miyou.app.application.dialogue.service
 
 import com.miyou.app.application.dialogue.policy.SttPolicy
 import com.miyou.app.domain.dialogue.model.AudioTranscriptionInput
-import com.miyou.app.domain.dialogue.model.ConversationSession
-import com.miyou.app.domain.dialogue.port.DialoguePipelineUseCase
 import com.miyou.app.domain.dialogue.port.SttPort
 import org.springframework.core.io.buffer.DataBufferUtils
 import org.springframework.http.HttpStatus
@@ -18,7 +16,6 @@ private const val MIN_STT_AUDIO_BYTES = 1024
 @Service
 class DialogueSpeechService(
     private val sttPort: SttPort,
-    private val dialoguePipelineUseCase: DialoguePipelineUseCase,
     private val sttPolicy: SttPolicy,
 ) {
     fun transcribe(
@@ -27,24 +24,6 @@ class DialogueSpeechService(
     ): Mono<String> =
         toTranscriptionInput(filePart, language)
             .flatMap(sttPort::transcribe)
-
-    fun transcribeAndRespond(
-        session: ConversationSession,
-        filePart: FilePart,
-        language: String?,
-    ): Mono<SpeechDialogueResult> =
-        transcribe(filePart, language)
-            .flatMap { transcription ->
-                dialoguePipelineUseCase
-                    .executeTextOnly(session, transcription)
-                    .collectList()
-                    .map { tokens -> SpeechDialogueResult(transcription, tokens.joinToString(separator = "")) }
-            }
-
-    data class SpeechDialogueResult(
-        val transcription: String,
-        val response: String,
-    )
 
     private fun toTranscriptionInput(
         filePart: FilePart,

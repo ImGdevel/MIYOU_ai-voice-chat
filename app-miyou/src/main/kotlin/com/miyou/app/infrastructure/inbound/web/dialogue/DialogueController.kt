@@ -14,7 +14,6 @@ import com.miyou.app.infrastructure.inbound.web.dialogue.docs.DialogueApi
 import com.miyou.app.infrastructure.inbound.web.dialogue.dto.CreateSessionRequest
 import com.miyou.app.infrastructure.inbound.web.dialogue.dto.CreateSessionResponse
 import com.miyou.app.infrastructure.inbound.web.dialogue.dto.RagDialogueRequest
-import com.miyou.app.infrastructure.inbound.web.dialogue.dto.SttDialogueResponse
 import com.miyou.app.infrastructure.inbound.web.dialogue.dto.SttTranscriptionResponse
 import jakarta.validation.Valid
 import org.slf4j.LoggerFactory
@@ -142,37 +141,6 @@ class DialogueController(
         return dialogueSpeechService
             .transcribe(audioFile, language)
             .map(::SttTranscriptionResponse)
-    }
-
-    @PostMapping(path = ["/stt/text"], consumes = [MediaType.MULTIPART_FORM_DATA_VALUE])
-    override fun ragDialogueSttText(
-        @RequestPart("audio") audioFile: FilePart,
-        @RequestParam(required = false) language: String?,
-        @RequestParam @jakarta.validation.constraints.NotBlank sessionId: String,
-    ): Mono<SttDialogueResponse> {
-        logger.info(
-            "STT/Text request - sessionId: {}, language: {}, filename: {}",
-            sessionId,
-            language,
-            audioFile.filename(),
-        )
-        val sid = ConversationSessionId.of(sessionId)
-        return sessionRepository
-            .findById(sid)
-            .switchIfEmpty(
-                Mono.error(
-                    ResponseStatusException(
-                        HttpStatus.NOT_FOUND,
-                        "해당 세션을 찾을 수 없습니다: $sessionId",
-                    ),
-                ),
-            ).flatMap { session ->
-                dialogueSpeechService.transcribeAndRespond(session, audioFile, language)
-            }.onErrorMap(InsufficientCreditException::class.java) {
-                insufficientCreditException()
-            }.map { result ->
-                SttDialogueResponse(result.transcription, result.response)
-            }
     }
 
     private fun insufficientCreditException(): ResponseStatusException =
