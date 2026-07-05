@@ -19,6 +19,12 @@ import reactor.core.publisher.Mono
 import reactor.core.scheduler.Schedulers
 import reactor.util.context.ContextView
 
+/**
+ * 대화 후처리 단계.
+ *
+ * 대화 저장 → 메트릭 기록 → 주기적 메모리 추출.
+ * 크레딧 정책 범위 외이므로 실패 시 환불하지 않음.
+ */
 @Service
 class DialoguePostProcessingService(
     private val conversationRepository: ConversationRepository,
@@ -35,6 +41,14 @@ class DialoguePostProcessingService(
         require(conversationThreshold > 0) { "conversationThreshold must be greater than 0." }
     }
 
+    /**
+     * 대화 저장 및 메모리 추출 (음성).
+     * 문장을 공백으로 조인하여 완전한 응답 텍스트 생성.
+     *
+     * @param inputsMono 파이프라인 입력
+     * @param sentences LLM 응답 문장 스트림
+     * @return 처리 완료
+     */
     fun persistAndExtract(
         inputsMono: Mono<PipelineInputs>,
         sentences: Flux<String>,
@@ -43,6 +57,14 @@ class DialoguePostProcessingService(
         return persistConversationAndMaybeExtract(inputsMono, responseMono)
     }
 
+    /**
+     * 대화 저장 및 메모리 추출 (텍스트).
+     * 토큰 사용량 기록 후 토큰을 그대로 조인하여 응답 생성.
+     *
+     * @param inputsMono 파이프라인 입력
+     * @param textStream LLM 응답 토큰 스트림
+     * @return 처리 완료
+     */
     fun persistAndExtractText(
         inputsMono: Mono<PipelineInputs>,
         textStream: Flux<String>,

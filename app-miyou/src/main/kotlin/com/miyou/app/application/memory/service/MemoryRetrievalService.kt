@@ -13,6 +13,11 @@ import org.springframework.stereotype.Service
 import reactor.core.publisher.Mono
 import kotlin.math.max
 
+/**
+ * 메모리 검색 서비스.
+ *
+ * 사용자 쿼리 임베딩 → 벡터 유사도 검색 → 중요도/최신성 기반 랭킹 → 접근 메트릭 갱신.
+ */
 @Service
 class MemoryRetrievalService(
     private val embeddingPort: EmbeddingPort,
@@ -23,6 +28,17 @@ class MemoryRetrievalService(
     private val importanceBoost = policy.importanceBoost
     private val importanceThreshold = policy.importanceThreshold
 
+    /**
+     * 관련 메모리 검색.
+     *
+     * 경험적 메모리(사건, 대화) + 사실 메모리(선호도, 정보) 결합 반환.
+     * 임베딩 기반 벡터 유사도 + 중요도/최신성 스코어로 상위 K개 순위 결정.
+     *
+     * @param sessionId 사용자 세션 ID
+     * @param query 검색 쿼리
+     * @param topK 반환할 메모리 개수
+     * @return 분류된 메모리 검색 결과
+     */
     override fun retrieveMemories(
         sessionId: ConversationSessionId,
         query: String,

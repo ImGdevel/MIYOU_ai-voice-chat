@@ -24,6 +24,12 @@ import org.springframework.stereotype.Service
 import reactor.core.publisher.Flux
 import reactor.core.publisher.Mono
 
+/**
+ * 크레딧 관리 서비스.
+ *
+ * 잔액 조회 → 차감/환불/충전/보너스 지급 관리.
+ * 대화, 결제, 미션 보상 등 모든 크레딧 거래 처리.
+ */
 @Service
 class CreditApplicationService(
     private val userCreditRepository: UserCreditRepository,
@@ -35,16 +41,38 @@ class CreditApplicationService(
     CreditDeductUseCase {
     private val log = LoggerFactory.getLogger(javaClass)
 
+    /**
+     * 사용자 크레딧 잔액 조회.
+     *
+     * @param userId 사용자 ID
+     * @return 크레딧 잔액 (없으면 0 초기화)
+     */
     override fun getBalance(userId: UserId): Mono<UserCredit> =
         userCreditRepository
             .findByUserId(userId)
             .defaultIfEmpty(UserCredit.initialize(userId, 0L))
 
+    /**
+     * 사용자 거래 내역 조회 (페이징).
+     *
+     * @param userId 사용자 ID
+     * @param pageable 페이징 정보
+     * @return 거래 내역 (최신순)
+     */
     override fun getTransactions(
         userId: UserId,
         pageable: Pageable,
     ): Flux<CreditTransaction> = creditTransactionRepository.findByUserIdOrderByCreatedAtDesc(userId, pageable)
 
+    /**
+     * 대화 크레딧 차감.
+     * 사용자 잔액 검증 후 차감.
+     *
+     * @param userId 사용자 ID
+     * @param sessionId 대화 세션 ID
+     * @return 차감 거래 기록
+     * @throws InsufficientCreditException 잔액 부족 시
+     */
     override fun deductForConversation(
         userId: UserId,
         sessionId: ConversationSessionId,
@@ -72,6 +100,14 @@ class CreditApplicationService(
                     .flatMap { creditTransactionRepository.save(tx) }
             }
 
+    /**
+     * 대화 크레딧 환불.
+     * 서비스 오류로 대화가 중단된 경우 사전차감분 반환.
+     *
+     * @param userId 사용자 ID
+     * @param sessionId 대화 세션 ID
+     * @return 환불 거래 기록
+     */
     override fun refundForConversation(
         userId: UserId,
         sessionId: ConversationSessionId,
@@ -99,6 +135,14 @@ class CreditApplicationService(
                     .flatMap { creditTransactionRepository.save(tx) }
             }
 
+    /**
+     * 결제를 통한 크레딧 충전.
+     *
+     * @param userId 사용자 ID
+     * @param amount 충전액
+     * @param source 결제 정보
+     * @return 충전 거래 기록
+     */
     override fun chargeByPayment(
         userId: UserId,
         amount: Long,
@@ -124,6 +168,12 @@ class CreditApplicationService(
                     .flatMap { creditTransactionRepository.save(tx) }
             }
 
+    /**
+     * 신규 사용자 가입 보너스 지급.
+     *
+     * @param userId 사용자 ID
+     * @return 보너스 지급 거래 기록
+     */
     override fun grantSignupBonus(userId: UserId): Mono<CreditTransaction> {
         val initial = UserCredit.initialize(userId, signupBonus)
         val tx =
@@ -141,6 +191,15 @@ class CreditApplicationService(
             .flatMap { creditTransactionRepository.save(tx) }
     }
 
+    /**
+     * 미션 완료 보상 지급.
+     *
+     * @param userId 사용자 ID
+     * @param missionId 미션 ID
+     * @param amount 보상 크레딧
+     * @param missionType 미션 유형
+     * @return 보상 지급 거래 기록
+     */
     override fun grantMissionReward(
         userId: UserId,
         missionId: MissionId,
@@ -167,6 +226,14 @@ class CreditApplicationService(
                     .flatMap { creditTransactionRepository.save(tx) }
             }
 
+    /**
+     * 사용자 크레딧 초기화 (없을 경우만).
+     * 가입 보너스로 크레딧 레코드 생성.
+     * Race condition 발생 시 무시.
+     *
+     * @param userId 사용자 ID
+     * @return 초기화 완료
+     */
     override fun initializeIfAbsent(userId: UserId): Mono<Void> =
         userCreditRepository
             .findByUserId(userId)

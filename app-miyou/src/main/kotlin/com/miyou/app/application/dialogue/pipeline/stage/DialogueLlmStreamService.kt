@@ -13,6 +13,11 @@ import reactor.core.publisher.Flux
 import reactor.core.publisher.Mono
 import reactor.core.scheduler.Schedulers
 
+/**
+ * LLM 토큰 스트리밍 단계.
+ *
+ * 프롬프트 구성 → LLM 호출 → 토큰 스트림 추출 및 모니터링.
+ */
 @Service
 class DialogueLlmStreamService(
     private val llmPort: LlmPort,
@@ -23,6 +28,12 @@ class DialogueLlmStreamService(
     private val logger = LoggerFactory.getLogger(DialogueLlmStreamService::class.java)
     private val llmModel: String = policy.llmModel
 
+    /**
+     * LLM 토큰 스트림 빌드.
+     *
+     * @param inputsMono 파이프라인 입력 (메모리, 검색, 이력)
+     * @return LLM 응답 토큰 스트림
+     */
     fun buildLlmTokenStream(inputsMono: Mono<PipelineInputs>): Flux<String> =
         streamLlmTokens(inputsMono)
             .subscribeOn(Schedulers.boundedElastic())

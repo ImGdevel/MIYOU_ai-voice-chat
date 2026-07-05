@@ -16,6 +16,12 @@ import org.springframework.stereotype.Service
 import reactor.core.publisher.Flux
 import reactor.core.publisher.Mono
 
+/**
+ * 메모리 추출 서비스.
+ *
+ * 주기적으로 대화 이력에서 의미있는 정보(인물, 선호도, 사건 등)를 추출하여 벡터 저장소에 저장.
+ * 사용자 선호도 학습 및 개인화 맥락 강화 목적.
+ */
 @Service
 class MemoryExtractionService(
     private val conversationRepository: ConversationRepository,
@@ -29,6 +35,13 @@ class MemoryExtractionService(
 ) {
     private val logger = LoggerFactory.getLogger(javaClass)
 
+    /**
+     * 주기 도달 시 메모리 추출 수행.
+     * 임계값(conversationThreshold) 도달마다 트리거됨.
+     *
+     * @param sessionId 대화 세션 ID
+     * @return 추출 완료 (실패해도 무시)
+     */
     fun checkAndExtract(sessionId: ConversationSessionId): Mono<Void> =
         counterPort
             .get(sessionId)
