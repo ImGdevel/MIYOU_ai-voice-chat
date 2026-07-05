@@ -67,6 +67,7 @@ class LlmMemoryExtractionAdapterTest {
                 assertThat(result.type).isEqualTo(MemoryType.FACTUAL)
                 assertThat(result.content).isEqualTo("The user lives in Seoul")
                 assertThat(result.importance).isEqualTo(0.7f)
+                assertThat(result.reasoning).isEqualTo("Residence is stable profile information")
             }.verifyComplete()
 
         verify(llmPort).complete(anyValue())
