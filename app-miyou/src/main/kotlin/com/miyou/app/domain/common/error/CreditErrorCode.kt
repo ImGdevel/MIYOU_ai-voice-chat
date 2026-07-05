@@ -25,4 +25,9 @@ enum class CreditErrorCode(
         HttpStatus.INTERNAL_SERVER_ERROR,
         "크레딧 초기화에 실패했습니다.",
     ),
+    UNSUPPORTED_PAYMENT_PROVIDER(
+        "UNSUPPORTED_PAYMENT_PROVIDER",
+        HttpStatus.BAD_REQUEST,
+        "지원하지 않는 결제 제공자입니다.",
+    ),
 }

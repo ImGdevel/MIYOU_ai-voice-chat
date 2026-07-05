@@ -20,6 +20,21 @@ enum class DialogueErrorCode(
         HttpStatus.BAD_REQUEST,
         "유효하지 않은 세션 상태입니다.",
     ),
+    INVALID_AUDIO_FILE(
+        "INVALID_AUDIO_FILE",
+        HttpStatus.BAD_REQUEST,
+        "오디오 파일만 업로드해 주세요.",
+    ),
+    AUDIO_TOO_SHORT(
+        "AUDIO_TOO_SHORT",
+        HttpStatus.BAD_REQUEST,
+        "음성이 너무 짧습니다. 조금 더 길게 말한 뒤 전송해 주세요.",
+    ),
+    AUDIO_FILE_TOO_LARGE(
+        "AUDIO_FILE_TOO_LARGE",
+        HttpStatus.PAYLOAD_TOO_LARGE,
+        "음성 파일 크기가 너무 큽니다.",
+    ),
     AUDIO_PROCESSING_FAILED(
         "AUDIO_PROCESSING_FAILED",
         HttpStatus.INTERNAL_SERVER_ERROR,

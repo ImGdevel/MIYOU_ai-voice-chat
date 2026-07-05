@@ -1,5 +1,6 @@
 package com.miyou.app.infrastructure.inbound.web.monitoring
 
+import com.miyou.app.domain.common.error.CommonErrorCode
 import com.miyou.app.domain.cost.service.CostCalculationService
 import com.miyou.app.domain.monitoring.model.MetricsGranularity
 import com.miyou.app.domain.monitoring.model.MetricsRollup
@@ -10,7 +11,6 @@ import com.miyou.app.domain.monitoring.model.UsageAnalytics
 import com.miyou.app.domain.monitoring.port.MetricsQueryUseCase
 import jakarta.validation.constraints.Min
 import org.springframework.format.annotation.DateTimeFormat
-import org.springframework.http.HttpStatus
 import org.springframework.validation.annotation.Validated
 import org.springframework.web.bind.annotation.GetMapping
 import org.springframework.web.bind.annotation.PathVariable
@@ -125,8 +125,8 @@ class MetricsController(
             .switchIfEmpty(
                 Mono.error(
                     ResponseStatusException(
-                        HttpStatus.NOT_FOUND,
-                        "Pipeline not found: $pipelineId",
+                        CommonErrorCode.RESOURCE_NOT_FOUND.httpStatus,
+                        CommonErrorCode.RESOURCE_NOT_FOUND.message,
                     ),
                 ),
             )
