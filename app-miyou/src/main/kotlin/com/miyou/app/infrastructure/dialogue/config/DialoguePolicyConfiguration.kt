@@ -32,7 +32,13 @@ class DialoguePolicyConfiguration {
     @Bean
     fun memoryRetrievalPolicy(properties: RagDialogueProperties): MemoryRetrievalPolicy {
         val memory = properties.memory
-        return MemoryRetrievalPolicy(memory.importanceBoost, memory.importanceThreshold)
+        return MemoryRetrievalPolicy(
+            memory.importanceBoost,
+            memory.importanceThreshold,
+            memory.associativeHopEnabled,
+            memory.associativeHopTopK,
+            memory.associativeHopMinScore,
+        )
     }
 
     @Bean

@@ -62,6 +62,9 @@ class RagDialogueProperties {
         var decayExemptThreshold: Float = 0.9f
         var archiveImportanceThreshold: Float = 0.1f
         var archiveIdleDays: Long = 90
+        var associativeHopEnabled: Boolean = false
+        var associativeHopTopK: Int = 5
+        var associativeHopMinScore: Float = 0.5f
     }
 
     class TtsEndpointConfig {
