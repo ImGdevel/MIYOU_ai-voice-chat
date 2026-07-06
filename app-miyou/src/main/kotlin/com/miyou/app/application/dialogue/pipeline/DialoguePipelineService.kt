@@ -1,13 +1,15 @@
 package com.miyou.app.application.dialogue.pipeline
 
-import com.miyou.app.application.credit.usecase.CreditDeductUseCase
 import com.miyou.app.application.dialogue.pipeline.stage.DialogueInputService
 import com.miyou.app.application.dialogue.pipeline.stage.DialogueLlmStreamService
 import com.miyou.app.application.dialogue.pipeline.stage.DialoguePostProcessingService
 import com.miyou.app.application.dialogue.pipeline.stage.DialogueTtsStreamService
 import com.miyou.app.application.monitoring.aop.MonitoredPipeline
-import com.miyou.app.domain.credit.model.CreditTransaction
 import com.miyou.app.domain.dialogue.model.ConversationSession
+import com.miyou.app.domain.dialogue.port.CreditChargingPort
+import com.miyou.app.domain.dialogue.port.CreditDeductCommand
+import com.miyou.app.domain.dialogue.port.CreditDeductResult
+import com.miyou.app.domain.dialogue.port.CreditRefundCommand
 import com.miyou.app.domain.dialogue.port.DialoguePipelineUseCase
 import com.miyou.app.domain.voice.model.AudioFormat
 import io.github.oshai.kotlinlogging.KotlinLogging
@@ -27,7 +29,7 @@ class DialoguePipelineService(
     private val llmStreamService: DialogueLlmStreamService,
     private val ttsStreamService: DialogueTtsStreamService,
     private val postProcessingService: DialoguePostProcessingService,
-    private val creditDeductUseCase: CreditDeductUseCase,
+    private val creditChargingPort: CreditChargingPort,
 ) : DialoguePipelineUseCase {
     private val logger = KotlinLogging.logger {}
     private val defaultAudioFormat: AudioFormat = AudioFormat.MP3
@@ -99,12 +101,12 @@ class DialoguePipelineService(
         session: ConversationSession,
         responseStream: Flux<T>,
     ): Flux<T> =
-        Flux.usingWhen<T, CreditTransaction>(
-            creditDeductUseCase.deductForConversation(session.userId, session.sessionId.value),
-            { _: CreditTransaction -> responseStream },
-            { _: CreditTransaction -> Mono.empty<Void>() },
-            { _: CreditTransaction, exception: Throwable -> refundConversation(session, exception) },
-            { _: CreditTransaction -> logUserCancellation(session) },
+        Flux.usingWhen<T, CreditDeductResult>(
+            creditChargingPort.deduct(CreditDeductCommand(session.userId, session.sessionId.value)),
+            { _: CreditDeductResult -> responseStream },
+            { _: CreditDeductResult -> Mono.empty<Void>() },
+            { _: CreditDeductResult, exception: Throwable -> refundConversation(session, exception) },
+            { _: CreditDeductResult -> logUserCancellation(session) },
         )
 
     /**
@@ -119,13 +121,13 @@ class DialoguePipelineService(
         session: ConversationSession,
         cause: Throwable,
     ): Mono<Void> =
-        creditDeductUseCase
-            .refundForConversation(session.userId, session.sessionId.value)
-            .doOnNext { tx ->
+        creditChargingPort
+            .refund(CreditRefundCommand(session.userId, session.sessionId.value))
+            .doOnNext { result ->
                 logger.warn {
                     "Conversation credit refunded - " +
                         "userId=${session.userId}, sessionId=${session.sessionId.value}, " +
-                        "transactionId=${tx.transactionId.value}, cause=${cause.message}"
+                        "transactionId=${result.transactionId}, cause=${cause.message}"
                 }
             }.then()
             .onErrorResume { refundError ->

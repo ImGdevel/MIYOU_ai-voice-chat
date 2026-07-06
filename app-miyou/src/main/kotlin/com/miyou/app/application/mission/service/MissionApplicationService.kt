@@ -1,13 +1,14 @@
 package com.miyou.app.application.mission.service
 
 import com.miyou.app.application.common.error.MissionErrorCode
-import com.miyou.app.application.credit.usecase.CreditChargeUseCase
 import com.miyou.app.application.mission.usecase.MissionCompletionUseCase
 import com.miyou.app.application.mission.usecase.MissionQueryUseCase
 import com.miyou.app.domain.mission.model.Mission
 import com.miyou.app.domain.mission.model.MissionId
 import com.miyou.app.domain.mission.model.MissionStatus
 import com.miyou.app.domain.mission.model.UserMission
+import com.miyou.app.domain.mission.port.CreditChargingPort
+import com.miyou.app.domain.mission.port.CreditRewardCommand
 import com.miyou.app.domain.mission.port.MissionRepository
 import com.miyou.app.domain.mission.port.UserMissionRepository
 import org.springframework.stereotype.Service
@@ -26,7 +27,7 @@ import reactor.core.publisher.Mono
 class MissionApplicationService(
     private val missionRepository: MissionRepository,
     private val userMissionRepository: UserMissionRepository,
-    private val creditChargeUseCase: CreditChargeUseCase,
+    private val creditChargingPort: CreditChargingPort,
 ) : MissionQueryUseCase,
     MissionCompletionUseCase {
     /**
@@ -91,12 +92,14 @@ class MissionApplicationService(
         return userMissionRepository
             .save(rewarded)
             .flatMap { saved ->
-                creditChargeUseCase
-                    .grantMissionReward(
-                        userId,
-                        mission.missionId,
-                        mission.rewardAmount,
-                        mission.type.name,
+                creditChargingPort
+                    .grantReward(
+                        CreditRewardCommand(
+                            userId,
+                            mission.missionId,
+                            mission.rewardAmount,
+                            mission.type.name,
+                        ),
                     ).thenReturn(saved)
             }
     }

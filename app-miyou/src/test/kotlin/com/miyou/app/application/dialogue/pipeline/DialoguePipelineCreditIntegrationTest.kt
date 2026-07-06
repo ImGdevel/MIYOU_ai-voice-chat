@@ -5,6 +5,7 @@ import com.miyou.app.application.dialogue.pipeline.stage.DialogueInputService
 import com.miyou.app.application.dialogue.pipeline.stage.DialogueLlmStreamService
 import com.miyou.app.application.dialogue.pipeline.stage.DialoguePostProcessingService
 import com.miyou.app.application.dialogue.pipeline.stage.DialogueTtsStreamService
+import com.miyou.app.bootstrap.wiring.DialogueCreditChargingPortAdapter
 import com.miyou.app.domain.dialogue.model.ConversationContext
 import com.miyou.app.domain.dialogue.model.ConversationSession
 import com.miyou.app.domain.dialogue.model.ConversationSessionId
@@ -41,9 +42,10 @@ import java.time.Instant
 /**
  * 대화 파이프라인의 선차감/환불 경계 로직을 실제 MongoDB 잔액으로 검증한다.
  *
- * [DialoguePipelineServiceTest]가 같은 시나리오를 mock `CreditDeductUseCase`에 대한
- * `verify()` 호출로 검증하는 것과 달리, 여기서는 실제 `CreditApplicationService` +
- * Testcontainers MongoDB를 사용해 DB에 저장된 잔액/트랜잭션 개수를 직접 확인한다.
+ * [DialoguePipelineServiceTest]가 같은 시나리오를 mock `CreditChargingPort`에 대한
+ * `verify()` 호출로 검증하는 것과 달리, 여기서는 실제 `CreditApplicationService`를
+ * `DialogueCreditChargingPortAdapter`로 감싸고 Testcontainers MongoDB를 사용해
+ * DB에 저장된 잔액/트랜잭션 개수를 직접 확인한다.
  * (docs/troubleshooting/credit-precharge-refund-boundary.md 참고)
  */
 @DataMongoTest
@@ -114,7 +116,7 @@ class DialoguePipelineCreditIntegrationTest : ContainerizedIntegrationTestSuppor
             llmStreamService,
             ttsStreamService,
             postProcessingService,
-            creditService,
+            DialogueCreditChargingPortAdapter(creditService),
         )
 
     @Nested

@@ -1,11 +1,10 @@
 package com.miyou.app.application.mission.service
 
-import com.miyou.app.application.credit.usecase.CreditChargeUseCase
-import com.miyou.app.fixture.CreditTransactionFixture
+import com.miyou.app.domain.mission.port.CreditChargingPort
+import com.miyou.app.domain.mission.port.CreditRewardCommand
+import com.miyou.app.domain.mission.port.CreditRewardResult
 import com.miyou.app.fixture.MissionFixture
 import com.miyou.app.fixture.UserIdFixture
-import com.miyou.app.support.anyLongValue
-import com.miyou.app.support.anyStringValue
 import com.miyou.app.support.anyValue
 import org.assertj.core.api.Assertions.assertThat
 import org.junit.jupiter.api.BeforeEach
@@ -35,13 +34,13 @@ class MissionApplicationServiceTest {
     private lateinit var userMissionRepository: com.miyou.app.domain.mission.port.UserMissionRepository
 
     @Mock
-    private lateinit var creditChargeUseCase: CreditChargeUseCase
+    private lateinit var creditChargingPort: CreditChargingPort
 
     private lateinit var service: MissionApplicationService
 
     @BeforeEach
     fun setUp() {
-        service = MissionApplicationService(missionRepository, userMissionRepository, creditChargeUseCase)
+        service = MissionApplicationService(missionRepository, userMissionRepository, creditChargingPort)
     }
 
     @Test
@@ -78,7 +77,7 @@ class MissionApplicationServiceTest {
         val userId = UserIdFixture.create()
         val mission = MissionFixture.create()
         val missionId = mission.missionId
-        val rewardTx = CreditTransactionFixture.signupBonus(userId, mission.rewardAmount)
+        val rewardResult = CreditRewardResult("tx-mission-reward")
 
         `when`(missionRepository.findById(missionId)).thenReturn(Mono.just(mission))
         `when`(userMissionRepository.findByUserIdAndMissionId(userId, missionId)).thenReturn(Mono.empty())
@@ -86,8 +85,11 @@ class MissionApplicationServiceTest {
             .thenAnswer { invocation: InvocationOnMock ->
                 Mono.just(invocation.getArgument<com.miyou.app.domain.mission.model.UserMission>(0))
             }
-        `when`(creditChargeUseCase.grantMissionReward(userId, missionId, mission.rewardAmount, mission.type.name))
-            .thenReturn(Mono.just(rewardTx))
+        `when`(
+            creditChargingPort.grantReward(
+                CreditRewardCommand(userId, missionId, mission.rewardAmount, mission.type.name),
+            ),
+        ).thenReturn(Mono.just(rewardResult))
 
         StepVerifier
             .create(service.completeMission(userId, missionId))
@@ -117,9 +119,9 @@ class MissionApplicationServiceTest {
             }.verify()
 
         verify(
-            creditChargeUseCase,
+            creditChargingPort,
             never()
-        ).grantMissionReward(anyValue(), anyValue(), anyLongValue(), anyStringValue())
+        ).grantReward(anyValue())
     }
 
     @Test
