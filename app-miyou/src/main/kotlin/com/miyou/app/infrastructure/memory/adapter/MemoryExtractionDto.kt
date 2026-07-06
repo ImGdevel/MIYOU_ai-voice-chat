@@ -9,7 +9,15 @@ data class MemoryExtractionDto(
     val content: String,
     val importance: Float,
     val reasoning: String,
+    val supersedesMemoryId: String? = null,
 ) {
     fun toExtractedMemory(sessionId: ConversationSessionId): ExtractedMemory =
-        ExtractedMemory(sessionId, MemoryType.valueOf(type.uppercase()), content, importance, reasoning)
+        ExtractedMemory(
+            sessionId,
+            MemoryType.valueOf(type.uppercase()),
+            content,
+            importance,
+            reasoning,
+            supersedesMemoryId
+        )
 }

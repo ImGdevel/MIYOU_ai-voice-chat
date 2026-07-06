@@ -15,6 +15,7 @@ import io.github.oshai.kotlinlogging.KotlinLogging
 import org.springframework.stereotype.Service
 import reactor.core.publisher.Flux
 import reactor.core.publisher.Mono
+import java.time.Instant
 
 /**
  * 메모리 추출 서비스.
@@ -56,7 +57,14 @@ class MemoryExtractionService(
         loadRecentConversations(sessionId)
             .flatMap { conversations ->
                 buildExtractionContext(sessionId, conversations)
-            }.flatMapMany(extractionPort::extractMemories)
+            }.flatMap { context -> extractAndSave(sessionId, context) }
+
+    private fun extractAndSave(
+        sessionId: ConversationSessionId,
+        context: MemoryExtractionContext,
+    ): Mono<Void> =
+        extractionPort
+            .extractMemories(context)
             .collectList()
             .doOnNext { extractedList ->
                 extractionMetrics.recordExtractionSuccess(extractedList.size)
@@ -81,20 +89,38 @@ class MemoryExtractionService(
                 extractionMetrics.recordExtractionFailure()
                 logger.error(error) { "메모리 추출 실패" }
             }.flatMapMany(Flux<ExtractedMemory>::fromIterable)
-            .flatMap(this::saveExtractedMemory)
+            .flatMap { extracted -> saveExtractedMemory(extracted, context.existingMemories) }
             .doOnNext { memory ->
                 logger.info {
                     "추출된 메모리 저장 완료 type=${memory.type}, importance=${memory.importance}, content=${memory.content}"
                 }
             }.then()
 
-    private fun saveExtractedMemory(extracted: ExtractedMemory): Mono<Memory> {
+    private fun saveExtractedMemory(
+        extracted: ExtractedMemory,
+        existingMemories: List<Memory>,
+    ): Mono<Memory> {
         val memory = extracted.toMemory()
 
         return embeddingPort
             .embed(memory.content)
             .flatMap { embedding ->
                 vectorMemoryPort.upsert(memory, embedding.vector)
+            }.flatMap { saved -> archiveSupersededMemory(extracted, existingMemories).thenReturn(saved) }
+    }
+
+    /** 모순된 기존 메모리를 즉시 소프트 아카이브 - 큐레이터가 이미 쓰는 archive 경로를 그대로 재사용한다. */
+    private fun archiveSupersededMemory(
+        extracted: ExtractedMemory,
+        existingMemories: List<Memory>,
+    ): Mono<Void> {
+        val targetId = extracted.supersedesMemoryId ?: return Mono.empty()
+        val target = existingMemories.firstOrNull { it.id == targetId } ?: return Mono.empty()
+        if (target.archivedAt != null) return Mono.empty()
+        return vectorMemoryPort
+            .applyDecayAndArchive(target.archive(Instant.now()))
+            .doOnSuccess {
+                logger.info { "모순 감지로 기존 메모리 아카이브 id=$targetId, 대체 내용=${extracted.content}" }
             }
     }
 

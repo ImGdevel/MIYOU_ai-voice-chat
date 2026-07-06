@@ -3,7 +3,6 @@ package com.miyou.app.infrastructure.memory.adapter
 import com.fasterxml.jackson.core.type.TypeReference
 import com.fasterxml.jackson.databind.ObjectMapper
 import com.miyou.app.domain.dialogue.model.CompletionRequest
-import com.miyou.app.domain.dialogue.model.ConversationSessionId
 import com.miyou.app.domain.dialogue.model.Message
 import com.miyou.app.domain.dialogue.port.LlmPort
 import com.miyou.app.domain.memory.model.ExtractedMemory
@@ -34,7 +33,7 @@ class LlmMemoryExtractionAdapter(
 
         return llmPort
             .complete(request)
-            .flatMapMany { response -> parseExtractedMemories(context.sessionId, response) }
+            .flatMapMany { response -> parseExtractedMemories(context, response) }
     }
 
     private fun getSystemPrompt(): String =
@@ -54,6 +53,11 @@ class LlmMemoryExtractionAdapter(
           or "AI" (the persona). Never use a personal name/nickname, and never write a
           subjectless predicate. Write "사용자는 노래 부르는 것을 좋아한다", not "노래
           부르는 것을 좋아함" or a name.
+        - If new information CONTRADICTS an existing memory (changed preference, breakup,
+          moved away, etc. - not just an importance nudge), set "supersedesMemoryId" to
+          that memory's id (shown in "Existing Memories" below) and still write the new
+          content normally as a fresh memory. Only use this for genuine contradictions,
+          not minor updates. Omit the field (or use null) when there is no contradiction.
 
         Output ONLY valid JSON array:
         [
@@ -61,7 +65,8 @@ class LlmMemoryExtractionAdapter(
             "type": "EXPERIENTIAL",
             "content": "clear, concise memory statement",
             "importance": 0.8,
-            "reasoning": "why this matters"
+            "reasoning": "why this matters",
+            "supersedesMemoryId": null
         }
         ]
 
@@ -80,7 +85,9 @@ class LlmMemoryExtractionAdapter(
             context.existingMemories.forEach { memory ->
                 val importance = memory.importance?.let { "%.2f".format(it) } ?: "N/A"
                 prompt
-                    .append("- [")
+                    .append("- [id: ")
+                    .append(memory.id)
+                    .append(", ")
                     .append(memory.type)
                     .append(", importance: ")
                     .append(importance)
@@ -94,7 +101,7 @@ class LlmMemoryExtractionAdapter(
     }
 
     private fun parseExtractedMemories(
-        sessionId: ConversationSessionId,
+        context: MemoryExtractionContext,
         jsonResponse: String,
     ): Flux<ExtractedMemory> =
         try {
@@ -112,9 +119,25 @@ class LlmMemoryExtractionAdapter(
                     cleaned,
                     object : TypeReference<List<MemoryExtractionDto>>() {},
                 )
-            Flux.fromIterable(dtos).map { dto -> dto.toExtractedMemory(sessionId) }
+            val existingIds = context.existingMemories.mapNotNull { it.id }.toSet()
+            Flux
+                .fromIterable(dtos)
+                .map { dto -> dto.toExtractedMemory(context.sessionId) }
+                .map { extracted -> validateSupersedesTarget(extracted, existingIds) }
         } catch (e: Exception) {
             log.warn(e) { "Failed to parse memory extraction response: $jsonResponse" }
             Flux.empty()
         }
+
+    private fun validateSupersedesTarget(
+        extracted: ExtractedMemory,
+        existingIds: Set<String>,
+    ): ExtractedMemory {
+        val targetId = extracted.supersedesMemoryId ?: return extracted
+        if (targetId in existingIds) {
+            return extracted
+        }
+        log.warn { "supersedesMemoryId가 컨텍스트에 없는 id를 가리켜 무시함: $targetId" }
+        return extracted.copy(supersedesMemoryId = null)
+    }
 }

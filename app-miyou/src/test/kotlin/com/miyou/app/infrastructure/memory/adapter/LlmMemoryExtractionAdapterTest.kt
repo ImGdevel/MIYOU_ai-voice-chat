@@ -154,4 +154,57 @@ class LlmMemoryExtractionAdapterTest {
                 assertThat(result.type).isEqualTo(MemoryType.EXPERIENTIAL)
             }.verifyComplete()
     }
+
+    @Test
+    @DisplayName("컨텍스트에 존재하는 id를 가리키면 supersedesMemoryId를 그대로 받아들인다")
+    fun extractMemories_acceptsSupersedesMemoryIdWhenTargetExistsInContext() {
+        val sessionId = ConversationSessionFixture.createId()
+        val existingMemory =
+            Memory(
+                id = "mem-1",
+                sessionId = sessionId,
+                type = MemoryType.FACTUAL,
+                content = "사용자는 라면을 좋아한다",
+                importance = 0.6f,
+                createdAt = Instant.now(),
+                lastAccessedAt = Instant.now(),
+                accessCount = 1,
+            )
+        val context =
+            MemoryExtractionContext.of(
+                sessionId,
+                listOf(ConversationTurn.create(sessionId, "이제 라면 안 먹어, 질려서")),
+                listOf(existingMemory),
+            )
+        val response =
+            """[{"type":"FACTUAL","content":"사용자는 라면을 싫어한다","importance":0.6,"reasoning":"선호도 변경","supersedesMemoryId":"mem-1"}]"""
+
+        `when`(llmPort.complete(anyValue())).thenReturn(Mono.just(response))
+
+        StepVerifier
+            .create(adapter.extractMemories(context))
+            .assertNext { result -> assertThat(result.supersedesMemoryId).isEqualTo("mem-1") }
+            .verifyComplete()
+    }
+
+    @Test
+    @DisplayName("컨텍스트에 없는 id를 가리키면 supersedesMemoryId를 무시한다")
+    fun extractMemories_dropsSupersedesMemoryIdWhenTargetMissingFromContext() {
+        val sessionId = ConversationSessionFixture.createId()
+        val context =
+            MemoryExtractionContext.of(
+                sessionId,
+                listOf(ConversationTurn.create(sessionId, "이제 라면 안 먹어, 질려서")),
+                emptyList(),
+            )
+        val response =
+            """[{"type":"FACTUAL","content":"사용자는 라면을 싫어한다","importance":0.6,"reasoning":"선호도 변경","supersedesMemoryId":"mem-does-not-exist"}]"""
+
+        `when`(llmPort.complete(anyValue())).thenReturn(Mono.just(response))
+
+        StepVerifier
+            .create(adapter.extractMemories(context))
+            .assertNext { result -> assertThat(result.supersedesMemoryId).isNull() }
+            .verifyComplete()
+    }
 }
