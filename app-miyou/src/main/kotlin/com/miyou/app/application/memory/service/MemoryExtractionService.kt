@@ -116,6 +116,7 @@ class MemoryExtractionService(
     ): Mono<Void> {
         val targetId = extracted.supersedesMemoryId ?: return Mono.empty()
         val target = existingMemories.firstOrNull { it.id == targetId } ?: return Mono.empty()
+        if (target.archivedAt != null) return Mono.empty()
         return vectorMemoryPort
             .applyDecayAndArchive(target.archive(Instant.now()))
             .doOnSuccess {
