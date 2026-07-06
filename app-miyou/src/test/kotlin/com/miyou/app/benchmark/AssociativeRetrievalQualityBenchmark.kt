@@ -45,16 +45,18 @@ class AssociativeRetrievalQualityBenchmark {
     companion object {
         private const val TOP_K = 2
 
-        private val qdrantContainer: GenericContainer<Nothing> by lazy {
-            GenericContainer<Nothing>(DockerImageName.parse("qdrant/qdrant:v1.9.1"))
-                .withExposedPorts(6333, 6334)
-                .apply { start() }
-        }
+        private val qdrantContainerLazy: Lazy<GenericContainer<Nothing>> =
+            lazy {
+                GenericContainer<Nothing>(DockerImageName.parse("qdrant/qdrant:v1.9.1"))
+                    .withExposedPorts(6333, 6334)
+                    .apply { start() }
+            }
+        private val qdrantContainer: GenericContainer<Nothing> by qdrantContainerLazy
 
         @JvmStatic
         @AfterAll
         fun stopContainer() {
-            if (qdrantContainer.isRunning) {
+            if (qdrantContainerLazy.isInitialized() && qdrantContainer.isRunning) {
                 qdrantContainer.stop()
             }
         }

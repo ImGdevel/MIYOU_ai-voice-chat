@@ -283,4 +283,37 @@ class MemoryRetrievalServiceTest {
         verify(embeddingPort, times(1)).embed(anyStringValue())
         verify(vectorMemoryPort, times(1)).search(anyValue(), anyValue(), anyValue(), anyFloatValue(), anyIntValue())
     }
+
+    @Test
+    @DisplayName("associativeHopEnabled여도 2차 검색이 실패하면 1차 검색 결과로 대체한다")
+    fun retrieveMemories_associativeHopEnabled_fallsBackToPrimaryOnSecondSearchFailure() {
+        val associativeService =
+            MemoryRetrievalService(
+                embeddingPort,
+                vectorMemoryPort,
+                ragQualityMetricsConfiguration,
+                MemoryRetrievalPolicy(
+                    0.05f,
+                    0.3f,
+                    associativeHopEnabled = true,
+                    associativeHopTopK = 2,
+                    associativeHopMinScore = 0.3f
+                ),
+            )
+        val sessionId = ConversationSessionFixture.createId()
+        val now = Instant.now()
+        val trigger = Memory("m-trigger", sessionId, MemoryType.FACTUAL, "user ate ramen", 0.9f, now, now, 1)
+        val types = listOf(MemoryType.EXPERIENTIAL, MemoryType.FACTUAL)
+
+        `when`(embeddingPort.embed("query")).thenReturn(Mono.just(MemoryEmbedding.of("query", listOf(0.1f, 0.2f))))
+        `when`(vectorMemoryPort.search(sessionId, listOf(0.1f, 0.2f), types, 0.3f, 2)).thenReturn(Flux.just(trigger))
+        `when`(embeddingPort.embed("user ate ramen")).thenReturn(Mono.error(RuntimeException("embedding API 타임아웃")))
+        `when`(vectorMemoryPort.updateImportance(anyStringValue(), anyFloatValue(), anyValue(), anyIntValue()))
+            .thenReturn(Mono.empty())
+
+        StepVerifier
+            .create(associativeService.retrieveMemories(sessionId, "query", 1))
+            .assertNext { result -> assertThat(result.factualMemories.map(Memory::id)).containsExactly("m-trigger") }
+            .verifyComplete()
+    }
 }

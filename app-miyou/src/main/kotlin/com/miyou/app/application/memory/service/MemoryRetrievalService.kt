@@ -9,6 +9,7 @@ import com.miyou.app.domain.memory.model.MemoryType
 import com.miyou.app.domain.memory.port.EmbeddingPort
 import com.miyou.app.domain.memory.port.MemoryRetrievalPort
 import com.miyou.app.domain.memory.port.VectorMemoryPort
+import io.github.oshai.kotlinlogging.KotlinLogging
 import org.springframework.stereotype.Service
 import reactor.core.publisher.Mono
 import kotlin.math.max
@@ -25,6 +26,7 @@ class MemoryRetrievalService(
     private val ragMetrics: RagQualityMetricsPort,
     policy: MemoryRetrievalPolicy,
 ) : MemoryRetrievalPort {
+    private val logger = KotlinLogging.logger {}
     private val importanceBoost = policy.importanceBoost
     private val importanceThreshold = policy.importanceThreshold
     private val associativeHopEnabled = policy.associativeHopEnabled
@@ -109,6 +111,10 @@ class MemoryRetrievalService(
                     .search(sessionId, embedding.vector, types, importanceThreshold, associativeHopTopK)
                     .collectList()
             }.map { associative -> mergeDedup(candidates, associative) }
+            .onErrorResume { error ->
+                logger.warn(error) { "연상 기반 2차 검색 실패 - 1차 검색 결과로 대체" }
+                Mono.just(candidates)
+            }
     }
 
     private fun mergeDedup(
