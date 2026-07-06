@@ -1,6 +1,5 @@
 package com.miyou.app.infrastructure.memory.adapter
 
-import com.miyou.app.domain.dialogue.model.ConversationSessionId
 import com.miyou.app.domain.memory.model.Memory
 import com.miyou.app.domain.memory.model.MemoryEmotion
 import com.miyou.app.domain.memory.model.MemoryType
@@ -53,7 +52,7 @@ class SpringAiVectorDbAdapter(
                 val id = memory.id ?: UUID.randomUUID().toString()
 
                 val metadata = HashMap<String, Any>()
-                metadata["sessionId"] = memory.sessionId.value
+                metadata["sessionId"] = memory.sessionId
                 metadata["type"] = memory.type.name
                 memory.importance?.let { metadata["importance"] = it }
                 memory.emotion?.let { metadata["emotion"] = it.name }
@@ -70,7 +69,7 @@ class SpringAiVectorDbAdapter(
             }.subscribeOn(Schedulers.boundedElastic())
 
     override fun search(
-        sessionId: ConversationSessionId,
+        sessionId: String,
         queryEmbedding: List<Float>,
         types: List<MemoryType>,
         importanceThreshold: Float,
@@ -89,7 +88,7 @@ class SpringAiVectorDbAdapter(
                                 .setMatch(
                                     Match
                                         .newBuilder()
-                                        .setKeyword(sessionId.value)
+                                        .setKeyword(sessionId)
                                         .build(),
                                 ).build(),
                         ).build(),
@@ -222,7 +221,7 @@ class SpringAiVectorDbAdapter(
 
     private fun toMemoryFromScoredPoint(
         point: ScoredPoint,
-        sessionId: ConversationSessionId,
+        sessionId: String,
     ): Memory {
         val payload = point.payloadMap
         val id =
@@ -242,13 +241,13 @@ class SpringAiVectorDbAdapter(
             } else {
                 point.id.uuid
             }
-        val sessionId = ConversationSessionId.of(payload["sessionId"]?.stringValue ?: id)
+        val sessionId = payload["sessionId"]?.stringValue ?: id
         return toMemory(id, sessionId, payload)
     }
 
     private fun toMemory(
         id: String,
-        sessionId: ConversationSessionId,
+        sessionId: String,
         payload: Map<String, Value>,
     ): Memory {
         // Spring AI QdrantVectorStore는 Document 텍스트를 "content"가 아니라 "doc_content" 페이로드

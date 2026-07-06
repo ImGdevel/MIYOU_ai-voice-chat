@@ -5,13 +5,11 @@ import com.miyou.app.application.credit.usecase.CreditChargeUseCase
 import com.miyou.app.application.credit.usecase.CreditQueryUseCase
 import com.miyou.app.domain.auth.model.AuthenticatedUser
 import com.miyou.app.domain.credit.model.PaymentCharge
-import com.miyou.app.domain.dialogue.model.UserId
 import com.miyou.app.infrastructure.inbound.web.credit.dto.ChargeByPaymentRequest
 import com.miyou.app.infrastructure.inbound.web.credit.dto.CreditTransactionResponse
 import com.miyou.app.infrastructure.inbound.web.credit.dto.UserCreditResponse
 import com.miyou.app.infrastructure.payment.port.PaymentGatewayPort
 import jakarta.validation.Valid
-import jakarta.validation.constraints.NotBlank
 import org.springframework.data.domain.PageRequest
 import org.springframework.http.HttpStatus
 import org.springframework.security.core.annotation.AuthenticationPrincipal
@@ -40,7 +38,7 @@ class CreditController(
     ): Mono<UserCreditResponse> {
         val resolvedUserId =
             principal?.userId
-                ?: userId?.takeIf { it.isNotBlank() }?.let { UserId.of(it) }
+                ?: userId?.takeIf { it.isNotBlank() && it.length <= 128 }
                 ?: return Mono.error(ResponseStatusException(HttpStatus.BAD_REQUEST, "userId is required"))
         return creditChargeUseCase
             .initializeIfAbsent(resolvedUserId)
@@ -57,7 +55,7 @@ class CreditController(
     ): Flux<CreditTransactionResponse> {
         val resolvedUserId =
             principal?.userId
-                ?: userId?.takeIf { it.isNotBlank() }?.let { UserId.of(it) }
+                ?: userId?.takeIf { it.isNotBlank() && it.length <= 128 }
                 ?: return Flux.error(ResponseStatusException(HttpStatus.BAD_REQUEST, "userId is required"))
         return creditQueryUseCase
             .getTransactions(
@@ -74,7 +72,7 @@ class CreditController(
     ): Mono<CreditTransactionResponse> {
         val resolvedUserId =
             principal?.userId
-                ?: request.userId?.takeIf { it.isNotBlank() }?.let { UserId.of(it) }
+                ?: request.userId?.takeIf { it.isNotBlank() && it.length <= 128 }
                 ?: return Mono.error(ResponseStatusException(HttpStatus.BAD_REQUEST, "userId is required"))
         val gateway =
             paymentGatewayMap[request.pgProvider]

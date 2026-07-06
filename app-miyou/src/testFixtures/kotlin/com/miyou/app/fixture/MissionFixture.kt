@@ -1,6 +1,5 @@
 package com.miyou.app.fixture
 
-import com.miyou.app.domain.dialogue.model.UserId
 import com.miyou.app.domain.mission.model.Mission
 import com.miyou.app.domain.mission.model.MissionId
 import com.miyou.app.domain.mission.model.MissionStatus
@@ -40,9 +39,9 @@ object MissionFixture {
         )
 
     @JvmStatic
-    fun userMission(userId: UserId): UserMission = UserMission.start(userId, MissionId.of(DEFAULT_MISSION_ID))
+    fun userMission(userId: String): UserMission = UserMission.start(userId, MissionId.of(DEFAULT_MISSION_ID))
 
     @JvmStatic
-    fun completedUserMission(userId: UserId): UserMission =
+    fun completedUserMission(userId: String): UserMission =
         UserMission(userId, MissionId.of(DEFAULT_MISSION_ID), MissionStatus.REWARDED, Instant.now(), Instant.now())
 }

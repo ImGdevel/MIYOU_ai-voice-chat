@@ -1,9 +1,7 @@
 package com.miyou.app.domain.memory.model
 
-import com.miyou.app.domain.dialogue.model.ConversationSessionId
-
 data class ExtractedMemory(
-    val sessionId: ConversationSessionId,
+    val sessionId: String,
     val type: MemoryType,
     val content: String,
     val importance: Float,

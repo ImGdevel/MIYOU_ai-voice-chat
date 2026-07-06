@@ -100,7 +100,7 @@ class DialoguePipelineService(
         responseStream: Flux<T>,
     ): Flux<T> =
         Flux.usingWhen<T, CreditTransaction>(
-            creditDeductUseCase.deductForConversation(session.userId, session.sessionId),
+            creditDeductUseCase.deductForConversation(session.userId, session.sessionId.value),
             { _: CreditTransaction -> responseStream },
             { _: CreditTransaction -> Mono.empty<Void>() },
             { _: CreditTransaction, exception: Throwable -> refundConversation(session, exception) },
@@ -120,18 +120,18 @@ class DialoguePipelineService(
         cause: Throwable,
     ): Mono<Void> =
         creditDeductUseCase
-            .refundForConversation(session.userId, session.sessionId)
+            .refundForConversation(session.userId, session.sessionId.value)
             .doOnNext { tx ->
                 logger.warn {
                     "Conversation credit refunded - " +
-                        "userId=${session.userId.value}, sessionId=${session.sessionId.value}, " +
+                        "userId=${session.userId}, sessionId=${session.sessionId.value}, " +
                         "transactionId=${tx.transactionId.value}, cause=${cause.message}"
                 }
             }.then()
             .onErrorResume { refundError ->
                 logger.error(refundError) {
                     "Conversation credit refund failed - " +
-                        "userId=${session.userId.value}, sessionId=${session.sessionId.value}, " +
+                        "userId=${session.userId}, sessionId=${session.sessionId.value}, " +
                         "cause=${cause.message}, refundError=${refundError.message}"
                 }
                 Mono.empty()
@@ -146,7 +146,7 @@ class DialoguePipelineService(
      */
     private fun logUserCancellation(session: ConversationSession): Mono<Void> {
         logger.info {
-            "Conversation cancelled by user - credit kept - userId=${session.userId.value}, sessionId=${session.sessionId.value}"
+            "Conversation cancelled by user - credit kept - userId=${session.userId}, sessionId=${session.sessionId.value}"
         }
         return Mono.empty()
     }

@@ -1,6 +1,5 @@
 package com.miyou.app.infrastructure.mission.document
 
-import com.miyou.app.domain.dialogue.model.UserId
 import com.miyou.app.domain.mission.model.MissionId
 import com.miyou.app.domain.mission.model.MissionStatus
 import com.miyou.app.domain.mission.model.UserMission
@@ -24,10 +23,10 @@ data class UserMissionDocument(
 ) {
     companion object {
         fun fromDomain(userMission: UserMission): UserMissionDocument {
-            val compositeId = "${userMission.userId.value()}:${userMission.missionId.value()}"
+            val compositeId = "${userMission.userId}:${userMission.missionId.value()}"
             return UserMissionDocument(
                 compositeId,
-                userMission.userId.value(),
+                userMission.userId,
                 userMission.missionId.value(),
                 userMission.status.name,
                 userMission.completedAt,
@@ -38,7 +37,7 @@ data class UserMissionDocument(
 
     fun toDomain(): UserMission =
         UserMission(
-            UserId.of(userId),
+            userId,
             MissionId.of(missionId),
             MissionStatus.valueOf(status),
             completedAt,

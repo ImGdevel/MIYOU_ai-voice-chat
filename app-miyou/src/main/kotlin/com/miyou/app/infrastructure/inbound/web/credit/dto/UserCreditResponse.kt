@@ -7,6 +7,6 @@ data class UserCreditResponse(
     val balance: Long,
 ) {
     companion object {
-        fun from(credit: UserCredit): UserCreditResponse = UserCreditResponse(credit.userId.value, credit.balance)
+        fun from(credit: UserCredit): UserCreditResponse = UserCreditResponse(credit.userId, credit.balance)
     }
 }

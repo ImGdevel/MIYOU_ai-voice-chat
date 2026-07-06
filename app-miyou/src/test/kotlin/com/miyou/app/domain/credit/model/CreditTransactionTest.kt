@@ -21,7 +21,7 @@ class CreditTransactionTest {
                 CreditTransaction.of(
                     UserIdFixture.create(),
                     CreditTransactionType.DEDUCT,
-                    ConversationDeduction(sessionId),
+                    ConversationDeduction(sessionId.value),
                     100L,
                     5000L,
                     4900L,
@@ -40,7 +40,7 @@ class CreditTransactionTest {
                 CreditTransaction.of(
                     UserIdFixture.create(),
                     CreditTransactionType.DEDUCT,
-                    ConversationDeduction(sessionId),
+                    ConversationDeduction(sessionId.value),
                     100L,
                     5000L,
                     4900L,
@@ -93,7 +93,7 @@ class CreditTransactionTest {
                 CreditTransaction.of(
                     UserIdFixture.create(),
                     CreditTransactionType.DEDUCT,
-                    ConversationDeduction(ConversationSessionFixture.createId()),
+                    ConversationDeduction(ConversationSessionFixture.createId().value),
                     100L,
                     5000L,
                     4900L,
@@ -102,7 +102,7 @@ class CreditTransactionTest {
                 CreditTransaction.of(
                     UserIdFixture.create(),
                     CreditTransactionType.DEDUCT,
-                    ConversationDeduction(ConversationSessionFixture.createId()),
+                    ConversationDeduction(ConversationSessionFixture.createId().value),
                     100L,
                     5000L,
                     4900L,
@@ -119,7 +119,7 @@ class CreditTransactionTest {
         @Test
         @DisplayName("ConversationDeduction의 sourceType은 CONVERSATION_DEDUCTION이다")
         fun conversationDeduction_sourceType() {
-            val source = ConversationDeduction(ConversationSessionFixture.createId())
+            val source = ConversationDeduction(ConversationSessionFixture.createId().value)
 
             assertThat(source.sourceType()).isEqualTo(CreditSourceType.CONVERSATION_DEDUCTION)
         }

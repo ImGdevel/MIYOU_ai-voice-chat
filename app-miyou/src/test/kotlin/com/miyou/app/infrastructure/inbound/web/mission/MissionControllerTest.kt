@@ -3,7 +3,6 @@ package com.miyou.app.infrastructure.inbound.web.mission
 import com.miyou.app.application.mission.usecase.MissionCompletionUseCase
 import com.miyou.app.application.mission.usecase.MissionQueryUseCase
 import com.miyou.app.domain.auth.model.AuthenticatedUser
-import com.miyou.app.domain.dialogue.model.UserId
 import com.miyou.app.domain.mission.model.MissionId
 import com.miyou.app.domain.mission.model.MissionStatus
 import com.miyou.app.domain.mission.model.MissionType
@@ -69,7 +68,7 @@ class MissionControllerTest {
 
         webTestClient
             .post()
-            .uri("/missions/{missionId}/complete?userId={userId}", missionId.value, userId.value)
+            .uri("/missions/{missionId}/complete?userId={userId}", missionId.value, userId)
             .exchange()
             .expectStatus()
             .isOk
@@ -89,7 +88,7 @@ class MissionControllerTest {
 
         webTestClient
             .post()
-            .uri("/missions/{missionId}/complete?userId={userId}", missionId.value, userId.value)
+            .uri("/missions/{missionId}/complete?userId={userId}", missionId.value, userId)
             .exchange()
             .expectStatus()
             .isNotFound
@@ -100,7 +99,7 @@ class MissionControllerTest {
         "completeMission prefers the authenticated principal's userId over the query param userId (anonymous+OAuth coexistence)"
     )
     fun completeMission_authenticatedPrincipal_overridesQueryParamUserId() {
-        val authenticatedUserId = UserId.of("authenticated-mission-user")
+        val authenticatedUserId = "authenticated-mission-user"
         val queryParamUserId = "different-anonymous-user"
         val missionId = MissionId.of(MissionFixture.DEFAULT_MISSION_ID)
         val principal = AuthenticatedUser(authenticatedUserId)

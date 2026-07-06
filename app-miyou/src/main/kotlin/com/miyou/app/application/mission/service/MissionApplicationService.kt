@@ -4,7 +4,6 @@ import com.miyou.app.application.common.error.MissionErrorCode
 import com.miyou.app.application.credit.usecase.CreditChargeUseCase
 import com.miyou.app.application.mission.usecase.MissionCompletionUseCase
 import com.miyou.app.application.mission.usecase.MissionQueryUseCase
-import com.miyou.app.domain.dialogue.model.UserId
 import com.miyou.app.domain.mission.model.Mission
 import com.miyou.app.domain.mission.model.MissionId
 import com.miyou.app.domain.mission.model.MissionStatus
@@ -43,7 +42,7 @@ class MissionApplicationService(
      * @param userId 사용자 ID
      * @return 사용자의 미션 목록 (상태 포함)
      */
-    override fun getUserMissions(userId: UserId): Flux<UserMission> = userMissionRepository.findByUserId(userId)
+    override fun getUserMissions(userId: String): Flux<UserMission> = userMissionRepository.findByUserId(userId)
 
     /**
      * 미션 완료 처리.
@@ -55,7 +54,7 @@ class MissionApplicationService(
      */
     @Transactional
     override fun completeMission(
-        userId: UserId,
+        userId: String,
         missionId: MissionId,
     ): Mono<UserMission> =
         missionRepository
@@ -77,7 +76,7 @@ class MissionApplicationService(
     private fun validateAndComplete(
         userMission: UserMission,
         mission: Mission,
-        userId: UserId,
+        userId: String,
     ): Mono<UserMission> {
         if (userMission.status == MissionStatus.REWARDED && !mission.repeatable) {
             return Mono.error(

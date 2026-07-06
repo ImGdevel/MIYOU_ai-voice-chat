@@ -1,11 +1,9 @@
 package com.miyou.app.domain.credit.model
 
-import com.miyou.app.domain.dialogue.model.ConversationSessionId
-
 data class ConversationDeduction(
-    val sessionId: ConversationSessionId,
+    val sessionId: String,
 ) : CreditSource {
     override fun sourceType(): CreditSourceType = CreditSourceType.CONVERSATION_DEDUCTION
 
-    fun sessionId(): ConversationSessionId = sessionId
+    fun sessionId(): String = sessionId
 }

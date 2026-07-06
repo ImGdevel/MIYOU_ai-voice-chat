@@ -3,7 +3,6 @@ package com.miyou.app.infrastructure.dialogue.adapter.persistence
 import com.miyou.app.domain.dialogue.model.ConversationSession
 import com.miyou.app.domain.dialogue.model.ConversationSessionId
 import com.miyou.app.domain.dialogue.model.PersonaId
-import com.miyou.app.domain.dialogue.model.UserId
 import com.miyou.app.domain.dialogue.port.ConversationSessionRepository
 import com.miyou.app.infrastructure.dialogue.adapter.persistence.document.ConversationSessionDocument
 import com.miyou.app.infrastructure.dialogue.repository.ConversationSessionMongoRepository
@@ -30,20 +29,20 @@ class ConversationSessionMongoAdapter(
     override fun findById(sessionId: ConversationSessionId): Mono<ConversationSession> =
         mongoRepository.findById(sessionId.value()).map(::toDomain)
 
-    override fun findByUserId(userId: UserId): Flux<ConversationSession> =
-        mongoRepository.findActiveByUserId(userId.value(), CREATED_AT_DESC).map(::toDomain)
+    override fun findByUserId(userId: String): Flux<ConversationSession> =
+        mongoRepository.findActiveByUserId(userId, CREATED_AT_DESC).map(::toDomain)
 
     override fun findByPersonaId(personaId: PersonaId): Flux<ConversationSession> =
         mongoRepository.findActiveByPersonaId(personaId.value(), CREATED_AT_DESC).map(::toDomain)
 
     override fun findByPersonaIdAndUserId(
         personaId: PersonaId,
-        userId: UserId,
+        userId: String,
     ): Flux<ConversationSession> =
         mongoRepository
             .findActiveByPersonaIdAndUserId(
                 personaId.value(),
-                userId.value(),
+                userId,
                 CREATED_AT_DESC,
             ).map(::toDomain)
 
@@ -70,7 +69,7 @@ class ConversationSessionMongoAdapter(
         ConversationSessionDocument(
             session.sessionId().value(),
             session.personaId().value(),
-            session.userId().value(),
+            session.userId(),
             session.createdAt(),
             session.deletedAt(),
         )
@@ -79,7 +78,7 @@ class ConversationSessionMongoAdapter(
         ConversationSession(
             ConversationSessionId.of(document.sessionId),
             PersonaId.of(document.personaId),
-            UserId.of(document.userId),
+            document.userId,
             document.createdAt,
             document.deletedAt,
         )

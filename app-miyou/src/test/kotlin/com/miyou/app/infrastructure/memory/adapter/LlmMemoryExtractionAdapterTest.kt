@@ -41,14 +41,15 @@ class LlmMemoryExtractionAdapterTest {
     @Test
     @DisplayName("유효한 JSON 응답을 메모리 객체로 변환한다")
     fun extractMemories_mapsValidJsonResponse() {
-        val sessionId = ConversationSessionFixture.createId()
+        val sessionIdObj = ConversationSessionFixture.createId()
+        val sessionId = sessionIdObj.value
         val context =
             MemoryExtractionContext.of(
                 sessionId,
                 listOf(
                     ConversationTurn.withId(
                         "turn-1",
-                        sessionId,
+                        sessionIdObj,
                         "I moved to Seoul",
                         "That sounds exciting.",
                         Instant.now(),
@@ -77,11 +78,12 @@ class LlmMemoryExtractionAdapterTest {
     @Test
     @DisplayName("마크다운 코드 블록에 감싼 JSON도 파싱한다")
     fun extractMemories_parsesMarkdownJson() {
-        val sessionId = ConversationSessionFixture.createId()
+        val sessionIdObj = ConversationSessionFixture.createId()
+        val sessionId = sessionIdObj.value
         val context =
             MemoryExtractionContext.of(
                 sessionId,
-                listOf(ConversationTurn.create(sessionId, "Remember that I like tea")),
+                listOf(ConversationTurn.create(sessionIdObj, "Remember that I like tea")),
                 emptyList(),
             )
         val response =
@@ -103,11 +105,12 @@ class LlmMemoryExtractionAdapterTest {
     @Test
     @DisplayName("유효하지 않은 JSON이면 빈 결과를 반환한다")
     fun extractMemories_returnsEmptyFluxForInvalidJson() {
-        val sessionId = ConversationSessionFixture.createId()
+        val sessionIdObj = ConversationSessionFixture.createId()
+        val sessionId = sessionIdObj.value
         val context =
             MemoryExtractionContext.of(
                 sessionId,
-                listOf(ConversationTurn.create(sessionId, "This is invalid")),
+                listOf(ConversationTurn.create(sessionIdObj, "This is invalid")),
                 emptyList(),
             )
 
@@ -119,7 +122,8 @@ class LlmMemoryExtractionAdapterTest {
     @Test
     @DisplayName("여러 개의 추출 메모리를 모두 처리한다")
     fun extractMemories_handlesMultipleExtractedMemories() {
-        val sessionId = ConversationSessionFixture.createId()
+        val sessionIdObj = ConversationSessionFixture.createId()
+        val sessionId = sessionIdObj.value
         val existingMemory =
             Memory(
                 id = "mem-1",
@@ -134,7 +138,7 @@ class LlmMemoryExtractionAdapterTest {
         val context =
             MemoryExtractionContext.of(
                 sessionId,
-                listOf(ConversationTurn.create(sessionId, "I also enjoy long walks")),
+                listOf(ConversationTurn.create(sessionIdObj, "I also enjoy long walks")),
                 listOf(existingMemory),
             )
         val response =
@@ -159,7 +163,8 @@ class LlmMemoryExtractionAdapterTest {
     @Test
     @DisplayName("컨텍스트에 존재하는 id를 가리키면 supersedesMemoryId를 그대로 받아들인다")
     fun extractMemories_acceptsSupersedesMemoryIdWhenTargetExistsInContext() {
-        val sessionId = ConversationSessionFixture.createId()
+        val sessionIdObj = ConversationSessionFixture.createId()
+        val sessionId = sessionIdObj.value
         val existingMemory =
             Memory(
                 id = "mem-1",
@@ -174,7 +179,7 @@ class LlmMemoryExtractionAdapterTest {
         val context =
             MemoryExtractionContext.of(
                 sessionId,
-                listOf(ConversationTurn.create(sessionId, "이제 라면 안 먹어, 질려서")),
+                listOf(ConversationTurn.create(sessionIdObj, "이제 라면 안 먹어, 질려서")),
                 listOf(existingMemory),
             )
         val response =
@@ -191,11 +196,12 @@ class LlmMemoryExtractionAdapterTest {
     @Test
     @DisplayName("컨텍스트에 없는 id를 가리키면 supersedesMemoryId를 무시한다")
     fun extractMemories_dropsSupersedesMemoryIdWhenTargetMissingFromContext() {
-        val sessionId = ConversationSessionFixture.createId()
+        val sessionIdObj = ConversationSessionFixture.createId()
+        val sessionId = sessionIdObj.value
         val context =
             MemoryExtractionContext.of(
                 sessionId,
-                listOf(ConversationTurn.create(sessionId, "이제 라면 안 먹어, 질려서")),
+                listOf(ConversationTurn.create(sessionIdObj, "이제 라면 안 먹어, 질려서")),
                 emptyList(),
             )
         val response =
@@ -212,11 +218,12 @@ class LlmMemoryExtractionAdapterTest {
     @Test
     @DisplayName("emotion 필드를 MemoryEmotion으로 파싱한다")
     fun extractMemories_parsesEmotionField() {
-        val sessionId = ConversationSessionFixture.createId()
+        val sessionIdObj = ConversationSessionFixture.createId()
+        val sessionId = sessionIdObj.value
         val context =
             MemoryExtractionContext.of(
                 sessionId,
-                listOf(ConversationTurn.create(sessionId, "어제 반려동물을 잃었어")),
+                listOf(ConversationTurn.create(sessionIdObj, "어제 반려동물을 잃었어")),
                 emptyList(),
             )
         val response =
@@ -233,11 +240,12 @@ class LlmMemoryExtractionAdapterTest {
     @Test
     @DisplayName("알 수 없는 emotion 값은 무시하고 null로 처리한다")
     fun extractMemories_ignoresUnknownEmotionValue() {
-        val sessionId = ConversationSessionFixture.createId()
+        val sessionIdObj = ConversationSessionFixture.createId()
+        val sessionId = sessionIdObj.value
         val context =
             MemoryExtractionContext.of(
                 sessionId,
-                listOf(ConversationTurn.create(sessionId, "그냥 평범한 하루였어")),
+                listOf(ConversationTurn.create(sessionIdObj, "그냥 평범한 하루였어")),
                 emptyList(),
             )
         val response =

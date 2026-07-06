@@ -1,7 +1,6 @@
 package com.miyou.app.infrastructure.auth.adapter
 
 import com.miyou.app.domain.auth.port.JwtValidator
-import com.miyou.app.domain.dialogue.model.UserId
 import org.springframework.security.oauth2.jwt.ReactiveJwtDecoder
 import org.springframework.stereotype.Component
 import reactor.core.publisher.Mono
@@ -10,9 +9,9 @@ import reactor.core.publisher.Mono
 class JwtValidatorAdapter(
     private val reactiveJwtDecoder: ReactiveJwtDecoder,
 ) : JwtValidator {
-    override fun validate(token: String): Mono<UserId> =
+    override fun validate(token: String): Mono<String> =
         reactiveJwtDecoder
             .decode(token)
-            .map { jwt -> UserId.of(jwt.subject) }
+            .map { jwt -> jwt.subject }
             .onErrorResume { Mono.empty() }
 }

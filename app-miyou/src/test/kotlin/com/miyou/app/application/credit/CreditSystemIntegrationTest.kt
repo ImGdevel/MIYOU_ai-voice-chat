@@ -6,8 +6,6 @@ import com.miyou.app.domain.credit.model.CreditSourceType
 import com.miyou.app.domain.credit.model.CreditTransactionType
 import com.miyou.app.domain.credit.model.PaymentCharge
 import com.miyou.app.domain.credit.model.UserCredit
-import com.miyou.app.domain.dialogue.model.ConversationSessionId
-import com.miyou.app.domain.dialogue.model.UserId
 import com.miyou.app.infrastructure.credit.adapter.CreditTransactionMongoAdapter
 import com.miyou.app.infrastructure.credit.adapter.UserCreditMongoAdapter
 import com.miyou.app.infrastructure.credit.document.UserCreditDocument
@@ -66,7 +64,7 @@ class CreditSystemIntegrationTest : ContainerizedIntegrationTestSupport() {
         @Test
         @DisplayName("신규 유저에게 5000 크레딧 가입 보너스가 지급되고 트랜잭션이 기록된다")
         fun grantSignupBonus_newUser_5000CreditsAndTransactionRecorded() {
-            val userId = UserId.of("signup-user-1")
+            val userId = "signup-user-1"
 
             StepVerifier
                 .create(creditService.grantSignupBonus(userId))
@@ -96,10 +94,10 @@ class CreditSystemIntegrationTest : ContainerizedIntegrationTestSupport() {
         @Test
         @DisplayName("3번 연속 차감 후 잔액이 4700이 되고 트랜잭션 4건(보너스+3차감)이 기록된다")
         fun consecutiveDeductions_balanceDecreasesCorrectly() {
-            val userId = UserId.of("deduct-user-1")
-            val session1 = ConversationSessionId.of("sess-1")
-            val session2 = ConversationSessionId.of("sess-2")
-            val session3 = ConversationSessionId.of("sess-3")
+            val userId = "deduct-user-1"
+            val session1 = "sess-1"
+            val session2 = "sess-2"
+            val session3 = "sess-3"
 
             StepVerifier
                 .create(
@@ -121,9 +119,9 @@ class CreditSystemIntegrationTest : ContainerizedIntegrationTestSupport() {
         @Test
         @DisplayName("각 차감 트랜잭션의 balanceBefore/After가 연속적으로 이어진다")
         fun consecutiveDeductions_balanceChainIsConsistent() {
-            val userId = UserId.of("deduct-chain-user")
-            val session1 = ConversationSessionId.of("chain-sess-1")
-            val session2 = ConversationSessionId.of("chain-sess-2")
+            val userId = "deduct-chain-user"
+            val session1 = "chain-sess-1"
+            val session2 = "chain-sess-2"
 
             StepVerifier
                 .create(
@@ -151,14 +149,14 @@ class CreditSystemIntegrationTest : ContainerizedIntegrationTestSupport() {
         @Test
         @DisplayName("잔액 50에서 100 차감 시도 시 예외 발생, 잔액과 트랜잭션 수가 변하지 않는다")
         fun deduct_insufficient_balanceAndTxCountUnchanged() {
-            val userId = UserId.of("insufficient-user-1")
+            val userId = "insufficient-user-1"
             val lowCredit = UserCredit(userId, 50L, 0L)
 
             StepVerifier
                 .create(
                     userCreditRepo
                         .save(UserCreditDocument.fromDomain(lowCredit))
-                        .then(creditService.deductForConversation(userId, ConversationSessionId.of("s-fail"))),
+                        .then(creditService.deductForConversation(userId, "s-fail")),
                 ).expectError(InsufficientCreditException::class.java)
                 .verify()
 
@@ -175,14 +173,14 @@ class CreditSystemIntegrationTest : ContainerizedIntegrationTestSupport() {
         @Test
         @DisplayName("잔액이 정확히 99일 때 100 차감 시도 시 거부된다")
         fun deduct_balanceIs99_rejected() {
-            val userId = UserId.of("boundary-user")
+            val userId = "boundary-user"
             val nearThreshold = UserCredit(userId, 99L, 0L)
 
             StepVerifier
                 .create(
                     userCreditRepo
                         .save(UserCreditDocument.fromDomain(nearThreshold))
-                        .then(creditService.deductForConversation(userId, ConversationSessionId.of("s-boundary"))),
+                        .then(creditService.deductForConversation(userId, "s-boundary")),
                 ).expectError(InsufficientCreditException::class.java)
                 .verify()
         }
@@ -194,7 +192,7 @@ class CreditSystemIntegrationTest : ContainerizedIntegrationTestSupport() {
         @Test
         @DisplayName("결제 충전 후 잔액이 증가하고 PAYMENT_CHARGE 트랜잭션이 기록된다")
         fun chargeByPayment_increasesBalanceAndRecordsTx() {
-            val userId = UserId.of("payment-user-1")
+            val userId = "payment-user-1"
             val source = PaymentCharge("toss-pay-abc", "toss")
 
             StepVerifier
@@ -225,7 +223,7 @@ class CreditSystemIntegrationTest : ContainerizedIntegrationTestSupport() {
         @Test
         @DisplayName("initializeIfAbsent 두 번 호출해도 가입 보너스가 한 번만 지급된다")
         fun initializeIfAbsent_calledTwice_bonusGrantedOnce() {
-            val userId = UserId.of("idempotent-user-1")
+            val userId = "idempotent-user-1"
 
             StepVerifier
                 .create(
@@ -245,13 +243,13 @@ class CreditSystemIntegrationTest : ContainerizedIntegrationTestSupport() {
         @Test
         @DisplayName("이미 크레딧이 있는 유저에게 initializeIfAbsent 호출해도 잔액이 변하지 않는다")
         fun initializeIfAbsent_existingUser_noChange() {
-            val userId = UserId.of("idempotent-existing-user")
+            val userId = "idempotent-existing-user"
 
             StepVerifier
                 .create(
                     creditService
                         .grantSignupBonus(userId)
-                        .then(creditService.deductForConversation(userId, ConversationSessionId.of("s-x")))
+                        .then(creditService.deductForConversation(userId, "s-x"))
                         .then(creditService.initializeIfAbsent(userId))
                         .then(creditService.getBalance(userId)),
                 ).assertNext { credit -> assertThat(credit.balance()).isEqualTo(4900L) }
@@ -265,16 +263,16 @@ class CreditSystemIntegrationTest : ContainerizedIntegrationTestSupport() {
         @Test
         @DisplayName("유저 A의 차감이 유저 B의 잔액에 영향을 주지 않는다")
         fun deductUserA_doesNotAffectUserB() {
-            val userA = UserId.of("isolation-user-a")
-            val userB = UserId.of("isolation-user-b")
+            val userA = "isolation-user-a"
+            val userB = "isolation-user-b"
 
             StepVerifier
                 .create(
                     creditService
                         .grantSignupBonus(userA)
                         .then(creditService.grantSignupBonus(userB))
-                        .then(creditService.deductForConversation(userA, ConversationSessionId.of("s-a-1")))
-                        .then(creditService.deductForConversation(userA, ConversationSessionId.of("s-a-2")))
+                        .then(creditService.deductForConversation(userA, "s-a-1"))
+                        .then(creditService.deductForConversation(userA, "s-a-2"))
                         .then(creditService.getBalance(userB)),
                 ).assertNext { credit -> assertThat(credit.balance()).isEqualTo(5000L) }
                 .verifyComplete()
@@ -283,15 +281,15 @@ class CreditSystemIntegrationTest : ContainerizedIntegrationTestSupport() {
         @Test
         @DisplayName("두 유저의 트랜잭션이 서로 섞이지 않는다")
         fun transactions_areIsolatedPerUser() {
-            val userA = UserId.of("tx-isolation-a")
-            val userB = UserId.of("tx-isolation-b")
+            val userA = "tx-isolation-a"
+            val userB = "tx-isolation-b"
 
             StepVerifier
                 .create(
                     creditService
                         .grantSignupBonus(userA)
                         .then(creditService.grantSignupBonus(userB))
-                        .then(creditService.deductForConversation(userA, ConversationSessionId.of("s-a")))
+                        .then(creditService.deductForConversation(userA, "s-a"))
                         .thenMany(creditService.getTransactions(userA, PageRequest.of(0, 10))),
                 ).assertNext { tx -> assertThat(tx.userId()).isEqualTo(userA) }
                 .assertNext { tx -> assertThat(tx.userId()).isEqualTo(userA) }
@@ -305,7 +303,7 @@ class CreditSystemIntegrationTest : ContainerizedIntegrationTestSupport() {
         @Test
         @DisplayName("동시에 50번 차감 요청 시 성공한 요청만큼만 잔액이 감소한다 (잔액은 0 이상)")
         fun concurrent_deductions_balanceNeverGoesNegative() {
-            val userId = UserId.of("concurrent-user-1")
+            val userId = "concurrent-user-1"
             creditService.grantSignupBonus(userId).block()
 
             val deductions =
@@ -313,7 +311,7 @@ class CreditSystemIntegrationTest : ContainerizedIntegrationTestSupport() {
                     .range(0, 50)
                     .flatMap { index ->
                         creditService
-                            .deductForConversation(userId, ConversationSessionId.of("concurrent-s-$index"))
+                            .deductForConversation(userId, "concurrent-s-$index")
                             .thenReturn(1L)
                             .onErrorReturn(0L)
                     }

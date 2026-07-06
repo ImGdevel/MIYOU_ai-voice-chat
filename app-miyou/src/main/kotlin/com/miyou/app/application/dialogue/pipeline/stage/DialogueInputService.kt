@@ -40,11 +40,11 @@ class DialogueInputService(
                 .cache()
         val memories =
             pipelineTracer.traceMemories {
-                retrievalPort.retrieveMemories(session.sessionId, text, 5)
+                retrievalPort.retrieveMemories(session.sessionId.value, text, 5)
             }
         val retrievalContext =
             pipelineTracer.traceRetrieval {
-                retrievalPort.retrieve(session.sessionId, text, 3)
+                retrievalPort.retrieve(session.sessionId.value, text, 3)
             }
         val history = loadConversationHistory(session).cache()
 

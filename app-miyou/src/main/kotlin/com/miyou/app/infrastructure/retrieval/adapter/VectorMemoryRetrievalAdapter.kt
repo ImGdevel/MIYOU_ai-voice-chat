@@ -20,18 +20,18 @@ class VectorMemoryRetrievalAdapter(
     private val log = KotlinLogging.logger {}
 
     override fun retrieve(
-        sessionId: ConversationSessionId,
+        sessionId: String,
         query: String,
         topK: Int,
     ): Mono<RetrievalContext> =
         conversationRepository
-            .findRecent(sessionId, topK * 10)
+            .findRecent(ConversationSessionId.of(sessionId), topK * 10)
             .collectList()
             .map { turns -> KeywordSimilaritySupport.rankDocumentsByQuery(query, turns, topK) }
             .map { documents -> RetrievalContext.of(query, documents) }
 
     override fun retrieveMemories(
-        sessionId: ConversationSessionId,
+        sessionId: String,
         query: String,
         topK: Int,
     ): Mono<MemoryRetrievalResult> =

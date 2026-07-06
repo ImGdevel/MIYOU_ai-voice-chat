@@ -2,7 +2,6 @@ package com.miyou.app.application.memory.service
 
 import com.miyou.app.application.memory.policy.MemoryRetrievalPolicy
 import com.miyou.app.application.monitoring.port.RagQualityMetricsPort
-import com.miyou.app.domain.dialogue.model.ConversationSessionId
 import com.miyou.app.domain.memory.model.Memory
 import com.miyou.app.domain.memory.model.MemoryRetrievalResult
 import com.miyou.app.domain.memory.model.MemoryType
@@ -45,7 +44,7 @@ class MemoryRetrievalService(
      * @return 분류된 메모리 검색 결과
      */
     override fun retrieveMemories(
-        sessionId: ConversationSessionId,
+        sessionId: String,
         query: String,
         topK: Int,
     ): Mono<MemoryRetrievalResult> =
@@ -67,7 +66,7 @@ class MemoryRetrievalService(
             .flatMap(this::updateAccessMetrics)
 
     private fun searchCandidateMemories(
-        sessionId: ConversationSessionId,
+        sessionId: String,
         queryEmbedding: List<Float>,
         topK: Int,
     ): Mono<List<Memory>> {
@@ -94,7 +93,7 @@ class MemoryRetrievalService(
      * 연상으로 끌려온 메모리도 우회 없이 이후 동일한 rankAndLimit을 거친다.
      */
     private fun expandAssociatively(
-        sessionId: ConversationSessionId,
+        sessionId: String,
         types: List<MemoryType>,
         candidates: List<Memory>,
     ): Mono<List<Memory>> {

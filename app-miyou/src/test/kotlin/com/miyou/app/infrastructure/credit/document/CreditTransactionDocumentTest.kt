@@ -30,7 +30,7 @@ class CreditTransactionDocumentTest {
                 CreditTransaction.of(
                     UserIdFixture.create(),
                     CreditTransactionType.DEDUCT,
-                    ConversationDeduction(sessionId),
+                    ConversationDeduction(sessionId.value),
                     100L,
                     5000L,
                     4900L,
@@ -50,7 +50,7 @@ class CreditTransactionDocumentTest {
             assertThat(restored.source().sourceType()).isEqualTo(CreditSourceType.CONVERSATION_DEDUCTION)
 
             val source = restored.source() as ConversationDeduction
-            assertThat(source.sessionId().value()).isEqualTo("session-abc")
+            assertThat(source.sessionId()).isEqualTo("session-abc")
         }
 
         @Test
@@ -60,7 +60,7 @@ class CreditTransactionDocumentTest {
                 CreditTransaction.of(
                     UserIdFixture.create(),
                     CreditTransactionType.DEDUCT,
-                    ConversationDeduction(ConversationSessionFixture.createId()),
+                    ConversationDeduction(ConversationSessionFixture.createId().value),
                     100L,
                     5000L,
                     4900L,

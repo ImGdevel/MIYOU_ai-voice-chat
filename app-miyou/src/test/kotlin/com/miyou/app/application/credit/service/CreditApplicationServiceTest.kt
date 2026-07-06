@@ -122,7 +122,7 @@ class CreditApplicationServiceTest {
             }
 
         StepVerifier
-            .create(service.deductForConversation(userId, sessionId))
+            .create(service.deductForConversation(userId, sessionId.value))
             .assertNext { result ->
                 assertThat(result.type).isEqualTo(CreditTransactionType.DEDUCT)
                 assertThat(result.amount).isEqualTo(100L)
@@ -142,7 +142,7 @@ class CreditApplicationServiceTest {
         `when`(userCreditRepository.findByUserId(userId)).thenReturn(Mono.just(UserCreditFixture.create(userId, 50L)))
 
         StepVerifier
-            .create(service.deductForConversation(userId, ConversationSessionFixture.createId()))
+            .create(service.deductForConversation(userId, ConversationSessionFixture.createId().value))
             .expectError(InsufficientCreditException::class.java)
             .verify()
 
@@ -169,7 +169,7 @@ class CreditApplicationServiceTest {
             }
 
         StepVerifier
-            .create(service.refundForConversation(userId, sessionId))
+            .create(service.refundForConversation(userId, sessionId.value))
             .assertNext { result ->
                 assertThat(result.type).isEqualTo(CreditTransactionType.REFUND)
                 assertThat(result.amount).isEqualTo(100L)
@@ -190,7 +190,7 @@ class CreditApplicationServiceTest {
         `when`(userCreditRepository.findByUserId(userId)).thenReturn(Mono.empty())
 
         StepVerifier
-            .create(service.refundForConversation(userId, sessionId))
+            .create(service.refundForConversation(userId, sessionId.value))
             .expectErrorSatisfies { error ->
                 assertThat(error)
                     .isInstanceOf(IllegalStateException::class.java)

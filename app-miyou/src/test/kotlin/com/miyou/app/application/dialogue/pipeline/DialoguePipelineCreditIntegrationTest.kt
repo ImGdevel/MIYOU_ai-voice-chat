@@ -10,7 +10,6 @@ import com.miyou.app.domain.dialogue.model.ConversationSession
 import com.miyou.app.domain.dialogue.model.ConversationSessionId
 import com.miyou.app.domain.dialogue.model.ConversationTurn
 import com.miyou.app.domain.dialogue.model.PersonaId
-import com.miyou.app.domain.dialogue.model.UserId
 import com.miyou.app.domain.memory.model.MemoryRetrievalResult
 import com.miyou.app.domain.retrieval.model.RetrievalContext
 import com.miyou.app.infrastructure.credit.adapter.CreditTransactionMongoAdapter
@@ -85,7 +84,7 @@ class DialoguePipelineCreditIntegrationTest : ContainerizedIntegrationTestSuppor
         ConversationSession(
             ConversationSessionId.of(sessionIdValue),
             PersonaId.defaultPersona(),
-            UserId.of(userIdValue),
+            userIdValue,
             Instant.now(),
             null,
         )

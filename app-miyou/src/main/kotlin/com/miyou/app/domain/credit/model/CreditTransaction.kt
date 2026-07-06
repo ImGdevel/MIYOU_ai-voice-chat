@@ -1,11 +1,10 @@
 package com.miyou.app.domain.credit.model
 
-import com.miyou.app.domain.dialogue.model.UserId
 import java.time.Instant
 
 data class CreditTransaction(
     val transactionId: CreditTransactionId,
-    val userId: UserId,
+    val userId: String,
     val type: CreditTransactionType,
     val source: CreditSource,
     val amount: Long,
@@ -23,7 +22,7 @@ data class CreditTransaction(
     companion object {
         @JvmStatic
         fun of(
-            userId: UserId,
+            userId: String,
             type: CreditTransactionType,
             source: CreditSource,
             amount: Long,
@@ -43,7 +42,7 @@ data class CreditTransaction(
 
         @JvmStatic
         fun of(
-            userId: UserId,
+            userId: String,
             type: CreditTransactionType,
             source: CreditSource,
             amount: Long,
@@ -65,7 +64,7 @@ data class CreditTransaction(
 
     fun transactionId(): CreditTransactionId = transactionId
 
-    fun userId(): UserId = userId
+    fun userId(): String = userId
 
     fun type(): CreditTransactionType = type
 

@@ -1,6 +1,5 @@
 package com.miyou.app.infrastructure.mission.adapter
 
-import com.miyou.app.domain.dialogue.model.UserId
 import com.miyou.app.domain.mission.model.MissionId
 import com.miyou.app.domain.mission.model.UserMission
 import com.miyou.app.domain.mission.port.UserMissionRepository
@@ -14,15 +13,15 @@ import reactor.core.publisher.Mono
 class UserMissionMongoAdapter(
     private val mongoRepository: UserMissionMongoRepository,
 ) : UserMissionRepository {
-    override fun findByUserId(userId: UserId): Flux<UserMission> =
-        mongoRepository.findByUserId(userId.value()).map(UserMissionDocument::toDomain)
+    override fun findByUserId(userId: String): Flux<UserMission> =
+        mongoRepository.findByUserId(userId).map(UserMissionDocument::toDomain)
 
     override fun findByUserIdAndMissionId(
-        userId: UserId,
+        userId: String,
         missionId: MissionId,
     ): Mono<UserMission> =
         mongoRepository
-            .findByUserIdAndMissionId(userId.value, missionId.value)
+            .findByUserIdAndMissionId(userId, missionId.value)
             .map(UserMissionDocument::toDomain)
 
     override fun save(userMission: UserMission): Mono<UserMission> =

@@ -1,10 +1,9 @@
 package com.miyou.app.domain.mission.model
 
-import com.miyou.app.domain.dialogue.model.UserId
 import java.time.Instant
 
 data class UserMission(
-    val userId: UserId,
+    val userId: String,
     val missionId: MissionId,
     val status: MissionStatus,
     val completedAt: Instant?,
@@ -13,7 +12,7 @@ data class UserMission(
     companion object {
         @JvmStatic
         fun start(
-            userId: UserId,
+            userId: String,
             missionId: MissionId,
         ): UserMission = UserMission(userId, missionId, MissionStatus.AVAILABLE, null, null)
     }
@@ -22,7 +21,7 @@ data class UserMission(
 
     fun reward(): UserMission = copy(status = MissionStatus.REWARDED, rewardedAt = Instant.now())
 
-    fun userId(): UserId = userId
+    fun userId(): String = userId
 
     fun missionId(): MissionId = missionId
 

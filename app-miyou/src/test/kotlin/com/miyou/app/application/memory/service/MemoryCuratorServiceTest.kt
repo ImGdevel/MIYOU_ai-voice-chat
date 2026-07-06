@@ -38,7 +38,7 @@ class MemoryCuratorServiceTest {
     @Test
     @DisplayName("오래 미접근한 저importance 메모리는 감쇠 후 아카이브 마킹되어 저장된다")
     fun runDecayAndArchive_archivesStaleLowImportanceMemory() {
-        val sessionId = ConversationSessionFixture.createId()
+        val sessionId = ConversationSessionFixture.createId().value
         val now = Instant.now()
         val stale =
             Memory(
@@ -67,7 +67,7 @@ class MemoryCuratorServiceTest {
     @Test
     @DisplayName("건강한 메모리는 감쇠만 반영되고 아카이브되지 않는다")
     fun runDecayAndArchive_decaysHealthyMemoryWithoutArchiving() {
-        val sessionId = ConversationSessionFixture.createId()
+        val sessionId = ConversationSessionFixture.createId().value
         val now = Instant.now()
         val healthy =
             Memory(

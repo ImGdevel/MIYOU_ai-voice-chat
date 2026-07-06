@@ -70,7 +70,7 @@ class MemoryExtractionConfidenceBenchmark {
                 val sessionId = ConversationSessionId.generate()
                 val context =
                     MemoryExtractionContext.of(
-                        sessionId,
+                        sessionId.value,
                         listOf(ConversationTurn.create(sessionId, query)),
                         emptyList(),
                     )

@@ -89,7 +89,7 @@ class DialoguePipelineServiceTest {
             `when`(ttsStreamService.traceTtsSynthesis(anyValue()))
                 .thenReturn(Flux.just("audio".toByteArray()))
             `when`(postProcessingService.persistAndExtract(anyValue(), anyValue())).thenReturn(Mono.empty())
-            `when`(creditDeductUseCase.deductForConversation(session.userId, session.sessionId))
+            `when`(creditDeductUseCase.deductForConversation(session.userId, session.sessionId.value))
                 .thenReturn(Mono.just(mock(CreditTransaction::class.java)))
 
             StepVerifier
@@ -125,9 +125,9 @@ class DialoguePipelineServiceTest {
                 .thenReturn(Flux.error(failure))
             `when`(ttsStreamService.traceTtsSynthesis(anyValue())).thenReturn(Flux.error(failure))
             `when`(postProcessingService.persistAndExtract(anyValue(), anyValue())).thenReturn(Mono.empty())
-            `when`(creditDeductUseCase.deductForConversation(session.userId, session.sessionId))
+            `when`(creditDeductUseCase.deductForConversation(session.userId, session.sessionId.value))
                 .thenReturn(Mono.just(mock(CreditTransaction::class.java)))
-            `when`(creditDeductUseCase.refundForConversation(session.userId, session.sessionId))
+            `when`(creditDeductUseCase.refundForConversation(session.userId, session.sessionId.value))
                 .thenReturn(Mono.just(mock(CreditTransaction::class.java)))
 
             StepVerifier
@@ -135,8 +135,8 @@ class DialoguePipelineServiceTest {
                 .expectErrorSatisfies { error -> assertThat(error).isSameAs(failure) }
                 .verify()
 
-            verify(creditDeductUseCase).deductForConversation(session.userId, session.sessionId)
-            verify(creditDeductUseCase).refundForConversation(session.userId, session.sessionId)
+            verify(creditDeductUseCase).deductForConversation(session.userId, session.sessionId.value)
+            verify(creditDeductUseCase).refundForConversation(session.userId, session.sessionId.value)
         }
 
         @Test
@@ -165,7 +165,7 @@ class DialoguePipelineServiceTest {
             // postProcessing 실패
             `when`(postProcessingService.persistAndExtract(anyValue(), anyValue()))
                 .thenReturn(Mono.error(RuntimeException("mongodb unavailable")))
-            `when`(creditDeductUseCase.deductForConversation(session.userId, session.sessionId))
+            `when`(creditDeductUseCase.deductForConversation(session.userId, session.sessionId.value))
                 .thenReturn(Mono.just(mock(CreditTransaction::class.java)))
 
             StepVerifier
@@ -204,7 +204,7 @@ class DialoguePipelineServiceTest {
             `when`(inputService.prepareInputs(eqValue(session), eqValue(text))).thenReturn(Mono.just(inputs))
             `when`(llmStreamService.buildLlmTokenStream(anyValue())).thenReturn(Flux.just("hi"))
             `when`(postProcessingService.persistAndExtractText(anyValue(), anyValue())).thenReturn(Mono.empty())
-            `when`(creditDeductUseCase.deductForConversation(session.userId, session.sessionId))
+            `when`(creditDeductUseCase.deductForConversation(session.userId, session.sessionId.value))
                 .thenReturn(Mono.just(mock(CreditTransaction::class.java)))
 
             StepVerifier
@@ -234,9 +234,9 @@ class DialoguePipelineServiceTest {
             `when`(inputService.prepareInputs(eqValue(session), eqValue(text))).thenReturn(Mono.just(inputs))
             `when`(llmStreamService.buildLlmTokenStream(anyValue())).thenReturn(Flux.error(failure))
             `when`(postProcessingService.persistAndExtractText(anyValue(), anyValue())).thenReturn(Mono.empty())
-            `when`(creditDeductUseCase.deductForConversation(session.userId, session.sessionId))
+            `when`(creditDeductUseCase.deductForConversation(session.userId, session.sessionId.value))
                 .thenReturn(Mono.just(mock(CreditTransaction::class.java)))
-            `when`(creditDeductUseCase.refundForConversation(session.userId, session.sessionId))
+            `when`(creditDeductUseCase.refundForConversation(session.userId, session.sessionId.value))
                 .thenReturn(Mono.just(mock(CreditTransaction::class.java)))
 
             StepVerifier
@@ -244,8 +244,8 @@ class DialoguePipelineServiceTest {
                 .expectErrorSatisfies { error -> assertThat(error).isSameAs(failure) }
                 .verify()
 
-            verify(creditDeductUseCase).deductForConversation(session.userId, session.sessionId)
-            verify(creditDeductUseCase).refundForConversation(session.userId, session.sessionId)
+            verify(creditDeductUseCase).deductForConversation(session.userId, session.sessionId.value)
+            verify(creditDeductUseCase).refundForConversation(session.userId, session.sessionId.value)
         }
 
         @Test
@@ -266,7 +266,7 @@ class DialoguePipelineServiceTest {
             `when`(inputService.prepareInputs(eqValue(session), eqValue(text))).thenReturn(Mono.just(inputs))
             `when`(llmStreamService.buildLlmTokenStream(anyValue())).thenReturn(Flux.just("hi"))
             `when`(postProcessingService.persistAndExtractText(anyValue(), anyValue())).thenReturn(Mono.empty())
-            `when`(creditDeductUseCase.deductForConversation(session.userId, session.sessionId))
+            `when`(creditDeductUseCase.deductForConversation(session.userId, session.sessionId.value))
                 .thenReturn(Mono.just(mock(CreditTransaction::class.java)))
 
             StepVerifier
@@ -297,7 +297,7 @@ class DialoguePipelineServiceTest {
             // postProcessing 실패
             `when`(postProcessingService.persistAndExtractText(anyValue(), anyValue()))
                 .thenReturn(Mono.error(RuntimeException("mongodb unavailable")))
-            `when`(creditDeductUseCase.deductForConversation(session.userId, session.sessionId))
+            `when`(creditDeductUseCase.deductForConversation(session.userId, session.sessionId.value))
                 .thenReturn(Mono.just(mock(CreditTransaction::class.java)))
 
             StepVerifier
@@ -330,7 +330,7 @@ class DialoguePipelineServiceTest {
             `when`(llmStreamService.buildLlmTokenStream(anyValue()))
                 .thenReturn(Flux.just("tok1", "tok2", "tok3").concatWith(Flux.never()))
             `when`(postProcessingService.persistAndExtractText(anyValue(), anyValue())).thenReturn(Mono.empty())
-            `when`(creditDeductUseCase.deductForConversation(session.userId, session.sessionId))
+            `when`(creditDeductUseCase.deductForConversation(session.userId, session.sessionId.value))
                 .thenReturn(Mono.just(mock(CreditTransaction::class.java)))
 
             StepVerifier
@@ -339,7 +339,7 @@ class DialoguePipelineServiceTest {
                 .thenCancel() // 구독자가 직접 취소 (클라이언트 연결 끊김 시뮬레이션)
                 .verify()
 
-            verify(creditDeductUseCase).deductForConversation(session.userId, session.sessionId)
+            verify(creditDeductUseCase).deductForConversation(session.userId, session.sessionId.value)
             // cancel 핸들러는 환불하지 않는다
             verify(creditDeductUseCase, never()).refundForConversation(anyValue(), anyValue())
         }

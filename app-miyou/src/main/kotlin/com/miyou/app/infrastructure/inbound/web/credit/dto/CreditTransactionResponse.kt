@@ -18,7 +18,7 @@ data class CreditTransactionResponse(
         fun from(tx: CreditTransaction): CreditTransactionResponse =
             CreditTransactionResponse(
                 tx.transactionId.value,
-                tx.userId.value,
+                tx.userId,
                 tx.type.name,
                 tx.source.sourceType().name,
                 tx.amount,

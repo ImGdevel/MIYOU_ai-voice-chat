@@ -13,8 +13,6 @@ import com.miyou.app.domain.credit.model.PaymentCharge
 import com.miyou.app.domain.credit.model.SignupBonus
 import com.miyou.app.domain.credit.model.UserCredit
 import com.miyou.app.domain.credit.port.UserCreditRepository
-import com.miyou.app.domain.dialogue.model.ConversationSessionId
-import com.miyou.app.domain.dialogue.model.UserId
 import com.miyou.app.domain.mission.model.MissionId
 import io.github.oshai.kotlinlogging.KotlinLogging
 import org.springframework.beans.factory.annotation.Value
@@ -47,7 +45,7 @@ class CreditApplicationService(
      * @param userId 사용자 ID
      * @return 크레딧 잔액 (없으면 0 초기화)
      */
-    override fun getBalance(userId: UserId): Mono<UserCredit> =
+    override fun getBalance(userId: String): Mono<UserCredit> =
         userCreditRepository
             .findByUserId(userId)
             .defaultIfEmpty(UserCredit.initialize(userId, 0L))
@@ -60,7 +58,7 @@ class CreditApplicationService(
      * @return 거래 내역 (최신순)
      */
     override fun getTransactions(
-        userId: UserId,
+        userId: String,
         pageable: Pageable,
     ): Flux<CreditTransaction> = creditTransactionRepository.findByUserIdOrderByCreatedAtDesc(userId, pageable)
 
@@ -74,8 +72,8 @@ class CreditApplicationService(
      * @throws InsufficientCreditException 잔액 부족 시
      */
     override fun deductForConversation(
-        userId: UserId,
-        sessionId: ConversationSessionId,
+        userId: String,
+        sessionId: String,
     ): Mono<CreditTransaction> =
         userCreditRepository
             .findByUserId(userId)
@@ -93,7 +91,7 @@ class CreditApplicationService(
                         conversationCost,
                         credit.balance,
                         updated.balance,
-                        sessionId.value,
+                        sessionId,
                     )
                 userCreditRepository
                     .save(updated)
@@ -109,14 +107,14 @@ class CreditApplicationService(
      * @return 환불 거래 기록
      */
     override fun refundForConversation(
-        userId: UserId,
-        sessionId: ConversationSessionId,
+        userId: String,
+        sessionId: String,
     ): Mono<CreditTransaction> =
         userCreditRepository
             .findByUserId(userId)
             .switchIfEmpty(
                 Mono.error(
-                    IllegalStateException("Refund failed: User credit record not found for userId=${userId.value}"),
+                    IllegalStateException("Refund failed: User credit record not found for userId=$userId"),
                 ),
             ).flatMap { credit ->
                 val updated = credit.charge(conversationCost)
@@ -128,7 +126,7 @@ class CreditApplicationService(
                         conversationCost,
                         credit.balance,
                         updated.balance,
-                        sessionId.value,
+                        sessionId,
                     )
                 userCreditRepository
                     .save(updated)
@@ -144,7 +142,7 @@ class CreditApplicationService(
      * @return 충전 거래 기록
      */
     override fun chargeByPayment(
-        userId: UserId,
+        userId: String,
         amount: Long,
         source: PaymentCharge,
     ): Mono<CreditTransaction> =
@@ -174,7 +172,7 @@ class CreditApplicationService(
      * @param userId 사용자 ID
      * @return 보너스 지급 거래 기록
      */
-    override fun grantSignupBonus(userId: UserId): Mono<CreditTransaction> {
+    override fun grantSignupBonus(userId: String): Mono<CreditTransaction> {
         val initial = UserCredit.initialize(userId, signupBonus)
         val tx =
             CreditTransaction.of(
@@ -184,7 +182,7 @@ class CreditApplicationService(
                 signupBonus,
                 0L,
                 signupBonus,
-                userId.value,
+                userId,
             )
         return userCreditRepository
             .save(initial)
@@ -201,7 +199,7 @@ class CreditApplicationService(
      * @return 보상 지급 거래 기록
      */
     override fun grantMissionReward(
-        userId: UserId,
+        userId: String,
         missionId: MissionId,
         amount: Long,
         missionType: String,
@@ -234,7 +232,7 @@ class CreditApplicationService(
      * @param userId 사용자 ID
      * @return 초기화 완료
      */
-    override fun initializeIfAbsent(userId: UserId): Mono<Void> =
+    override fun initializeIfAbsent(userId: String): Mono<Void> =
         userCreditRepository
             .findByUserId(userId)
             .hasElement()
@@ -245,7 +243,7 @@ class CreditApplicationService(
                     grantSignupBonus(userId).then()
                 }
             }.onErrorResume(DuplicateKeyException::class.java) { e ->
-                log.debug { "Signup bonus already granted for userId=${userId.value} (race condition handled)" }
+                log.debug { "Signup bonus already granted for userId=$userId (race condition handled)" }
                 Mono.empty()
             }
 }

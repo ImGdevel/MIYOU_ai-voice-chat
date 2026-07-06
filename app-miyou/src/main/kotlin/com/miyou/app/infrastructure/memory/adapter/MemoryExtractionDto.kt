@@ -1,6 +1,5 @@
 package com.miyou.app.infrastructure.memory.adapter
 
-import com.miyou.app.domain.dialogue.model.ConversationSessionId
 import com.miyou.app.domain.memory.model.ExtractedMemory
 import com.miyou.app.domain.memory.model.MemoryEmotion
 import com.miyou.app.domain.memory.model.MemoryType
@@ -16,7 +15,7 @@ data class MemoryExtractionDto(
     val supersedesMemoryId: String? = null,
     val emotion: String? = null,
 ) {
-    fun toExtractedMemory(sessionId: ConversationSessionId): ExtractedMemory =
+    fun toExtractedMemory(sessionId: String): ExtractedMemory =
         ExtractedMemory(
             sessionId,
             MemoryType.valueOf(type.uppercase()),

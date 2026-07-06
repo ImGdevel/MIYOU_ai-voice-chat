@@ -41,7 +41,7 @@ class UserCreditMongoAdapterTest {
         fun findByUserId_existing_returnsDomain() {
             val userId = UserIdFixture.create()
             val doc = UserCreditDocument.fromDomain(UserCreditFixture.create(userId, 3000L))
-            `when`(mongoRepository.findByUserId(userId.value())).thenReturn(Mono.just(doc))
+            `when`(mongoRepository.findByUserId(userId)).thenReturn(Mono.just(doc))
 
             StepVerifier
                 .create(adapter.findByUserId(userId))
@@ -55,7 +55,7 @@ class UserCreditMongoAdapterTest {
         @DisplayName("사용자가 없으면 빈 결과를 반환한다")
         fun findByUserId_notFound_returnsEmpty() {
             val userId = UserIdFixture.create()
-            `when`(mongoRepository.findByUserId(userId.value())).thenReturn(Mono.empty())
+            `when`(mongoRepository.findByUserId(userId)).thenReturn(Mono.empty())
 
             StepVerifier
                 .create(adapter.findByUserId(userId))
@@ -66,7 +66,7 @@ class UserCreditMongoAdapterTest {
         @DisplayName("저장소 오류를 그대로 전파한다")
         fun findByUserId_error_propagates() {
             val userId = UserIdFixture.create()
-            `when`(mongoRepository.findByUserId(userId.value()))
+            `when`(mongoRepository.findByUserId(userId))
                 .thenReturn(Mono.error(RuntimeException("DB connection failed")))
 
             StepVerifier
@@ -98,7 +98,7 @@ class UserCreditMongoAdapterTest {
                 }.verifyComplete()
 
             val captured = captor.value
-            assertThat(captured.userId).isEqualTo(userId.value())
+            assertThat(captured.userId).isEqualTo(userId)
             assertThat(captured.balance).isEqualTo(5000L)
         }
 

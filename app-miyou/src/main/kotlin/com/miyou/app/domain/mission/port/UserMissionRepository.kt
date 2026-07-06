@@ -1,16 +1,15 @@
 package com.miyou.app.domain.mission.port
 
-import com.miyou.app.domain.dialogue.model.UserId
 import com.miyou.app.domain.mission.model.MissionId
 import com.miyou.app.domain.mission.model.UserMission
 import reactor.core.publisher.Flux
 import reactor.core.publisher.Mono
 
 interface UserMissionRepository {
-    fun findByUserId(userId: UserId): Flux<UserMission>
+    fun findByUserId(userId: String): Flux<UserMission>
 
     fun findByUserIdAndMissionId(
-        userId: UserId,
+        userId: String,
         missionId: MissionId,
     ): Mono<UserMission>
 

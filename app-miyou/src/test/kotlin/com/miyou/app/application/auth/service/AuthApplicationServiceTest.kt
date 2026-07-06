@@ -9,7 +9,6 @@ import com.miyou.app.domain.auth.model.RefreshToken
 import com.miyou.app.domain.auth.port.JwtIssuer
 import com.miyou.app.domain.auth.port.OAuthAccountRepository
 import com.miyou.app.domain.auth.port.RefreshTokenRepository
-import com.miyou.app.domain.dialogue.model.UserId
 import com.miyou.app.support.anyValue
 import com.miyou.app.support.eqValue
 import org.assertj.core.api.Assertions.assertThat
@@ -51,7 +50,7 @@ class AuthApplicationServiceTest {
     @DisplayName("loginOrRegister reuses the existing UserId for a known (provider, providerUserId)")
     fun loginOrRegister_existingAccount_reusesUserId() {
         val loginResult = OAuthLoginResult(Provider.GOOGLE, "google-sub-1", "a@b.com", "홍길동")
-        val existingUserId = UserId.of("existing-user-1")
+        val existingUserId = "existing-user-1"
         val existingAccount =
             OAuthAccount(
                 "acc-1",
@@ -111,7 +110,7 @@ class AuthApplicationServiceTest {
     @DisplayName("loginOrRegister recovers from a concurrent-registration race (DuplicateKeyException)")
     fun loginOrRegister_duplicateKeyRace_reQueriesWinningAccount() {
         val loginResult = OAuthLoginResult(Provider.NAVER, "naver-1", null, null)
-        val winningUserId = UserId.of("race-winner-user")
+        val winningUserId = "race-winner-user"
         val winningAccount =
             OAuthAccount("acc-2", Provider.NAVER, "naver-1", winningUserId, null, null, Instant.now())
 
@@ -133,7 +132,7 @@ class AuthApplicationServiceTest {
     @Test
     @DisplayName("refresh rotates the token: deletes the old one and issues a new pair")
     fun refresh_rotatesToken() {
-        val userId = UserId.of("refresh-user-1")
+        val userId = "refresh-user-1"
         val oldToken = RefreshToken("old-token-id", userId, Instant.now())
 
         `when`(refreshTokenRepository.findByTokenId("old-token-id")).thenReturn(Mono.just(oldToken))

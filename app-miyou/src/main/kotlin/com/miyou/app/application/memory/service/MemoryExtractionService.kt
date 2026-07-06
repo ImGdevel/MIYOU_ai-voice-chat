@@ -43,24 +43,24 @@ class MemoryExtractionService(
      * @param sessionId 대화 세션 ID
      * @return 추출 완료 (실패해도 무시)
      */
-    fun checkAndExtract(sessionId: ConversationSessionId): Mono<Void> =
+    fun checkAndExtract(sessionId: String): Mono<Void> =
         counterPort
             .get(sessionId)
             .filter(::isExtractionTurn)
             .flatMap { count ->
-                logger.info { "메모리 추출 트리거 sessionId=${sessionId.value}, count=$count" }
+                logger.info { "메모리 추출 트리거 sessionId=$sessionId, count=$count" }
                 extractionMetrics.recordExtractionTriggered()
                 performExtraction(sessionId)
             }.then()
 
-    private fun performExtraction(sessionId: ConversationSessionId): Mono<Void> =
+    private fun performExtraction(sessionId: String): Mono<Void> =
         loadRecentConversations(sessionId)
             .flatMap { conversations ->
                 buildExtractionContext(sessionId, conversations)
             }.flatMap { context -> extractAndSave(sessionId, context) }
 
     private fun extractAndSave(
-        sessionId: ConversationSessionId,
+        sessionId: String,
         context: MemoryExtractionContext,
     ): Mono<Void> =
         extractionPort
@@ -81,7 +81,7 @@ class MemoryExtractionService(
                 extractedList.forEach { extracted ->
                     extractionMetrics.recordExtractedImportance(extracted.importance.toDouble())
                     logger.info {
-                        "메모리 추출 근거 sessionId=${sessionId.value}, type=${extracted.type}, " +
+                        "메모리 추출 근거 sessionId=$sessionId, type=${extracted.type}, " +
                             "importance=${extracted.importance}, reasoning=${extracted.reasoning.replace("\n", "\\n")}"
                     }
                 }
@@ -126,13 +126,13 @@ class MemoryExtractionService(
 
     private fun isExtractionTurn(count: Long): Boolean = count > 0 && count % conversationThreshold == 0L
 
-    private fun loadRecentConversations(sessionId: ConversationSessionId): Mono<List<ConversationTurn>> =
+    private fun loadRecentConversations(sessionId: String): Mono<List<ConversationTurn>> =
         conversationRepository
-            .findRecent(sessionId, conversationThreshold)
+            .findRecent(ConversationSessionId.of(sessionId), conversationThreshold)
             .collectList()
 
     private fun buildExtractionContext(
-        sessionId: ConversationSessionId,
+        sessionId: String,
         conversations: List<ConversationTurn>,
     ): Mono<MemoryExtractionContext> {
         val combinedQuery = mergeQueries(conversations)
