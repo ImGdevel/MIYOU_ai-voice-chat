@@ -9,6 +9,7 @@ import com.miyou.app.domain.memory.model.MemoryType
 import com.miyou.app.domain.memory.port.EmbeddingPort
 import com.miyou.app.domain.memory.port.MemoryRetrievalPort
 import com.miyou.app.domain.memory.port.VectorMemoryPort
+import io.github.oshai.kotlinlogging.KotlinLogging
 import org.springframework.stereotype.Service
 import reactor.core.publisher.Mono
 import kotlin.math.max
@@ -25,8 +26,12 @@ class MemoryRetrievalService(
     private val ragMetrics: RagQualityMetricsPort,
     policy: MemoryRetrievalPolicy,
 ) : MemoryRetrievalPort {
+    private val logger = KotlinLogging.logger {}
     private val importanceBoost = policy.importanceBoost
     private val importanceThreshold = policy.importanceThreshold
+    private val associativeHopEnabled = policy.associativeHopEnabled
+    private val associativeHopTopK = policy.associativeHopTopK
+    private val associativeHopMinScore = policy.associativeHopMinScore
 
     /**
      * 관련 메모리 검색.
@@ -67,14 +72,57 @@ class MemoryRetrievalService(
         topK: Int,
     ): Mono<List<Memory>> {
         val types = listOf(MemoryType.EXPERIENTIAL, MemoryType.FACTUAL)
-        return vectorMemoryPort
-            .search(
-                sessionId,
-                queryEmbedding,
-                types,
-                importanceThreshold,
-                topK * CANDIDATE_MULTIPLIER,
-            ).collectList()
+        val primary =
+            vectorMemoryPort
+                .search(
+                    sessionId,
+                    queryEmbedding,
+                    types,
+                    importanceThreshold,
+                    topK * CANDIDATE_MULTIPLIER,
+                ).collectList()
+
+        if (!associativeHopEnabled) {
+            return primary
+        }
+        return primary.flatMap { candidates -> expandAssociatively(sessionId, types, candidates) }
+    }
+
+    /**
+     * 연상 기반 2차 검색. 1차 검색 결과 중 랭킹 스코어가 associativeHopMinScore 이상인
+     * 최상위 1개만 2차 쿼리로 재사용한다 - 약한 1차 매칭에서 연쇄되는 걸 막기 위함.
+     * 연상으로 끌려온 메모리도 우회 없이 이후 동일한 rankAndLimit을 거친다.
+     */
+    private fun expandAssociatively(
+        sessionId: ConversationSessionId,
+        types: List<MemoryType>,
+        candidates: List<Memory>,
+    ): Mono<List<Memory>> {
+        val trigger =
+            candidates
+                .sortedByDescending { it.calculateRankedScore(RECENCY_WEIGHT) }
+                .firstOrNull { it.calculateRankedScore(RECENCY_WEIGHT) >= associativeHopMinScore }
+                ?: return Mono.just(candidates)
+
+        return embeddingPort
+            .embed(trigger.content)
+            .flatMap { embedding ->
+                vectorMemoryPort
+                    .search(sessionId, embedding.vector, types, importanceThreshold, associativeHopTopK)
+                    .collectList()
+            }.map { associative -> mergeDedup(candidates, associative) }
+            .onErrorResume { error ->
+                logger.warn(error) { "연상 기반 2차 검색 실패 - 1차 검색 결과로 대체" }
+                Mono.just(candidates)
+            }
+    }
+
+    private fun mergeDedup(
+        primary: List<Memory>,
+        additional: List<Memory>,
+    ): List<Memory> {
+        val seenIds = primary.mapNotNull { it.id }.toSet()
+        return primary + additional.filter { it.id !in seenIds }
     }
 
     private fun rankAndLimit(

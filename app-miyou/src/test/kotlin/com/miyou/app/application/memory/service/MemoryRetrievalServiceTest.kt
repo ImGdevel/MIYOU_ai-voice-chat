@@ -20,6 +20,7 @@ import org.junit.jupiter.api.Test
 import org.junit.jupiter.api.extension.ExtendWith
 import org.mockito.Mock
 import org.mockito.Mockito.never
+import org.mockito.Mockito.times
 import org.mockito.Mockito.verify
 import org.mockito.Mockito.`when`
 import org.mockito.junit.jupiter.MockitoExtension
@@ -192,5 +193,127 @@ class MemoryRetrievalServiceTest {
             .verifyComplete()
 
         verify(vectorMemoryPort, never()).updateImportance(anyStringValue(), anyFloatValue(), anyValue(), anyIntValue())
+    }
+
+    @Test
+    @DisplayName("associativeHopEnabled면 1차 최상위 결과의 content로 2차 연상 검색을 수행해 결과를 병합한다")
+    fun retrieveMemories_associativeHopEnabled_expandsFromTopCandidate() {
+        val associativeService =
+            MemoryRetrievalService(
+                embeddingPort,
+                vectorMemoryPort,
+                ragQualityMetricsConfiguration,
+                MemoryRetrievalPolicy(
+                    0.05f,
+                    0.3f,
+                    associativeHopEnabled = true,
+                    associativeHopTopK = 2,
+                    associativeHopMinScore = 0.5f
+                ),
+            )
+        val sessionId = ConversationSessionFixture.createId()
+        val now = Instant.now()
+        val trigger =
+            Memory("m-ramen", sessionId, MemoryType.FACTUAL, "user ate ramen", 0.9f, now, now, 1)
+        val other =
+            Memory("m-other", sessionId, MemoryType.FACTUAL, "user likes tea", 0.4f, now, now, 1)
+        val associative =
+            Memory("m-friend", sessionId, MemoryType.EXPERIENTIAL, "user ate ramen with a friend", 0.5f, now, now, 1)
+        val types = listOf(MemoryType.EXPERIENTIAL, MemoryType.FACTUAL)
+
+        `when`(embeddingPort.embed("query")).thenReturn(Mono.just(MemoryEmbedding.of("query", listOf(0.1f, 0.2f))))
+        `when`(vectorMemoryPort.search(sessionId, listOf(0.1f, 0.2f), types, 0.3f, 6))
+            .thenReturn(Flux.just(trigger, other))
+        `when`(embeddingPort.embed("user ate ramen"))
+            .thenReturn(Mono.just(MemoryEmbedding.of("user ate ramen", listOf(0.9f, 0.9f))))
+        `when`(vectorMemoryPort.search(sessionId, listOf(0.9f, 0.9f), types, 0.3f, 2))
+            .thenReturn(Flux.just(associative))
+        `when`(vectorMemoryPort.updateImportance(anyStringValue(), anyFloatValue(), anyValue(), anyIntValue()))
+            .thenReturn(Mono.empty())
+
+        StepVerifier
+            .create(associativeService.retrieveMemories(sessionId, "query", 3))
+            .assertNext { result ->
+                assertThat(result.factualMemories.map(Memory::id)).containsExactlyInAnyOrder("m-ramen", "m-other")
+                assertThat(result.experientialMemories.map(Memory::id)).containsExactly("m-friend")
+            }.verifyComplete()
+
+        verify(vectorMemoryPort).search(sessionId, listOf(0.9f, 0.9f), types, 0.3f, 2)
+    }
+
+    @Test
+    @DisplayName("associativeHopEnabled여도 1차 최상위 점수가 임계값 미만이면 2차 검색을 하지 않는다")
+    fun retrieveMemories_associativeHopEnabled_skipsSecondSearchWhenTopScoreBelowThreshold() {
+        val associativeService =
+            MemoryRetrievalService(
+                embeddingPort,
+                vectorMemoryPort,
+                ragQualityMetricsConfiguration,
+                MemoryRetrievalPolicy(
+                    0.05f,
+                    0.3f,
+                    associativeHopEnabled = true,
+                    associativeHopTopK = 2,
+                    associativeHopMinScore = 0.5f
+                ),
+            )
+        val sessionId = ConversationSessionFixture.createId()
+        val now = Instant.now()
+        val weakCandidate =
+            Memory("m-weak", sessionId, MemoryType.FACTUAL, "user mentioned something once", 0.2f, now, now, 1)
+
+        `when`(embeddingPort.embed("query")).thenReturn(Mono.just(MemoryEmbedding.of("query", listOf(0.1f, 0.2f))))
+        `when`(
+            vectorMemoryPort.search(
+                sessionId,
+                listOf(0.1f, 0.2f),
+                listOf(MemoryType.EXPERIENTIAL, MemoryType.FACTUAL),
+                0.3f,
+                2
+            ),
+        ).thenReturn(Flux.just(weakCandidate))
+        `when`(vectorMemoryPort.updateImportance(anyStringValue(), anyFloatValue(), anyValue(), anyIntValue()))
+            .thenReturn(Mono.empty())
+
+        StepVerifier
+            .create(associativeService.retrieveMemories(sessionId, "query", 1))
+            .assertNext { result -> assertThat(result.factualMemories.map(Memory::id)).containsExactly("m-weak") }
+            .verifyComplete()
+
+        verify(embeddingPort, times(1)).embed(anyStringValue())
+        verify(vectorMemoryPort, times(1)).search(anyValue(), anyValue(), anyValue(), anyFloatValue(), anyIntValue())
+    }
+
+    @Test
+    @DisplayName("associativeHopEnabled여도 2차 검색이 실패하면 1차 검색 결과로 대체한다")
+    fun retrieveMemories_associativeHopEnabled_fallsBackToPrimaryOnSecondSearchFailure() {
+        val associativeService =
+            MemoryRetrievalService(
+                embeddingPort,
+                vectorMemoryPort,
+                ragQualityMetricsConfiguration,
+                MemoryRetrievalPolicy(
+                    0.05f,
+                    0.3f,
+                    associativeHopEnabled = true,
+                    associativeHopTopK = 2,
+                    associativeHopMinScore = 0.3f
+                ),
+            )
+        val sessionId = ConversationSessionFixture.createId()
+        val now = Instant.now()
+        val trigger = Memory("m-trigger", sessionId, MemoryType.FACTUAL, "user ate ramen", 0.9f, now, now, 1)
+        val types = listOf(MemoryType.EXPERIENTIAL, MemoryType.FACTUAL)
+
+        `when`(embeddingPort.embed("query")).thenReturn(Mono.just(MemoryEmbedding.of("query", listOf(0.1f, 0.2f))))
+        `when`(vectorMemoryPort.search(sessionId, listOf(0.1f, 0.2f), types, 0.3f, 2)).thenReturn(Flux.just(trigger))
+        `when`(embeddingPort.embed("user ate ramen")).thenReturn(Mono.error(RuntimeException("embedding API 타임아웃")))
+        `when`(vectorMemoryPort.updateImportance(anyStringValue(), anyFloatValue(), anyValue(), anyIntValue()))
+            .thenReturn(Mono.empty())
+
+        StepVerifier
+            .create(associativeService.retrieveMemories(sessionId, "query", 1))
+            .assertNext { result -> assertThat(result.factualMemories.map(Memory::id)).containsExactly("m-trigger") }
+            .verifyComplete()
     }
 }
