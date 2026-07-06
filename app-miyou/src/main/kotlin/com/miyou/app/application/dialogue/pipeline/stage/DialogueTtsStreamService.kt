@@ -98,7 +98,7 @@ class DialogueTtsStreamService(
         targetFormat: AudioFormat,
         personaId: PersonaId,
     ): Flux<ByteArray> {
-        val voice: Voice = voiceProvider.getVoiceForPersona(personaId)
+        val voice: Voice = voiceProvider.getVoiceForPersona(personaId.value)
         return sentences
             .publishOn(Schedulers.boundedElastic())
             .concatMap { sentence ->

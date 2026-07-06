@@ -213,7 +213,7 @@ class CreditApplicationService(
                     CreditTransaction.of(
                         userId,
                         CreditTransactionType.CHARGE,
-                        MissionReward(missionId, missionType),
+                        MissionReward(missionId.value, missionType),
                         amount,
                         credit.balance,
                         updated.balance,

@@ -7,7 +7,6 @@ import com.miyou.app.domain.credit.model.CreditTransactionType
 import com.miyou.app.domain.credit.model.MissionReward
 import com.miyou.app.domain.credit.model.PaymentCharge
 import com.miyou.app.domain.credit.model.SignupBonus
-import com.miyou.app.domain.mission.model.MissionId
 import com.miyou.app.fixture.ConversationSessionFixture
 import com.miyou.app.fixture.UserIdFixture
 import org.assertj.core.api.Assertions.assertThat
@@ -138,7 +137,7 @@ class CreditTransactionDocumentTest {
                 CreditTransaction.of(
                     UserIdFixture.create(),
                     CreditTransactionType.CHARGE,
-                    MissionReward(MissionId.of("mission-share"), "SHARE_SERVICE"),
+                    MissionReward("mission-share", "SHARE_SERVICE"),
                     500L,
                     2000L,
                     2500L,
@@ -152,7 +151,7 @@ class CreditTransactionDocumentTest {
             assertThat(doc.sourceData).containsEntry("missionType", "SHARE_SERVICE")
 
             val source = restored.source() as MissionReward
-            assertThat(source.missionId().value()).isEqualTo("mission-share")
+            assertThat(source.missionId()).isEqualTo("mission-share")
             assertThat(source.missionType()).isEqualTo("SHARE_SERVICE")
         }
     }

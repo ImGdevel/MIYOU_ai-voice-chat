@@ -1,8 +1,8 @@
 package com.miyou.app.infrastructure.memory.adapter
 
 import com.fasterxml.jackson.module.kotlin.jacksonObjectMapper
-import com.miyou.app.domain.dialogue.model.ConversationTurn
 import com.miyou.app.domain.dialogue.port.LlmPort
+import com.miyou.app.domain.memory.model.ConversationSnippet
 import com.miyou.app.domain.memory.model.Memory
 import com.miyou.app.domain.memory.model.MemoryEmotion
 import com.miyou.app.domain.memory.model.MemoryExtractionContext
@@ -46,15 +46,7 @@ class LlmMemoryExtractionAdapterTest {
         val context =
             MemoryExtractionContext.of(
                 sessionId,
-                listOf(
-                    ConversationTurn.withId(
-                        "turn-1",
-                        sessionIdObj,
-                        "I moved to Seoul",
-                        "That sounds exciting.",
-                        Instant.now(),
-                    ),
-                ),
+                listOf(ConversationSnippet("I moved to Seoul", "That sounds exciting.")),
                 emptyList(),
             )
         val llmResponse =
@@ -83,7 +75,7 @@ class LlmMemoryExtractionAdapterTest {
         val context =
             MemoryExtractionContext.of(
                 sessionId,
-                listOf(ConversationTurn.create(sessionIdObj, "Remember that I like tea")),
+                listOf(ConversationSnippet("Remember that I like tea", null)),
                 emptyList(),
             )
         val response =
@@ -110,7 +102,7 @@ class LlmMemoryExtractionAdapterTest {
         val context =
             MemoryExtractionContext.of(
                 sessionId,
-                listOf(ConversationTurn.create(sessionIdObj, "This is invalid")),
+                listOf(ConversationSnippet("This is invalid", null)),
                 emptyList(),
             )
 
@@ -138,7 +130,7 @@ class LlmMemoryExtractionAdapterTest {
         val context =
             MemoryExtractionContext.of(
                 sessionId,
-                listOf(ConversationTurn.create(sessionIdObj, "I also enjoy long walks")),
+                listOf(ConversationSnippet("I also enjoy long walks", null)),
                 listOf(existingMemory),
             )
         val response =
@@ -179,7 +171,7 @@ class LlmMemoryExtractionAdapterTest {
         val context =
             MemoryExtractionContext.of(
                 sessionId,
-                listOf(ConversationTurn.create(sessionIdObj, "이제 라면 안 먹어, 질려서")),
+                listOf(ConversationSnippet("이제 라면 안 먹어, 질려서", null)),
                 listOf(existingMemory),
             )
         val response =
@@ -201,7 +193,7 @@ class LlmMemoryExtractionAdapterTest {
         val context =
             MemoryExtractionContext.of(
                 sessionId,
-                listOf(ConversationTurn.create(sessionIdObj, "이제 라면 안 먹어, 질려서")),
+                listOf(ConversationSnippet("이제 라면 안 먹어, 질려서", null)),
                 emptyList(),
             )
         val response =
@@ -223,7 +215,7 @@ class LlmMemoryExtractionAdapterTest {
         val context =
             MemoryExtractionContext.of(
                 sessionId,
-                listOf(ConversationTurn.create(sessionIdObj, "어제 반려동물을 잃었어")),
+                listOf(ConversationSnippet("어제 반려동물을 잃었어", null)),
                 emptyList(),
             )
         val response =
@@ -245,7 +237,7 @@ class LlmMemoryExtractionAdapterTest {
         val context =
             MemoryExtractionContext.of(
                 sessionId,
-                listOf(ConversationTurn.create(sessionIdObj, "그냥 평범한 하루였어")),
+                listOf(ConversationSnippet("그냥 평범한 하루였어", null)),
                 emptyList(),
             )
         val response =

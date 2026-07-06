@@ -8,7 +8,6 @@ import com.miyou.app.domain.credit.model.CreditTransactionType
 import com.miyou.app.domain.credit.model.MissionReward
 import com.miyou.app.domain.credit.model.PaymentCharge
 import com.miyou.app.domain.credit.model.SignupBonus
-import com.miyou.app.domain.mission.model.MissionId
 import org.springframework.data.annotation.Id
 import org.springframework.data.mongodb.core.index.CompoundIndex
 import org.springframework.data.mongodb.core.index.CompoundIndexes
@@ -61,7 +60,7 @@ data class CreditTransactionDocument(
                 }
 
                 is MissionReward -> {
-                    data["missionId"] = source.missionId().value()
+                    data["missionId"] = source.missionId()
                     data["missionType"] = source.missionType()
                 }
 
@@ -96,7 +95,7 @@ data class CreditTransactionDocument(
 
                 "MISSION_REWARD" -> {
                     MissionReward(
-                        MissionId.of(sourceData["missionId"] ?: ""),
+                        sourceData["missionId"] ?: "",
                         sourceData["missionType"] ?: "",
                     )
                 }

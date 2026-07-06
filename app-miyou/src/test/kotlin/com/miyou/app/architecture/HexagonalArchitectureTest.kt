@@ -14,6 +14,9 @@ class HexagonalArchitectureTest {
             ClassFileImporter()
                 .withImportOption(ImportOption.Predefined.DO_NOT_INCLUDE_TESTS)
                 .importPackages("com.miyou.app")
+
+        private val BUSINESS_DOMAINS =
+            listOf("dialogue", "credit", "memory", "mission", "auth", "cost", "retrieval", "voice")
     }
 
     @Test
@@ -75,6 +78,42 @@ class HexagonalArchitectureTest {
             .should()
             .resideInAPackage("com.miyou.app.infrastructure..")
             .because("@Document entities must reside in infrastructure layer")
+            .check(importedClasses)
+    }
+
+    @Test
+    fun domainDialogueShouldNotDependOnOtherDomains() = domainIsolationRule("dialogue")
+
+    @Test
+    fun domainCreditShouldNotDependOnOtherDomains() = domainIsolationRule("credit")
+
+    @Test
+    fun domainMemoryShouldNotDependOnOtherDomains() = domainIsolationRule("memory")
+
+    @Test
+    fun domainMissionShouldNotDependOnOtherDomains() = domainIsolationRule("mission")
+
+    @Test
+    fun domainAuthShouldNotDependOnOtherDomains() = domainIsolationRule("auth")
+
+    @Test
+    fun domainCostShouldNotDependOnOtherDomains() = domainIsolationRule("cost")
+
+    @Test
+    fun domainRetrievalShouldNotDependOnOtherDomains() = domainIsolationRule("retrieval")
+
+    @Test
+    fun domainVoiceShouldNotDependOnOtherDomains() = domainIsolationRule("voice")
+
+    private fun domainIsolationRule(from: String) {
+        val others = BUSINESS_DOMAINS.filter { it != from }
+        noClasses()
+            .that()
+            .resideInAPackage("com.miyou.app.domain.$from..")
+            .should()
+            .dependOnClassesThat()
+            .resideInAnyPackage(*others.map { "com.miyou.app.domain.$it.." }.toTypedArray())
+            .because("Business domains must not depend on each other")
             .check(importedClasses)
     }
 }

@@ -1,6 +1,5 @@
 package com.miyou.app.infrastructure.dialogue.config
 
-import com.miyou.app.domain.dialogue.model.PersonaId
 import com.miyou.app.domain.voice.model.AudioFormat
 import com.miyou.app.domain.voice.model.Voice
 import com.miyou.app.domain.voice.model.VoiceSettings
@@ -18,12 +17,12 @@ class PersonaVoiceProvider(
 ) : VoiceSelectionPort {
     private val log = KotlinLogging.logger {}
 
-    override fun getVoiceForPersona(personaId: PersonaId): Voice {
-        if (personaId == PersonaId.DEFAULT) {
+    override fun getVoiceForPersona(personaId: String): Voice {
+        if (personaId.isBlank() || personaId == DEFAULT_PERSONA_KEY) {
             return defaultVoice
         }
 
-        val personaKey = personaId.value
+        val personaKey = personaId
         val personas = properties.personas
         val config: PersonaVoiceConfig? = personas[personaKey]
         if (config != null) {
@@ -56,5 +55,9 @@ class PersonaVoiceProvider(
             .style(VoiceStyle.fromString(config.style))
             .outputFormat(AudioFormat.fromString(properties.supertone.outputFormat))
             .build()
+    }
+
+    companion object {
+        private const val DEFAULT_PERSONA_KEY = "default"
     }
 }

@@ -4,6 +4,7 @@ import com.miyou.app.application.monitoring.port.MemoryExtractionMetricsPort
 import com.miyou.app.domain.dialogue.model.ConversationSessionId
 import com.miyou.app.domain.dialogue.model.ConversationTurn
 import com.miyou.app.domain.dialogue.port.ConversationRepository
+import com.miyou.app.domain.memory.model.ConversationSnippet
 import com.miyou.app.domain.memory.model.ExtractedMemory
 import com.miyou.app.domain.memory.model.Memory
 import com.miyou.app.domain.memory.model.MemoryExtractionContext
@@ -136,10 +137,11 @@ class MemoryExtractionService(
         conversations: List<ConversationTurn>,
     ): Mono<MemoryExtractionContext> {
         val combinedQuery = mergeQueries(conversations)
+        val snippets = conversations.map { turn -> ConversationSnippet(turn.query, turn.response) }
         return retrievalService
             .retrieveMemories(sessionId, combinedQuery, 10)
             .map { result ->
-                MemoryExtractionContext.of(sessionId, conversations, result.allMemories())
+                MemoryExtractionContext.of(sessionId, snippets, result.allMemories())
             }
     }
 
