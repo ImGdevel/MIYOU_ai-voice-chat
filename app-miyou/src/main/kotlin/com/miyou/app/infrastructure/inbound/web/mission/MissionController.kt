@@ -4,6 +4,7 @@ import com.miyou.app.application.mission.usecase.MissionCompletionUseCase
 import com.miyou.app.application.mission.usecase.MissionQueryUseCase
 import com.miyou.app.domain.auth.model.AuthenticatedUser
 import com.miyou.app.domain.mission.model.MissionId
+import com.miyou.app.infrastructure.inbound.web.common.UserIdResolver
 import com.miyou.app.infrastructure.inbound.web.mission.dto.MissionResponse
 import com.miyou.app.infrastructure.inbound.web.mission.dto.UserMissionResponse
 import org.springframework.http.HttpStatus
@@ -33,24 +34,11 @@ class MissionController(
     fun getUserMissions(
         @RequestParam(required = false) userId: String?,
         @AuthenticationPrincipal principal: AuthenticatedUser?,
-    ): Flux<UserMissionResponse> {
-        val resolvedUserId = principal?.userId ?: userId
-        if (resolvedUserId.isNullOrBlank()) {
-            return Flux.error(
-                org.springframework.web.server
-                    .ResponseStatusException(HttpStatus.BAD_REQUEST, "userId is required")
-            )
-        }
-        if (resolvedUserId.length > 128) {
-            return Flux.error(
-                org.springframework.web.server.ResponseStatusException(
-                    HttpStatus.BAD_REQUEST,
-                    "userId cannot exceed 128 characters"
-                )
-            )
-        }
-        return missionQueryUseCase.getUserMissions(resolvedUserId).map(UserMissionResponse::from)
-    }
+    ): Flux<UserMissionResponse> =
+        UserIdResolver
+            .resolve(principal, userId)
+            .flatMapMany(missionQueryUseCase::getUserMissions)
+            .map(UserMissionResponse::from)
 
     @PostMapping("/{missionId}/complete")
     @ResponseStatus(HttpStatus.OK)
@@ -58,26 +46,13 @@ class MissionController(
         @PathVariable missionId: String,
         @RequestParam(required = false) userId: String?,
         @AuthenticationPrincipal principal: AuthenticatedUser?,
-    ): Mono<UserMissionResponse> {
-        val resolvedUserId = principal?.userId ?: userId
-        if (resolvedUserId.isNullOrBlank()) {
-            return Mono.error(
-                org.springframework.web.server
-                    .ResponseStatusException(HttpStatus.BAD_REQUEST, "userId is required")
-            )
-        }
-        if (resolvedUserId.length > 128) {
-            return Mono.error(
-                org.springframework.web.server.ResponseStatusException(
-                    HttpStatus.BAD_REQUEST,
-                    "userId cannot exceed 128 characters"
+    ): Mono<UserMissionResponse> =
+        UserIdResolver
+            .resolve(principal, userId)
+            .flatMap { resolvedUserId ->
+                missionCompletionUseCase.completeMission(
+                    resolvedUserId,
+                    MissionId.of(missionId),
                 )
-            )
-        }
-        return missionCompletionUseCase
-            .completeMission(
-                resolvedUserId,
-                MissionId.of(missionId),
-            ).map(UserMissionResponse::from)
-    }
+            }.map(UserMissionResponse::from)
 }
