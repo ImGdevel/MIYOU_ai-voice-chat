@@ -265,7 +265,15 @@ class SpringAiVectorDbAdapter(
         val lastAccessedAt = payload["lastAccessedAt"]?.doubleValue?.let { Instant.ofEpochMilli(it.toLong()) }
         val accessCount = payload["accessCount"]?.doubleValue?.toInt()
         val archivedAt = payload[ARCHIVED_AT_KEY]?.doubleValue?.let { Instant.ofEpochMilli(it.toLong()) }
-        val emotion = payload["emotion"]?.stringValue?.let { runCatching { MemoryEmotion.valueOf(it) }.getOrNull() }
+        val emotion =
+            payload["emotion"]?.stringValue?.let {
+                try {
+                    MemoryEmotion.valueOf(it)
+                } catch (e: IllegalArgumentException) {
+                    log.warn { "Qdrant payload에서 알 수 없는 emotion 값 발견: $it" }
+                    null
+                }
+            }
 
         return Memory(
             id,

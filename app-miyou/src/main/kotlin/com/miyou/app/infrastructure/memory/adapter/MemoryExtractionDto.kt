@@ -30,7 +30,7 @@ data class MemoryExtractionDto(
     private fun parseEmotion(): MemoryEmotion? {
         if (emotion.isNullOrBlank()) return null
         return try {
-            MemoryEmotion.valueOf(emotion.uppercase())
+            MemoryEmotion.valueOf(emotion.trim().uppercase())
         } catch (e: IllegalArgumentException) {
             log.warn { "알 수 없는 emotion 값 무시: $emotion" }
             null
