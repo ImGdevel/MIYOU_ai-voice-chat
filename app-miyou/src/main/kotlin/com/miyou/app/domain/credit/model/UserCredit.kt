@@ -8,6 +8,8 @@ data class UserCredit(
     val version: Long,
 ) {
     init {
+        require(userId.isNotBlank()) { "userId cannot be blank" }
+        require(userId.length <= 128) { "userId cannot be longer than 128 characters" }
         require(balance >= 0) { "balance cannot be negative" }
     }
 

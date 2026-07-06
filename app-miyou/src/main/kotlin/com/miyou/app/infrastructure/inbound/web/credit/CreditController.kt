@@ -36,10 +36,13 @@ class CreditController(
         @RequestParam(required = false) userId: String?,
         @AuthenticationPrincipal principal: AuthenticatedUser?,
     ): Mono<UserCreditResponse> {
-        val resolvedUserId =
-            principal?.userId
-                ?: userId?.takeIf { it.isNotBlank() && it.length <= 128 }
-                ?: return Mono.error(ResponseStatusException(HttpStatus.BAD_REQUEST, "userId is required"))
+        val resolvedUserId = principal?.userId ?: userId
+        if (resolvedUserId.isNullOrBlank()) {
+            return Mono.error(ResponseStatusException(HttpStatus.BAD_REQUEST, "userId is required"))
+        }
+        if (resolvedUserId.length > 128) {
+            return Mono.error(ResponseStatusException(HttpStatus.BAD_REQUEST, "userId cannot exceed 128 characters"))
+        }
         return creditChargeUseCase
             .initializeIfAbsent(resolvedUserId)
             .then(creditQueryUseCase.getBalance(resolvedUserId))
@@ -53,10 +56,13 @@ class CreditController(
         @RequestParam(defaultValue = "20") size: Int,
         @AuthenticationPrincipal principal: AuthenticatedUser?,
     ): Flux<CreditTransactionResponse> {
-        val resolvedUserId =
-            principal?.userId
-                ?: userId?.takeIf { it.isNotBlank() && it.length <= 128 }
-                ?: return Flux.error(ResponseStatusException(HttpStatus.BAD_REQUEST, "userId is required"))
+        val resolvedUserId = principal?.userId ?: userId
+        if (resolvedUserId.isNullOrBlank()) {
+            return Flux.error(ResponseStatusException(HttpStatus.BAD_REQUEST, "userId is required"))
+        }
+        if (resolvedUserId.length > 128) {
+            return Flux.error(ResponseStatusException(HttpStatus.BAD_REQUEST, "userId cannot exceed 128 characters"))
+        }
         return creditQueryUseCase
             .getTransactions(
                 resolvedUserId,
@@ -70,10 +76,13 @@ class CreditController(
         @Valid @RequestBody request: ChargeByPaymentRequest,
         @AuthenticationPrincipal principal: AuthenticatedUser?,
     ): Mono<CreditTransactionResponse> {
-        val resolvedUserId =
-            principal?.userId
-                ?: request.userId?.takeIf { it.isNotBlank() && it.length <= 128 }
-                ?: return Mono.error(ResponseStatusException(HttpStatus.BAD_REQUEST, "userId is required"))
+        val resolvedUserId = principal?.userId ?: request.userId
+        if (resolvedUserId.isNullOrBlank()) {
+            return Mono.error(ResponseStatusException(HttpStatus.BAD_REQUEST, "userId is required"))
+        }
+        if (resolvedUserId.length > 128) {
+            return Mono.error(ResponseStatusException(HttpStatus.BAD_REQUEST, "userId cannot exceed 128 characters"))
+        }
         val gateway =
             paymentGatewayMap[request.pgProvider]
                 ?: return Mono.error(

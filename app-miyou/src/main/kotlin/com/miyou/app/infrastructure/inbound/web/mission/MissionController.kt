@@ -34,13 +34,21 @@ class MissionController(
         @RequestParam(required = false) userId: String?,
         @AuthenticationPrincipal principal: AuthenticatedUser?,
     ): Flux<UserMissionResponse> {
-        val resolvedUserId =
-            principal?.userId
-                ?: userId?.takeIf { it.isNotBlank() && it.length <= 128 }
-                ?: return Flux.error(
-                    org.springframework.web.server
-                        .ResponseStatusException(HttpStatus.BAD_REQUEST, "userId is required")
+        val resolvedUserId = principal?.userId ?: userId
+        if (resolvedUserId.isNullOrBlank()) {
+            return Flux.error(
+                org.springframework.web.server
+                    .ResponseStatusException(HttpStatus.BAD_REQUEST, "userId is required")
+            )
+        }
+        if (resolvedUserId.length > 128) {
+            return Flux.error(
+                org.springframework.web.server.ResponseStatusException(
+                    HttpStatus.BAD_REQUEST,
+                    "userId cannot exceed 128 characters"
                 )
+            )
+        }
         return missionQueryUseCase.getUserMissions(resolvedUserId).map(UserMissionResponse::from)
     }
 
@@ -51,13 +59,21 @@ class MissionController(
         @RequestParam(required = false) userId: String?,
         @AuthenticationPrincipal principal: AuthenticatedUser?,
     ): Mono<UserMissionResponse> {
-        val resolvedUserId =
-            principal?.userId
-                ?: userId?.takeIf { it.isNotBlank() && it.length <= 128 }
-                ?: return Mono.error(
-                    org.springframework.web.server
-                        .ResponseStatusException(HttpStatus.BAD_REQUEST, "userId is required")
+        val resolvedUserId = principal?.userId ?: userId
+        if (resolvedUserId.isNullOrBlank()) {
+            return Mono.error(
+                org.springframework.web.server
+                    .ResponseStatusException(HttpStatus.BAD_REQUEST, "userId is required")
+            )
+        }
+        if (resolvedUserId.length > 128) {
+            return Mono.error(
+                org.springframework.web.server.ResponseStatusException(
+                    HttpStatus.BAD_REQUEST,
+                    "userId cannot exceed 128 characters"
                 )
+            )
+        }
         return missionCompletionUseCase
             .completeMission(
                 resolvedUserId,

@@ -12,6 +12,7 @@ data class ConversationSession(
     init {
         require(personaId.value.isNotBlank()) { "personaId cannot be blank" }
         require(userId.isNotBlank()) { "userId cannot be blank" }
+        require(userId.length <= 128) { "userId cannot be longer than 128 characters" }
     }
 
     fun isActive(): Boolean = deletedAt == null
