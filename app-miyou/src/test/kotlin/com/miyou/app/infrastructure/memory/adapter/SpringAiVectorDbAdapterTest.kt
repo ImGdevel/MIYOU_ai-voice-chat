@@ -2,6 +2,7 @@ package com.miyou.app.infrastructure.memory.adapter
 
 import com.google.common.util.concurrent.Futures
 import com.miyou.app.domain.memory.model.Memory
+import com.miyou.app.domain.memory.model.MemoryEmotion
 import com.miyou.app.domain.memory.model.MemoryType
 import com.miyou.app.fixture.ConversationSessionFixture
 import com.miyou.app.infrastructure.dialogue.config.properties.RagDialogueProperties
@@ -63,6 +64,7 @@ class SpringAiVectorDbAdapterTest {
                 createdAt = Instant.parse("2025-01-01T00:00:00Z"),
                 lastAccessedAt = Instant.parse("2025-01-02T00:00:00Z"),
                 accessCount = 5,
+                emotion = MemoryEmotion.POSITIVE,
             )
 
         @Suppress("UNCHECKED_CAST")
@@ -79,6 +81,7 @@ class SpringAiVectorDbAdapterTest {
         assertThat(metadata["type"]).isEqualTo("EXPERIENTIAL")
         assertThat(metadata["importance"]).isEqualTo(0.9f)
         assertThat(metadata["accessCount"]).isEqualTo(5)
+        assertThat(metadata["emotion"]).isEqualTo("POSITIVE")
     }
 
     @Test
@@ -130,6 +133,54 @@ class SpringAiVectorDbAdapterTest {
                 assertThat(result.content).isEqualTo("test content")
                 assertThat(result.type).isEqualTo(MemoryType.EXPERIENTIAL)
             }.verifyComplete()
+    }
+
+    @Test
+    @DisplayName("payload의 emotion 문자열을 MemoryEmotion으로 역직렬화한다")
+    fun search_mapsEmotionFieldFromPayload() {
+        val sessionId = ConversationSessionFixture.createId()
+        val point =
+            ScoredPoint
+                .newBuilder()
+                .setId(
+                    Points.PointId
+                        .newBuilder()
+                        .setUuid("doc-2")
+                        .build()
+                ).putPayload(
+                    "doc_content",
+                    JsonWithInt.Value
+                        .newBuilder()
+                        .setStringValue("shocking content")
+                        .build()
+                ).putPayload(
+                    "type",
+                    JsonWithInt.Value
+                        .newBuilder()
+                        .setStringValue("EXPERIENTIAL")
+                        .build()
+                ).putPayload(
+                    "importance",
+                    JsonWithInt.Value
+                        .newBuilder()
+                        .setDoubleValue(0.4)
+                        .build()
+                ).putPayload(
+                    "emotion",
+                    JsonWithInt.Value
+                        .newBuilder()
+                        .setStringValue("SHOCKING")
+                        .build()
+                ).build()
+
+        `when`(qdrantClient.searchAsync(any(SearchPoints::class.java)))
+            .thenReturn(Futures.immediateFuture(listOf(point)))
+
+        StepVerifier
+            .create(
+                vectorDbAdapter.search(sessionId, listOf(0.1f, 0.2f), listOf(MemoryType.EXPERIENTIAL), 0.5f, 5),
+            ).assertNext { result -> assertThat(result.emotion).isEqualTo(MemoryEmotion.SHOCKING) }
+            .verifyComplete()
     }
 
     @Test

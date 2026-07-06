@@ -14,6 +14,7 @@ class MemoryTest {
         importance: Float,
         lastAccessedAt: Instant,
         archivedAt: Instant? = null,
+        emotion: MemoryEmotion? = null,
     ): Memory =
         Memory(
             id = "mem-1",
@@ -25,6 +26,7 @@ class MemoryTest {
             lastAccessedAt = lastAccessedAt,
             accessCount = 1,
             archivedAt = archivedAt,
+            emotion = emotion,
         )
 
     @Test
@@ -193,5 +195,33 @@ class MemoryTest {
             )
 
         assertThat(recent.calculateRankedScore(0.1f)).isGreaterThan(old.calculateRankedScore(0.1f))
+    }
+
+    @Test
+    @DisplayName("emotion이 SHOCKING이면 importance가 낮아도 감쇠하지 않는다")
+    fun decayImportance_exemptsShockingEmotionRegardlessOfImportance() {
+        val now = Instant.now()
+        val memory = memoryWith(0.2f, now.minus(200, ChronoUnit.DAYS), emotion = MemoryEmotion.SHOCKING)
+
+        val decayed =
+            memory.decayImportance(
+                now,
+                decayRateHigh = 0.05f,
+                decayRateLow = 0.1f,
+                decayExemptThreshold = 0.9f
+            )
+
+        assertThat(decayed.importance).isEqualTo(0.2f)
+    }
+
+    @Test
+    @DisplayName("emotion이 SHOCKING이면 오래 미접근해도 아카이브 대상이 아니다")
+    fun shouldArchive_falseWhenShockingRegardlessOfIdleTime() {
+        val now = Instant.now()
+        val memory = memoryWith(0.05f, now.minus(200, ChronoUnit.DAYS), emotion = MemoryEmotion.SHOCKING)
+
+        val result = memory.shouldArchive(now, archiveImportanceThreshold = 0.1f, archiveIdleDays = 90)
+
+        assertThat(result).isFalse()
     }
 }

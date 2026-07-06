@@ -9,11 +9,12 @@ data class ExtractedMemory(
     val importance: Float,
     val reasoning: String,
     val supersedesMemoryId: String? = null,
+    val emotion: MemoryEmotion? = null,
 ) {
     init {
         require(content.isNotBlank()) { "content cannot be null or blank" }
         require(importance in 0.0f..1.0f) { "importance must be between 0.0 and 1.0" }
     }
 
-    fun toMemory(): Memory = Memory.create(sessionId, type, content, importance)
+    fun toMemory(): Memory = Memory.create(sessionId, type, content, importance, emotion)
 }

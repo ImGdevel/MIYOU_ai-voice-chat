@@ -58,6 +58,11 @@ class LlmMemoryExtractionAdapter(
           that memory's id (shown in "Existing Memories" below) and still write the new
           content normally as a fresh memory. Only use this for genuine contradictions,
           not minor updates. Omit the field (or use null) when there is no contradiction.
+        - Set "emotion" (one of NEUTRAL/POSITIVE/NEGATIVE/SHOCKING): how emotionally
+          charged the memory is, INDEPENDENT of importance. SHOCKING = traumatic or
+          deeply surprising events that should never be forgotten even if rarely
+          revisited. Most everyday facts are NEUTRAL - reserve POSITIVE/NEGATIVE/SHOCKING
+          for genuinely emotional content.
 
         Output ONLY valid JSON array:
         [
@@ -66,7 +71,8 @@ class LlmMemoryExtractionAdapter(
             "content": "clear, concise memory statement",
             "importance": 0.8,
             "reasoning": "why this matters",
-            "supersedesMemoryId": null
+            "supersedesMemoryId": null,
+            "emotion": "NEUTRAL"
         }
         ]
 

@@ -54,12 +54,15 @@ class MemoryExtractionConfidenceBenchmark {
         // 매겨지는지(정서적 사건 > 선호도 > 잡담)가 이 벤치마크의 관심사.
         // "주어 생략 발화"는 한국어 특성상 주어 없이 말하는 문장을 넣어 - 추출 시스템
         // 프롬프트의 "사용자"/"AI" 명시 주어 규칙(Issue #76)이 실제로 지켜지는지 확인.
+        // "충격적 사건"은 emotion=SHOCKING/NEGATIVE로 태깅되는지(Issue #78 - importance와
+        // 독립적으로 정서적 현저성을 판단하는지) 확인하는 시나리오.
         val scenarios =
             listOf(
                 "생일/정서적 사건" to "내일이 내 생일이야! 친구들 불러서 집에서 파티할 거야, 진짜 기대돼",
                 "일반 선호도" to "나는 매운 음식을 잘 못 먹어서 웬만하면 순한 맛으로 시켜",
                 "일시적 잡담" to "어제 저녁에 비가 꽤 많이 왔었어",
                 "주어 생략 발화" to "노래 부르는 거 진짜 좋아해, 맨날 부르고 다녀",
+                "충격적 사건" to "어제 키우던 강아지가 갑자기 무지개 다리를 건넜어, 너무 슬프고 아직도 믿기지 않아",
             )
 
         val results =
@@ -87,7 +90,7 @@ class MemoryExtractionConfidenceBenchmark {
                     }
                     extracted.forEach { memory: ExtractedMemory ->
                         appendLine(
-                            "  type=${memory.type} importance=${memory.importance} " +
+                            "  type=${memory.type} importance=${memory.importance} emotion=${memory.emotion} " +
                                 "content=\"${memory.content}\" reasoning=\"${memory.reasoning}\"",
                         )
                     }
@@ -95,6 +98,8 @@ class MemoryExtractionConfidenceBenchmark {
                 appendLine("reasoning 채움 비율: ${allExtracted.count { it.reasoning.isNotBlank() }}/${allExtracted.size}")
                 val subjectCompliant = allExtracted.count { it.hasExplicitSubject() }
                 appendLine("주어 명시 비율(사용자/AI로 시작): $subjectCompliant/${allExtracted.size}")
+                val emotionTagged = allExtracted.count { it.emotion != null }
+                appendLine("emotion 태깅 비율: $emotionTagged/${allExtracted.size}")
                 appendLine("=======================================")
             },
         )
@@ -102,6 +107,7 @@ class MemoryExtractionConfidenceBenchmark {
         assertThat(allExtracted).isNotEmpty()
         assertThat(allExtracted).allMatch { it.reasoning.isNotBlank() }
         assertThat(allExtracted.count { it.hasExplicitSubject() }).isGreaterThan(0)
+        assertThat(allExtracted.count { it.emotion != null }).isGreaterThan(0)
     }
 
     private fun ExtractedMemory.hasExplicitSubject(): Boolean = content.startsWith("사용자") || content.startsWith("AI")

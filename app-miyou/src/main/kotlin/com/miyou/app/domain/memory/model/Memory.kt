@@ -15,6 +15,7 @@ data class Memory(
     val lastAccessedAt: Instant?,
     val accessCount: Int?,
     val archivedAt: Instant? = null,
+    val emotion: MemoryEmotion? = null,
 ) {
     init {
         require(content.isNotBlank()) { "content cannot be null or blank" }
@@ -51,7 +52,8 @@ data class Memory(
 
     /**
      * 저장된 importance를 실제로 깎는다 (calculateRankedScore와 달리 랭킹용 계산이 아니라 저장값 자체를 갱신).
-     * importance >= decayExemptThreshold(생일/트라우마급 핵심 기억)는 감쇠 면제.
+     * importance >= decayExemptThreshold(생일 등 핵심 기억) 또는 emotion == SHOCKING
+     * (트라우마급 사건)은 감쇠 면제.
      */
     fun decayImportance(
         now: Instant,
@@ -60,7 +62,7 @@ data class Memory(
         decayExemptThreshold: Float,
     ): Memory {
         val current = importance ?: return this
-        if (current >= decayExemptThreshold) return this
+        if (current >= decayExemptThreshold || emotion == MemoryEmotion.SHOCKING) return this
 
         val lastAccess = lastAccessedAt ?: createdAt
         val hoursSinceAccess = maxOf(0.0, (now.epochSecond - lastAccess.epochSecond) / 3600.0)
@@ -69,13 +71,17 @@ data class Memory(
         return copy(importance = decayed.coerceIn(0.0f, 1.0f))
     }
 
-    /** 소프트 아카이브 대상 여부. 이미 아카이브된 메모리는 대상에서 제외한다. */
+    /**
+     * 소프트 아카이브 대상 여부. 이미 아카이브된 메모리는 대상에서 제외한다.
+     * emotion == SHOCKING이면 미접근 기간과 무관하게 아카이브하지 않는다 - "자주 안
+     * 물어봐도 잊으면 안 되는" 기억이 단지 오래 방치됐다는 이유로 정리되면 안 되기 때문.
+     */
     fun shouldArchive(
         now: Instant,
         archiveImportanceThreshold: Float,
         archiveIdleDays: Long,
     ): Boolean {
-        if (archivedAt != null) return false
+        if (archivedAt != null || emotion == MemoryEmotion.SHOCKING) return false
         val current = importance ?: return false
         val lastAccess = lastAccessedAt ?: createdAt
         val idleDays = maxOf(0L, (now.epochSecond - lastAccess.epochSecond) / SECONDS_PER_DAY)
@@ -93,9 +99,10 @@ data class Memory(
             type: MemoryType,
             content: String,
             importance: Float,
+            emotion: MemoryEmotion? = null,
         ): Memory {
             val now = Instant.now()
-            return Memory(null, sessionId, type, content, importance, now, now, 0)
+            return Memory(null, sessionId, type, content, importance, now, now, 0, emotion = emotion)
         }
     }
 }
