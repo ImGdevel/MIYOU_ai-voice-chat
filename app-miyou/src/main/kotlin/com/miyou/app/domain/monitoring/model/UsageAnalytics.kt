@@ -1,6 +1,5 @@
 package com.miyou.app.domain.monitoring.model
 
-import com.miyou.app.domain.cost.model.CostInfo
 import java.time.Instant
 
 /**
@@ -15,7 +14,6 @@ data class UsageAnalytics(
     val retrievalMetrics: RetrievalMetrics?,
     val ttsMetrics: TtsMetrics?,
     val responseMetrics: ResponseMetrics?,
-    val costInfo: CostInfo?,
 ) {
     /**
      * 사용자 입력 관련 지표입니다.
@@ -75,7 +73,6 @@ data class UsageAnalytics(
         private var retrievalMetrics: RetrievalMetrics? = null
         private var ttsMetrics: TtsMetrics? = null
         private var responseMetrics: ResponseMetrics? = null
-        private var costInfo: CostInfo? = null
 
         fun pipelineId(pipelineId: String?): Builder = apply { this.pipelineId = pipelineId }
 
@@ -98,8 +95,6 @@ data class UsageAnalytics(
         fun responseMetrics(responseMetrics: ResponseMetrics?): Builder =
             apply { this.responseMetrics = responseMetrics }
 
-        fun costInfo(costInfo: CostInfo?): Builder = apply { this.costInfo = costInfo }
-
         fun build(): UsageAnalytics =
             UsageAnalytics(
                 pipelineId = pipelineId.orEmpty(),
@@ -110,7 +105,6 @@ data class UsageAnalytics(
                 retrievalMetrics = retrievalMetrics,
                 ttsMetrics = ttsMetrics,
                 responseMetrics = responseMetrics,
-                costInfo = costInfo,
             )
     }
 

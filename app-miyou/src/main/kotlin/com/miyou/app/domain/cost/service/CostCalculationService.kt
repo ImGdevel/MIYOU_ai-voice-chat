@@ -2,41 +2,37 @@ package com.miyou.app.domain.cost.service
 
 import com.miyou.app.domain.cost.model.CostInfo
 import com.miyou.app.domain.cost.model.ModelPricing
-import com.miyou.app.domain.monitoring.model.UsageAnalytics
+import com.miyou.app.domain.cost.model.UsageMetricsInput
 
 class CostCalculationService {
     companion object {
         @JvmStatic
-        fun calculateCost(analytics: UsageAnalytics?): CostInfo {
-            if (analytics == null) {
+        fun calculateCost(input: UsageMetricsInput?): CostInfo {
+            if (input == null) {
                 return CostInfo.zero()
             }
 
-            val llmCredits = calculateLlmCredits(analytics)
-            val ttsCredits = calculateTtsCredits(analytics)
+            val llmCredits = calculateLlmCredits(input)
+            val ttsCredits = calculateTtsCredits(input)
 
             return CostInfo.of(llmCredits, ttsCredits)
         }
 
-        private fun calculateLlmCredits(analytics: UsageAnalytics): Long {
-            val llmUsage = analytics.llmUsage ?: return 0L
-            val model = llmUsage.model
+        private fun calculateLlmCredits(input: UsageMetricsInput): Long {
+            val model = input.model.orEmpty()
 
             val promptTokens =
-                llmUsage.promptTokens.takeIf { it != null }
-                    ?: estimatePromptTokens(analytics)
-            val completionTokens = llmUsage.completionTokens ?: llmUsage.totalTokens
+                input.promptTokens.takeIf { it != null }
+                    ?: estimatePromptTokens(input)
+            val completionTokens = input.completionTokens ?: input.totalTokens
 
             return ModelPricing.calculateLlmCredits(model, promptTokens, completionTokens)
         }
 
-        private fun estimatePromptTokens(analytics: UsageAnalytics): Int {
-            val userRequest = analytics.userRequest ?: return 0
-
-            val inputLength = userRequest.inputLength
-            val retrievalMetrics = analytics.retrievalMetrics
-            val memoryCount = retrievalMetrics?.memoryCount ?: 0
-            val documentCount = retrievalMetrics?.documentCount ?: 0
+        private fun estimatePromptTokens(input: UsageMetricsInput): Int {
+            val inputLength = input.inputLength
+            val memoryCount = input.memoryCount
+            val documentCount = input.documentCount
 
             val basePromptTokens = 300
             val inputTokens = inputLength / 3
@@ -45,9 +41,8 @@ class CostCalculationService {
             return basePromptTokens + inputTokens + contextTokens
         }
 
-        private fun calculateTtsCredits(analytics: UsageAnalytics): Long {
-            val ttsMetrics = analytics.ttsMetrics ?: return 0L
-            val sentenceCount = ttsMetrics.sentenceCount
+        private fun calculateTtsCredits(input: UsageMetricsInput): Long {
+            val sentenceCount = input.sentenceCount
             val estimatedAudioLength = estimateAudioLength(sentenceCount)
 
             return ModelPricing.calculateTtsCredits(estimatedAudioLength)
