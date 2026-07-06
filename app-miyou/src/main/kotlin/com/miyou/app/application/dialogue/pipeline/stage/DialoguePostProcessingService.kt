@@ -88,7 +88,7 @@ class DialoguePostProcessingService(
         inputsMono
             .flatMap { inputs ->
                 val session = inputs.session
-                val sessionId = session.sessionId
+                val sessionId = session.sessionId.value
                 responseMono
                     .flatMap { response ->
                         conversationMetrics.recordQueryLength(inputs.currentTurn.query.length)

@@ -1,14 +1,14 @@
 package com.miyou.app.domain.dialogue.port
 
+import com.miyou.app.common.model.AudioFormat
 import com.miyou.app.domain.dialogue.model.ConversationSession
-import com.miyou.app.domain.voice.model.AudioFormat
 import reactor.core.publisher.Flux
 
 interface DialoguePipelineUseCase {
     fun executeAudioStreaming(
         session: ConversationSession,
         text: String,
-        format: AudioFormat?,
+        format: AudioFormat = AudioFormat.WAV,
     ): Flux<ByteArray>
 
     fun executeTextOnly(

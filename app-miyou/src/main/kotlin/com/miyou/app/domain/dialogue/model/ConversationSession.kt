@@ -5,13 +5,14 @@ import java.time.Instant
 data class ConversationSession(
     val sessionId: ConversationSessionId,
     val personaId: PersonaId = PersonaId.defaultPersona(),
-    val userId: UserId,
+    val userId: String,
     val createdAt: Instant = Instant.now(),
     val deletedAt: Instant? = null,
 ) {
     init {
         require(personaId.value.isNotBlank()) { "personaId cannot be blank" }
-        require(userId.value.isNotBlank()) { "userId cannot be blank" }
+        require(userId.isNotBlank()) { "userId cannot be blank" }
+        require(userId.length <= 128) { "userId cannot be longer than 128 characters" }
     }
 
     fun isActive(): Boolean = deletedAt == null
@@ -22,7 +23,7 @@ data class ConversationSession(
         @JvmStatic
         fun create(
             personaId: PersonaId,
-            userId: UserId,
+            userId: String,
         ): ConversationSession =
             ConversationSession(
                 sessionId = ConversationSessionId.generate(),
@@ -35,7 +36,7 @@ data class ConversationSession(
 
     fun personaId(): PersonaId = personaId
 
-    fun userId(): UserId = userId
+    fun userId(): String = userId
 
     fun createdAt(): java.time.Instant = createdAt
 

@@ -29,7 +29,7 @@ class GlobalExceptionHandler {
     @ExceptionHandler(InsufficientCreditException::class)
     fun handleInsufficientCredit(ex: InsufficientCreditException): ResponseEntity<ErrorResponse> {
         logger.warn {
-            "Insufficient credit - userId=${ex.userId.value}, current=${ex.currentBalance}, required=${ex.requiredAmount}"
+            "Insufficient credit - userId=${ex.userId}, current=${ex.currentBalance}, required=${ex.requiredAmount}"
         }
         val errorResponse =
             ErrorResponse(

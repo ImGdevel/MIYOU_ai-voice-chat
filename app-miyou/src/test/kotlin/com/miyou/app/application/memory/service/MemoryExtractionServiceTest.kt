@@ -75,7 +75,7 @@ class MemoryExtractionServiceTest {
     @Test
     @DisplayName("임계값 미달 턴이면 추출을 트리거하지 않는다")
     fun checkAndExtract_belowThreshold_skipsExtraction() {
-        val sessionId = ConversationSessionFixture.createId()
+        val sessionId = ConversationSessionFixture.createId().value
         `when`(counterPort.get(sessionId)).thenReturn(Mono.just(3L))
 
         StepVerifier.create(service.checkAndExtract(sessionId)).verifyComplete()
@@ -87,8 +87,9 @@ class MemoryExtractionServiceTest {
     @Test
     @DisplayName("임계값 도달 턴이면 reasoning이 있어도 Memory에는 content/importance만 저장된다")
     fun checkAndExtract_atThreshold_savesExtractedMemoryWithoutReasoning() {
-        val sessionId = ConversationSessionFixture.createId()
-        val turn = ConversationTurn.create(sessionId, "나는 커피를 좋아해")
+        val sessionIdObj = ConversationSessionFixture.createId()
+        val sessionId = sessionIdObj.value
+        val turn = ConversationTurn.create(sessionIdObj, "나는 커피를 좋아해")
         val extracted =
             ExtractedMemory(
                 sessionId,
@@ -99,7 +100,7 @@ class MemoryExtractionServiceTest {
             )
 
         `when`(counterPort.get(sessionId)).thenReturn(Mono.just(5L))
-        `when`(conversationRepository.findRecent(sessionId, CONVERSATION_THRESHOLD))
+        `when`(conversationRepository.findRecent(sessionIdObj, CONVERSATION_THRESHOLD))
             .thenReturn(Flux.just(turn))
         `when`(retrievalService.retrieveMemories(sessionId, turn.query, 10))
             .thenReturn(Mono.just(MemoryRetrievalResult.empty()))
@@ -128,8 +129,9 @@ class MemoryExtractionServiceTest {
     @Test
     @DisplayName("supersedesMemoryId가 컨텍스트의 기존 메모리를 가리키면 즉시 소프트 아카이브한다")
     fun checkAndExtract_withSupersedesMemoryId_archivesExistingMemory() {
-        val sessionId = ConversationSessionFixture.createId()
-        val turn = ConversationTurn.create(sessionId, "이제 라면 안 먹어, 질려서")
+        val sessionIdObj = ConversationSessionFixture.createId()
+        val sessionId = sessionIdObj.value
+        val turn = ConversationTurn.create(sessionIdObj, "이제 라면 안 먹어, 질려서")
         val existingMemory =
             Memory(
                 id = "mem-1",
@@ -152,7 +154,7 @@ class MemoryExtractionServiceTest {
             )
 
         `when`(counterPort.get(sessionId)).thenReturn(Mono.just(5L))
-        `when`(conversationRepository.findRecent(sessionId, CONVERSATION_THRESHOLD))
+        `when`(conversationRepository.findRecent(sessionIdObj, CONVERSATION_THRESHOLD))
             .thenReturn(Flux.just(turn))
         `when`(retrievalService.retrieveMemories(sessionId, turn.query, 10))
             .thenReturn(Mono.just(MemoryRetrievalResult.of(emptyList(), listOf(existingMemory))))

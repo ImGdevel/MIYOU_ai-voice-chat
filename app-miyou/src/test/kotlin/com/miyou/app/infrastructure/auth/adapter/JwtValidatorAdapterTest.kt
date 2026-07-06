@@ -1,6 +1,5 @@
 package com.miyou.app.infrastructure.auth.adapter
 
-import com.miyou.app.domain.dialogue.model.UserId
 import com.miyou.app.infrastructure.auth.config.JwtConfig
 import com.miyou.app.infrastructure.auth.config.JwtProperties
 import org.assertj.core.api.Assertions.assertThat
@@ -22,7 +21,7 @@ class JwtValidatorAdapterTest {
     @Test
     @DisplayName("round-trip: a freshly issued token validates back to the same userId")
     fun validate_roundTrip_returnsIssuedUserId() {
-        val userId = UserId.of("validator-round-trip-user")
+        val userId = "validator-round-trip-user"
         val issued = issuer.issueAccessToken(userId)
 
         StepVerifier
@@ -47,7 +46,7 @@ class JwtValidatorAdapterTest {
                 issuer = "miyou-app-test"
             }
         val otherIssuer = JwtIssuerAdapter(JwtConfig(otherProperties).jwtEncoder(), otherProperties)
-        val tokenFromOtherSecret = otherIssuer.issueAccessToken(UserId.of("wrong-secret-user")).token
+        val tokenFromOtherSecret = otherIssuer.issueAccessToken("wrong-secret-user").token
 
         StepVerifier.create(validator.validate(tokenFromOtherSecret)).verifyComplete()
     }

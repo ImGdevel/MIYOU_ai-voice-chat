@@ -1,6 +1,5 @@
 package com.miyou.app.domain.memory.port
 
-import com.miyou.app.domain.dialogue.model.ConversationSessionId
 import com.miyou.app.domain.memory.model.Memory
 import com.miyou.app.domain.memory.model.MemoryType
 import reactor.core.publisher.Flux
@@ -14,7 +13,7 @@ interface VectorMemoryPort {
     ): Mono<Memory>
 
     fun search(
-        sessionId: ConversationSessionId,
+        sessionId: String,
         queryEmbedding: List<Float>,
         types: List<MemoryType>,
         importanceThreshold: Float,

@@ -75,14 +75,14 @@ class DialoguePostProcessingServiceTest {
 
         `when`(pipelineTracer.tracePersistence<ConversationTurn>(anyValue()))
             .thenAnswer { Mono.just(turn.withResponse("answer one answer two")) }
-        `when`(conversationCounterPort.increment(sessionId)).thenReturn(Mono.just(1L))
+        `when`(conversationCounterPort.increment(sessionId.value)).thenReturn(Mono.just(1L))
 
         StepVerifier
             .create(service.persistAndExtract(Mono.just(inputs), Flux.just("answer one", "answer two")))
             .verifyComplete()
 
         verify(pipelineTracer).tracePersistence<ConversationTurn>(anyValue())
-        verify(conversationCounterPort).increment(sessionId)
+        verify(conversationCounterPort).increment(sessionId.value)
     }
 
     @Test
@@ -95,13 +95,13 @@ class DialoguePostProcessingServiceTest {
 
         `when`(pipelineTracer.tracePersistence<ConversationTurn>(anyValue()))
             .thenAnswer { Mono.just(turn.withResponse("answer")) }
-        `when`(conversationCounterPort.increment(sessionId)).thenReturn(Mono.just(3L))
+        `when`(conversationCounterPort.increment(sessionId.value)).thenReturn(Mono.just(3L))
 
         StepVerifier
             .create(service.persistAndExtract(Mono.just(inputs), Flux.just("answer")))
             .verifyComplete()
 
-        verify(conversationCounterPort).increment(sessionId)
+        verify(conversationCounterPort).increment(sessionId.value)
     }
 
     @Test
@@ -114,14 +114,14 @@ class DialoguePostProcessingServiceTest {
 
         `when`(pipelineTracer.tracePersistence<ConversationTurn>(anyValue()))
             .thenAnswer { Mono.just(turn.withResponse("answer")) }
-        `when`(conversationCounterPort.increment(sessionId)).thenReturn(Mono.just(5L))
-        `when`(memoryExtractionService.checkAndExtract(sessionId)).thenReturn(Mono.empty())
+        `when`(conversationCounterPort.increment(sessionId.value)).thenReturn(Mono.just(5L))
+        `when`(memoryExtractionService.checkAndExtract(sessionId.value)).thenReturn(Mono.empty())
 
         StepVerifier
             .create(service.persistAndExtract(Mono.just(inputs), Flux.just("answer")))
             .verifyComplete()
 
-        verify(memoryExtractionService).checkAndExtract(sessionId)
+        verify(memoryExtractionService).checkAndExtract(sessionId.value)
     }
 
     @Test
@@ -134,7 +134,7 @@ class DialoguePostProcessingServiceTest {
 
         `when`(pipelineTracer.tracePersistence<ConversationTurn>(anyValue()))
             .thenAnswer { Mono.just(turn.withResponse("answer")) }
-        `when`(conversationCounterPort.increment(sessionId)).thenReturn(Mono.just(3L))
+        `when`(conversationCounterPort.increment(sessionId.value)).thenReturn(Mono.just(3L))
 
         StepVerifier
             .create(service.persistAndExtract(Mono.just(inputs), Flux.just("answer")))

@@ -1,13 +1,13 @@
 package com.miyou.app.domain.dialogue.port
 
 import com.miyou.app.domain.dialogue.model.ConversationContext
-import com.miyou.app.domain.retrieval.model.RetrievalContext
+import com.miyou.app.domain.dialogue.model.PromptRetrievalInput
 
 interface PromptTemplatePort {
-    fun buildPrompt(context: RetrievalContext): String
+    fun buildPrompt(input: PromptRetrievalInput): String
 
     fun buildPromptWithConversation(
-        context: RetrievalContext,
+        input: PromptRetrievalInput,
         conversationContext: ConversationContext,
     ): String
 

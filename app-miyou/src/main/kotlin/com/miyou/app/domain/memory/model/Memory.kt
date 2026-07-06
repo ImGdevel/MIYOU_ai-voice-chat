@@ -1,13 +1,12 @@
 package com.miyou.app.domain.memory.model
 
-import com.miyou.app.domain.dialogue.model.ConversationSessionId
 import java.time.Instant
 import kotlin.math.exp
 import kotlin.math.min
 
 data class Memory(
     val id: String?,
-    val sessionId: ConversationSessionId,
+    val sessionId: String,
     val type: MemoryType,
     val content: String,
     val importance: Float?,
@@ -95,7 +94,7 @@ data class Memory(
         private const val SECONDS_PER_DAY = 86400L
 
         fun create(
-            sessionId: ConversationSessionId,
+            sessionId: String,
             type: MemoryType,
             content: String,
             importance: Float,

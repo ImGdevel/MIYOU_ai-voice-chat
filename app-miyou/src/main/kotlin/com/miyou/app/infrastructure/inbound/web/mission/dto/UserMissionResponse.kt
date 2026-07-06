@@ -13,7 +13,7 @@ data class UserMissionResponse(
     companion object {
         fun from(userMission: UserMission): UserMissionResponse =
             UserMissionResponse(
-                userMission.userId.value,
+                userMission.userId,
                 userMission.missionId.value,
                 userMission.status.name,
                 userMission.completedAt,

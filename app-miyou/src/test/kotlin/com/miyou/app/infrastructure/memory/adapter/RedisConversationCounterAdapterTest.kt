@@ -35,8 +35,8 @@ class RedisConversationCounterAdapterTest {
     @Test
     @DisplayName("카운터 증가 시 Redis INCR 명령을 실행한다")
     fun increment_success() {
-        val sessionId = ConversationSessionFixture.createId()
-        val counterKey = "$counterKeyPrefix${sessionId.value()}"
+        val sessionId = ConversationSessionFixture.createId().value
+        val counterKey = "$counterKeyPrefix$sessionId"
         `when`(redisTemplate.opsForValue()).thenReturn(valueOps)
         `when`(valueOps.increment(counterKey)).thenReturn(Mono.just(1L))
 
@@ -51,8 +51,8 @@ class RedisConversationCounterAdapterTest {
     @Test
     @DisplayName("여러 번 증가 시 순차적으로 증가한다")
     fun increment_multiple() {
-        val sessionId = ConversationSessionFixture.createId()
-        val counterKey = "$counterKeyPrefix${sessionId.value()}"
+        val sessionId = ConversationSessionFixture.createId().value
+        val counterKey = "$counterKeyPrefix$sessionId"
         `when`(redisTemplate.opsForValue()).thenReturn(valueOps)
         `when`(valueOps.increment(counterKey))
             .thenReturn(Mono.just(1L))
@@ -67,8 +67,8 @@ class RedisConversationCounterAdapterTest {
     @Test
     @DisplayName("카운터 조회 시 현재 값을 반환한다")
     fun get_success() {
-        val sessionId = ConversationSessionFixture.createId()
-        val counterKey = "$counterKeyPrefix${sessionId.value()}"
+        val sessionId = ConversationSessionFixture.createId().value
+        val counterKey = "$counterKeyPrefix$sessionId"
         `when`(redisTemplate.opsForValue()).thenReturn(valueOps)
         `when`(valueOps.get(counterKey)).thenReturn(Mono.just(42L))
 
@@ -80,8 +80,8 @@ class RedisConversationCounterAdapterTest {
     @Test
     @DisplayName("카운터가 없으면 0을 반환한다")
     fun get_notExists_returnsZero() {
-        val sessionId = ConversationSessionFixture.createId()
-        val counterKey = "$counterKeyPrefix${sessionId.value()}"
+        val sessionId = ConversationSessionFixture.createId().value
+        val counterKey = "$counterKeyPrefix$sessionId"
         `when`(redisTemplate.opsForValue()).thenReturn(valueOps)
         `when`(valueOps.get(counterKey)).thenReturn(Mono.empty())
 
@@ -91,8 +91,8 @@ class RedisConversationCounterAdapterTest {
     @Test
     @DisplayName("카운터 리셋 시 키를 삭제한다")
     fun reset_success() {
-        val sessionId = ConversationSessionFixture.createId()
-        val counterKey = "$counterKeyPrefix${sessionId.value()}"
+        val sessionId = ConversationSessionFixture.createId().value
+        val counterKey = "$counterKeyPrefix$sessionId"
         `when`(redisTemplate.delete(counterKey)).thenReturn(Mono.just(1L))
 
         StepVerifier.create(adapter.reset(sessionId)).verifyComplete()
@@ -103,8 +103,8 @@ class RedisConversationCounterAdapterTest {
     @Test
     @DisplayName("카운터 리셋 후 조회 시 0을 반환한다")
     fun reset_thenGet_returnsZero() {
-        val sessionId = ConversationSessionFixture.createId()
-        val counterKey = "$counterKeyPrefix${sessionId.value()}"
+        val sessionId = ConversationSessionFixture.createId().value
+        val counterKey = "$counterKeyPrefix$sessionId"
         `when`(redisTemplate.delete(counterKey)).thenReturn(Mono.just(1L))
         `when`(redisTemplate.opsForValue()).thenReturn(valueOps)
         `when`(valueOps.get(counterKey)).thenReturn(Mono.empty())
@@ -116,7 +116,7 @@ class RedisConversationCounterAdapterTest {
     @Test
     @DisplayName("증가 실패 시 에러를 전파한다")
     fun increment_error_propagates() {
-        val sessionId = ConversationSessionFixture.createId()
+        val sessionId = ConversationSessionFixture.createId().value
         `when`(redisTemplate.opsForValue()).thenReturn(valueOps)
         `when`(valueOps.increment(anyString())).thenReturn(Mono.error(RuntimeException("Redis connection error")))
 
@@ -129,7 +129,7 @@ class RedisConversationCounterAdapterTest {
     @Test
     @DisplayName("조회 실패 시 에러를 전파한다")
     fun get_error_propagates() {
-        val sessionId = ConversationSessionFixture.createId()
+        val sessionId = ConversationSessionFixture.createId().value
         `when`(redisTemplate.opsForValue()).thenReturn(valueOps)
         `when`(valueOps.get(anyString())).thenReturn(Mono.error(RuntimeException("Redis timeout")))
 

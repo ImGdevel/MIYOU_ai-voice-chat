@@ -2,8 +2,6 @@ package com.miyou.app.infrastructure.retrieval.adapter
 
 import com.miyou.app.domain.dialogue.model.ConversationSessionId
 import com.miyou.app.domain.dialogue.port.ConversationRepository
-import com.miyou.app.domain.memory.model.MemoryRetrievalResult
-import com.miyou.app.domain.memory.port.MemoryRetrievalPort
 import com.miyou.app.domain.retrieval.model.RetrievalContext
 import com.miyou.app.domain.retrieval.port.RetrievalPort
 import io.github.oshai.kotlinlogging.KotlinLogging
@@ -14,31 +12,18 @@ import reactor.core.publisher.Mono
 @Component
 @Primary
 class VectorMemoryRetrievalAdapter(
-    private val memoryRetrievalPort: MemoryRetrievalPort,
     private val conversationRepository: ConversationRepository,
 ) : RetrievalPort {
     private val log = KotlinLogging.logger {}
 
     override fun retrieve(
-        sessionId: ConversationSessionId,
+        sessionId: String,
         query: String,
         topK: Int,
     ): Mono<RetrievalContext> =
         conversationRepository
-            .findRecent(sessionId, topK * 10)
+            .findRecent(ConversationSessionId.of(sessionId), topK * 10)
             .collectList()
             .map { turns -> KeywordSimilaritySupport.rankDocumentsByQuery(query, turns, topK) }
             .map { documents -> RetrievalContext.of(query, documents) }
-
-    override fun retrieveMemories(
-        sessionId: ConversationSessionId,
-        query: String,
-        topK: Int,
-    ): Mono<MemoryRetrievalResult> =
-        memoryRetrievalPort
-            .retrieveMemories(sessionId, query, topK)
-            .onErrorResume { error ->
-                log.warn(error) { "Memory retrieval failed for query '$query': ${error.message}" }
-                Mono.just(MemoryRetrievalResult.empty())
-            }
 }

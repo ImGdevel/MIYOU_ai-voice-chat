@@ -1,14 +1,15 @@
 package com.miyou.app.domain.credit.model
 
 import com.miyou.app.domain.credit.exception.InsufficientCreditException
-import com.miyou.app.domain.dialogue.model.UserId
 
 data class UserCredit(
-    val userId: UserId,
+    val userId: String,
     val balance: Long,
     val version: Long,
 ) {
     init {
+        require(userId.isNotBlank()) { "userId cannot be blank" }
+        require(userId.length <= 128) { "userId cannot be longer than 128 characters" }
         require(balance >= 0) { "balance cannot be negative" }
     }
 
@@ -28,7 +29,7 @@ data class UserCredit(
     companion object {
         @JvmStatic
         fun initialize(
-            userId: UserId,
+            userId: String,
             initialBalance: Long,
         ): UserCredit {
             require(initialBalance >= 0) { "initial balance cannot be negative" }
@@ -36,7 +37,7 @@ data class UserCredit(
         }
     }
 
-    fun userId(): UserId = userId
+    fun userId(): String = userId
 
     fun balance(): Long = balance
 

@@ -1,7 +1,6 @@
 package com.miyou.app.infrastructure.credit.document
 
 import com.miyou.app.domain.credit.model.UserCredit
-import com.miyou.app.domain.dialogue.model.UserId
 import org.springframework.data.annotation.Id
 import org.springframework.data.annotation.Version
 import org.springframework.data.mongodb.core.index.Indexed
@@ -19,8 +18,8 @@ data class UserCreditDocument(
     companion object {
         fun fromDomain(credit: UserCredit): UserCreditDocument =
             UserCreditDocument(
-                credit.userId().value(),
-                credit.userId().value(),
+                credit.userId(),
+                credit.userId(),
                 credit.balance(),
                 credit.version(),
                 Instant.now(),
@@ -29,7 +28,7 @@ data class UserCreditDocument(
 
     fun toDomain(): UserCredit =
         UserCredit(
-            UserId.of(userId),
+            userId,
             balance,
             version,
         )

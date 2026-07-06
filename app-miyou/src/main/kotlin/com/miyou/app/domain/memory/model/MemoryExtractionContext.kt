@@ -1,18 +1,20 @@
 package com.miyou.app.domain.memory.model
 
-import com.miyou.app.domain.dialogue.model.ConversationSessionId
-import com.miyou.app.domain.dialogue.model.ConversationTurn
+data class ConversationSnippet(
+    val query: String,
+    val response: String?,
+)
 
 data class MemoryExtractionContext(
-    val sessionId: ConversationSessionId,
-    val recentConversations: List<ConversationTurn> = emptyList(),
+    val sessionId: String,
+    val recentConversations: List<ConversationSnippet> = emptyList(),
     val existingMemories: List<Memory> = emptyList(),
 ) {
     companion object {
         @JvmStatic
         fun of(
-            sessionId: ConversationSessionId,
-            conversations: List<ConversationTurn>,
+            sessionId: String,
+            conversations: List<ConversationSnippet>,
             memories: List<Memory>,
         ): MemoryExtractionContext = MemoryExtractionContext(sessionId, conversations, memories)
     }

@@ -3,6 +3,7 @@ package com.miyou.app.benchmark
 import com.fasterxml.jackson.module.kotlin.jacksonObjectMapper
 import com.miyou.app.domain.dialogue.model.ConversationSessionId
 import com.miyou.app.domain.dialogue.model.ConversationTurn
+import com.miyou.app.domain.memory.model.ConversationSnippet
 import com.miyou.app.domain.memory.model.ExtractedMemory
 import com.miyou.app.domain.memory.model.MemoryExtractionContext
 import com.miyou.app.infrastructure.dialogue.adapter.llm.TokenAwareLlmAdapter
@@ -70,8 +71,10 @@ class MemoryExtractionConfidenceBenchmark {
                 val sessionId = ConversationSessionId.generate()
                 val context =
                     MemoryExtractionContext.of(
-                        sessionId,
-                        listOf(ConversationTurn.create(sessionId, query)),
+                        sessionId.value,
+                        listOf(ConversationTurn.create(sessionId, query)).map {
+                            ConversationSnippet(it.query, it.response)
+                        },
                         emptyList(),
                     )
                 label to extractionPort.extractMemories(context).collectList().block()!!

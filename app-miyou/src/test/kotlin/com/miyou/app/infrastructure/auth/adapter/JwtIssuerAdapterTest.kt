@@ -1,6 +1,5 @@
 package com.miyou.app.infrastructure.auth.adapter
 
-import com.miyou.app.domain.dialogue.model.UserId
 import com.miyou.app.infrastructure.auth.config.JwtConfig
 import com.miyou.app.infrastructure.auth.config.JwtProperties
 import org.assertj.core.api.Assertions.assertThat
@@ -23,7 +22,7 @@ class JwtIssuerAdapterTest {
     fun issueAccessToken_setsFutureExpiry() {
         val before = Instant.now()
 
-        val issued = adapter.issueAccessToken(UserId.of("issuer-test-user"))
+        val issued = adapter.issueAccessToken("issuer-test-user")
 
         assertThat(issued.token).isNotBlank()
         assertThat(issued.expiresAt).isAfter(before)

@@ -6,7 +6,6 @@ import com.miyou.app.domain.auth.model.AuthenticatedUser
 import com.miyou.app.domain.credit.model.CreditTransaction
 import com.miyou.app.domain.credit.model.CreditTransactionType
 import com.miyou.app.domain.credit.model.PaymentCharge
-import com.miyou.app.domain.dialogue.model.UserId
 import com.miyou.app.fixture.CreditTransactionFixture
 import com.miyou.app.fixture.UserCreditFixture
 import com.miyou.app.fixture.UserIdFixture
@@ -54,13 +53,13 @@ class CreditControllerTest {
 
         webTestClient
             .get()
-            .uri("/credit/balance?userId={id}", userId.value)
+            .uri("/credit/balance?userId={id}", userId)
             .exchange()
             .expectStatus()
             .isOk
             .expectBody()
             .jsonPath("$.userId")
-            .isEqualTo(userId.value)
+            .isEqualTo(userId)
             .jsonPath("$.balance")
             .isEqualTo(4900)
     }
@@ -77,7 +76,7 @@ class CreditControllerTest {
 
         webTestClient
             .get()
-            .uri("/credit/transactions?userId={id}", userId.value)
+            .uri("/credit/transactions?userId={id}", userId)
             .exchange()
             .expectStatus()
             .isOk
@@ -90,7 +89,7 @@ class CreditControllerTest {
     @DisplayName("chargeByPayment confirms the payment and creates a charge transaction")
     fun chargeByPayment_confirmsPaymentAndCreatesChargeTransaction() {
         val userId = UserIdFixture.create()
-        val request = ChargeByPaymentRequest(userId.value, "paykey-001", "order-001", "toss", 10000L)
+        val request = ChargeByPaymentRequest(userId, "paykey-001", "order-001", "toss", 10000L)
         val confirmRequest = PaymentGatewayPort.PaymentConfirmRequest("paykey-001", "order-001", 10000L)
         val confirmed = PaymentGatewayPort.PaymentConfirmResult("paykey-001", "order-001", 10000L, "DONE")
         val transaction: CreditTransaction =
@@ -130,7 +129,7 @@ class CreditControllerTest {
         "getBalance prefers the authenticated principal's userId over the query param userId (anonymous+OAuth coexistence)"
     )
     fun getBalance_authenticatedPrincipal_overridesQueryParamUserId() {
-        val authenticatedUserId = UserId.of("authenticated-user-1")
+        val authenticatedUserId = "authenticated-user-1"
         val queryParamUserId = "different-anonymous-user"
         val principal = AuthenticatedUser(authenticatedUserId)
 
@@ -147,7 +146,7 @@ class CreditControllerTest {
             .isOk
             .expectBody()
             .jsonPath("$.userId")
-            .isEqualTo(authenticatedUserId.value)
+            .isEqualTo(authenticatedUserId)
             .jsonPath("$.balance")
             .isEqualTo(1234)
     }

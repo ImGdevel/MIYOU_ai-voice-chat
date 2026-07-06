@@ -5,13 +5,12 @@ import com.miyou.app.application.credit.usecase.CreditChargeUseCase
 import com.miyou.app.application.credit.usecase.CreditQueryUseCase
 import com.miyou.app.domain.auth.model.AuthenticatedUser
 import com.miyou.app.domain.credit.model.PaymentCharge
-import com.miyou.app.domain.dialogue.model.UserId
+import com.miyou.app.infrastructure.inbound.web.common.UserIdResolver
 import com.miyou.app.infrastructure.inbound.web.credit.dto.ChargeByPaymentRequest
 import com.miyou.app.infrastructure.inbound.web.credit.dto.CreditTransactionResponse
 import com.miyou.app.infrastructure.inbound.web.credit.dto.UserCreditResponse
 import com.miyou.app.infrastructure.payment.port.PaymentGatewayPort
 import jakarta.validation.Valid
-import jakarta.validation.constraints.NotBlank
 import org.springframework.data.domain.PageRequest
 import org.springframework.http.HttpStatus
 import org.springframework.security.core.annotation.AuthenticationPrincipal
@@ -37,16 +36,14 @@ class CreditController(
     fun getBalance(
         @RequestParam(required = false) userId: String?,
         @AuthenticationPrincipal principal: AuthenticatedUser?,
-    ): Mono<UserCreditResponse> {
-        val resolvedUserId =
-            principal?.userId
-                ?: userId?.takeIf { it.isNotBlank() }?.let { UserId.of(it) }
-                ?: return Mono.error(ResponseStatusException(HttpStatus.BAD_REQUEST, "userId is required"))
-        return creditChargeUseCase
-            .initializeIfAbsent(resolvedUserId)
-            .then(creditQueryUseCase.getBalance(resolvedUserId))
-            .map(UserCreditResponse::from)
-    }
+    ): Mono<UserCreditResponse> =
+        UserIdResolver
+            .resolve(principal, userId)
+            .flatMap { resolvedUserId ->
+                creditChargeUseCase
+                    .initializeIfAbsent(resolvedUserId)
+                    .then(creditQueryUseCase.getBalance(resolvedUserId))
+            }.map(UserCreditResponse::from)
 
     @GetMapping("/transactions")
     fun getTransactions(
@@ -54,17 +51,15 @@ class CreditController(
         @RequestParam(defaultValue = "0") page: Int,
         @RequestParam(defaultValue = "20") size: Int,
         @AuthenticationPrincipal principal: AuthenticatedUser?,
-    ): Flux<CreditTransactionResponse> {
-        val resolvedUserId =
-            principal?.userId
-                ?: userId?.takeIf { it.isNotBlank() }?.let { UserId.of(it) }
-                ?: return Flux.error(ResponseStatusException(HttpStatus.BAD_REQUEST, "userId is required"))
-        return creditQueryUseCase
-            .getTransactions(
-                resolvedUserId,
-                PageRequest.of(page, size),
-            ).map(CreditTransactionResponse::from)
-    }
+    ): Flux<CreditTransactionResponse> =
+        UserIdResolver
+            .resolve(principal, userId)
+            .flatMapMany { resolvedUserId ->
+                creditQueryUseCase.getTransactions(
+                    resolvedUserId,
+                    PageRequest.of(page, size),
+                )
+            }.map(CreditTransactionResponse::from)
 
     @PostMapping("/charge/payment")
     @ResponseStatus(HttpStatus.CREATED)
@@ -72,10 +67,6 @@ class CreditController(
         @Valid @RequestBody request: ChargeByPaymentRequest,
         @AuthenticationPrincipal principal: AuthenticatedUser?,
     ): Mono<CreditTransactionResponse> {
-        val resolvedUserId =
-            principal?.userId
-                ?: request.userId?.takeIf { it.isNotBlank() }?.let { UserId.of(it) }
-                ?: return Mono.error(ResponseStatusException(HttpStatus.BAD_REQUEST, "userId is required"))
         val gateway =
             paymentGatewayMap[request.pgProvider]
                 ?: return Mono.error(
@@ -85,19 +76,23 @@ class CreditController(
                     ),
                 )
 
-        return gateway
-            .confirmPayment(
-                PaymentGatewayPort.PaymentConfirmRequest(
-                    request.paymentKey,
-                    request.orderId,
-                    request.amount,
-                ),
-            ).flatMap { result ->
-                creditChargeUseCase.chargeByPayment(
-                    resolvedUserId,
-                    result.amount,
-                    PaymentCharge(result.paymentId, request.pgProvider),
-                )
+        return UserIdResolver
+            .resolve(principal, request.userId)
+            .flatMap { resolvedUserId ->
+                gateway
+                    .confirmPayment(
+                        PaymentGatewayPort.PaymentConfirmRequest(
+                            request.paymentKey,
+                            request.orderId,
+                            request.amount,
+                        ),
+                    ).flatMap { result ->
+                        creditChargeUseCase.chargeByPayment(
+                            resolvedUserId,
+                            result.amount,
+                            PaymentCharge(result.paymentId, request.pgProvider),
+                        )
+                    }
             }.map(CreditTransactionResponse::from)
     }
 }

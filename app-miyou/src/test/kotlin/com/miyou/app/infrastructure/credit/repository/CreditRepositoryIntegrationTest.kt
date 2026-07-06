@@ -8,7 +8,6 @@ import com.miyou.app.domain.credit.model.CreditTransactionType
 import com.miyou.app.domain.credit.model.PaymentCharge
 import com.miyou.app.domain.credit.model.SignupBonus
 import com.miyou.app.domain.credit.model.UserCredit
-import com.miyou.app.domain.dialogue.model.UserId
 import com.miyou.app.fixture.ConversationSessionFixture
 import com.miyou.app.infrastructure.credit.adapter.CreditTransactionMongoAdapter
 import com.miyou.app.infrastructure.credit.adapter.UserCreditMongoAdapter
@@ -50,7 +49,7 @@ class CreditRepositoryIntegrationTest : ContainerizedIntegrationTestSupport() {
     @Test
     @DisplayName("신규 UserCredit 저장 후 userId로 조회할 수 있다")
     fun save_thenFindByUserId_returnsCorrectBalance() {
-        val userId = UserId.of("integration-user-1")
+        val userId = "integration-user-1"
         val credit = UserCredit.initialize(userId, 5000L)
 
         StepVerifier
@@ -62,14 +61,14 @@ class CreditRepositoryIntegrationTest : ContainerizedIntegrationTestSupport() {
     @Test
     @DisplayName("트랜잭션 저장 후 최신순으로 조회한다")
     fun saveMultiple_thenFindByUserId_returnsDescOrder() {
-        val userId = UserId.of("tx-order-user")
+        val userId = "tx-order-user"
         val tx1 = CreditTransaction.of(userId, CreditTransactionType.CHARGE, SignupBonus(), 5000L, 0L, 5000L)
         Thread.sleep(5)
         val tx2 =
             CreditTransaction.of(
                 userId,
                 CreditTransactionType.DEDUCT,
-                ConversationDeduction(ConversationSessionFixture.createId()),
+                ConversationDeduction(ConversationSessionFixture.createId().value),
                 100L,
                 5000L,
                 4900L,
@@ -79,7 +78,7 @@ class CreditRepositoryIntegrationTest : ContainerizedIntegrationTestSupport() {
             CreditTransaction.of(
                 userId,
                 CreditTransactionType.DEDUCT,
-                ConversationDeduction(ConversationSessionFixture.createId()),
+                ConversationDeduction(ConversationSessionFixture.createId().value),
                 100L,
                 4900L,
                 4800L,
@@ -101,13 +100,13 @@ class CreditRepositoryIntegrationTest : ContainerizedIntegrationTestSupport() {
     @Test
     @DisplayName("ConversationDeduction은 sessionId를 보존한다")
     fun conversationDeduction_persistsSessionId() {
-        val userId = UserId.of("source-deduction-user")
+        val userId = "source-deduction-user"
         val sessionId = ConversationSessionFixture.createId("my-session-xyz")
         val tx =
             CreditTransaction.of(
                 userId,
                 CreditTransactionType.DEDUCT,
-                ConversationDeduction(sessionId),
+                ConversationDeduction(sessionId.value),
                 100L,
                 5000L,
                 4900L,
@@ -122,14 +121,14 @@ class CreditRepositoryIntegrationTest : ContainerizedIntegrationTestSupport() {
                     .map(CreditTransactionDocument::toDomain),
             ).assertNext { restored ->
                 assertThat(restored.source().sourceType()).isEqualTo(CreditSourceType.CONVERSATION_DEDUCTION)
-                assertThat((restored.source() as ConversationDeduction).sessionId().value()).isEqualTo("my-session-xyz")
+                assertThat((restored.source() as ConversationDeduction).sessionId()).isEqualTo("my-session-xyz")
             }.verifyComplete()
     }
 
     @Test
     @DisplayName("PaymentCharge는 payment 정보와 provider를 보존한다")
     fun paymentCharge_persistsPaymentInfo() {
-        val userId = UserId.of("source-payment-user")
+        val userId = "source-payment-user"
         val tx =
             CreditTransaction.of(
                 userId,

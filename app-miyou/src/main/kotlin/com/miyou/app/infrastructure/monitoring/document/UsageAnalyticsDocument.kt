@@ -1,6 +1,5 @@
 package com.miyou.app.infrastructure.monitoring.document
 
-import com.miyou.app.domain.cost.model.CostInfo
 import com.miyou.app.domain.monitoring.model.UsageAnalytics
 import org.springframework.data.annotation.Id
 import org.springframework.data.mongodb.core.index.CompoundIndex
@@ -19,7 +18,6 @@ data class UsageAnalyticsDocument(
     val retrievalMetrics: RetrievalMetricsDoc?,
     val ttsMetrics: TtsMetricsDoc?,
     val responseMetrics: ResponseMetricsDoc?,
-    val costInfo: CostInfoDoc?,
 ) {
     data class UserRequestDoc(
         val inputText: String?,
@@ -130,19 +128,6 @@ data class UsageAnalyticsDocument(
             )
     }
 
-    data class CostInfoDoc(
-        val llmCredits: Long,
-        val ttsCredits: Long,
-        val totalCredits: Long,
-    ) {
-        companion object {
-            fun fromDomain(domain: CostInfo): CostInfoDoc =
-                CostInfoDoc(domain.llmCredits, domain.ttsCredits, domain.totalCredits)
-        }
-
-        fun toDomain(): CostInfo = CostInfo(llmCredits, ttsCredits, totalCredits)
-    }
-
     companion object {
         fun fromDomain(domain: UsageAnalytics): UsageAnalyticsDocument =
             UsageAnalyticsDocument(
@@ -154,7 +139,6 @@ data class UsageAnalyticsDocument(
                 domain.retrievalMetrics?.let(RetrievalMetricsDoc::fromDomain),
                 domain.ttsMetrics?.let(TtsMetricsDoc::fromDomain),
                 domain.responseMetrics?.let(ResponseMetricsDoc::fromDomain),
-                domain.costInfo?.let(CostInfoDoc::fromDomain),
             )
     }
 
@@ -168,6 +152,5 @@ data class UsageAnalyticsDocument(
             retrievalMetrics?.toDomain(),
             ttsMetrics?.toDomain(),
             responseMetrics?.toDomain(),
-            costInfo?.toDomain(),
         )
 }

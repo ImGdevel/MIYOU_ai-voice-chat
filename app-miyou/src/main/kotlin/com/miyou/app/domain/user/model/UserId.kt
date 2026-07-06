@@ -1,4 +1,4 @@
-package com.miyou.app.domain.dialogue.model
+package com.miyou.app.domain.user.model
 
 import java.util.UUID
 

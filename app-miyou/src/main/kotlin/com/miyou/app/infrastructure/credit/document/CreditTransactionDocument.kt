@@ -8,9 +8,6 @@ import com.miyou.app.domain.credit.model.CreditTransactionType
 import com.miyou.app.domain.credit.model.MissionReward
 import com.miyou.app.domain.credit.model.PaymentCharge
 import com.miyou.app.domain.credit.model.SignupBonus
-import com.miyou.app.domain.dialogue.model.ConversationSessionId
-import com.miyou.app.domain.dialogue.model.UserId
-import com.miyou.app.domain.mission.model.MissionId
 import org.springframework.data.annotation.Id
 import org.springframework.data.mongodb.core.index.CompoundIndex
 import org.springframework.data.mongodb.core.index.CompoundIndexes
@@ -39,7 +36,7 @@ data class CreditTransactionDocument(
         fun fromDomain(tx: CreditTransaction): CreditTransactionDocument =
             CreditTransactionDocument(
                 tx.transactionId().value(),
-                tx.userId().value(),
+                tx.userId(),
                 tx.type().name,
                 tx.source().sourceType().name,
                 serializeSource(tx.source()),
@@ -54,7 +51,7 @@ data class CreditTransactionDocument(
             val data: MutableMap<String, String> = HashMap()
             when (source) {
                 is ConversationDeduction -> {
-                    data["sessionId"] = source.sessionId().value()
+                    data["sessionId"] = source.sessionId()
                 }
 
                 is PaymentCharge -> {
@@ -63,7 +60,7 @@ data class CreditTransactionDocument(
                 }
 
                 is MissionReward -> {
-                    data["missionId"] = source.missionId().value()
+                    data["missionId"] = source.missionId()
                     data["missionType"] = source.missionType()
                 }
 
@@ -81,7 +78,7 @@ data class CreditTransactionDocument(
             when (sourceType) {
                 "CONVERSATION_DEDUCTION" -> {
                     ConversationDeduction(
-                        ConversationSessionId.of(sourceData["sessionId"] ?: ""),
+                        sourceData["sessionId"] ?: "",
                     )
                 }
 
@@ -98,7 +95,7 @@ data class CreditTransactionDocument(
 
                 "MISSION_REWARD" -> {
                     MissionReward(
-                        MissionId.of(sourceData["missionId"] ?: ""),
+                        sourceData["missionId"] ?: "",
                         sourceData["missionType"] ?: "",
                     )
                 }
@@ -112,7 +109,7 @@ data class CreditTransactionDocument(
     fun toDomain(): CreditTransaction =
         CreditTransaction(
             CreditTransactionId.of(id),
-            UserId.of(userId),
+            userId,
             CreditTransactionType.valueOf(type),
             deserializeSource(sourceType, sourceData),
             amount,

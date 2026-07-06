@@ -1,6 +1,5 @@
 package com.miyou.app.fixture
 
-import com.miyou.app.domain.dialogue.model.ConversationSessionId
 import com.miyou.app.domain.memory.model.Memory
 import com.miyou.app.domain.memory.model.MemoryType
 import java.time.Instant
@@ -12,28 +11,27 @@ object MemoryFixture {
     @JvmStatic
     fun createExperiential(): Memory =
         Memory.create(
-            ConversationSessionFixture.createId(),
+            ConversationSessionFixture.createId().value,
             MemoryType.EXPERIENTIAL,
             DEFAULT_CONTENT,
             DEFAULT_IMPORTANCE,
         )
 
     @JvmStatic
-    fun createExperiential(sessionId: ConversationSessionId): Memory =
+    fun createExperiential(sessionId: String): Memory =
         Memory.create(sessionId, MemoryType.EXPERIENTIAL, DEFAULT_CONTENT, DEFAULT_IMPORTANCE)
 
     @JvmStatic
     fun createFactual(): Memory =
         Memory.create(
-            ConversationSessionFixture.createId(),
+            ConversationSessionFixture.createId().value,
             MemoryType.FACTUAL,
             "사용자의 직업은 개발자다",
             0.9f,
         )
 
     @JvmStatic
-    fun createFactual(sessionId: ConversationSessionId): Memory =
-        Memory.create(sessionId, MemoryType.FACTUAL, "사용자의 직업은 개발자다", 0.9f)
+    fun createFactual(sessionId: String): Memory = Memory.create(sessionId, MemoryType.FACTUAL, "사용자의 직업은 개발자다", 0.9f)
 
     @JvmStatic
     fun createWithId(
@@ -42,7 +40,7 @@ object MemoryFixture {
     ): Memory =
         Memory(
             id,
-            ConversationSessionFixture.createId(),
+            ConversationSessionFixture.createId().value,
             type,
             DEFAULT_CONTENT,
             DEFAULT_IMPORTANCE,
@@ -54,7 +52,7 @@ object MemoryFixture {
     @JvmStatic
     fun createWithId(
         id: String,
-        sessionId: ConversationSessionId,
+        sessionId: String,
         type: MemoryType,
     ): Memory =
         Memory(

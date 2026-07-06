@@ -36,7 +36,7 @@ class SystemPromptServiceTest {
             )
 
         val service = SystemPromptService(templateLoader, policy)
-        val sessionId = ConversationSessionFixture.createId()
+        val sessionId = ConversationSessionFixture.createId().value
         val experiential = Memory.create(sessionId, MemoryType.EXPERIENTIAL, "user likes sushi", 0.8f)
         val factual = Memory.create(sessionId, MemoryType.FACTUAL, "user is a developer", 0.9f)
         val memories = MemoryRetrievalResult.of(listOf(experiential), listOf(factual))

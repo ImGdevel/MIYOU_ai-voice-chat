@@ -1,7 +1,6 @@
 package com.miyou.app.infrastructure.auth.adapter
 
 import com.miyou.app.domain.auth.model.RefreshToken
-import com.miyou.app.domain.dialogue.model.UserId
 import com.miyou.app.infrastructure.auth.config.JwtProperties
 import com.miyou.app.support.ContainerizedIntegrationTestSupport
 import com.miyou.app.support.ReactiveRedisStringTemplateTestConfig
@@ -44,7 +43,7 @@ class RefreshTokenRedisAdapterIntegrationTest : ContainerizedIntegrationTestSupp
     @Test
     @DisplayName("저장 후 tokenId로 조회하면 같은 userId를 되돌려준다")
     fun save_thenFindByTokenId_returnsSameUserId() {
-        val userId = UserId.of("redis-integration-user-1")
+        val userId = "redis-integration-user-1"
         val token = RefreshToken.issue(userId)
 
         StepVerifier
@@ -56,7 +55,7 @@ class RefreshTokenRedisAdapterIntegrationTest : ContainerizedIntegrationTestSupp
     @Test
     @DisplayName("저장 시 설정된 refresh-token-ttl-days만큼 실제 TTL이 설정된다")
     fun save_setsRealRedisTtl() {
-        val token = RefreshToken.issue(UserId.of("redis-ttl-user"))
+        val token = RefreshToken.issue("redis-ttl-user")
 
         StepVerifier
             .create(adapter.save(token).then(redisTemplate.getExpire("auth:refresh:" + token.tokenId)))
@@ -69,7 +68,7 @@ class RefreshTokenRedisAdapterIntegrationTest : ContainerizedIntegrationTestSupp
     @Test
     @DisplayName("삭제 후에는 더 이상 조회되지 않는다")
     fun deleteByTokenId_thenFindByTokenId_returnsEmpty() {
-        val token = RefreshToken.issue(UserId.of("redis-delete-user"))
+        val token = RefreshToken.issue("redis-delete-user")
 
         StepVerifier
             .create(

@@ -1,7 +1,8 @@
 package com.miyou.app.infrastructure.dialogue.adapter.tts
 
+import com.miyou.app.common.model.AudioFormat
+import com.miyou.app.domain.dialogue.model.TtsCommand
 import com.miyou.app.domain.dialogue.port.TtsPort
-import com.miyou.app.domain.voice.model.AudioFormat
 import com.miyou.app.domain.voice.model.Voice
 import com.miyou.app.infrastructure.dialogue.adapter.tts.loadbalancer.TtsEndpoint
 import com.miyou.app.infrastructure.dialogue.adapter.tts.loadbalancer.TtsErrorClassifier
@@ -25,21 +26,10 @@ class LoadBalancedSupertoneTtsAdapter(
     private val log = KotlinLogging.logger {}
     private val webClientCache = ConcurrentHashMap<String, WebClient>()
 
-    override fun streamSynthesize(
-        text: String,
-        format: AudioFormat?,
-    ): Flux<ByteArray> = streamSynthesize(text, format, voice)
-
-    override fun streamSynthesize(
-        text: String,
-        format: AudioFormat?,
-        voice: Voice,
-    ): Flux<ByteArray> = streamSynthesizeWithRetry(text, format, voice, 0)
+    override fun streamSynthesize(command: TtsCommand): Flux<ByteArray> = streamSynthesizeWithRetry(command, 0)
 
     private fun streamSynthesizeWithRetry(
-        text: String,
-        format: AudioFormat?,
-        voice: Voice,
+        command: TtsCommand,
         attemptCount: Int,
     ): Flux<ByteArray> {
         if (attemptCount >= 2) {
@@ -50,7 +40,7 @@ class LoadBalancedSupertoneTtsAdapter(
         endpoint.incrementActiveRequests()
         log.debug { "TTS 엔드포인트 ${endpoint.id} 선택, 현재 요청수 ${endpoint.activeRequests}, 시도 횟수: ${attemptCount + 1}" }
 
-        return synthesizeWithEndpoint(endpoint, text, format, voice)
+        return synthesizeWithEndpoint(endpoint, command)
             .doOnCancel {
                 endpoint.decrementActiveRequests()
                 log.debug { "TTS 엔드포인트 ${endpoint.id} 취소됨, 현재 요청수 ${endpoint.activeRequests}" }
@@ -68,7 +58,7 @@ class LoadBalancedSupertoneTtsAdapter(
 
                     else -> {
                         log.warn { "TTS 엔드포인트 ${endpoint.id} 일시 장애로 재시도 (${attemptCount + 2}회차)" }
-                        streamSynthesizeWithRetry(text, format, voice, attemptCount + 1)
+                        streamSynthesizeWithRetry(command, attemptCount + 1)
                     }
                 }
             }
@@ -76,24 +66,21 @@ class LoadBalancedSupertoneTtsAdapter(
 
     private fun synthesizeWithEndpoint(
         endpoint: TtsEndpoint,
-        text: String,
-        format: AudioFormat?,
-        voice: Voice,
+        command: TtsCommand,
     ): Flux<ByteArray> {
-        val outputFormat = format ?: voice.outputFormat
-        val settings = voice.settings
+        val outputFormat = command.format.name.lowercase()
         val voiceSettings =
             mapOf(
-                "pitch_shift" to settings.pitchShift,
-                "pitch_variance" to settings.pitchVariance,
-                "speed" to settings.speed,
+                "pitch_shift" to command.pitchShift,
+                "pitch_variance" to command.pitchVariance,
+                "speed" to command.speed,
             )
         val payload =
             mapOf(
-                "text" to text,
-                "language" to voice.language,
-                "style" to voice.style.value,
-                "output_format" to outputFormat.name.lowercase(),
+                "text" to command.text,
+                "language" to command.language,
+                "style" to command.style,
+                "output_format" to outputFormat,
                 "voice_settings" to voiceSettings,
                 "include_phonemes" to false,
             )
@@ -103,7 +90,7 @@ class LoadBalancedSupertoneTtsAdapter(
             .uri("/v1/text-to-speech/{voice_id}/stream", voice.id)
             .contentType(MediaType.APPLICATION_JSON)
             .bodyValue(payload)
-            .accept(MediaType.parseMediaType(outputFormat.mediaType))
+            .accept(MediaType.parseMediaType(command.format.mediaType))
             .retrieve()
             .bodyToFlux(DataBuffer::class.java)
             .timeout(Duration.ofSeconds(10))
@@ -124,17 +111,8 @@ class LoadBalancedSupertoneTtsAdapter(
                 .build()
         }
 
-    override fun synthesize(
-        text: String,
-        format: AudioFormat?,
-    ): Mono<ByteArray> = synthesize(text, format, voice)
-
-    override fun synthesize(
-        text: String,
-        format: AudioFormat?,
-        voice: Voice,
-    ): Mono<ByteArray> =
-        streamSynthesize(text, format, voice)
+    override fun synthesize(command: TtsCommand): Mono<ByteArray> =
+        streamSynthesize(command)
             .collectList()
             .map { byteArrays ->
                 val totalSize = byteArrays.sumOf { it.size }

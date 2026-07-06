@@ -94,7 +94,7 @@ class MemoryCuratorRetrievalQualityBenchmark {
         val curatorPolicy = MemoryCuratorPolicy(0.05f, 0.1f, 0.9f, 0.1f, 90L)
         val curatorService = MemoryCuratorService(vectorMemoryPort, curatorPolicy)
 
-        val sessionId = ConversationSessionId.generate()
+        val sessionId = ConversationSessionId.generate().value
         val query = "요즘 취미로 뭐 하고 지내?"
 
         // signal: 최근 접근, 실제 질의와 관련 있는 진짜 기억. 일부러 topK(5)보다 적게(3개) 둔다 -
@@ -166,7 +166,7 @@ class MemoryCuratorRetrievalQualityBenchmark {
     private fun topKContents(
         vectorMemoryPort: VectorMemoryPort,
         embeddingPort: EmbeddingPort,
-        sessionId: ConversationSessionId,
+        sessionId: String,
         query: String,
     ): List<String> {
         val queryEmbedding = embeddingPort.embed(query).block()!!.vector
@@ -189,7 +189,7 @@ class MemoryCuratorRetrievalQualityBenchmark {
     private fun seedMemories(
         embeddingPort: EmbeddingPort,
         vectorMemoryPort: VectorMemoryPort,
-        sessionId: ConversationSessionId,
+        sessionId: String,
         contents: List<String>,
         importance: Float,
         lastAccessedAt: Instant,

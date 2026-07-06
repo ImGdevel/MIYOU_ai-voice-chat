@@ -7,6 +7,7 @@ import com.miyou.app.domain.dialogue.model.ConversationSession
 import com.miyou.app.domain.dialogue.model.ConversationTurn
 import com.miyou.app.domain.dialogue.port.ConversationRepository
 import com.miyou.app.domain.memory.model.MemoryRetrievalResult
+import com.miyou.app.domain.memory.port.MemoryRetrievalPort
 import com.miyou.app.domain.retrieval.model.RetrievalContext
 import com.miyou.app.domain.retrieval.port.RetrievalPort
 import org.springframework.stereotype.Service
@@ -20,6 +21,7 @@ import reactor.core.publisher.Mono
 @Service
 class DialogueInputService(
     private val retrievalPort: RetrievalPort,
+    private val memoryRetrievalPort: MemoryRetrievalPort,
     private val conversationRepository: ConversationRepository,
     private val pipelineTracer: PipelineTracer,
 ) {
@@ -40,11 +42,11 @@ class DialogueInputService(
                 .cache()
         val memories =
             pipelineTracer.traceMemories {
-                retrievalPort.retrieveMemories(session.sessionId, text, 5)
+                memoryRetrievalPort.retrieveMemories(session.sessionId.value, text, 5)
             }
         val retrievalContext =
             pipelineTracer.traceRetrieval {
-                retrievalPort.retrieve(session.sessionId, text, 3)
+                retrievalPort.retrieve(session.sessionId.value, text, 3)
             }
         val history = loadConversationHistory(session).cache()
 

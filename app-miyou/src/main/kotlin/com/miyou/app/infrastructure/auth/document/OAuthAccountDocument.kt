@@ -2,7 +2,6 @@ package com.miyou.app.infrastructure.auth.document
 
 import com.miyou.app.domain.auth.model.OAuthAccount
 import com.miyou.app.domain.auth.model.Provider
-import com.miyou.app.domain.dialogue.model.UserId
 import org.springframework.data.annotation.Id
 import org.springframework.data.mongodb.core.index.CompoundIndex
 import org.springframework.data.mongodb.core.index.Indexed
@@ -26,7 +25,7 @@ data class OAuthAccountDocument(
                 account.id,
                 account.provider.name,
                 account.providerUserId,
-                account.userId.value,
+                account.userId,
                 account.email,
                 account.displayName,
                 account.createdAt ?: Instant.now(),
@@ -38,7 +37,7 @@ data class OAuthAccountDocument(
             id,
             Provider.valueOf(provider),
             providerUserId,
-            UserId.of(userId),
+            userId,
             email,
             displayName,
             createdAt,

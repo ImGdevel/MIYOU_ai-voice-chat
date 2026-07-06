@@ -4,7 +4,6 @@ import com.fasterxml.jackson.databind.ObjectMapper
 import com.fasterxml.jackson.module.kotlin.readValue
 import com.miyou.app.domain.auth.model.RefreshToken
 import com.miyou.app.domain.auth.port.RefreshTokenRepository
-import com.miyou.app.domain.dialogue.model.UserId
 import com.miyou.app.infrastructure.auth.config.JwtProperties
 import org.springframework.beans.factory.annotation.Qualifier
 import org.springframework.data.redis.core.ReactiveRedisTemplate
@@ -29,7 +28,7 @@ class RefreshTokenRedisAdapter(
     )
 
     override fun save(token: RefreshToken): Mono<RefreshToken> {
-        val value = objectMapper.writeValueAsString(StoredValue(token.userId.value, token.issuedAt))
+        val value = objectMapper.writeValueAsString(StoredValue(token.userId, token.issuedAt))
         return redisTemplate
             .opsForValue()
             .set(keyFor(token.tokenId), value, Duration.ofDays(jwtProperties.refreshTokenTtlDays))
@@ -42,7 +41,7 @@ class RefreshTokenRedisAdapter(
             .get(keyFor(tokenId))
             .map { json ->
                 val stored: StoredValue = objectMapper.readValue(json)
-                RefreshToken(tokenId, UserId.of(stored.userId), stored.issuedAt)
+                RefreshToken(tokenId, stored.userId, stored.issuedAt)
             }
 
     override fun deleteByTokenId(tokenId: String): Mono<Void> = redisTemplate.delete(keyFor(tokenId)).then()

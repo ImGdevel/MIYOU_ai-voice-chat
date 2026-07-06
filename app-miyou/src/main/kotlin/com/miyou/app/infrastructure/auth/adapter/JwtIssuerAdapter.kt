@@ -2,7 +2,6 @@ package com.miyou.app.infrastructure.auth.adapter
 
 import com.miyou.app.domain.auth.model.AccessTokenIssued
 import com.miyou.app.domain.auth.port.JwtIssuer
-import com.miyou.app.domain.dialogue.model.UserId
 import com.miyou.app.infrastructure.auth.config.JwtProperties
 import org.springframework.security.oauth2.jose.jws.MacAlgorithm
 import org.springframework.security.oauth2.jwt.JwsHeader
@@ -18,7 +17,7 @@ class JwtIssuerAdapter(
     private val jwtEncoder: JwtEncoder,
     private val jwtProperties: JwtProperties,
 ) : JwtIssuer {
-    override fun issueAccessToken(userId: UserId): AccessTokenIssued {
+    override fun issueAccessToken(userId: String): AccessTokenIssued {
         val now = Instant.now()
         val expiresAt = now.plus(jwtProperties.accessTokenTtlMinutes, ChronoUnit.MINUTES)
         val claims =
@@ -27,7 +26,7 @@ class JwtIssuerAdapter(
                 .issuer(jwtProperties.issuer)
                 .issuedAt(now)
                 .expiresAt(expiresAt)
-                .subject(userId.value)
+                .subject(userId)
                 .claim("token_type", "access")
                 .build()
         val header = JwsHeader.with(MacAlgorithm.HS256).build()

@@ -1,15 +1,17 @@
 package com.miyou.app.application.dialogue.pipeline
 
-import com.miyou.app.application.credit.usecase.CreditDeductUseCase
 import com.miyou.app.application.dialogue.pipeline.stage.DialogueInputService
 import com.miyou.app.application.dialogue.pipeline.stage.DialogueLlmStreamService
 import com.miyou.app.application.dialogue.pipeline.stage.DialoguePostProcessingService
 import com.miyou.app.application.dialogue.pipeline.stage.DialogueTtsStreamService
 import com.miyou.app.application.monitoring.aop.MonitoredPipeline
-import com.miyou.app.domain.credit.model.CreditTransaction
+import com.miyou.app.common.model.AudioFormat
 import com.miyou.app.domain.dialogue.model.ConversationSession
+import com.miyou.app.domain.dialogue.port.CreditChargingPort
+import com.miyou.app.domain.dialogue.port.CreditDeductCommand
+import com.miyou.app.domain.dialogue.port.CreditDeductResult
+import com.miyou.app.domain.dialogue.port.CreditRefundCommand
 import com.miyou.app.domain.dialogue.port.DialoguePipelineUseCase
-import com.miyou.app.domain.voice.model.AudioFormat
 import io.github.oshai.kotlinlogging.KotlinLogging
 import org.springframework.stereotype.Service
 import reactor.core.publisher.Flux
@@ -27,10 +29,9 @@ class DialoguePipelineService(
     private val llmStreamService: DialogueLlmStreamService,
     private val ttsStreamService: DialogueTtsStreamService,
     private val postProcessingService: DialoguePostProcessingService,
-    private val creditDeductUseCase: CreditDeductUseCase,
+    private val creditChargingPort: CreditChargingPort,
 ) : DialoguePipelineUseCase {
     private val logger = KotlinLogging.logger {}
-    private val defaultAudioFormat: AudioFormat = AudioFormat.MP3
 
     /**
      * 음성 스트리밍 실행.
@@ -43,9 +44,9 @@ class DialoguePipelineService(
     override fun executeAudioStreaming(
         session: ConversationSession,
         text: String,
-        format: AudioFormat?,
+        format: AudioFormat,
     ): Flux<ByteArray> {
-        val targetFormat = format ?: defaultAudioFormat
+        val targetFormat = format
 
         val inputsMono = inputService.prepareInputs(session, text).cache()
         val ttsWarmup: Mono<Void> = ttsStreamService.prepareTtsWarmup()
@@ -99,12 +100,12 @@ class DialoguePipelineService(
         session: ConversationSession,
         responseStream: Flux<T>,
     ): Flux<T> =
-        Flux.usingWhen<T, CreditTransaction>(
-            creditDeductUseCase.deductForConversation(session.userId, session.sessionId),
-            { _: CreditTransaction -> responseStream },
-            { _: CreditTransaction -> Mono.empty<Void>() },
-            { _: CreditTransaction, exception: Throwable -> refundConversation(session, exception) },
-            { _: CreditTransaction -> logUserCancellation(session) },
+        Flux.usingWhen<T, CreditDeductResult>(
+            creditChargingPort.deduct(CreditDeductCommand(session.userId, session.sessionId.value)),
+            { _: CreditDeductResult -> responseStream },
+            { _: CreditDeductResult -> Mono.empty<Void>() },
+            { _: CreditDeductResult, exception: Throwable -> refundConversation(session, exception) },
+            { _: CreditDeductResult -> logUserCancellation(session) },
         )
 
     /**
@@ -119,19 +120,19 @@ class DialoguePipelineService(
         session: ConversationSession,
         cause: Throwable,
     ): Mono<Void> =
-        creditDeductUseCase
-            .refundForConversation(session.userId, session.sessionId)
-            .doOnNext { tx ->
+        creditChargingPort
+            .refund(CreditRefundCommand(session.userId, session.sessionId.value))
+            .doOnNext { result ->
                 logger.warn {
                     "Conversation credit refunded - " +
-                        "userId=${session.userId.value}, sessionId=${session.sessionId.value}, " +
-                        "transactionId=${tx.transactionId.value}, cause=${cause.message}"
+                        "userId=${session.userId}, sessionId=${session.sessionId.value}, " +
+                        "transactionId=${result.transactionId}, cause=${cause.message}"
                 }
             }.then()
             .onErrorResume { refundError ->
                 logger.error(refundError) {
                     "Conversation credit refund failed - " +
-                        "userId=${session.userId.value}, sessionId=${session.sessionId.value}, " +
+                        "userId=${session.userId}, sessionId=${session.sessionId.value}, " +
                         "cause=${cause.message}, refundError=${refundError.message}"
                 }
                 Mono.empty()
@@ -146,7 +147,7 @@ class DialoguePipelineService(
      */
     private fun logUserCancellation(session: ConversationSession): Mono<Void> {
         logger.info {
-            "Conversation cancelled by user - credit kept - userId=${session.userId.value}, sessionId=${session.sessionId.value}"
+            "Conversation cancelled by user - credit kept - userId=${session.userId}, sessionId=${session.sessionId.value}"
         }
         return Mono.empty()
     }

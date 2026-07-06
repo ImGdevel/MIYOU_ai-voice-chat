@@ -1,6 +1,7 @@
 package com.miyou.app.infrastructure.dialogue.adapter.tts
 
-import com.miyou.app.domain.voice.model.AudioFormat
+import com.miyou.app.common.model.AudioFormat
+import com.miyou.app.domain.dialogue.model.TtsCommand
 import com.miyou.app.domain.voice.model.Voice
 import com.miyou.app.domain.voice.model.VoiceSettings
 import com.miyou.app.domain.voice.model.VoiceStyle
@@ -66,7 +67,7 @@ class LoadBalancedSupertoneTtsAdapterTest {
         fakeServer.setEndpointBehavior("key-1", FakeSupertoneServer.ServerBehavior.success())
 
         StepVerifier
-            .create(adapter.streamSynthesize("Hello, world!"))
+            .create(adapter.streamSynthesize(TtsCommand("Hello, world!", AudioFormat.WAV)))
             .expectNextMatches { it.isNotEmpty() }
             .verifyComplete()
 
@@ -84,7 +85,7 @@ class LoadBalancedSupertoneTtsAdapterTest {
         fakeServer.setEndpointBehavior("key-3", FakeSupertoneServer.ServerBehavior.success())
 
         StepVerifier
-            .create(adapter.streamSynthesize("Hello, world!"))
+            .create(adapter.streamSynthesize(TtsCommand("Hello, world!", AudioFormat.WAV)))
             .expectNextMatches { it.isNotEmpty() }
             .verifyComplete()
 
@@ -101,7 +102,7 @@ class LoadBalancedSupertoneTtsAdapterTest {
         fakeServer.setEndpointBehavior("key-2", FakeSupertoneServer.ServerBehavior.success())
 
         StepVerifier
-            .create(adapter.streamSynthesize("Hello, world!"))
+            .create(adapter.streamSynthesize(TtsCommand("Hello, world!", AudioFormat.WAV)))
             .expectNextMatches { it.isNotEmpty() }
             .verifyComplete()
 
@@ -118,7 +119,7 @@ class LoadBalancedSupertoneTtsAdapterTest {
         )
 
         StepVerifier
-            .create(adapter.streamSynthesize("Hello, world!"))
+            .create(adapter.streamSynthesize(TtsCommand("Hello, world!", AudioFormat.WAV)))
             .expectError()
             .verify()
 
@@ -143,7 +144,7 @@ class LoadBalancedSupertoneTtsAdapterTest {
         )
 
         StepVerifier
-            .create(adapter.streamSynthesize("Hello, world!"))
+            .create(adapter.streamSynthesize(TtsCommand("Hello, world!", AudioFormat.WAV)))
             .expectError(RuntimeException::class.java)
             .verify()
 
@@ -159,7 +160,7 @@ class LoadBalancedSupertoneTtsAdapterTest {
         fakeServer.resetRequestCounts()
 
         repeat(9) { index ->
-            adapter.streamSynthesize("Test $index").blockLast()
+            adapter.streamSynthesize(TtsCommand("Test $index", AudioFormat.WAV)).blockLast()
         }
 
         assertThat(requestCount("key-1", "key-2", "key-3")).isEqualTo(9)
@@ -176,7 +177,7 @@ class LoadBalancedSupertoneTtsAdapterTest {
         fakeServer.setEndpointBehavior("key-3", FakeSupertoneServer.ServerBehavior.success())
 
         StepVerifier
-            .create(adapter.streamSynthesize("Hello, world!"))
+            .create(adapter.streamSynthesize(TtsCommand("Hello, world!", AudioFormat.WAV)))
             .expectNextMatches { it.isNotEmpty() }
             .verifyComplete()
 
@@ -189,7 +190,7 @@ class LoadBalancedSupertoneTtsAdapterTest {
         fakeServer.setEndpointBehavior("key-1", FakeSupertoneServer.ServerBehavior.success())
 
         StepVerifier
-            .create(adapter.streamSynthesize("a".repeat(301)))
+            .create(adapter.streamSynthesize(TtsCommand("a".repeat(301), AudioFormat.WAV)))
             .expectError()
             .verify()
     }
@@ -201,7 +202,7 @@ class LoadBalancedSupertoneTtsAdapterTest {
         fakeServer.setEndpointBehavior("key-2", FakeSupertoneServer.ServerBehavior.delayed(5000))
         fakeServer.setEndpointBehavior("key-3", FakeSupertoneServer.ServerBehavior.delayed(5000))
 
-        adapter.streamSynthesize("test", AudioFormat.WAV).subscribe().dispose()
+        adapter.streamSynthesize(TtsCommand("test", AudioFormat.WAV)).subscribe().dispose()
         Thread.sleep(200)
 
         val activeRequestCount = loadBalancer.endpoints.sumOf { it.activeRequests }
@@ -249,7 +250,7 @@ class LoadBalancedSupertoneTtsAdapterTest {
 
         repeat(requestCount) { index ->
             adapter
-                .streamSynthesize("Test $index")
+                .streamSynthesize(TtsCommand("Test $index", AudioFormat.WAV))
                 .doOnComplete {
                     successCount.incrementAndGet()
                     latch.countDown()
@@ -280,7 +281,7 @@ class LoadBalancedSupertoneTtsAdapterTest {
 
         repeat(requestCount) { index ->
             adapter
-                .streamSynthesize("Test $index")
+                .streamSynthesize(TtsCommand("Test $index", AudioFormat.WAV))
                 .doOnComplete {
                     successCount.incrementAndGet()
                     latch.countDown()
@@ -309,7 +310,7 @@ class LoadBalancedSupertoneTtsAdapterTest {
         repeat(requestCount) { index ->
             Schedulers.parallel().schedule {
                 adapter
-                    .streamSynthesize("Test $index")
+                    .streamSynthesize(TtsCommand("Test $index", AudioFormat.WAV))
                     .doOnSubscribe { startLatch.countDown() }
                     .doFinally { endLatch.countDown() }
                     .subscribeOn(Schedulers.parallel())

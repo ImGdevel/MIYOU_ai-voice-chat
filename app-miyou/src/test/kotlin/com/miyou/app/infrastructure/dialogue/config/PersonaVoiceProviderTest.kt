@@ -1,7 +1,6 @@
 package com.miyou.app.infrastructure.dialogue.config
 
-import com.miyou.app.domain.dialogue.model.PersonaId
-import com.miyou.app.domain.voice.model.AudioFormat
+import com.miyou.app.common.model.AudioFormat
 import com.miyou.app.domain.voice.model.Voice
 import com.miyou.app.domain.voice.model.VoiceSettings
 import com.miyou.app.domain.voice.model.VoiceStyle
@@ -67,7 +66,7 @@ class PersonaVoiceProviderTest {
     @Test
     @DisplayName("기본 페르소나에는 기본 음성을 반환한다")
     fun getVoiceForPersona_returnsDefaultVoiceForDefaultPersona() {
-        val result = voiceProvider.getVoiceForPersona(PersonaId.ofNullable(null))
+        val result = voiceProvider.getVoiceForPersona("")
 
         assertThat(result).isEqualTo(defaultVoice)
     }
@@ -75,7 +74,7 @@ class PersonaVoiceProviderTest {
     @Test
     @DisplayName("설정된 페르소나에는 대응하는 음성을 반환한다")
     fun getVoiceForPersona_returnsConfiguredPersonaVoice() {
-        val result = voiceProvider.getVoiceForPersona(PersonaId.of("maid"))
+        val result = voiceProvider.getVoiceForPersona("maid")
 
         assertThat(result.id).isEqualTo("maid-voice")
         assertThat(result.name).isEqualTo("maid")
@@ -88,7 +87,7 @@ class PersonaVoiceProviderTest {
     @Test
     @DisplayName("다른 페르소나에는 각자 설정된 음성을 반환한다")
     fun getVoiceForPersona_returnsDifferentPersonaVoice() {
-        val result = voiceProvider.getVoiceForPersona(PersonaId.of("interviewer"))
+        val result = voiceProvider.getVoiceForPersona("interviewer")
 
         assertThat(result.id).isEqualTo("interviewer-voice")
         assertThat(result.name).isEqualTo("interviewer")
@@ -98,7 +97,7 @@ class PersonaVoiceProviderTest {
     @Test
     @DisplayName("알 수 없는 페르소나에는 기본 음성을 반환한다")
     fun getVoiceForPersona_returnsDefaultVoiceForUnknownPersona() {
-        val result = voiceProvider.getVoiceForPersona(PersonaId.of("unknown"))
+        val result = voiceProvider.getVoiceForPersona("unknown")
 
         assertThat(result).isEqualTo(defaultVoice)
     }

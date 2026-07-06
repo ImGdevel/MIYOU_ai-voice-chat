@@ -1,6 +1,7 @@
 package com.miyou.app.infrastructure.inbound.web.monitoring
 
 import com.miyou.app.application.common.error.CommonErrorCode
+import com.miyou.app.application.monitoring.model.UsageAnalyticsReport
 import com.miyou.app.domain.cost.service.CostCalculationService
 import com.miyou.app.domain.monitoring.model.MetricsGranularity
 import com.miyou.app.domain.monitoring.model.MetricsRollup
@@ -111,6 +112,7 @@ class MetricsController(
     private fun calculateTotalCredits(): Mono<Long> =
         metricsQueryUseCase
             .getRecentUsageAnalytics(MAX_CREDIT_SAMPLE)
+            .map(UsageAnalyticsReport::toUsageMetricsInput)
             .map(CostCalculationService::calculateCost)
             .map { cost -> cost.totalCredits }
             .reduce(0L) { total, cost -> total + cost }

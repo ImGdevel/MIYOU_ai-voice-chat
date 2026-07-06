@@ -53,7 +53,7 @@ class SpringAiVectorDbAdapterTest {
     @Test
     @DisplayName("upsert 시 메모리 메타데이터를 벡터 저장소에 저장한다")
     fun upsert_storesMemoryMetadata() {
-        val sessionId = ConversationSessionFixture.createId()
+        val sessionId = ConversationSessionFixture.createId().value
         val memory =
             Memory(
                 id = null,
@@ -77,7 +77,7 @@ class SpringAiVectorDbAdapterTest {
 
         verify(vectorStore).add(captor.capture())
         val metadata = captor.value.single().metadata
-        assertThat(metadata["sessionId"]).isEqualTo(sessionId.value)
+        assertThat(metadata["sessionId"]).isEqualTo(sessionId)
         assertThat(metadata["type"]).isEqualTo("EXPERIENTIAL")
         assertThat(metadata["importance"]).isEqualTo(0.9f)
         assertThat(metadata["accessCount"]).isEqualTo(5)
@@ -87,7 +87,7 @@ class SpringAiVectorDbAdapterTest {
     @Test
     @DisplayName("검색 결과 Qdrant 포인트를 Memory 객체로 변환한다")
     fun search_mapsQdrantPointsIntoMemoryObjects() {
-        val sessionId = ConversationSessionFixture.createId()
+        val sessionId = ConversationSessionFixture.createId().value
         val point =
             ScoredPoint
                 .newBuilder()
@@ -138,7 +138,7 @@ class SpringAiVectorDbAdapterTest {
     @Test
     @DisplayName("payload의 emotion 문자열을 MemoryEmotion으로 역직렬화한다")
     fun search_mapsEmotionFieldFromPayload() {
-        val sessionId = ConversationSessionFixture.createId()
+        val sessionId = ConversationSessionFixture.createId().value
         val point =
             ScoredPoint
                 .newBuilder()
@@ -248,7 +248,7 @@ class SpringAiVectorDbAdapterTest {
             .create(vectorDbAdapter.findAllActive(100))
             .assertNext { memory ->
                 assertThat(memory.id).isEqualTo("mem-1")
-                assertThat(memory.sessionId.value).isEqualTo("session-1")
+                assertThat(memory.sessionId).isEqualTo("session-1")
                 assertThat(memory.archivedAt).isNull()
             }.verifyComplete()
     }
@@ -256,7 +256,7 @@ class SpringAiVectorDbAdapterTest {
     @Test
     @DisplayName("applyDecayAndArchive는 importance와 archivedAt을 함께 반영한다")
     fun applyDecayAndArchive_writesImportanceAndArchivedAt() {
-        val sessionId = ConversationSessionFixture.createId()
+        val sessionId = ConversationSessionFixture.createId().value
         val now = Instant.now()
         val archivedMemory =
             Memory(

@@ -2,11 +2,12 @@ package com.miyou.app.application.dialogue.pipeline.stage
 
 import com.miyou.app.application.monitoring.context.PipelineContext
 import com.miyou.app.application.monitoring.service.PipelineTracer
+import com.miyou.app.common.model.AudioFormat
 import com.miyou.app.domain.dialogue.model.PersonaId
+import com.miyou.app.domain.dialogue.model.TtsCommand
 import com.miyou.app.domain.dialogue.port.TtsPort
 import com.miyou.app.domain.dialogue.service.SentenceAssembler
 import com.miyou.app.domain.monitoring.model.DialoguePipelineStage
-import com.miyou.app.domain.voice.model.AudioFormat
 import com.miyou.app.domain.voice.model.Voice
 import com.miyou.app.domain.voice.port.VoiceSelectionPort
 import io.github.oshai.kotlinlogging.KotlinLogging
@@ -80,7 +81,8 @@ class DialogueTtsStreamService(
         sentences
             .publishOn(Schedulers.boundedElastic())
             .concatMap { sentence ->
-                ttsWarmup.thenMany(ttsPort.streamSynthesize(sentence, targetFormat))
+                val command = TtsCommand(text = sentence, format = targetFormat)
+                ttsWarmup.thenMany(ttsPort.streamSynthesize(command))
             }
 
     /**
@@ -98,11 +100,23 @@ class DialogueTtsStreamService(
         targetFormat: AudioFormat,
         personaId: PersonaId,
     ): Flux<ByteArray> {
-        val voice: Voice = voiceProvider.getVoiceForPersona(personaId)
+        val voice: Voice = voiceProvider.getVoiceForPersona(personaId.value)
         return sentences
             .publishOn(Schedulers.boundedElastic())
             .concatMap { sentence ->
-                ttsWarmup.thenMany(ttsPort.streamSynthesize(sentence, targetFormat, voice))
+                val command =
+                    TtsCommand(
+                        text = sentence,
+                        format = targetFormat,
+                        voiceId = voice.id,
+                        voiceProvider = voice.provider,
+                        language = voice.language,
+                        style = voice.style.value,
+                        pitchShift = voice.settings.pitchShift,
+                        pitchVariance = voice.settings.pitchVariance,
+                        speed = voice.settings.speed
+                    )
+                ttsWarmup.thenMany(ttsPort.streamSynthesize(command))
             }
     }
 

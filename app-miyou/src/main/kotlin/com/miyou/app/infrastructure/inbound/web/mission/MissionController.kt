@@ -3,11 +3,10 @@ package com.miyou.app.infrastructure.inbound.web.mission
 import com.miyou.app.application.mission.usecase.MissionCompletionUseCase
 import com.miyou.app.application.mission.usecase.MissionQueryUseCase
 import com.miyou.app.domain.auth.model.AuthenticatedUser
-import com.miyou.app.domain.dialogue.model.UserId
 import com.miyou.app.domain.mission.model.MissionId
+import com.miyou.app.infrastructure.inbound.web.common.UserIdResolver
 import com.miyou.app.infrastructure.inbound.web.mission.dto.MissionResponse
 import com.miyou.app.infrastructure.inbound.web.mission.dto.UserMissionResponse
-import jakarta.validation.constraints.NotBlank
 import org.springframework.http.HttpStatus
 import org.springframework.security.core.annotation.AuthenticationPrincipal
 import org.springframework.validation.annotation.Validated
@@ -35,16 +34,11 @@ class MissionController(
     fun getUserMissions(
         @RequestParam(required = false) userId: String?,
         @AuthenticationPrincipal principal: AuthenticatedUser?,
-    ): Flux<UserMissionResponse> {
-        val resolvedUserId =
-            principal?.userId
-                ?: userId?.takeIf { it.isNotBlank() }?.let { UserId.of(it) }
-                ?: return Flux.error(
-                    org.springframework.web.server
-                        .ResponseStatusException(HttpStatus.BAD_REQUEST, "userId is required")
-                )
-        return missionQueryUseCase.getUserMissions(resolvedUserId).map(UserMissionResponse::from)
-    }
+    ): Flux<UserMissionResponse> =
+        UserIdResolver
+            .resolve(principal, userId)
+            .flatMapMany(missionQueryUseCase::getUserMissions)
+            .map(UserMissionResponse::from)
 
     @PostMapping("/{missionId}/complete")
     @ResponseStatus(HttpStatus.OK)
@@ -52,18 +46,13 @@ class MissionController(
         @PathVariable missionId: String,
         @RequestParam(required = false) userId: String?,
         @AuthenticationPrincipal principal: AuthenticatedUser?,
-    ): Mono<UserMissionResponse> {
-        val resolvedUserId =
-            principal?.userId
-                ?: userId?.takeIf { it.isNotBlank() }?.let { UserId.of(it) }
-                ?: return Mono.error(
-                    org.springframework.web.server
-                        .ResponseStatusException(HttpStatus.BAD_REQUEST, "userId is required")
+    ): Mono<UserMissionResponse> =
+        UserIdResolver
+            .resolve(principal, userId)
+            .flatMap { resolvedUserId ->
+                missionCompletionUseCase.completeMission(
+                    resolvedUserId,
+                    MissionId.of(missionId),
                 )
-        return missionCompletionUseCase
-            .completeMission(
-                resolvedUserId,
-                MissionId.of(missionId),
-            ).map(UserMissionResponse::from)
-    }
+            }.map(UserMissionResponse::from)
 }

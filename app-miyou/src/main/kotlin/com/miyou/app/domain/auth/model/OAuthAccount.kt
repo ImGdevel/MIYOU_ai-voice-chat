@@ -1,6 +1,5 @@
 package com.miyou.app.domain.auth.model
 
-import com.miyou.app.domain.dialogue.model.UserId
 import java.time.Instant
 import java.util.UUID
 
@@ -8,7 +7,7 @@ data class OAuthAccount(
     val id: String,
     val provider: Provider,
     val providerUserId: String,
-    val userId: UserId,
+    val userId: String,
     val email: String?,
     val displayName: String?,
     val createdAt: Instant? = null,
@@ -19,7 +18,7 @@ data class OAuthAccount(
         @JvmStatic
         fun create(
             loginResult: OAuthLoginResult,
-            userId: UserId,
+            userId: String,
         ): OAuthAccount =
             OAuthAccount(
                 id = UUID.randomUUID().toString(),

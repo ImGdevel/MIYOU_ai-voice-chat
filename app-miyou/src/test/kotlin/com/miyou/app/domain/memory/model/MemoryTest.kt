@@ -8,7 +8,7 @@ import java.time.Instant
 import java.time.temporal.ChronoUnit
 
 class MemoryTest {
-    private val sessionId = ConversationSessionFixture.createId()
+    private val sessionId = ConversationSessionFixture.createId().value
 
     private fun memoryWith(
         importance: Float,

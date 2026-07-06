@@ -11,10 +11,10 @@ import com.miyou.app.domain.auth.model.RefreshToken
 import com.miyou.app.domain.auth.port.JwtIssuer
 import com.miyou.app.domain.auth.port.OAuthAccountRepository
 import com.miyou.app.domain.auth.port.RefreshTokenRepository
-import com.miyou.app.domain.dialogue.model.UserId
 import org.springframework.dao.DuplicateKeyException
 import org.springframework.stereotype.Service
 import reactor.core.publisher.Mono
+import java.util.UUID
 
 @Service
 class AuthApplicationService(
@@ -44,7 +44,7 @@ class AuthApplicationService(
         refreshTokenRepository.deleteByTokenId(refreshTokenValue)
 
     private fun registerNewAccount(result: OAuthLoginResult): Mono<OAuthAccount> {
-        val newUserId = UserId.generate()
+        val newUserId = UUID.randomUUID().toString()
         return oAuthAccountRepository
             .save(OAuthAccount.create(result, newUserId))
             .onErrorResume(DuplicateKeyException::class.java) {
@@ -52,7 +52,7 @@ class AuthApplicationService(
             }
     }
 
-    private fun issueTokenPair(userId: UserId): Mono<AuthTokens> {
+    private fun issueTokenPair(userId: String): Mono<AuthTokens> {
         val accessToken = jwtIssuer.issueAccessToken(userId)
         return refreshTokenRepository
             .save(RefreshToken.issue(userId))

@@ -4,6 +4,7 @@ import com.tngtech.archunit.core.importer.ClassFileImporter
 import com.tngtech.archunit.core.importer.ImportOption
 import com.tngtech.archunit.lang.syntax.ArchRuleDefinition.classes
 import com.tngtech.archunit.lang.syntax.ArchRuleDefinition.noClasses
+import org.junit.jupiter.api.Disabled
 import org.junit.jupiter.api.Test
 import org.springframework.data.mongodb.core.mapping.Document
 import org.springframework.web.bind.annotation.RestController
@@ -14,6 +15,9 @@ class HexagonalArchitectureTest {
             ClassFileImporter()
                 .withImportOption(ImportOption.Predefined.DO_NOT_INCLUDE_TESTS)
                 .importPackages("com.miyou.app")
+
+        private val BUSINESS_DOMAINS =
+            listOf("dialogue", "credit", "memory", "mission", "auth", "cost", "retrieval", "voice")
     }
 
     @Test
@@ -75,6 +79,53 @@ class HexagonalArchitectureTest {
             .should()
             .resideInAPackage("com.miyou.app.infrastructure..")
             .because("@Document entities must reside in infrastructure layer")
+            .check(importedClasses)
+    }
+
+    @Test
+    @Disabled(
+        "dialogue의 파이프라인 포트(TtsPort/PromptTemplatePort/DialoguePipelineUseCase)가 " +
+            "voice.AudioFormat/Voice, retrieval.RetrievalContext를 오케스트레이션 목적으로 직접 참조 - " +
+            "단순 원시값 치환이 아닌 인터페이스 재설계 필요, 트래킹: " +
+            "https://github.com/ImGdevel/MIYOU_ai-voice-chat/issues/86",
+    )
+    fun domainDialogueShouldNotDependOnOtherDomains() = domainIsolationRule("dialogue")
+
+    @Test
+    fun domainCreditShouldNotDependOnOtherDomains() = domainIsolationRule("credit")
+
+    @Test
+    fun domainMemoryShouldNotDependOnOtherDomains() = domainIsolationRule("memory")
+
+    @Test
+    fun domainMissionShouldNotDependOnOtherDomains() = domainIsolationRule("mission")
+
+    @Test
+    fun domainAuthShouldNotDependOnOtherDomains() = domainIsolationRule("auth")
+
+    @Test
+    fun domainCostShouldNotDependOnOtherDomains() = domainIsolationRule("cost")
+
+    @Test
+    @Disabled(
+        "retrieval.RetrievalPort.retrieveMemories가 memory.MemoryRetrievalResult를 반환 - " +
+            "단순 원시값 치환이 아닌 인터페이스 재설계 필요, 트래킹: " +
+            "https://github.com/ImGdevel/MIYOU_ai-voice-chat/issues/86",
+    )
+    fun domainRetrievalShouldNotDependOnOtherDomains() = domainIsolationRule("retrieval")
+
+    @Test
+    fun domainVoiceShouldNotDependOnOtherDomains() = domainIsolationRule("voice")
+
+    private fun domainIsolationRule(from: String) {
+        val others = BUSINESS_DOMAINS.filter { it != from }
+        noClasses()
+            .that()
+            .resideInAPackage("com.miyou.app.domain.$from..")
+            .should()
+            .dependOnClassesThat()
+            .resideInAnyPackage(*others.map { "com.miyou.app.domain.$it.." }.toTypedArray())
+            .because("Business domains must not depend on each other")
             .check(importedClasses)
     }
 }

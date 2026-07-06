@@ -56,7 +56,7 @@ class MemoryRetrievalServiceTest {
     @Test
     @DisplayName("메모리를 점수순으로 제한해 조회하고 접근 지표를 갱신한다")
     fun retrieveMemories_shouldRankLimitAndUpdateAccessMetrics() {
-        val sessionId = ConversationSessionFixture.createId()
+        val sessionId = ConversationSessionFixture.createId().value
         val now = Instant.now()
         val top =
             Memory(
@@ -127,7 +127,7 @@ class MemoryRetrievalServiceTest {
     @Test
     @DisplayName("반복 조회로 lastAccessedAt이 갱신된 오래된 메모리보다 최근 생성된 메모리를 우선한다")
     fun retrieveMemories_ranksRecentlyCreatedMemoryAboveStaleFrequentlyAccessedOne() {
-        val sessionId = ConversationSessionFixture.createId()
+        val sessionId = ConversationSessionFixture.createId().value
         val now = Instant.now()
         val recent =
             Memory(
@@ -179,7 +179,7 @@ class MemoryRetrievalServiceTest {
     @Test
     @DisplayName("검색 결과가 없으면 빈 메모리 결과를 반환한다")
     fun retrieveMemories_shouldReturnEmptyWithoutUpdateWhenSearchIsEmpty() {
-        val sessionId = ConversationSessionFixture.createId()
+        val sessionId = ConversationSessionFixture.createId().value
 
         `when`(embeddingPort.embed("query")).thenReturn(
             Mono.just(MemoryEmbedding.of("query", listOf(0.1f, 0.2f))),
@@ -211,7 +211,7 @@ class MemoryRetrievalServiceTest {
                     associativeHopMinScore = 0.5f
                 ),
             )
-        val sessionId = ConversationSessionFixture.createId()
+        val sessionId = ConversationSessionFixture.createId().value
         val now = Instant.now()
         val trigger =
             Memory("m-ramen", sessionId, MemoryType.FACTUAL, "user ate ramen", 0.9f, now, now, 1)
@@ -257,7 +257,7 @@ class MemoryRetrievalServiceTest {
                     associativeHopMinScore = 0.5f
                 ),
             )
-        val sessionId = ConversationSessionFixture.createId()
+        val sessionId = ConversationSessionFixture.createId().value
         val now = Instant.now()
         val weakCandidate =
             Memory("m-weak", sessionId, MemoryType.FACTUAL, "user mentioned something once", 0.2f, now, now, 1)
@@ -300,7 +300,7 @@ class MemoryRetrievalServiceTest {
                     associativeHopMinScore = 0.3f
                 ),
             )
-        val sessionId = ConversationSessionFixture.createId()
+        val sessionId = ConversationSessionFixture.createId().value
         val now = Instant.now()
         val trigger = Memory("m-trigger", sessionId, MemoryType.FACTUAL, "user ate ramen", 0.9f, now, now, 1)
         val types = listOf(MemoryType.EXPERIENTIAL, MemoryType.FACTUAL)

@@ -91,7 +91,7 @@ class AssociativeRetrievalQualityBenchmark {
         val vectorMemoryPort = SpringAiVectorDbAdapter(vectorStore, qdrantClient, properties)
         val metrics = NoOpRagQualityMetricsPort
 
-        val sessionId = ConversationSessionId.generate()
+        val sessionId = ConversationSessionId.generate().value
         val query = "라면 얘기 좀 해줘"
 
         // trigger: 쿼리와 직접 관련 있는 진짜 신호. 항상 1차 검색 1위가 되도록 importance를 높게 둔다.
@@ -166,7 +166,7 @@ class AssociativeRetrievalQualityBenchmark {
     private fun seedMemory(
         embeddingPort: EmbeddingPort,
         vectorMemoryPort: VectorMemoryPort,
-        sessionId: ConversationSessionId,
+        sessionId: String,
         content: String,
         importance: Float,
         now: Instant,

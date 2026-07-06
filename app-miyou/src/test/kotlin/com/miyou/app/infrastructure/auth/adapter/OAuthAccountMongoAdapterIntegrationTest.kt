@@ -3,7 +3,6 @@ package com.miyou.app.infrastructure.auth.adapter
 import com.miyou.app.config.annotation.ReactiveRepositoryTest
 import com.miyou.app.domain.auth.model.OAuthAccount
 import com.miyou.app.domain.auth.model.Provider
-import com.miyou.app.domain.dialogue.model.UserId
 import com.miyou.app.infrastructure.auth.repository.OAuthAccountMongoRepository
 import com.miyou.app.support.ContainerizedIntegrationTestSupport
 import org.assertj.core.api.Assertions.assertThat
@@ -37,7 +36,7 @@ class OAuthAccountMongoAdapterIntegrationTest : ContainerizedIntegrationTestSupp
     @Test
     @DisplayName("저장 후 (provider, providerUserId)로 조회할 수 있다")
     fun save_thenFindByProviderAndProviderUserId_returnsAccount() {
-        val userId = UserId.of("integration-oauth-user-1")
+        val userId = "integration-oauth-user-1"
         val account =
             OAuthAccount(
                 UUID.randomUUID().toString(),
@@ -68,7 +67,7 @@ class OAuthAccountMongoAdapterIntegrationTest : ContainerizedIntegrationTestSupp
                 UUID.randomUUID().toString(),
                 Provider.KAKAO,
                 "kakao-dup-1",
-                UserId.of("user-a"),
+                "user-a",
                 null,
                 null,
                 Instant.now()
@@ -78,7 +77,7 @@ class OAuthAccountMongoAdapterIntegrationTest : ContainerizedIntegrationTestSupp
                 UUID.randomUUID().toString(),
                 Provider.KAKAO,
                 "kakao-dup-1",
-                UserId.of("user-b"),
+                "user-b",
                 null,
                 null,
                 Instant.now()

@@ -2,6 +2,16 @@
 
 set -e
 
+# 윈도우 환경인 경우 bat 파일 실행, 아니면 sh 파일 실행
+case "$(uname -s)" in
+    CYGWIN*|MINGW32*|MSYS*|MINGW*)
+        GRADLEW="./gradlew.bat"
+        ;;
+    *)
+        GRADLEW="./gradlew"
+        ;;
+esac
+
 STAGED_JAVA_FILES=$(git diff --cached --name-only --diff-filter=ACM | grep '\.java$' || true)
 STAGED_KOTLIN_FILES=$(git diff --cached --name-only --diff-filter=ACM | grep -E '\.(kt|kts)$' || true)
 
@@ -12,7 +22,7 @@ fi
 
 if [ -n "$STAGED_JAVA_FILES" ]; then
   echo "staged Java 파일 Spotless 적용 시작..."
-  ./gradlew spotlessApply
+  $GRADLEW spotlessApply
 
   for FILE in $STAGED_JAVA_FILES; do
     if [ -f "$FILE" ]; then
@@ -25,7 +35,7 @@ fi
 
 if [ -n "$STAGED_KOTLIN_FILES" ]; then
   echo "staged Kotlin 파일 ktlintFormat 적용 시작..."
-  ./gradlew ktlintFormat
+  $GRADLEW ktlintFormat
 
   for FILE in $STAGED_KOTLIN_FILES; do
     if [ -f "$FILE" ]; then
