@@ -2,11 +2,11 @@ package com.miyou.app.infrastructure.inbound.web.dialogue
 
 import com.miyou.app.application.credit.usecase.CreditChargeUseCase
 import com.miyou.app.application.dialogue.service.DialogueSpeechService
+import com.miyou.app.common.model.AudioFormat
 import com.miyou.app.domain.credit.exception.InsufficientCreditException
 import com.miyou.app.domain.dialogue.model.ConversationSessionId
 import com.miyou.app.domain.dialogue.port.ConversationSessionRepository
 import com.miyou.app.domain.dialogue.port.DialoguePipelineUseCase
-import com.miyou.app.domain.voice.model.AudioFormat
 import com.miyou.app.fixture.ConversationSessionFixture
 import com.miyou.app.infrastructure.inbound.web.dialogue.dto.RagDialogueRequest
 import com.miyou.app.support.PermitAllSecurityTestConfig

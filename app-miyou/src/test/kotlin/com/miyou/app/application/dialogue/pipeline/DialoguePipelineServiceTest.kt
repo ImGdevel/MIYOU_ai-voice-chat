@@ -4,6 +4,7 @@ import com.miyou.app.application.dialogue.pipeline.stage.DialogueInputService
 import com.miyou.app.application.dialogue.pipeline.stage.DialogueLlmStreamService
 import com.miyou.app.application.dialogue.pipeline.stage.DialoguePostProcessingService
 import com.miyou.app.application.dialogue.pipeline.stage.DialogueTtsStreamService
+import com.miyou.app.common.model.AudioFormat
 import com.miyou.app.domain.dialogue.model.ConversationContext
 import com.miyou.app.domain.dialogue.model.ConversationTurn
 import com.miyou.app.domain.dialogue.port.CreditChargingPort
@@ -13,7 +14,6 @@ import com.miyou.app.domain.dialogue.port.CreditRefundCommand
 import com.miyou.app.domain.dialogue.port.CreditRefundResult
 import com.miyou.app.domain.memory.model.MemoryRetrievalResult
 import com.miyou.app.domain.retrieval.model.RetrievalContext
-import com.miyou.app.domain.voice.model.AudioFormat
 import com.miyou.app.fixture.ConversationSessionFixture
 import com.miyou.app.support.anyValue
 import com.miyou.app.support.eqValue

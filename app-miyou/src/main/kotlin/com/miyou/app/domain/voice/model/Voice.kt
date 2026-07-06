@@ -1,5 +1,7 @@
 package com.miyou.app.domain.voice.model
 
+import com.miyou.app.common.model.AudioFormat
+
 data class Voice(
     val id: String,
     val name: String,

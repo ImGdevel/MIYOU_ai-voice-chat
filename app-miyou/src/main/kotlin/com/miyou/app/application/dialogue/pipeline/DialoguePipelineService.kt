@@ -5,13 +5,13 @@ import com.miyou.app.application.dialogue.pipeline.stage.DialogueLlmStreamServic
 import com.miyou.app.application.dialogue.pipeline.stage.DialoguePostProcessingService
 import com.miyou.app.application.dialogue.pipeline.stage.DialogueTtsStreamService
 import com.miyou.app.application.monitoring.aop.MonitoredPipeline
+import com.miyou.app.common.model.AudioFormat
 import com.miyou.app.domain.dialogue.model.ConversationSession
 import com.miyou.app.domain.dialogue.port.CreditChargingPort
 import com.miyou.app.domain.dialogue.port.CreditDeductCommand
 import com.miyou.app.domain.dialogue.port.CreditDeductResult
 import com.miyou.app.domain.dialogue.port.CreditRefundCommand
 import com.miyou.app.domain.dialogue.port.DialoguePipelineUseCase
-import com.miyou.app.domain.voice.model.AudioFormat
 import io.github.oshai.kotlinlogging.KotlinLogging
 import org.springframework.stereotype.Service
 import reactor.core.publisher.Flux
@@ -32,7 +32,6 @@ class DialoguePipelineService(
     private val creditChargingPort: CreditChargingPort,
 ) : DialoguePipelineUseCase {
     private val logger = KotlinLogging.logger {}
-    private val defaultAudioFormat: AudioFormat = AudioFormat.MP3
 
     /**
      * 음성 스트리밍 실행.
@@ -45,9 +44,9 @@ class DialoguePipelineService(
     override fun executeAudioStreaming(
         session: ConversationSession,
         text: String,
-        format: AudioFormat?,
+        format: AudioFormat,
     ): Flux<ByteArray> {
-        val targetFormat = format ?: defaultAudioFormat
+        val targetFormat = format
 
         val inputsMono = inputService.prepareInputs(session, text).cache()
         val ttsWarmup: Mono<Void> = ttsStreamService.prepareTtsWarmup()

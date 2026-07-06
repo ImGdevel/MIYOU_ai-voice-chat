@@ -1,6 +1,6 @@
 package com.miyou.app.infrastructure.dialogue.config
 
-import com.miyou.app.domain.voice.model.AudioFormat
+import com.miyou.app.common.model.AudioFormat
 import com.miyou.app.domain.voice.model.Voice
 import com.miyou.app.domain.voice.model.VoiceSettings
 import com.miyou.app.domain.voice.model.VoiceStyle

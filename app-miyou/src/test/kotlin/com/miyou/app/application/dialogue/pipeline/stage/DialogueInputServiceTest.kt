@@ -4,6 +4,7 @@ import com.miyou.app.application.monitoring.service.PipelineTracer
 import com.miyou.app.domain.dialogue.model.ConversationTurn
 import com.miyou.app.domain.dialogue.port.ConversationRepository
 import com.miyou.app.domain.memory.model.MemoryRetrievalResult
+import com.miyou.app.domain.memory.port.MemoryRetrievalPort
 import com.miyou.app.domain.retrieval.model.RetrievalContext
 import com.miyou.app.domain.retrieval.port.RetrievalPort
 import com.miyou.app.fixture.ConversationSessionFixture
@@ -29,6 +30,9 @@ class DialogueInputServiceTest {
     private lateinit var retrievalPort: RetrievalPort
 
     @Mock
+    private lateinit var memoryRetrievalPort: MemoryRetrievalPort
+
+    @Mock
     private lateinit var conversationRepository: ConversationRepository
 
     @Mock
@@ -38,7 +42,7 @@ class DialogueInputServiceTest {
 
     @BeforeEach
     fun setUp() {
-        service = DialogueInputService(retrievalPort, conversationRepository, pipelineTracer)
+        service = DialogueInputService(retrievalPort, memoryRetrievalPort, conversationRepository, pipelineTracer)
     }
 
     @Test

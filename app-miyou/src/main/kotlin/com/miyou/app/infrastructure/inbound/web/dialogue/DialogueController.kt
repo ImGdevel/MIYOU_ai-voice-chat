@@ -5,6 +5,7 @@ import com.miyou.app.application.common.error.CreditErrorCode
 import com.miyou.app.application.common.error.DialogueErrorCode
 import com.miyou.app.application.credit.usecase.CreditChargeUseCase
 import com.miyou.app.application.dialogue.service.DialogueSpeechService
+import com.miyou.app.common.model.AudioFormat
 import com.miyou.app.domain.auth.model.AuthenticatedUser
 import com.miyou.app.domain.credit.exception.InsufficientCreditException
 import com.miyou.app.domain.dialogue.model.ConversationSession
@@ -12,7 +13,6 @@ import com.miyou.app.domain.dialogue.model.ConversationSessionId
 import com.miyou.app.domain.dialogue.model.PersonaId
 import com.miyou.app.domain.dialogue.port.ConversationSessionRepository
 import com.miyou.app.domain.dialogue.port.DialoguePipelineUseCase
-import com.miyou.app.domain.voice.model.AudioFormat
 import com.miyou.app.infrastructure.inbound.web.dialogue.docs.DialogueApi
 import com.miyou.app.infrastructure.inbound.web.dialogue.dto.CreateSessionRequest
 import com.miyou.app.infrastructure.inbound.web.dialogue.dto.CreateSessionResponse

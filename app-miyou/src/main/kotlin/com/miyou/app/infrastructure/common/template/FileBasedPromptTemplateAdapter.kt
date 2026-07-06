@@ -1,8 +1,8 @@
 package com.miyou.app.infrastructure.common.template
 
 import com.miyou.app.domain.dialogue.model.ConversationContext
+import com.miyou.app.domain.dialogue.model.PromptRetrievalInput
 import com.miyou.app.domain.dialogue.port.PromptTemplatePort
-import com.miyou.app.domain.retrieval.model.RetrievalContext
 import org.springframework.context.annotation.Primary
 import org.springframework.stereotype.Component
 
@@ -11,12 +11,12 @@ import org.springframework.stereotype.Component
 class FileBasedPromptTemplateAdapter(
     private val templateLoader: FileBasedPromptTemplate,
 ) : PromptTemplatePort {
-    override fun buildPrompt(context: RetrievalContext): String {
+    override fun buildPrompt(input: PromptRetrievalInput): String {
         val contextText =
-            if (context.isEmpty()) {
+            if (input.retrievedTexts.isEmpty()) {
                 ""
             } else {
-                context.documents().joinToString("\n") { it.content }
+                input.retrievedTexts.joinToString("\n")
             }
         return templateLoader.load(
             CONVERSATION_TEMPLATE,
@@ -25,14 +25,14 @@ class FileBasedPromptTemplateAdapter(
     }
 
     override fun buildPromptWithConversation(
-        context: RetrievalContext,
+        input: PromptRetrievalInput,
         conversationContext: ConversationContext,
     ): String {
         val contextText =
-            if (context.isEmpty()) {
+            if (input.retrievedTexts.isEmpty()) {
                 ""
             } else {
-                context.documents().joinToString("\n") { it.content }
+                input.retrievedTexts.joinToString("\n")
             }
         val conversationHistory = buildConversationHistory(conversationContext)
         return templateLoader.load(

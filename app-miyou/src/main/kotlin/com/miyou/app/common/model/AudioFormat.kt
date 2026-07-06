@@ -1,4 +1,4 @@
-package com.miyou.app.domain.voice.model
+package com.miyou.app.common.model
 
 enum class AudioFormat(
     val mediaType: String,
