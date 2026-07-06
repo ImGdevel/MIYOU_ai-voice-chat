@@ -2,7 +2,15 @@
 
 echo "🧪 테스트를 시작합니다..."
 
-./gradlew test
+# 윈도우 환경인 경우 bat 파일 실행, 아니면 sh 파일 실행
+case "$(uname -s)" in
+    CYGWIN*|MINGW32*|MSYS*|MINGW*)
+        ./gradlew.bat test
+        ;;
+    *)
+        ./gradlew test
+        ;;
+esac
 
 if [ $? -ne 0 ]; then
   echo "❌ 테스트 실패 - push가 취소되었습니다"
