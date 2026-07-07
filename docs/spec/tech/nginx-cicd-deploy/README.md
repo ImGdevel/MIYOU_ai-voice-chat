@@ -41,7 +41,7 @@ flowchart LR
   A --> D["gradle-test"]
   A --> E["gradle-compile"]
   B --> F["deploy_nginx"]
-  C --> G["build-and-push<br/>app-miyou/Dockerfile + GHCR"]
+  C --> G["build-and-push<br/>bootstrap/Dockerfile + GHCR"]
   E --> G
   D --> H["deploy"]
   B --> H

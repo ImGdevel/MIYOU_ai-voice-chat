@@ -1,8 +1,8 @@
 package com.miyou.app.monitoring.adapter
 
+import com.miyou.app.monitoring.document.UsageAnalyticsDocument
 import com.miyou.app.monitoring.model.UsageAnalytics
 import com.miyou.app.monitoring.port.UsageAnalyticsRepository
-import com.miyou.app.monitoring.document.UsageAnalyticsDocument
 import com.miyou.app.monitoring.repository.SpringDataUsageAnalyticsRepository
 import org.springframework.data.domain.PageRequest
 import org.springframework.stereotype.Repository

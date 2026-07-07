@@ -63,7 +63,7 @@ jobs:
           cache-read-only: false
 
       - name: 테스트 실행
-        run: ./gradlew --no-daemon --build-cache :app-miyou:test
+        run: ./gradlew --no-daemon --build-cache test
 
   gradle-compile:
     runs-on: ubuntu-latest
@@ -84,7 +84,7 @@ jobs:
           cache-read-only: false
 
       - name: 컴파일 검증
-        run: ./gradlew --no-daemon --build-cache :app-miyou:compileJava
+        run: ./gradlew --no-daemon --build-cache compileKotlin
 
   build-and-push:
     runs-on: ubuntu-latest
@@ -123,7 +123,7 @@ jobs:
         uses: docker/build-push-action@v6
         with:
           context: .
-          file: ./app-miyou/Dockerfile
+          file: ./bootstrap/Dockerfile
           push: true
           tags: |
             ${{ steps.meta.outputs.image_ref }}
