@@ -7,7 +7,7 @@ WORKDIR /workspace
 # 소스 변경이 있어도 이 레이어(의존성 다운로드)는 캐시가 재사용되게 한다.
 COPY gradlew gradlew
 COPY gradle gradle
-COPY settings.gradle build.gradle ./
+COPY settings.gradle build.gradle gradle.properties* ./
 COPY common/build.gradle common/build.gradle
 COPY exception/build.gradle exception/build.gradle
 COPY domain/build.gradle domain/build.gradle
@@ -30,12 +30,13 @@ COPY api api
 COPY monitoring monitoring
 COPY bootstrap bootstrap
 RUN --mount=type=cache,target=/home/gradle/.gradle \
-    ./gradlew --no-daemon --build-cache :bootstrap:bootJar -x test
+    ./gradlew --no-daemon --build-cache :bootstrap:bootJar -x test && \
+    find bootstrap/build/libs/ -name "*.jar" ! -name "*-plain.jar" -exec cp {} bootstrap/build/libs/app.jar \;
 
 FROM eclipse-temurin:21-jre-jammy
 WORKDIR /app
 
-COPY --from=builder /workspace/bootstrap/build/libs/*.jar /app/app.jar
+COPY --from=builder /workspace/bootstrap/build/libs/app.jar /app/app.jar
 
 EXPOSE 8081
 ENTRYPOINT ["java", "-jar", "/app/app.jar"]
