@@ -12,7 +12,7 @@ class NaverOAuthUserInfoExtractor : OAuthUserInfoExtractor {
         val response = attributes["response"] as? Map<*, *>
         return OAuthLoginResult(
             provider = Provider.NAVER,
-            providerUserId = response?.get("id") as? String ?: "",
+            providerUserId = response?.get("id")?.toString() ?: "",
             email = response?.get("email") as? String,
             displayName = response?.get("name") as? String,
         )

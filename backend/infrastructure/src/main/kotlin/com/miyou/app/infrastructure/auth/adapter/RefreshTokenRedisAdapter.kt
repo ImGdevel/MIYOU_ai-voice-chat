@@ -5,6 +5,7 @@ import com.fasterxml.jackson.module.kotlin.readValue
 import com.miyou.app.domain.auth.model.RefreshToken
 import com.miyou.app.domain.auth.port.RefreshTokenRepository
 import com.miyou.app.infrastructure.auth.config.JwtProperties
+import com.miyou.app.infrastructure.common.constants.RedisKeys
 import org.springframework.beans.factory.annotation.Qualifier
 import org.springframework.data.redis.core.ReactiveRedisTemplate
 import org.springframework.stereotype.Component
@@ -18,7 +19,7 @@ class RefreshTokenRedisAdapter(
     private val objectMapper: ObjectMapper,
     private val jwtProperties: JwtProperties,
 ) : RefreshTokenRepository {
-    private val keyPrefix = "auth:refresh:"
+    private val keyPrefix = RedisKeys.AUTH_REFRESH_PREFIX
 
     private fun keyFor(tokenId: String) = keyPrefix + tokenId
 

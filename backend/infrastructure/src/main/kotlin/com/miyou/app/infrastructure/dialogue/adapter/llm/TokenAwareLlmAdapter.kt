@@ -16,6 +16,7 @@ import org.springframework.context.annotation.Primary
 import org.springframework.stereotype.Component
 import reactor.core.publisher.Flux
 import reactor.core.publisher.Mono
+import reactor.core.publisher.SignalType
 import reactor.core.scheduler.Schedulers
 import java.util.concurrent.ConcurrentHashMap
 import java.util.concurrent.atomic.AtomicReference
@@ -53,6 +54,12 @@ class TokenAwareLlmAdapter(
                     ) {
                         updateUsage(request, promptTokens.toInt(), generationTokens.toInt())
                     }
+                }
+            }.doFinally { signalType ->
+                // 정상 완료 시에는 getTokenUsage()의 remove-on-read로 정리되지만,
+                // 에러/취소로 끝나면 그 경로를 절대 못 타므로 여기서 확실히 제거해 맵 누수를 막는다.
+                if (signalType == SignalType.ON_ERROR || signalType == SignalType.CANCEL) {
+                    correlationIdOf(request)?.let { usageByCorrelation.remove(it) }
                 }
             }.mapNotNull { response ->
                 val generation = response.result
@@ -98,12 +105,15 @@ class TokenAwareLlmAdapter(
         promptTokens: Int,
         completionTokens: Int,
     ) {
+        val correlationId = correlationIdOf(request) ?: return
+        usageByCorrelation
+            .computeIfAbsent(correlationId) { AtomicReference(TokenUsage.zero()) }
+            .set(TokenUsage.of(promptTokens, completionTokens))
+    }
+
+    private fun correlationIdOf(request: CompletionRequest): String? {
         val correlationId = request.additionalParams().getOrDefault("correlationId", "").toString()
-        if (correlationId.isNotBlank()) {
-            usageByCorrelation
-                .computeIfAbsent(correlationId) { AtomicReference(TokenUsage.zero()) }
-                .set(TokenUsage.of(promptTokens, completionTokens))
-        }
+        return correlationId.ifBlank { null }
     }
 
     private fun convertMessages(messages: List<Message>): List<org.springframework.ai.chat.messages.Message> =

@@ -44,7 +44,14 @@ class ConversationCachingAdapterTest {
         val properties = RagDialogueProperties()
         properties.cache.maxHistorySize = 10
         properties.cache.ttlHours = 24
-        adapter = ConversationCachingAdapter(mongoRepository, redisTemplate, properties)
+        val objectMapper =
+            com.fasterxml.jackson.module.kotlin
+                .jacksonObjectMapper()
+                .registerModule(
+                    com.fasterxml.jackson.datatype.jsr310
+                        .JavaTimeModule()
+                ).disable(com.fasterxml.jackson.databind.SerializationFeature.WRITE_DATES_AS_TIMESTAMPS)
+        adapter = ConversationCachingAdapter(mongoRepository, redisTemplate, objectMapper, properties)
     }
 
     @Test

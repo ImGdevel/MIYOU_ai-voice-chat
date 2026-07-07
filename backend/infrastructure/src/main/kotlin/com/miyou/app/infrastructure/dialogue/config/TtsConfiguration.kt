@@ -68,5 +68,6 @@ class TtsConfiguration {
         webClientBuilder: WebClient.Builder,
         loadBalancer: TtsLoadBalancer,
         voice: Voice,
-    ): TtsPort = LoadBalancedSupertoneTtsAdapter(webClientBuilder, loadBalancer, voice)
+        properties: RagDialogueProperties,
+    ): TtsPort = LoadBalancedSupertoneTtsAdapter(webClientBuilder, loadBalancer, voice, properties)
 }

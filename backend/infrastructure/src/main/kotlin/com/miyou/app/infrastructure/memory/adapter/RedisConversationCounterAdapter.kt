@@ -1,6 +1,7 @@
 package com.miyou.app.infrastructure.memory.adapter
 
 import com.miyou.app.domain.memory.port.ConversationCounterPort
+import com.miyou.app.infrastructure.common.constants.RedisKeys
 import org.springframework.data.redis.core.ReactiveRedisTemplate
 import org.springframework.stereotype.Component
 import reactor.core.publisher.Mono
@@ -10,7 +11,7 @@ import reactor.core.publisher.Mono
 class RedisConversationCounterAdapter(
     private val redisTemplate: ReactiveRedisTemplate<String, Long>,
 ) : ConversationCounterPort {
-    private val counterKeyPrefix = "dialogue:conversation:counter:"
+    private val counterKeyPrefix = RedisKeys.DIALOGUE_COUNTER_PREFIX
 
     private fun keyFor(sessionId: String): String = counterKeyPrefix + sessionId
 

@@ -58,8 +58,8 @@ class SpringAiVectorDbAdapter(
                 memory.emotion?.let { metadata["emotion"] = it.name }
                 // Spring AI QdrantVectorStore(1.0.0-M5)의 payload 변환은 Long을 지원하지 않는다
                 // (String/Integer/Double/Float/Boolean/Map만 허용) - epoch millis를 Double로 저장.
-                metadata["createdAt"] = memory.createdAt.toEpochMilli().toDouble()
-                memory.lastAccessedAt?.let { metadata["lastAccessedAt"] = it.toEpochMilli().toDouble() }
+                metadata["createdAt"] = memory.createdAt.toEpochMillisDouble()
+                memory.lastAccessedAt?.let { metadata["lastAccessedAt"] = it.toEpochMillisDouble() }
                 memory.accessCount?.let { metadata["accessCount"] = it }
 
                 val document = Document(id, memory.content, metadata)
@@ -260,10 +260,10 @@ class SpringAiVectorDbAdapter(
 
         val type = MemoryType.valueOf(typeStr)
         val importance = payload["importance"]?.doubleValue?.toFloat()
-        val createdAt = payload["createdAt"]?.doubleValue?.let { Instant.ofEpochMilli(it.toLong()) }
-        val lastAccessedAt = payload["lastAccessedAt"]?.doubleValue?.let { Instant.ofEpochMilli(it.toLong()) }
+        val createdAt = instantFromPayload(payload, "createdAt")
+        val lastAccessedAt = instantFromPayload(payload, "lastAccessedAt")
         val accessCount = payload["accessCount"]?.doubleValue?.toInt()
-        val archivedAt = payload[ARCHIVED_AT_KEY]?.doubleValue?.let { Instant.ofEpochMilli(it.toLong()) }
+        val archivedAt = instantFromPayload(payload, ARCHIVED_AT_KEY)
         val emotion =
             payload["emotion"]?.stringValue?.let {
                 try {
@@ -287,6 +287,15 @@ class SpringAiVectorDbAdapter(
             emotion = emotion,
         )
     }
+
+    // Spring AI QdrantVectorStore(1.0.0-M5)의 payload 변환이 Long을 지원하지 않는 workaround로
+    // epoch millis를 Double로 저장했기 때문에, 읽어올 때도 동일하게 Double -> Instant로 되돌린다.
+    private fun instantFromPayload(
+        payload: Map<String, Value>,
+        key: String,
+    ): Instant? = payload[key]?.doubleValue?.let { Instant.ofEpochMilli(it.toLong()) }
+
+    private fun Instant.toEpochMillisDouble(): Double = toEpochMilli().toDouble()
 
     private companion object {
         const val ARCHIVED_AT_KEY = "archivedAt"
