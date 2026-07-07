@@ -8,6 +8,7 @@ WORKDIR /workspace
 COPY gradlew gradlew
 COPY gradle gradle
 COPY settings.gradle build.gradle gradle.properties* ./
+COPY backend/build.gradle backend/build.gradle
 COPY backend/common/build.gradle backend/common/build.gradle
 COPY backend/exception/build.gradle backend/exception/build.gradle
 COPY backend/domain/build.gradle backend/domain/build.gradle
@@ -31,7 +32,7 @@ COPY backend/monitoring backend/monitoring
 COPY backend/bootstrap backend/bootstrap
 RUN --mount=type=cache,target=/home/gradle/.gradle \
     ./gradlew --no-daemon --build-cache :backend:bootstrap:bootJar -x test && \
-    find backend/bootstrap/build/libs/ -name "*.jar" ! -name "*-plain.jar" -exec cp {} backend/bootstrap/build/libs/app.jar \;
+    find backend/bootstrap/build/libs/ -name "*.jar" ! -name "*-plain.jar" ! -name "app.jar" -exec cp {} backend/bootstrap/build/libs/app.jar \;
 
 FROM eclipse-temurin:21-jre-jammy
 WORKDIR /app
