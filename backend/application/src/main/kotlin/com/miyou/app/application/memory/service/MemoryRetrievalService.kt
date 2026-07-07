@@ -65,6 +65,11 @@ class MemoryRetrievalService(
             }.map(this::groupByType)
             .flatMap(this::updateAccessMetrics)
 
+    /**
+     * 세션에 매칭되는 후보 메모리 목록을 검색합니다.
+     *
+     * 1차적으로 벡터 유사도가 높은 메모리들을 가져오며, 연상 검색이 활성화되어 있을 경우 2차 연상 검색을 수행합니다.
+     */
     private fun searchCandidateMemories(
         sessionId: String,
         queryEmbedding: List<Float>,
@@ -88,9 +93,11 @@ class MemoryRetrievalService(
     }
 
     /**
-     * 연상 기반 2차 검색. 1차 검색 결과 중 랭킹 스코어가 associativeHopMinScore 이상인
-     * 최상위 1개만 2차 쿼리로 재사용한다 - 약한 1차 매칭에서 연쇄되는 걸 막기 위함.
-     * 연상으로 끌려온 메모리도 우회 없이 이후 동일한 rankAndLimit을 거친다.
+     * 연상 기반 2차 검색(Associative Retrieval Hop)을 수행합니다.
+     *
+     * 1차 검색 결과 중 최상위 점수(최신성 감쇠가 반영된 스코어)가 연상 임계치([associativeHopMinScore]) 이상인
+     * 단 하나의 대표 메모리를 선정하여, 해당 메모리의 내용을 임베딩한 뒤 2차 유사도 검색을 수행합니다.
+     * 이를 통해 연쇄적으로 연관 있는 메모리들을 추가 확보합니다.
      */
     private fun expandAssociatively(
         sessionId: String,
@@ -124,6 +131,9 @@ class MemoryRetrievalService(
         return primary + additional.filter { it.id !in seenIds }
     }
 
+    /**
+     * 검색된 후보군에 대해 최신성 및 중요도를 반영한 랭킹 스코어로 정렬한 뒤, 상위 K개로 제한합니다.
+     */
     private fun rankAndLimit(
         memories: List<Memory>,
         topK: Int,
@@ -132,12 +142,19 @@ class MemoryRetrievalService(
         return sorted.take(topK)
     }
 
+    /**
+     * 랭킹된 메모리를 성격에 따라 경험적 메모리(Experiential)와 사실적 메모(Factual)로 그룹화합니다.
+     */
     private fun groupByType(memories: List<Memory>): MemoryRetrievalResult {
         val experiential = memories.filter { it.type == MemoryType.EXPERIENTIAL }
         val factual = memories.filter { it.type == MemoryType.FACTUAL }
         return MemoryRetrievalResult.of(experiential, factual)
     }
 
+    /**
+     * 검색 결과를 반환하기 전, 검색에 기여한 메모리들의 접근 일시 및 접근 횟수를 업데이트합니다.
+     * 이 때 중요도에는 가중치([importanceBoost])가 부스팅됩니다.
+     */
     private fun updateAccessMetrics(result: MemoryRetrievalResult): Mono<MemoryRetrievalResult> {
         val memories = result.allMemories()
         if (memories.isEmpty()) {

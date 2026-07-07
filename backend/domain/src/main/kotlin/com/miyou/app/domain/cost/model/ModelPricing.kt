@@ -33,6 +33,14 @@ class ModelPricing {
 
         private const val TTS_PRICE_PER_100MS = 0.00015
 
+        /**
+         * LLM 토큰 사용량에 따른 크레딧 비용을 계산합니다.
+         *
+         * @param model 사용한 LLM 모델명
+         * @param promptTokens 프롬프트 토큰 수 (입력)
+         * @param completionTokens 컴플리션 토큰 수 (출력)
+         * @return 계산된 크레딧 소모량
+         */
         @JvmStatic
         fun calculateLlmCredits(
             model: String,
@@ -48,12 +56,26 @@ class ModelPricing {
             return kotlin.math.ceil(totalDollars * CREDITS_PER_DOLLAR).toLong()
         }
 
+        /**
+         * TTS 오디오 생성 길이에 따른 크레딧 비용을 계산합니다.
+         *
+         * @param audioLengthMillis 생성된 오디오의 길이 (밀리초 단위)
+         * @return 계산된 크레딧 소모량
+         */
         @JvmStatic
         fun calculateTtsCredits(audioLengthMillis: Long): Long {
             val totalCost = (audioLengthMillis / 100.0) * TTS_PRICE_PER_100MS
             return kotlin.math.ceil(totalCost * CREDITS_PER_DOLLAR).toLong()
         }
 
+        /**
+         * 텍스트 임베딩 토큰 사용량에 따른 크레딧 비용을 계산합니다.
+         *
+         * @param model 임베딩에 사용한 모델명
+         * @param tokens 임베딩 토큰 수
+         * @param batch 배치 작업 여부 (배치 가격 적용 여부)
+         * @return 계산된 크레딧 소모량
+         */
         @JvmStatic
         fun calculateEmbeddingCredits(
             model: String,
