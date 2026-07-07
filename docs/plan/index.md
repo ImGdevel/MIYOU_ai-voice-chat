@@ -4,7 +4,7 @@
 
 ## Documents
 
-- 현재 등록된 문서 없음.
+- [2026-07-07_1429_refactoring-candidates.md](2026-07-07_1429_refactoring-candidates.md) — 전체 계층(domain/application/api/infrastructure/frontend) 리팩토링 후보 전수 조사, GitHub 이슈 11건 매핑.
 
 ## Rule
 
