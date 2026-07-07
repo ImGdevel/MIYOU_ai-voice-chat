@@ -15,143 +15,147 @@ import java.util.function.Supplier
 
 @Component
 class PipelineTracer {
-    fun traceMemories(supplier: Supplier<Mono<MemoryRetrievalResult>>): Mono<MemoryRetrievalResult> {
-        return Mono.deferContextual { contextView ->
+    private fun <T> traceIfPresent(
+        stage: DialoguePipelineStage,
+        supplier: Supplier<Mono<T>>,
+        fallback: Supplier<Mono<T>> = supplier,
+        onTrackerPresent: (DialoguePipelineTracker, Mono<T>) -> Mono<T> = { _, mono -> mono },
+    ): Mono<T> =
+        Mono.deferContextual { contextView ->
             val tracker = PipelineContext.findTracker(contextView)
             if (tracker == null) {
-                return@deferContextual supplier.get().cache()
+                fallback.get()
+            } else {
+                onTrackerPresent(tracker, tracker.traceMono(stage, supplier))
             }
-            tracker
-                .traceMono(DialoguePipelineStage.MEMORY_RETRIEVAL, supplier)
-                .doOnNext { result ->
-                    tracker.recordStageAttribute(
-                        DialoguePipelineStage.MEMORY_RETRIEVAL,
-                        "memoryCount",
-                        result.totalCount(),
-                    )
-                    val memoryContents =
-                        result.allMemories().map { memory ->
-                            "[${memory.type}] ${memory.content}"
-                        }
-                    if (memoryContents.isNotEmpty()) {
+        }
+
+    private fun <T> traceIfPresent(
+        stage: DialoguePipelineStage,
+        supplier: Supplier<Flux<T>>,
+        fallback: Supplier<Flux<T>> = supplier,
+        onTrackerPresent: (DialoguePipelineTracker, Flux<T>) -> Flux<T> = { _, flux -> flux },
+    ): Flux<T> =
+        Flux.deferContextual { contextView ->
+            val tracker = PipelineContext.findTracker(contextView)
+            if (tracker == null) {
+                fallback.get()
+            } else {
+                onTrackerPresent(tracker, tracker.traceFlux(stage, supplier))
+            }
+        }
+
+    fun traceMemories(supplier: Supplier<Mono<MemoryRetrievalResult>>): Mono<MemoryRetrievalResult> =
+        traceIfPresent(
+            stage = DialoguePipelineStage.MEMORY_RETRIEVAL,
+            supplier = supplier,
+            fallback = { supplier.get().cache() },
+            onTrackerPresent = { tracker, mono ->
+                mono
+                    .doOnNext { result ->
                         tracker.recordStageAttribute(
                             DialoguePipelineStage.MEMORY_RETRIEVAL,
-                            "memories",
-                            memoryContents,
+                            "memoryCount",
+                            result.totalCount(),
                         )
-                    }
-                }.cache()
-        }
-    }
-
-    fun traceRetrieval(supplier: Supplier<Mono<RetrievalContext>>): Mono<RetrievalContext> {
-        return Mono.deferContextual { contextView ->
-            val tracker = PipelineContext.findTracker(contextView)
-            if (tracker == null) {
-                return@deferContextual supplier.get().cache()
+                        val memoryContents =
+                            result.allMemories().map { memory ->
+                                "[${memory.type}] ${memory.content}"
+                            }
+                        if (memoryContents.isNotEmpty()) {
+                            tracker.recordStageAttribute(
+                                DialoguePipelineStage.MEMORY_RETRIEVAL,
+                                "memories",
+                                memoryContents,
+                            )
+                        }
+                    }.cache()
             }
-            tracker
-                .traceMono(DialoguePipelineStage.RETRIEVAL, supplier)
-                .doOnNext { context ->
-                    tracker.recordStageAttribute(
-                        DialoguePipelineStage.RETRIEVAL,
-                        "documentCount",
-                        context.documentCount(),
-                    )
-                    if (!context.isEmpty()) {
-                        val docContents = context.documents.map { it.content }
+        )
+
+    fun traceRetrieval(supplier: Supplier<Mono<RetrievalContext>>): Mono<RetrievalContext> =
+        traceIfPresent(
+            stage = DialoguePipelineStage.RETRIEVAL,
+            supplier = supplier,
+            fallback = { supplier.get().cache() },
+            onTrackerPresent = { tracker, mono ->
+                mono
+                    .doOnNext { context ->
                         tracker.recordStageAttribute(
                             DialoguePipelineStage.RETRIEVAL,
-                            "documents",
-                            docContents,
+                            "documentCount",
+                            context.documentCount(),
                         )
-                    }
-                }.cache()
-        }
-    }
-
-    fun tracePrompt(builder: Supplier<List<Message>>): Mono<List<Message>> {
-        return Mono.deferContextual { contextView ->
-            val tracker = PipelineContext.findTracker(contextView)
-            if (tracker == null) {
-                return@deferContextual Mono.fromCallable(builder::get)
+                        if (!context.isEmpty()) {
+                            val docContents = context.documents.map { it.content }
+                            tracker.recordStageAttribute(
+                                DialoguePipelineStage.RETRIEVAL,
+                                "documents",
+                                docContents,
+                            )
+                        }
+                    }.cache()
             }
-            tracker
-                .traceMono(DialoguePipelineStage.PROMPT_BUILDING) { Mono.fromCallable(builder::get) }
-                .doOnNext { messages ->
+        )
+
+    fun tracePrompt(builder: Supplier<List<Message>>): Mono<List<Message>> =
+        traceIfPresent(
+            stage = DialoguePipelineStage.PROMPT_BUILDING,
+            supplier = Supplier { Mono.fromCallable(builder::get) },
+            onTrackerPresent = { tracker, mono ->
+                mono.doOnNext { messages ->
                     val systemPrompt = messages.firstOrNull { it.role == MessageRole.SYSTEM }?.content.orEmpty()
                     tracker.recordStageAttribute(DialoguePipelineStage.PROMPT_BUILDING, "systemPrompt", systemPrompt)
                     tracker.recordStageAttribute(DialoguePipelineStage.PROMPT_BUILDING, "messageCount", messages.size)
                 }
-        }
-    }
+            }
+        )
 
     fun <T> traceLlm(
         model: String,
         supplier: Supplier<Flux<T>>,
-    ): Flux<T> {
-        return Flux.deferContextual { contextView ->
-            val tracker = PipelineContext.findTracker(contextView)
-            if (tracker == null) {
-                return@deferContextual supplier.get()
+    ): Flux<T> =
+        traceIfPresent(
+            stage = DialoguePipelineStage.LLM_COMPLETION,
+            supplier = supplier,
+            onTrackerPresent = { tracker, flux ->
+                tracker.recordStageAttribute(DialoguePipelineStage.LLM_COMPLETION, "model", model)
+                flux
             }
-            tracker.recordStageAttribute(DialoguePipelineStage.LLM_COMPLETION, "model", model)
-            return@deferContextual tracker.traceFlux(DialoguePipelineStage.LLM_COMPLETION, supplier)
-        }
-    }
+        )
 
-    fun traceTtsPreparation(supplier: Supplier<Mono<Void>>): Mono<Void> {
-        return Mono.deferContextual { contextView ->
-            val tracker = PipelineContext.findTracker(contextView)
-            if (tracker == null) {
-                return@deferContextual supplier.get()
-            }
-            tracker.traceMono(DialoguePipelineStage.TTS_PREPARATION, supplier)
-        }
-    }
+    fun traceTtsPreparation(supplier: Supplier<Mono<Void>>): Mono<Void> =
+        traceIfPresent(DialoguePipelineStage.TTS_PREPARATION, supplier)
 
     fun <T> traceSentenceAssembly(
         supplier: Supplier<Flux<T>>,
         recorder: BiConsumer<DialoguePipelineTracker, T>,
-    ): Flux<T> {
-        return Flux.deferContextual { contextView ->
-            val tracker = PipelineContext.findTracker(contextView)
-            if (tracker == null) {
-                return@deferContextual supplier.get()
-            }
-            tracker
-                .traceFlux(DialoguePipelineStage.SENTENCE_ASSEMBLY, supplier)
-                .doOnNext { item ->
+    ): Flux<T> =
+        traceIfPresent(
+            stage = DialoguePipelineStage.SENTENCE_ASSEMBLY,
+            supplier = supplier,
+            onTrackerPresent = { tracker, flux ->
+                flux.doOnNext { item ->
                     tracker.incrementStageCounter(DialoguePipelineStage.SENTENCE_ASSEMBLY, "sentenceCount", 1)
                     recorder.accept(tracker, item)
                 }
-        }
-    }
+            }
+        )
 
     fun <T> traceTtsSynthesis(
         supplier: Supplier<Flux<T>>,
         onNext: BiConsumer<DialoguePipelineTracker, T>,
-    ): Flux<T> {
-        return Flux.deferContextual { contextView ->
-            val tracker = PipelineContext.findTracker(contextView)
-            if (tracker == null) {
-                return@deferContextual supplier.get()
+    ): Flux<T> =
+        traceIfPresent(
+            stage = DialoguePipelineStage.TTS_SYNTHESIS,
+            supplier = supplier,
+            onTrackerPresent = { tracker, flux ->
+                flux.doOnNext { item -> onNext.accept(tracker, item) }
             }
-            tracker
-                .traceFlux(DialoguePipelineStage.TTS_SYNTHESIS, supplier)
-                .doOnNext { item -> onNext.accept(tracker, item) }
-        }
-    }
+        )
 
-    fun <T> tracePersistence(supplier: Supplier<Mono<T>>): Mono<T> {
-        return Mono.deferContextual { contextView ->
-            val tracker = PipelineContext.findTracker(contextView)
-            if (tracker == null) {
-                return@deferContextual supplier.get()
-            }
-            tracker.traceMono(DialoguePipelineStage.QUERY_PERSISTENCE, supplier)
-        }
-    }
+    fun <T> tracePersistence(supplier: Supplier<Mono<T>>): Mono<T> =
+        traceIfPresent(DialoguePipelineStage.QUERY_PERSISTENCE, supplier)
 
     fun <T> incrementOnNext(
         source: Flux<T>,
