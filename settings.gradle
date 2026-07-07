@@ -5,4 +5,6 @@ plugins {
 rootProject.name = 'webflux'
 
 include 'app-miyou'
+include 'common'
+include 'exception'
 

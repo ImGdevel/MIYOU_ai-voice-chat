@@ -1,4 +1,4 @@
-package com.miyou.app.application.common.error
+package com.miyou.app.exception
 
 import java.time.LocalDateTime
 

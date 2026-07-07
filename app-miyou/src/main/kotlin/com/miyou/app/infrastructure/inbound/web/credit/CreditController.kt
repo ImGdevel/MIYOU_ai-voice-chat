@@ -1,10 +1,10 @@
 package com.miyou.app.infrastructure.inbound.web.credit
 
-import com.miyou.app.application.common.error.CreditErrorCode
 import com.miyou.app.application.credit.usecase.CreditChargeUseCase
 import com.miyou.app.application.credit.usecase.CreditQueryUseCase
 import com.miyou.app.domain.auth.model.AuthenticatedUser
 import com.miyou.app.domain.credit.model.PaymentCharge
+import com.miyou.app.exception.CreditErrorCode
 import com.miyou.app.infrastructure.inbound.web.common.UserIdResolver
 import com.miyou.app.infrastructure.inbound.web.credit.dto.ChargeByPaymentRequest
 import com.miyou.app.infrastructure.inbound.web.credit.dto.CreditTransactionResponse

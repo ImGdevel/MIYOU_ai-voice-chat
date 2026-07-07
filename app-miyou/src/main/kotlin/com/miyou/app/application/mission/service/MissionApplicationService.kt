@@ -1,6 +1,5 @@
 package com.miyou.app.application.mission.service
 
-import com.miyou.app.application.common.error.MissionErrorCode
 import com.miyou.app.application.mission.usecase.MissionCompletionUseCase
 import com.miyou.app.application.mission.usecase.MissionQueryUseCase
 import com.miyou.app.domain.mission.model.Mission
@@ -11,6 +10,7 @@ import com.miyou.app.domain.mission.port.CreditChargingPort
 import com.miyou.app.domain.mission.port.CreditRewardCommand
 import com.miyou.app.domain.mission.port.MissionRepository
 import com.miyou.app.domain.mission.port.UserMissionRepository
+import com.miyou.app.exception.MissionErrorCode
 import org.springframework.stereotype.Service
 import org.springframework.transaction.annotation.Transactional
 import org.springframework.web.server.ResponseStatusException

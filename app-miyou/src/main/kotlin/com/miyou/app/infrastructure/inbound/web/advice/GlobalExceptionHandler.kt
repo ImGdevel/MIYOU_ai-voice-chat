@@ -1,10 +1,10 @@
 package com.miyou.app.infrastructure.inbound.web.advice
 
-import com.miyou.app.application.common.error.CommonErrorCode
-import com.miyou.app.application.common.error.CreditErrorCode
-import com.miyou.app.application.common.error.DialogueErrorCode
-import com.miyou.app.application.common.error.ErrorResponse
 import com.miyou.app.domain.credit.exception.InsufficientCreditException
+import com.miyou.app.exception.CommonErrorCode
+import com.miyou.app.exception.CreditErrorCode
+import com.miyou.app.exception.DialogueErrorCode
+import com.miyou.app.exception.ErrorResponse
 import io.github.oshai.kotlinlogging.KotlinLogging
 import org.springframework.http.HttpStatus
 import org.springframework.http.HttpStatusCode

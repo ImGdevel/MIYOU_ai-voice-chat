@@ -36,6 +36,8 @@ dependencyManagement {
 }
 
 dependencies {
+	implementation project(':common')
+	implementation project(':exception')
 	implementation 'org.springframework.boot:spring-boot-starter-aop'
 	implementation 'org.springframework.boot:spring-boot-starter-webflux'
 	implementation 'org.springframework.boot:spring-boot-starter-actuator'
