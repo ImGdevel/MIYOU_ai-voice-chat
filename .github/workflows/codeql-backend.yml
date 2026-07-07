@@ -1,19 +1,6 @@
 name: CodeQL Backend
 
 on:
-  push:
-    branches:
-      - develop
-      - main
-    paths:
-      - 'backend/**'
-      - 'build.gradle'
-      - 'settings.gradle'
-      - 'gradle.properties'
-      - 'gradle/**'
-      - 'gradlew'
-      - 'gradlew.bat'
-      - '.github/workflows/codeql-backend.yml'
   pull_request:
     branches:
       - develop
