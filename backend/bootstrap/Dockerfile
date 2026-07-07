@@ -34,10 +34,23 @@ RUN --mount=type=cache,target=/home/gradle/.gradle \
     ./gradlew --no-daemon --build-cache :backend:bootstrap:bootJar -x test && \
     find backend/bootstrap/build/libs/ -name "*.jar" ! -name "*-plain.jar" ! -name "app.jar" -exec cp {} backend/bootstrap/build/libs/app.jar \;
 
+# CDS(Class Data Sharing) 트레이닝 - ApplicationContext refresh 직후 바로
+# 종료해 동적 CDS 아카이브를 만든다. QdrantCollectionInitializer(유일한
+# ApplicationRunner)는 refresh 이후에 실행되므로 이 시점엔 아직 안 돎 -
+# Mongo/Redis/Qdrant가 없는 빌드 컨테이너에서도 안전하게 트레이닝된다.
+# 트레이닝이 실패하면(환경 문제 등) 빌드 자체를 실패시켜 조용히 CDS 없이
+# 배포되는 상황을 막는다.
+RUN java -Dspring.context.exit=onRefresh \
+    -XX:ArchiveClassesAtExit=backend/bootstrap/build/libs/app.jsa \
+    -jar backend/bootstrap/build/libs/app.jar
+
 FROM eclipse-temurin:21-jre-jammy
 WORKDIR /app
 
 COPY --from=builder /workspace/backend/bootstrap/build/libs/app.jar /app/app.jar
+COPY --from=builder /workspace/backend/bootstrap/build/libs/app.jsa /app/app.jsa
 
 EXPOSE 8081
-ENTRYPOINT ["java", "-jar", "/app/app.jar"]
+# app.jsa가 없거나(빌드 이슈) 손상됐어도 JVM이 CDS를 조용히 비활성화하고
+# 정상 기동하지만, 파일 존재 여부까지 셸에서 한 번 더 확인해 이중으로 안전하게 처리한다.
+ENTRYPOINT ["/bin/sh", "-c", "if [ -f /app/app.jsa ]; then exec java -XX:SharedArchiveFile=/app/app.jsa -jar /app/app.jar; else exec java -jar /app/app.jar; fi"]
