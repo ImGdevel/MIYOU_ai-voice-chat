@@ -30,9 +30,10 @@ class DialogueMessageService(
                 add(Message.system(fullSystemPrompt.ifBlank { DEFAULT_SYSTEM_PROMPT }))
 
                 conversationContext.turns.forEach { turn ->
-                    if (turn.response != null) {
+                    val response = turn.response
+                    if (response != null) {
                         add(Message.user(turn.query))
-                        add(Message.assistant(turn.response))
+                        add(Message.assistant(response))
                     }
                 }
 

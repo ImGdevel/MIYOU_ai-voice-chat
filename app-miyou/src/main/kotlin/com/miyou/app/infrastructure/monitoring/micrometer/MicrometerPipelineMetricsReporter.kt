@@ -247,10 +247,12 @@ class MicrometerPipelineMetricsReporter(
     private fun recordStageGapMetrics(summary: PipelineSummary) {
         val stages =
             summary.stages.sortedWith { a, b ->
+                val startedAtA = a.startedAt
+                val startedAtB = b.startedAt
                 when {
-                    a.startedAt == null -> 1
-                    b.startedAt == null -> -1
-                    else -> a.startedAt.compareTo(b.startedAt)
+                    startedAtA == null -> 1
+                    startedAtB == null -> -1
+                    else -> startedAtA.compareTo(startedAtB)
                 }
             }
 
