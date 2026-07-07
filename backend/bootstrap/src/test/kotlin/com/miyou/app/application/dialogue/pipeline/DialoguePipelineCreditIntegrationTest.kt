@@ -148,7 +148,7 @@ class DialoguePipelineCreditIntegrationTest : ContainerizedIntegrationTestSuppor
 
             StepVerifier
                 .create(creditService.getBalance(session.userId))
-                .assertNext { credit -> assertThat(credit.balance()).isEqualTo(4900L) }
+                .assertNext { credit -> assertThat(credit.balance).isEqualTo(4900L) }
                 .verifyComplete()
 
             StepVerifier
@@ -189,7 +189,7 @@ class DialoguePipelineCreditIntegrationTest : ContainerizedIntegrationTestSuppor
 
             StepVerifier
                 .create(creditService.getBalance(session.userId))
-                .assertNext { credit -> assertThat(credit.balance()).isEqualTo(4900L) }
+                .assertNext { credit -> assertThat(credit.balance).isEqualTo(4900L) }
                 .verifyComplete()
 
             StepVerifier
@@ -229,7 +229,7 @@ class DialoguePipelineCreditIntegrationTest : ContainerizedIntegrationTestSuppor
 
             StepVerifier
                 .create(creditService.getBalance(session.userId))
-                .assertNext { credit -> assertThat(credit.balance()).isEqualTo(5000L) }
+                .assertNext { credit -> assertThat(credit.balance).isEqualTo(5000L) }
                 .verifyComplete()
 
             StepVerifier
@@ -270,7 +270,7 @@ class DialoguePipelineCreditIntegrationTest : ContainerizedIntegrationTestSuppor
 
             StepVerifier
                 .create(creditService.getBalance(session.userId))
-                .assertNext { credit -> assertThat(credit.balance()).isEqualTo(4900L) }
+                .assertNext { credit -> assertThat(credit.balance).isEqualTo(4900L) }
                 .verifyComplete()
 
             StepVerifier

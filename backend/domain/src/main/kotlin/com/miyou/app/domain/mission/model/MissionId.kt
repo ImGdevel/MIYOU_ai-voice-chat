@@ -16,6 +16,4 @@ data class MissionId(
         @JvmStatic
         fun generate(): MissionId = MissionId(UUID.randomUUID().toString())
     }
-
-    fun value(): String = value
 }

@@ -69,16 +69,16 @@ class CreditSystemIntegrationTest : ContainerizedIntegrationTestSupport() {
             StepVerifier
                 .create(creditService.grantSignupBonus(userId))
                 .assertNext { tx ->
-                    assertThat(tx.type()).isEqualTo(CreditTransactionType.CHARGE)
-                    assertThat(tx.amount()).isEqualTo(5000L)
-                    assertThat(tx.balanceBefore()).isEqualTo(0L)
-                    assertThat(tx.balanceAfter()).isEqualTo(5000L)
-                    assertThat(tx.source().sourceType()).isEqualTo(CreditSourceType.SIGNUP_BONUS)
+                    assertThat(tx.type).isEqualTo(CreditTransactionType.CHARGE)
+                    assertThat(tx.amount).isEqualTo(5000L)
+                    assertThat(tx.balanceBefore).isEqualTo(0L)
+                    assertThat(tx.balanceAfter).isEqualTo(5000L)
+                    assertThat(tx.source.sourceType()).isEqualTo(CreditSourceType.SIGNUP_BONUS)
                 }.verifyComplete()
 
             StepVerifier
                 .create(creditService.getBalance(userId))
-                .assertNext { credit -> assertThat(credit.balance()).isEqualTo(5000L) }
+                .assertNext { credit -> assertThat(credit.balance).isEqualTo(5000L) }
                 .verifyComplete()
 
             StepVerifier
@@ -107,7 +107,7 @@ class CreditSystemIntegrationTest : ContainerizedIntegrationTestSupport() {
                         .then(creditService.deductForConversation(userId, session2))
                         .then(creditService.deductForConversation(userId, session3))
                         .then(creditService.getBalance(userId)),
-                ).assertNext { credit -> assertThat(credit.balance()).isEqualTo(4700L) }
+                ).assertNext { credit -> assertThat(credit.balance).isEqualTo(4700L) }
                 .verifyComplete()
 
             StepVerifier
@@ -131,14 +131,14 @@ class CreditSystemIntegrationTest : ContainerizedIntegrationTestSupport() {
                         .then(creditService.deductForConversation(userId, session2))
                         .thenMany(creditService.getTransactions(userId, PageRequest.of(0, 10))),
                 ).assertNext { tx ->
-                    assertThat(tx.type()).isEqualTo(CreditTransactionType.DEDUCT)
-                    assertThat(tx.balanceBefore()).isEqualTo(4900L)
-                    assertThat(tx.balanceAfter()).isEqualTo(4800L)
+                    assertThat(tx.type).isEqualTo(CreditTransactionType.DEDUCT)
+                    assertThat(tx.balanceBefore).isEqualTo(4900L)
+                    assertThat(tx.balanceAfter).isEqualTo(4800L)
                 }.assertNext { tx ->
-                    assertThat(tx.type()).isEqualTo(CreditTransactionType.DEDUCT)
-                    assertThat(tx.balanceBefore()).isEqualTo(5000L)
-                    assertThat(tx.balanceAfter()).isEqualTo(4900L)
-                }.assertNext { tx -> assertThat(tx.type()).isEqualTo(CreditTransactionType.CHARGE) }
+                    assertThat(tx.type).isEqualTo(CreditTransactionType.DEDUCT)
+                    assertThat(tx.balanceBefore).isEqualTo(5000L)
+                    assertThat(tx.balanceAfter).isEqualTo(4900L)
+                }.assertNext { tx -> assertThat(tx.type).isEqualTo(CreditTransactionType.CHARGE) }
                 .verifyComplete()
         }
     }
@@ -162,7 +162,7 @@ class CreditSystemIntegrationTest : ContainerizedIntegrationTestSupport() {
 
             StepVerifier
                 .create(creditService.getBalance(userId))
-                .assertNext { credit -> assertThat(credit.balance()).isEqualTo(50L) }
+                .assertNext { credit -> assertThat(credit.balance).isEqualTo(50L) }
                 .verifyComplete()
 
             StepVerifier
@@ -201,18 +201,18 @@ class CreditSystemIntegrationTest : ContainerizedIntegrationTestSupport() {
                         .grantSignupBonus(userId)
                         .then(creditService.chargeByPayment(userId, 10000L, source))
                         .then(creditService.getBalance(userId)),
-                ).assertNext { credit -> assertThat(credit.balance()).isEqualTo(15000L) }
+                ).assertNext { credit -> assertThat(credit.balance).isEqualTo(15000L) }
                 .verifyComplete()
 
             StepVerifier
                 .create(creditService.getTransactions(userId, PageRequest.of(0, 10)))
                 .assertNext { tx ->
-                    assertThat(tx.type()).isEqualTo(CreditTransactionType.CHARGE)
-                    assertThat(tx.source().sourceType()).isEqualTo(CreditSourceType.PAYMENT_CHARGE)
-                    assertThat(tx.amount()).isEqualTo(10000L)
-                    assertThat(tx.referenceId()).isEqualTo("toss-pay-abc")
+                    assertThat(tx.type).isEqualTo(CreditTransactionType.CHARGE)
+                    assertThat(tx.source.sourceType()).isEqualTo(CreditSourceType.PAYMENT_CHARGE)
+                    assertThat(tx.amount).isEqualTo(10000L)
+                    assertThat(tx.referenceId).isEqualTo("toss-pay-abc")
                 }.assertNext { tx ->
-                    assertThat(tx.source().sourceType()).isEqualTo(CreditSourceType.SIGNUP_BONUS)
+                    assertThat(tx.source.sourceType()).isEqualTo(CreditSourceType.SIGNUP_BONUS)
                 }.verifyComplete()
         }
     }
@@ -231,7 +231,7 @@ class CreditSystemIntegrationTest : ContainerizedIntegrationTestSupport() {
                         .initializeIfAbsent(userId)
                         .then(creditService.initializeIfAbsent(userId))
                         .then(creditService.getBalance(userId)),
-                ).assertNext { credit -> assertThat(credit.balance()).isEqualTo(5000L) }
+                ).assertNext { credit -> assertThat(credit.balance).isEqualTo(5000L) }
                 .verifyComplete()
 
             StepVerifier
@@ -252,7 +252,7 @@ class CreditSystemIntegrationTest : ContainerizedIntegrationTestSupport() {
                         .then(creditService.deductForConversation(userId, "s-x"))
                         .then(creditService.initializeIfAbsent(userId))
                         .then(creditService.getBalance(userId)),
-                ).assertNext { credit -> assertThat(credit.balance()).isEqualTo(4900L) }
+                ).assertNext { credit -> assertThat(credit.balance).isEqualTo(4900L) }
                 .verifyComplete()
         }
     }
@@ -274,7 +274,7 @@ class CreditSystemIntegrationTest : ContainerizedIntegrationTestSupport() {
                         .then(creditService.deductForConversation(userA, "s-a-1"))
                         .then(creditService.deductForConversation(userA, "s-a-2"))
                         .then(creditService.getBalance(userB)),
-                ).assertNext { credit -> assertThat(credit.balance()).isEqualTo(5000L) }
+                ).assertNext { credit -> assertThat(credit.balance).isEqualTo(5000L) }
                 .verifyComplete()
         }
 
@@ -291,8 +291,8 @@ class CreditSystemIntegrationTest : ContainerizedIntegrationTestSupport() {
                         .then(creditService.grantSignupBonus(userB))
                         .then(creditService.deductForConversation(userA, "s-a"))
                         .thenMany(creditService.getTransactions(userA, PageRequest.of(0, 10))),
-                ).assertNext { tx -> assertThat(tx.userId()).isEqualTo(userA) }
-                .assertNext { tx -> assertThat(tx.userId()).isEqualTo(userA) }
+                ).assertNext { tx -> assertThat(tx.userId).isEqualTo(userA) }
+                .assertNext { tx -> assertThat(tx.userId).isEqualTo(userA) }
                 .verifyComplete()
         }
     }
@@ -320,10 +320,10 @@ class CreditSystemIntegrationTest : ContainerizedIntegrationTestSupport() {
 
             StepVerifier
                 .create(creditService.getBalance(userId))
-                .assertNext { credit -> assertThat(credit.balance()).isGreaterThanOrEqualTo(0L) }
+                .assertNext { credit -> assertThat(credit.balance).isGreaterThanOrEqualTo(0L) }
                 .verifyComplete()
 
-            val finalBalance = creditService.getBalance(userId).block()!!.balance()
+            val finalBalance = creditService.getBalance(userId).block()!!.balance
             assertThat(5000L - finalBalance).isEqualTo(succeeded * 100L)
         }
     }

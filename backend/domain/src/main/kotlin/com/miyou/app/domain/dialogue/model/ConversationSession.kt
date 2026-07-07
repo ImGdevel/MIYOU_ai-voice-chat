@@ -31,14 +31,4 @@ data class ConversationSession(
                 userId = userId,
             )
     }
-
-    fun sessionId(): ConversationSessionId = sessionId
-
-    fun personaId(): PersonaId = personaId
-
-    fun userId(): String = userId
-
-    fun createdAt(): java.time.Instant = createdAt
-
-    fun deletedAt(): java.time.Instant? = deletedAt
 }

@@ -19,16 +19,15 @@ class PersonaVoiceProviderTest {
     @BeforeEach
     fun setUp() {
         defaultVoice =
-            Voice
-                .builder()
-                .id("default-voice")
-                .name("default")
-                .provider("supertone")
-                .settings(VoiceSettings(0, 1.0, 1.1))
-                .language("ko")
-                .style(VoiceStyle.NEUTRAL)
-                .outputFormat(AudioFormat.MP3)
-                .build()
+            Voice(
+                id = "default-voice",
+                name = "default",
+                provider = "supertone",
+                settings = VoiceSettings(0, 1.0, 1.1),
+                language = "ko",
+                style = VoiceStyle.NEUTRAL,
+                outputFormat = AudioFormat.MP3,
+            )
 
         val properties = RagDialogueProperties()
         properties.supertone.outputFormat = "mp3"

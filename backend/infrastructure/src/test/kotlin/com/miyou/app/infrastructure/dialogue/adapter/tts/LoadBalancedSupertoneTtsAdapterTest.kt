@@ -8,6 +8,7 @@ import com.miyou.app.domain.voice.model.VoiceStyle
 import com.miyou.app.infrastructure.dialogue.adapter.tts.loadbalancer.FakeSupertoneServer
 import com.miyou.app.infrastructure.dialogue.adapter.tts.loadbalancer.TtsEndpoint
 import com.miyou.app.infrastructure.dialogue.adapter.tts.loadbalancer.TtsLoadBalancer
+import com.miyou.app.infrastructure.dialogue.config.properties.RagDialogueProperties
 import org.assertj.core.api.Assertions.assertThat
 import org.junit.jupiter.api.AfterEach
 import org.junit.jupiter.api.BeforeEach
@@ -52,6 +53,7 @@ class LoadBalancedSupertoneTtsAdapterTest {
                 WebClient.builder().clientConnector(ReactorClientHttpConnector()),
                 loadBalancer,
                 testVoice(),
+                RagDialogueProperties(),
             )
     }
 
@@ -227,6 +229,7 @@ class LoadBalancedSupertoneTtsAdapterTest {
                 WebClient.builder().clientConnector(ReactorClientHttpConnector()),
                 badLoadBalancer,
                 testVoice(),
+                RagDialogueProperties(),
             )
 
         badAdapter.prepare().block()
@@ -339,16 +342,15 @@ class LoadBalancedSupertoneTtsAdapterTest {
     }
 
     private fun testVoice(): Voice =
-        Voice
-            .builder()
-            .id("test-voice-id")
-            .name("Test Voice")
-            .provider("supertone")
-            .language("ko")
-            .style(VoiceStyle.NEUTRAL)
-            .outputFormat(AudioFormat.WAV)
-            .settings(VoiceSettings(0, 1.0, 1.0))
-            .build()
+        Voice(
+            id = "test-voice-id",
+            name = "Test Voice",
+            provider = "supertone",
+            language = "ko",
+            style = VoiceStyle.NEUTRAL,
+            outputFormat = AudioFormat.WAV,
+            settings = VoiceSettings(0, 1.0, 1.0),
+        )
 
     private fun requestCount(vararg apiKeys: String): Int = apiKeys.sumOf { fakeServer.getRequestCount(it) }
 

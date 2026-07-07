@@ -14,16 +14,14 @@ class DialogueVoiceConfiguration {
     fun defaultVoice(properties: RagDialogueProperties): Voice {
         val supertone = properties.supertone
         val settings = supertone.voiceSettings
-        return Voice
-            .builder()
-            .id(supertone.voiceId)
-            .name("adam")
-            .provider("supertone")
-            .settings(
-                VoiceSettings(settings.pitchShift, settings.pitchVariance, settings.speed),
-            ).language(supertone.language)
-            .style(VoiceStyle.fromString(supertone.style))
-            .outputFormat(AudioFormat.fromString(supertone.outputFormat))
-            .build()
+        return Voice(
+            id = supertone.voiceId,
+            name = "adam",
+            provider = "supertone",
+            settings = VoiceSettings(settings.pitchShift, settings.pitchVariance, settings.speed),
+            language = supertone.language,
+            style = VoiceStyle.fromString(supertone.style),
+            outputFormat = AudioFormat.fromString(supertone.outputFormat),
+        )
     }
 }

@@ -30,7 +30,7 @@ object CreditTransactionFixture {
         CreditTransaction.of(
             userId,
             CreditTransactionType.CHARGE,
-            SignupBonus(),
+            SignupBonus,
             bonusAmount,
             0L,
             bonusAmount,

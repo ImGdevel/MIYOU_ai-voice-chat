@@ -1,12 +1,11 @@
 package com.miyou.app.infrastructure.dialogue.adapter.persistence
 
 import com.fasterxml.jackson.core.JsonProcessingException
-import com.fasterxml.jackson.databind.SerializationFeature
-import com.fasterxml.jackson.datatype.jsr310.JavaTimeModule
-import com.fasterxml.jackson.module.kotlin.jacksonObjectMapper
+import com.fasterxml.jackson.databind.ObjectMapper
 import com.miyou.app.domain.dialogue.model.ConversationSessionId
 import com.miyou.app.domain.dialogue.model.ConversationTurn
 import com.miyou.app.domain.dialogue.port.ConversationRepository
+import com.miyou.app.infrastructure.common.constants.RedisKeys
 import com.miyou.app.infrastructure.dialogue.adapter.persistence.document.ConversationDocument
 import com.miyou.app.infrastructure.dialogue.config.properties.RagDialogueProperties
 import com.miyou.app.infrastructure.dialogue.repository.ConversationMongoRepository
@@ -24,15 +23,12 @@ import java.time.Instant
 class ConversationCachingAdapter(
     private val mongoRepository: ConversationMongoRepository,
     @Qualifier("reactiveRedisStringTemplate") private val redisTemplate: ReactiveRedisTemplate<String, String>,
+    private val objectMapper: ObjectMapper,
     properties: RagDialogueProperties,
 ) : ConversationRepository {
     private val log = KotlinLogging.logger {}
     private val maxCacheSize = properties.cache.maxHistorySize
     private val cacheTtl = Duration.ofHours(properties.cache.ttlHours.toLong())
-    private val objectMapper =
-        jacksonObjectMapper()
-            .registerModule(JavaTimeModule())
-            .disable(SerializationFeature.WRITE_DATES_AS_TIMESTAMPS)
 
     override fun save(turn: ConversationTurn): Mono<ConversationTurn> {
         val document = toDocument(turn)
@@ -46,7 +42,7 @@ class ConversationCachingAdapter(
                         log.warn(
                             e
                         ) {
-                            "Redis cache write failed for session ${saved.sessionId().value()}, continuing without cache"
+                            "Redis cache write failed for session ${saved.sessionId().value}, continuing without cache"
                         }
                         Mono.empty()
                     }.thenReturn(saved)
@@ -63,7 +59,7 @@ class ConversationCachingAdapter(
             .range(key, (-limit).toLong(), -1)
             .map(::deserialize)
             .onErrorResume { e ->
-                log.warn(e) { "Redis cache read failed for session ${sessionId.value()}, falling back to MongoDB" }
+                log.warn(e) { "Redis cache read failed for session ${sessionId.value}, falling back to MongoDB" }
                 Flux.empty()
             }.switchIfEmpty(Flux.defer { loadFromMongoAndWarmup(sessionId, key, limit) })
     }
@@ -74,13 +70,13 @@ class ConversationCachingAdapter(
         limit: Int,
     ): Flux<ConversationTurn> =
         mongoRepository
-            .findBySessionIdOrderByCreatedAtAsc(sessionId.value(), PageRequest.of(0, limit))
+            .findBySessionIdOrderByCreatedAtAsc(sessionId.value, PageRequest.of(0, limit))
             .map(::toConversationTurn)
             .collectList()
             .flatMapMany { list ->
                 warmupCache(key, list)
                     .onErrorResume { e ->
-                        log.warn(e) { "Redis cache warmup failed for session ${sessionId.value()}" }
+                        log.warn(e) { "Redis cache warmup failed for session ${sessionId.value}" }
                         Mono.empty()
                     }.thenMany(Flux.fromIterable(list))
             }
@@ -117,14 +113,14 @@ class ConversationCachingAdapter(
 
     fun evict(sessionId: ConversationSessionId): Mono<Void> = redisTemplate.delete(historyKey(sessionId)).then()
 
-    private fun historyKey(sessionId: ConversationSessionId): String = KEY_PREFIX + sessionId.value()
+    private fun historyKey(sessionId: ConversationSessionId): String = KEY_PREFIX + sessionId.value
 
     private fun serialize(turn: ConversationTurn): String {
         try {
             return objectMapper.writeValueAsString(
                 ConversationTurnDto(
                     turn.id(),
-                    turn.sessionId().value(),
+                    turn.sessionId().value,
                     turn.query(),
                     turn.response(),
                     turn.createdAt(),
@@ -153,7 +149,7 @@ class ConversationCachingAdapter(
     private fun toDocument(turn: ConversationTurn): ConversationDocument =
         ConversationDocument(
             turn.id(),
-            turn.sessionId().value(),
+            turn.sessionId().value,
             turn.query(),
             turn.response(),
             turn.createdAt(),
@@ -177,6 +173,6 @@ class ConversationCachingAdapter(
     )
 
     private companion object {
-        const val KEY_PREFIX = "dialogue:conversation:history:"
+        const val KEY_PREFIX = RedisKeys.DIALOGUE_HISTORY_PREFIX
     }
 }

@@ -39,16 +39,16 @@ class CreditTransactionDocumentTest {
             val doc = CreditTransactionDocument.fromDomain(original)
             val restored = doc.toDomain()
 
-            assertThat(restored.transactionId()).isEqualTo(original.transactionId())
-            assertThat(restored.userId()).isEqualTo(original.userId())
-            assertThat(restored.type()).isEqualTo(CreditTransactionType.DEDUCT)
-            assertThat(restored.amount()).isEqualTo(100L)
-            assertThat(restored.balanceBefore()).isEqualTo(5000L)
-            assertThat(restored.balanceAfter()).isEqualTo(4900L)
-            assertThat(restored.referenceId()).isEqualTo("session-abc")
-            assertThat(restored.source().sourceType()).isEqualTo(CreditSourceType.CONVERSATION_DEDUCTION)
+            assertThat(restored.transactionId).isEqualTo(original.transactionId)
+            assertThat(restored.userId).isEqualTo(original.userId)
+            assertThat(restored.type).isEqualTo(CreditTransactionType.DEDUCT)
+            assertThat(restored.amount).isEqualTo(100L)
+            assertThat(restored.balanceBefore).isEqualTo(5000L)
+            assertThat(restored.balanceAfter).isEqualTo(4900L)
+            assertThat(restored.referenceId).isEqualTo("session-abc")
+            assertThat(restored.source.sourceType()).isEqualTo(CreditSourceType.CONVERSATION_DEDUCTION)
 
-            val source = restored.source() as ConversationDeduction
+            val source = restored.source as ConversationDeduction
             assertThat(source.sessionId()).isEqualTo("session-abc")
         }
 
@@ -82,7 +82,7 @@ class CreditTransactionDocumentTest {
                 CreditTransaction.of(
                     UserIdFixture.create(),
                     CreditTransactionType.CHARGE,
-                    SignupBonus(),
+                    SignupBonus,
                     5000L,
                     0L,
                     5000L,
@@ -93,8 +93,8 @@ class CreditTransactionDocumentTest {
 
             assertThat(doc.sourceType).isEqualTo("SIGNUP_BONUS")
             assertThat(doc.sourceData).isEmpty()
-            assertThat(restored.source().sourceType()).isEqualTo(CreditSourceType.SIGNUP_BONUS)
-            assertThat(restored.source()).isInstanceOf(SignupBonus::class.java)
+            assertThat(restored.source.sourceType()).isEqualTo(CreditSourceType.SIGNUP_BONUS)
+            assertThat(restored.source).isInstanceOf(SignupBonus::class.java)
         }
     }
 
@@ -121,7 +121,7 @@ class CreditTransactionDocumentTest {
             assertThat(doc.sourceData).containsEntry("paymentId", "pay-xyz-123")
             assertThat(doc.sourceData).containsEntry("pgProvider", "toss")
 
-            val source = restored.source() as PaymentCharge
+            val source = restored.source as PaymentCharge
             assertThat(source.paymentId()).isEqualTo("pay-xyz-123")
             assertThat(source.pgProvider()).isEqualTo("toss")
         }
@@ -150,7 +150,7 @@ class CreditTransactionDocumentTest {
             assertThat(doc.sourceData).containsEntry("missionId", "mission-share")
             assertThat(doc.sourceData).containsEntry("missionType", "SHARE_SERVICE")
 
-            val source = restored.source() as MissionReward
+            val source = restored.source as MissionReward
             assertThat(source.missionId()).isEqualTo("mission-share")
             assertThat(source.missionType()).isEqualTo("SHARE_SERVICE")
         }
