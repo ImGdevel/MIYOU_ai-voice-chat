@@ -18,6 +18,10 @@ subprojects {
 	apply plugin: 'io.spring.dependency-management'
 	apply plugin: 'com.diffplug.spotless'
 
+	ext['jackson-bom.version'] = '2.18.8'
+	ext['netty.version'] = '4.1.135.Final'
+	ext['spring-security.version'] = '6.4.13'
+
 	java {
 		toolchain {
 			languageVersion = JavaLanguageVersion.of(21)
