@@ -45,29 +45,27 @@ class HexagonalArchitectureTest {
     }
 
     @Test
-    fun infrastructureOutboundShouldNotDependOnApplicationServices() {
+    fun infrastructureShouldNotDependOnApplicationServices() {
         noClasses()
             .that()
             .resideInAPackage("com.miyou.app.infrastructure..")
-            .and()
-            .resideOutsideOfPackage("com.miyou.app.infrastructure.inbound..")
             .should()
             .dependOnClassesThat()
             .resideInAnyPackage(
                 "com.miyou.app.application..service..",
                 "com.miyou.app.application..pipeline..",
-            ).because("Infrastructure outbound adapters must not depend on application service implementations")
+            ).because("Infrastructure adapters must not depend on application service implementations")
             .check(importedClasses)
     }
 
     @Test
-    fun restControllersShouldOnlyResideInInfrastructureInboundWeb() {
+    fun restControllersShouldOnlyResideInApi() {
         classes()
             .that()
             .areAnnotatedWith(RestController::class.java)
             .should()
-            .resideInAPackage("com.miyou.app.infrastructure.inbound.web..")
-            .because("Controllers must reside in infrastructure.inbound.web")
+            .resideInAPackage("com.miyou.app.api..")
+            .because("Controllers must reside in the api module")
             .check(importedClasses)
     }
 

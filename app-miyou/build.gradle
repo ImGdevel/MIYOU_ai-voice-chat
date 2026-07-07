@@ -40,6 +40,8 @@ dependencies {
 	implementation project(':exception')
 	implementation project(':domain')
 	implementation project(':application')
+	implementation project(':infrastructure')
+	implementation project(':api')
 	implementation 'org.springframework.boot:spring-boot-starter-aop'
 	implementation 'org.springframework.boot:spring-boot-starter-webflux'
 	implementation 'org.springframework.boot:spring-boot-starter-actuator'
@@ -64,11 +66,13 @@ dependencies {
 	testImplementation 'org.testcontainers:mongodb:1.20.4'
 	testImplementation 'org.testcontainers:testcontainers:1.20.4'
 	testImplementation testFixtures(project(':domain'))
+	testImplementation testFixtures(project(':infrastructure'))
 	testRuntimeOnly 'org.junit.platform:junit-platform-launcher'
 
 	testFixturesImplementation sourceSets.main.output
 	testFixturesImplementation project(':domain')
 	testFixturesImplementation project(':application')
+	testFixturesImplementation project(':api')
 	testFixturesImplementation testFixtures(project(':domain'))
 }
 ktlint {

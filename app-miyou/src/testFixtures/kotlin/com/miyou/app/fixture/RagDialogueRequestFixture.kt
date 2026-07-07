@@ -1,6 +1,6 @@
 package com.miyou.app.fixture
 
-import com.miyou.app.infrastructure.inbound.web.dialogue.dto.RagDialogueRequest
+import com.miyou.app.api.dialogue.dto.RagDialogueRequest
 import java.time.Instant
 
 object RagDialogueRequestFixture {
