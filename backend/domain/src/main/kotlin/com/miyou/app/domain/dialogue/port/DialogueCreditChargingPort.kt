@@ -2,7 +2,7 @@ package com.miyou.app.domain.dialogue.port
 
 import reactor.core.publisher.Mono
 
-interface CreditChargingPort {
+interface DialogueCreditChargingPort {
     fun deduct(command: CreditDeductCommand): Mono<CreditDeductResult>
 
     fun refund(command: CreditRefundCommand): Mono<CreditRefundResult>

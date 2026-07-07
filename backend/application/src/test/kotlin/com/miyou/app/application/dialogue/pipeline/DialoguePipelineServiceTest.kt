@@ -7,11 +7,11 @@ import com.miyou.app.application.dialogue.pipeline.stage.DialogueTtsStreamServic
 import com.miyou.app.common.model.AudioFormat
 import com.miyou.app.domain.dialogue.model.ConversationContext
 import com.miyou.app.domain.dialogue.model.ConversationTurn
-import com.miyou.app.domain.dialogue.port.CreditChargingPort
 import com.miyou.app.domain.dialogue.port.CreditDeductCommand
 import com.miyou.app.domain.dialogue.port.CreditDeductResult
 import com.miyou.app.domain.dialogue.port.CreditRefundCommand
 import com.miyou.app.domain.dialogue.port.CreditRefundResult
+import com.miyou.app.domain.dialogue.port.DialogueCreditChargingPort
 import com.miyou.app.domain.memory.model.MemoryRetrievalResult
 import com.miyou.app.domain.retrieval.model.RetrievalContext
 import com.miyou.app.fixture.ConversationSessionFixture
@@ -44,7 +44,7 @@ class DialoguePipelineServiceTest {
 
     @Mock private lateinit var postProcessingService: DialoguePostProcessingService
 
-    @Mock private lateinit var creditChargingPort: CreditChargingPort
+    @Mock private lateinit var creditChargingPort: DialogueCreditChargingPort
 
     private lateinit var service: DialoguePipelineService
 

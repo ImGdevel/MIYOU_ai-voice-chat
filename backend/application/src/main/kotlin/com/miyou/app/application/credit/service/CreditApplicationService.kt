@@ -5,6 +5,7 @@ import com.miyou.app.application.credit.usecase.CreditChargeUseCase
 import com.miyou.app.application.credit.usecase.CreditDeductUseCase
 import com.miyou.app.application.credit.usecase.CreditQueryUseCase
 import com.miyou.app.domain.credit.exception.InsufficientCreditException
+import com.miyou.app.domain.credit.exception.UserCreditNotFoundException
 import com.miyou.app.domain.credit.model.ConversationDeduction
 import com.miyou.app.domain.credit.model.CreditTransaction
 import com.miyou.app.domain.credit.model.CreditTransactionType
@@ -63,6 +64,31 @@ class CreditApplicationService(
     ): Flux<CreditTransaction> = creditTransactionRepository.findByUserIdOrderByCreatedAtDesc(userId, pageable)
 
     /**
+     * 크레딧 잔액을 갱신하고 거래 기록을 남기는 공통 처리.
+     *
+     * 잔액 조회(또는 부재 시 처리) → 잔액 변경 → [UserCredit]과 [CreditTransaction] 저장까지의
+     * 반복되는 흐름을 하나로 묶는다. 차감/환불/충전/보상 지급이 모두 이 흐름을 공유한다.
+     *
+     * @param loadCredit 대상 사용자의 [UserCredit] 조회 (없을 때의 동작은 호출부가 결정)
+     * @param applyBalance 조회된 잔액에 적용할 변경(차감/충전)
+     * @param buildTransaction 변경 전/후 잔액을 받아 거래 기록을 생성
+     * @return 저장된 거래 기록
+     */
+    private fun performCreditOperation(
+        loadCredit: () -> Mono<UserCredit>,
+        applyBalance: (UserCredit) -> UserCredit,
+        buildTransaction: (balanceBefore: Long, balanceAfter: Long) -> CreditTransaction,
+    ): Mono<CreditTransaction> =
+        loadCredit()
+            .flatMap { credit ->
+                val updated = applyBalance(credit)
+                val tx = buildTransaction(credit.balance, updated.balance)
+                userCreditRepository
+                    .save(updated)
+                    .flatMap { creditTransactionRepository.save(tx) }
+            }
+
+    /**
      * 대화 크레딧 차감.
      * 사용자 잔액 검증 후 차감.
      *
@@ -75,28 +101,27 @@ class CreditApplicationService(
         userId: String,
         sessionId: String,
     ): Mono<CreditTransaction> =
-        userCreditRepository
-            .findByUserId(userId)
-            .switchIfEmpty(
-                Mono.error(
-                    InsufficientCreditException(userId, 0L, conversationCost),
-                ),
-            ).flatMap { credit ->
-                val updated = credit.deduct(conversationCost)
-                val tx =
-                    CreditTransaction.of(
-                        userId,
-                        CreditTransactionType.DEDUCT,
-                        ConversationDeduction(sessionId),
-                        conversationCost,
-                        credit.balance,
-                        updated.balance,
-                        sessionId,
-                    )
+        performCreditOperation(
+            loadCredit = {
                 userCreditRepository
-                    .save(updated)
-                    .flatMap { creditTransactionRepository.save(tx) }
-            }
+                    .findByUserId(userId)
+                    .switchIfEmpty(
+                        Mono.error(InsufficientCreditException(userId, 0L, conversationCost)),
+                    )
+            },
+            applyBalance = { it.deduct(conversationCost) },
+            buildTransaction = { before, after ->
+                CreditTransaction.of(
+                    userId,
+                    CreditTransactionType.DEDUCT,
+                    ConversationDeduction(sessionId),
+                    conversationCost,
+                    before,
+                    after,
+                    sessionId,
+                )
+            },
+        )
 
     /**
      * 대화 크레딧 환불.
@@ -110,28 +135,27 @@ class CreditApplicationService(
         userId: String,
         sessionId: String,
     ): Mono<CreditTransaction> =
-        userCreditRepository
-            .findByUserId(userId)
-            .switchIfEmpty(
-                Mono.error(
-                    IllegalStateException("Refund failed: User credit record not found for userId=$userId"),
-                ),
-            ).flatMap { credit ->
-                val updated = credit.charge(conversationCost)
-                val tx =
-                    CreditTransaction.of(
-                        userId,
-                        CreditTransactionType.REFUND,
-                        ConversationDeduction(sessionId),
-                        conversationCost,
-                        credit.balance,
-                        updated.balance,
-                        sessionId,
-                    )
+        performCreditOperation(
+            loadCredit = {
                 userCreditRepository
-                    .save(updated)
-                    .flatMap { creditTransactionRepository.save(tx) }
-            }
+                    .findByUserId(userId)
+                    .switchIfEmpty(
+                        Mono.error(UserCreditNotFoundException(userId)),
+                    )
+            },
+            applyBalance = { it.charge(conversationCost) },
+            buildTransaction = { before, after ->
+                CreditTransaction.of(
+                    userId,
+                    CreditTransactionType.REFUND,
+                    ConversationDeduction(sessionId),
+                    conversationCost,
+                    before,
+                    after,
+                    sessionId,
+                )
+            },
+        )
 
     /**
      * 결제를 통한 크레딧 충전.
@@ -146,25 +170,25 @@ class CreditApplicationService(
         amount: Long,
         source: PaymentCharge,
     ): Mono<CreditTransaction> =
-        userCreditRepository
-            .findByUserId(userId)
-            .defaultIfEmpty(UserCredit.initialize(userId, 0L))
-            .flatMap { credit ->
-                val updated = credit.charge(amount)
-                val tx =
-                    CreditTransaction.of(
-                        userId,
-                        CreditTransactionType.CHARGE,
-                        source,
-                        amount,
-                        credit.balance,
-                        updated.balance,
-                        source.paymentId,
-                    )
+        performCreditOperation(
+            loadCredit = {
                 userCreditRepository
-                    .save(updated)
-                    .flatMap { creditTransactionRepository.save(tx) }
-            }
+                    .findByUserId(userId)
+                    .defaultIfEmpty(UserCredit.initialize(userId, 0L))
+            },
+            applyBalance = { it.charge(amount) },
+            buildTransaction = { before, after ->
+                CreditTransaction.of(
+                    userId,
+                    CreditTransactionType.CHARGE,
+                    source,
+                    amount,
+                    before,
+                    after,
+                    source.paymentId,
+                )
+            },
+        )
 
     /**
      * 신규 사용자 가입 보너스 지급.
@@ -178,7 +202,7 @@ class CreditApplicationService(
             CreditTransaction.of(
                 userId,
                 CreditTransactionType.CHARGE,
-                SignupBonus(),
+                SignupBonus,
                 signupBonus,
                 0L,
                 signupBonus,
@@ -204,25 +228,25 @@ class CreditApplicationService(
         amount: Long,
         missionType: String,
     ): Mono<CreditTransaction> =
-        userCreditRepository
-            .findByUserId(userId)
-            .defaultIfEmpty(UserCredit.initialize(userId, 0L))
-            .flatMap { credit ->
-                val updated = credit.charge(amount)
-                val tx =
-                    CreditTransaction.of(
-                        userId,
-                        CreditTransactionType.CHARGE,
-                        MissionReward(missionId.value, missionType),
-                        amount,
-                        credit.balance,
-                        updated.balance,
-                        missionId.value,
-                    )
+        performCreditOperation(
+            loadCredit = {
                 userCreditRepository
-                    .save(updated)
-                    .flatMap { creditTransactionRepository.save(tx) }
-            }
+                    .findByUserId(userId)
+                    .defaultIfEmpty(UserCredit.initialize(userId, 0L))
+            },
+            applyBalance = { it.charge(amount) },
+            buildTransaction = { before, after ->
+                CreditTransaction.of(
+                    userId,
+                    CreditTransactionType.CHARGE,
+                    MissionReward(missionId.value, missionType),
+                    amount,
+                    before,
+                    after,
+                    missionId.value,
+                )
+            },
+        )
 
     /**
      * 사용자 크레딧 초기화 (없을 경우만).
