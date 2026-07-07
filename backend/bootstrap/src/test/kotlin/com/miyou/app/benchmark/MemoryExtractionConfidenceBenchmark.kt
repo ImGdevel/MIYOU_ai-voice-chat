@@ -6,6 +6,7 @@ import com.miyou.app.domain.dialogue.model.ConversationTurn
 import com.miyou.app.domain.memory.model.ConversationSnippet
 import com.miyou.app.domain.memory.model.ExtractedMemory
 import com.miyou.app.domain.memory.model.MemoryExtractionContext
+import com.miyou.app.infrastructure.common.template.FileBasedPromptTemplate
 import com.miyou.app.infrastructure.dialogue.adapter.llm.TokenAwareLlmAdapter
 import com.miyou.app.infrastructure.memory.adapter.LlmMemoryExtractionAdapter
 import com.miyou.app.infrastructure.memory.adapter.MemoryExtractionConfig
@@ -48,6 +49,7 @@ class MemoryExtractionConfidenceBenchmark {
             LlmMemoryExtractionAdapter(
                 TokenAwareLlmAdapter(chatModel),
                 jacksonObjectMapper(),
+                FileBasedPromptTemplate(),
                 MemoryExtractionConfig("gpt-4o-mini", 5, 0.2f, 0.3f),
             )
 

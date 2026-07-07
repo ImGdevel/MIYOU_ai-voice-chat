@@ -4,6 +4,7 @@ import com.miyou.app.application.memory.policy.MemoryCuratorPolicy
 import com.miyou.app.domain.memory.model.Memory
 import com.miyou.app.domain.memory.model.MemoryType
 import com.miyou.app.domain.memory.port.VectorMemoryPort
+import com.miyou.app.domain.memory.service.MemoryDecayService
 import com.miyou.app.fixture.ConversationSessionFixture
 import com.miyou.app.support.anyValue
 import org.assertj.core.api.Assertions.assertThat
@@ -32,7 +33,7 @@ class MemoryCuratorServiceTest {
 
     @BeforeEach
     fun setUp() {
-        service = MemoryCuratorService(vectorMemoryPort, policy)
+        service = MemoryCuratorService(vectorMemoryPort, policy, MemoryDecayService())
     }
 
     @Test

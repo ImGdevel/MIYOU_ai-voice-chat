@@ -11,6 +11,7 @@ import com.miyou.app.domain.memory.port.ConversationCounterPort
 import com.miyou.app.domain.memory.port.EmbeddingPort
 import com.miyou.app.domain.memory.port.MemoryExtractionPort
 import com.miyou.app.domain.memory.port.VectorMemoryPort
+import com.miyou.app.domain.memory.service.MemoryDecayService
 import com.miyou.app.fixture.ConversationSessionFixture
 import com.miyou.app.monitoring.port.MemoryExtractionMetricsPort
 import com.miyou.app.support.anyValue
@@ -69,6 +70,7 @@ class MemoryExtractionServiceTest {
                 retrievalService,
                 extractionMetrics,
                 CONVERSATION_THRESHOLD,
+                MemoryDecayService(),
             )
     }
 
