@@ -17,6 +17,6 @@ class MemoryCuratorScheduler(
             .runDecayAndArchive()
             .doOnError { error -> logger.error(error) { "메모리 큐레이터 스케줄 실행 실패" } }
             .onErrorResume { Mono.empty() }
-            .block()
+            .subscribe()
     }
 }

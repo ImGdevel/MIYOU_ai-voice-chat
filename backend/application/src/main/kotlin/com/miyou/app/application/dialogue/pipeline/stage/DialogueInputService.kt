@@ -39,7 +39,6 @@ class DialogueInputService(
         val currentTurn =
             Mono
                 .fromCallable { ConversationTurn.create(session.sessionId, text) }
-                .cache()
         val memories =
             pipelineTracer.traceMemories {
                 memoryRetrievalPort.retrieveMemories(session.sessionId.value, text, 5)
@@ -48,7 +47,7 @@ class DialogueInputService(
             pipelineTracer.traceRetrieval {
                 retrievalPort.retrieve(session.sessionId.value, text, 3)
             }
-        val history = loadConversationHistory(session).cache()
+        val history = loadConversationHistory(session)
 
         return Mono
             .zip(retrievalContext, memories, history, currentTurn)
