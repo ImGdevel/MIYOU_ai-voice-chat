@@ -9,10 +9,10 @@ kotlin {
 }
 
 dependencies {
-	implementation project(':common')
-	implementation project(':exception')
-	implementation project(':domain')
-	implementation project(':monitoring')
+	implementation project(':backend:common')
+	implementation project(':backend:exception')
+	implementation project(':backend:domain')
+	implementation project(':backend:monitoring')
 
 	implementation 'org.springframework.boot:spring-boot-starter-webflux'
 	implementation 'org.springframework.boot:spring-boot-starter-aop'
@@ -25,7 +25,7 @@ dependencies {
 	testImplementation 'org.mockito:mockito-core'
 	testImplementation 'org.mockito:mockito-junit-jupiter'
 	testImplementation 'io.projectreactor:reactor-test'
-	testImplementation testFixtures(project(':domain'))
+	testImplementation testFixtures(project(':backend:domain'))
 	testRuntimeOnly 'org.junit.platform:junit-platform-launcher'
 }
 
