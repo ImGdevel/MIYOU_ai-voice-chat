@@ -17,15 +17,7 @@ interface TtsPort {
     fun streamSynthesize(command: TtsCommand): Flux<ByteArray>
 
     /**
-     * 주어진 텍스트를 음성으로 합성하여 전체 오디오 바이너리 데이터를 일괄 반환합니다.
-     *
-     * @param command TTS 합성 명령 정보
-     * @return 전체 오디오 바이너리 데이터 (Mono)
-     */
-    fun synthesize(command: TtsCommand): Mono<ByteArray>
-
-    /**
      * TTS 엔진의 접속 초기화 및 준비 상태를 활성화합니다.
      */
-    fun prepare(): Mono<Void> = Mono.empty()
+    fun prepare(): Mono<Void>
 }
