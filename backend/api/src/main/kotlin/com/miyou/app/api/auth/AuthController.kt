@@ -4,7 +4,6 @@ import com.miyou.app.api.auth.dto.AuthTokenResponse
 import com.miyou.app.api.auth.dto.RefreshTokenRequest
 import com.miyou.app.application.auth.usecase.LogoutUseCase
 import com.miyou.app.application.auth.usecase.TokenRefreshUseCase
-import com.miyou.app.domain.auth.exception.InvalidRefreshTokenException
 import jakarta.validation.Valid
 import org.springframework.http.HttpStatus
 import org.springframework.web.bind.annotation.PostMapping
@@ -12,7 +11,6 @@ import org.springframework.web.bind.annotation.RequestBody
 import org.springframework.web.bind.annotation.RequestMapping
 import org.springframework.web.bind.annotation.ResponseStatus
 import org.springframework.web.bind.annotation.RestController
-import org.springframework.web.server.ResponseStatusException
 import reactor.core.publisher.Mono
 
 @RestController
@@ -28,9 +26,6 @@ class AuthController(
         tokenRefreshUseCase
             .refresh(request.refreshToken)
             .map(AuthTokenResponse::from)
-            .onErrorMap(InvalidRefreshTokenException::class.java) {
-                ResponseStatusException(HttpStatus.UNAUTHORIZED, "유효하지 않거나 만료된 refresh token입니다.")
-            }
 
     @PostMapping("/logout")
     @ResponseStatus(HttpStatus.NO_CONTENT)

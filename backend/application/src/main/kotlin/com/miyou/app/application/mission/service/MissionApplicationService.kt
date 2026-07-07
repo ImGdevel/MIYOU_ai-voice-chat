@@ -2,18 +2,18 @@ package com.miyou.app.application.mission.service
 
 import com.miyou.app.application.mission.usecase.MissionCompletionUseCase
 import com.miyou.app.application.mission.usecase.MissionQueryUseCase
+import com.miyou.app.domain.mission.exception.MissionAlreadyCompletedException
+import com.miyou.app.domain.mission.exception.MissionNotFoundException
 import com.miyou.app.domain.mission.model.Mission
 import com.miyou.app.domain.mission.model.MissionId
 import com.miyou.app.domain.mission.model.MissionStatus
 import com.miyou.app.domain.mission.model.UserMission
-import com.miyou.app.domain.mission.port.CreditChargingPort
 import com.miyou.app.domain.mission.port.CreditRewardCommand
+import com.miyou.app.domain.mission.port.MissionCreditChargingPort
 import com.miyou.app.domain.mission.port.MissionRepository
 import com.miyou.app.domain.mission.port.UserMissionRepository
-import com.miyou.app.exception.MissionErrorCode
 import org.springframework.stereotype.Service
 import org.springframework.transaction.annotation.Transactional
-import org.springframework.web.server.ResponseStatusException
 import reactor.core.publisher.Flux
 import reactor.core.publisher.Mono
 
@@ -27,7 +27,7 @@ import reactor.core.publisher.Mono
 class MissionApplicationService(
     private val missionRepository: MissionRepository,
     private val userMissionRepository: UserMissionRepository,
-    private val creditChargingPort: CreditChargingPort,
+    private val creditChargingPort: MissionCreditChargingPort,
 ) : MissionQueryUseCase,
     MissionCompletionUseCase {
     /**
@@ -51,7 +51,8 @@ class MissionApplicationService(
      * @param userId 사용자 ID
      * @param missionId 미션 ID
      * @return 완료된 미션 (보상 지급 완료)
-     * @throws ResponseStatusException 미션 없음 또는 이미 완료된 일회성 미션
+     * @throws MissionNotFoundException 미션이 없는 경우
+     * @throws MissionAlreadyCompletedException 이미 완료된 일회성 미션인 경우
      */
     @Transactional
     override fun completeMission(
@@ -62,10 +63,7 @@ class MissionApplicationService(
             .findById(missionId)
             .switchIfEmpty(
                 Mono.error(
-                    ResponseStatusException(
-                        MissionErrorCode.MISSION_NOT_FOUND.httpStatus,
-                        MissionErrorCode.MISSION_NOT_FOUND.message,
-                    ),
+                    MissionNotFoundException(missionId.value),
                 ),
             ).flatMap { mission ->
                 userMissionRepository
@@ -81,10 +79,7 @@ class MissionApplicationService(
     ): Mono<UserMission> {
         if (userMission.status == MissionStatus.REWARDED && !mission.repeatable) {
             return Mono.error(
-                ResponseStatusException(
-                    MissionErrorCode.MISSION_ALREADY_COMPLETED.httpStatus,
-                    MissionErrorCode.MISSION_ALREADY_COMPLETED.message,
-                ),
+                MissionAlreadyCompletedException(mission.missionId.value),
             )
         }
         val completed = userMission.complete()
