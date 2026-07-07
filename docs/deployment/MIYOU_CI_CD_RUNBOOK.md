@@ -28,16 +28,16 @@
 2. `validate-deploy-contract`: 배포 스크립트 계약 정적 검증
 3. `frontend-build`
    - `frontend`에서 `npm ci`, `npm run build`
-   - `frontend/dist -> app-miyou/src/main/resources/static` 동기화
+   - `frontend/dist -> bootstrap/src/main/resources/static` 동기화
    - `frontend/dist -> S3` 업로드
    - 빌드 산출물을 `frontend-dist` artifact로 업로드
 4. `gradle-test`
-   - `./gradlew --no-daemon --build-cache :app-miyou:test`
+   - `./gradlew --no-daemon --build-cache test` (전체 서브모듈)
 5. `gradle-compile`
-   - `./gradlew --no-daemon --build-cache :app-miyou:compileJava`
+   - `./gradlew --no-daemon --build-cache compileKotlin` (전체 서브모듈)
 6. `build-and-push`
    - `frontend-dist` artifact 다운로드
-   - `app-miyou/Dockerfile` 기준 이미지 빌드
+   - `bootstrap/Dockerfile` 기준 이미지 빌드
    - GHCR에 `sha-${GITHUB_SHA}`와 `latest` 태그 푸시
    - Buildx GHA cache scope 고정(`miyou-dialogue-image`)
 7. `deploy_nginx`: Nginx 선배포(게이트)
@@ -124,7 +124,7 @@
 - 엔드포인트: `GET /actuator/health`
 - 외부 점검 URL: `http://<EC2_PUBLIC_IP>/actuator/health`
 - 현재 앱 설정에서 actuator health/info 노출 활성화:
-  - `app-miyou/src/main/resources/application.yml`
+  - `bootstrap/src/main/resources/application.yml`
 
 ## 8. 실행 방법
 1) GitHub Actions > `CI-CD` > `Run workflow`
