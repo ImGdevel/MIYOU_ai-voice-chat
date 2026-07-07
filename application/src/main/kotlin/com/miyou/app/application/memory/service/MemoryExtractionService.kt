@@ -1,6 +1,5 @@
 package com.miyou.app.application.memory.service
 
-import com.miyou.app.application.monitoring.port.MemoryExtractionMetricsPort
 import com.miyou.app.domain.dialogue.model.ConversationSessionId
 import com.miyou.app.domain.dialogue.model.ConversationTurn
 import com.miyou.app.domain.dialogue.port.ConversationRepository
@@ -12,6 +11,7 @@ import com.miyou.app.domain.memory.port.ConversationCounterPort
 import com.miyou.app.domain.memory.port.EmbeddingPort
 import com.miyou.app.domain.memory.port.MemoryExtractionPort
 import com.miyou.app.domain.memory.port.VectorMemoryPort
+import com.miyou.app.monitoring.port.MemoryExtractionMetricsPort
 import io.github.oshai.kotlinlogging.KotlinLogging
 import org.springframework.stereotype.Service
 import reactor.core.publisher.Flux

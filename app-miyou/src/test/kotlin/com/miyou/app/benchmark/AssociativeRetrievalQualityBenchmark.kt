@@ -2,7 +2,6 @@ package com.miyou.app.benchmark
 
 import com.miyou.app.application.memory.policy.MemoryRetrievalPolicy
 import com.miyou.app.application.memory.service.MemoryRetrievalService
-import com.miyou.app.application.monitoring.port.RagQualityMetricsPort
 import com.miyou.app.domain.dialogue.model.ConversationSessionId
 import com.miyou.app.domain.memory.model.Memory
 import com.miyou.app.domain.memory.model.MemoryType
@@ -11,6 +10,7 @@ import com.miyou.app.domain.memory.port.VectorMemoryPort
 import com.miyou.app.infrastructure.dialogue.config.properties.RagDialogueProperties
 import com.miyou.app.infrastructure.memory.adapter.SpringAiEmbeddingAdapter
 import com.miyou.app.infrastructure.memory.adapter.SpringAiVectorDbAdapter
+import com.miyou.app.monitoring.port.RagQualityMetricsPort
 import io.qdrant.client.QdrantClient
 import io.qdrant.client.QdrantGrpcClient
 import org.assertj.core.api.Assertions.assertThat

@@ -1,10 +1,10 @@
 package com.miyou.app.api.auth
 
+import com.miyou.app.api.auth.dto.RefreshTokenRequest
 import com.miyou.app.application.auth.usecase.LogoutUseCase
 import com.miyou.app.application.auth.usecase.TokenRefreshUseCase
 import com.miyou.app.domain.auth.exception.InvalidRefreshTokenException
 import com.miyou.app.domain.auth.model.AuthTokens
-import com.miyou.app.api.auth.dto.RefreshTokenRequest
 import com.miyou.app.support.PermitAllSecurityTestConfig
 import org.junit.jupiter.api.DisplayName
 import org.junit.jupiter.api.Test

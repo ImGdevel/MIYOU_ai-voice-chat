@@ -1,16 +1,16 @@
 package com.miyou.app.api.credit
 
+import com.miyou.app.api.credit.dto.ChargeByPaymentRequest
 import com.miyou.app.application.credit.usecase.CreditChargeUseCase
 import com.miyou.app.application.credit.usecase.CreditQueryUseCase
 import com.miyou.app.domain.auth.model.AuthenticatedUser
 import com.miyou.app.domain.credit.model.CreditTransaction
 import com.miyou.app.domain.credit.model.CreditTransactionType
 import com.miyou.app.domain.credit.model.PaymentCharge
+import com.miyou.app.domain.credit.port.PaymentGatewayPort
 import com.miyou.app.fixture.CreditTransactionFixture
 import com.miyou.app.fixture.UserCreditFixture
 import com.miyou.app.fixture.UserIdFixture
-import com.miyou.app.api.credit.dto.ChargeByPaymentRequest
-import com.miyou.app.domain.credit.port.PaymentGatewayPort
 import com.miyou.app.support.PermitAllSecurityTestConfig
 import org.junit.jupiter.api.DisplayName
 import org.junit.jupiter.api.Test

@@ -3,7 +3,6 @@ package com.miyou.app.application.dialogue.pipeline.stage
 import com.miyou.app.application.dialogue.pipeline.PipelineInputs
 import com.miyou.app.application.memory.policy.MemoryExtractionPolicy
 import com.miyou.app.application.memory.service.MemoryExtractionService
-import com.miyou.app.application.monitoring.port.ConversationMetricsPort
 import com.miyou.app.application.monitoring.service.PipelineTracer
 import com.miyou.app.domain.dialogue.model.ConversationContext
 import com.miyou.app.domain.dialogue.model.ConversationSession
@@ -14,6 +13,7 @@ import com.miyou.app.domain.memory.model.MemoryRetrievalResult
 import com.miyou.app.domain.memory.port.ConversationCounterPort
 import com.miyou.app.domain.retrieval.model.RetrievalContext
 import com.miyou.app.fixture.ConversationSessionFixture
+import com.miyou.app.monitoring.port.ConversationMetricsPort
 import com.miyou.app.support.anyValue
 import org.assertj.core.api.Assertions.assertThatThrownBy
 import org.junit.jupiter.api.BeforeEach

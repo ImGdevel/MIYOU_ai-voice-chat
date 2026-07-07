@@ -4,7 +4,6 @@ import com.miyou.app.application.dialogue.pipeline.stage.DialogueInputService
 import com.miyou.app.application.dialogue.pipeline.stage.DialogueLlmStreamService
 import com.miyou.app.application.dialogue.pipeline.stage.DialoguePostProcessingService
 import com.miyou.app.application.dialogue.pipeline.stage.DialogueTtsStreamService
-import com.miyou.app.application.monitoring.aop.MonitoredPipeline
 import com.miyou.app.common.model.AudioFormat
 import com.miyou.app.domain.dialogue.model.ConversationSession
 import com.miyou.app.domain.dialogue.port.CreditChargingPort
@@ -12,6 +11,7 @@ import com.miyou.app.domain.dialogue.port.CreditDeductCommand
 import com.miyou.app.domain.dialogue.port.CreditDeductResult
 import com.miyou.app.domain.dialogue.port.CreditRefundCommand
 import com.miyou.app.domain.dialogue.port.DialoguePipelineUseCase
+import com.miyou.app.monitoring.aop.MonitoredPipeline
 import io.github.oshai.kotlinlogging.KotlinLogging
 import org.springframework.stereotype.Service
 import reactor.core.publisher.Flux

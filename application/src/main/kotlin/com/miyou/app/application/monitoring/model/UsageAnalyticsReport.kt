@@ -3,7 +3,7 @@ package com.miyou.app.application.monitoring.model
 import com.miyou.app.domain.cost.model.CostInfo
 import com.miyou.app.domain.cost.model.UsageMetricsInput
 import com.miyou.app.domain.cost.service.CostCalculationService
-import com.miyou.app.domain.monitoring.model.UsageAnalytics
+import com.miyou.app.monitoring.model.UsageAnalytics
 
 /**
  * `monitoring` 도메인의 [UsageAnalytics]와 `cost` 도메인의 [CostInfo]를 조합하는

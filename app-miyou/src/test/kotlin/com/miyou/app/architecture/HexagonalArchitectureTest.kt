@@ -70,13 +70,29 @@ class HexagonalArchitectureTest {
     }
 
     @Test
-    fun documentAnnotationShouldOnlyBeInInfrastructure() {
+    fun documentAnnotationShouldOnlyBeInInfrastructureOrMonitoring() {
         classes()
             .that()
             .areAnnotatedWith(Document::class.java)
             .should()
-            .resideInAPackage("com.miyou.app.infrastructure..")
-            .because("@Document entities must reside in infrastructure layer")
+            .resideInAnyPackage("com.miyou.app.infrastructure..", "com.miyou.app.monitoring..")
+            .because("@Document entities must reside in infrastructure or the self-contained monitoring module")
+            .check(importedClasses)
+    }
+
+    @Test
+    fun monitoringShouldNotDependOnBusinessLayers() {
+        noClasses()
+            .that()
+            .resideInAPackage("com.miyou.app.monitoring..")
+            .should()
+            .dependOnClassesThat()
+            .resideInAnyPackage(
+                "com.miyou.app.domain..",
+                "com.miyou.app.application..",
+                "com.miyou.app.infrastructure..",
+                "com.miyou.app.api..",
+            ).because("monitoring is a self-contained cross-cutting module - it must not know about business layers")
             .check(importedClasses)
     }
 

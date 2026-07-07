@@ -12,6 +12,7 @@ dependencies {
 	implementation project(':common')
 	implementation project(':exception')
 	implementation project(':domain')
+	implementation project(':monitoring')
 
 	implementation 'org.springframework.boot:spring-boot-starter-webflux'
 	implementation 'org.springframework.boot:spring-boot-starter-aop'

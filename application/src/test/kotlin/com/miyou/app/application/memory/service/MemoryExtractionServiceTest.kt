@@ -1,6 +1,5 @@
 package com.miyou.app.application.memory.service
 
-import com.miyou.app.application.monitoring.port.MemoryExtractionMetricsPort
 import com.miyou.app.domain.dialogue.model.ConversationTurn
 import com.miyou.app.domain.dialogue.port.ConversationRepository
 import com.miyou.app.domain.memory.model.ExtractedMemory
@@ -13,6 +12,7 @@ import com.miyou.app.domain.memory.port.EmbeddingPort
 import com.miyou.app.domain.memory.port.MemoryExtractionPort
 import com.miyou.app.domain.memory.port.VectorMemoryPort
 import com.miyou.app.fixture.ConversationSessionFixture
+import com.miyou.app.monitoring.port.MemoryExtractionMetricsPort
 import com.miyou.app.support.anyValue
 import org.assertj.core.api.Assertions.assertThat
 import org.assertj.core.data.Offset

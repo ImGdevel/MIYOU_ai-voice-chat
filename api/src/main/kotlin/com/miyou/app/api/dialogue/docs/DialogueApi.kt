@@ -1,10 +1,10 @@
 package com.miyou.app.api.dialogue.docs
 
-import com.miyou.app.domain.auth.model.AuthenticatedUser
 import com.miyou.app.api.dialogue.dto.CreateSessionRequest
 import com.miyou.app.api.dialogue.dto.CreateSessionResponse
 import com.miyou.app.api.dialogue.dto.RagDialogueRequest
 import com.miyou.app.api.dialogue.dto.SttTranscriptionResponse
+import com.miyou.app.domain.auth.model.AuthenticatedUser
 import io.swagger.v3.oas.annotations.Operation
 import io.swagger.v3.oas.annotations.Parameter
 import io.swagger.v3.oas.annotations.media.Content
