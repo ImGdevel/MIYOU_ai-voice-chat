@@ -1,14 +1,20 @@
-name: CodeQL
+name: CodeQL Frontend
 
 on:
   push:
     branches:
       - develop
       - main
+    paths:
+      - 'frontend/**'
+      - '.github/workflows/codeql-frontend.yml'
   pull_request:
     branches:
       - develop
       - main
+    paths:
+      - 'frontend/**'
+      - '.github/workflows/codeql-frontend.yml'
   schedule:
     - cron: '18 2 * * 1'
   workflow_dispatch:
@@ -20,9 +26,9 @@ permissions:
 
 jobs:
   analyze:
-    name: Analyze (${{ matrix.language }})
+    name: Analyze Frontend (${{ matrix.language }})
     runs-on: ubuntu-latest
-
+    
     strategy:
       fail-fast: false
       matrix:
@@ -31,8 +37,6 @@ jobs:
             build-mode: none
           - language: javascript-typescript
             build-mode: none
-          - language: java-kotlin
-            build-mode: manual
 
     permissions:
       actions: read
@@ -43,29 +47,11 @@ jobs:
       - name: Checkout repository
         uses: actions/checkout@v4
 
-      - name: Set up JDK 21
-        if: ${{ matrix.language == 'java-kotlin' }}
-        uses: actions/setup-java@v4
-        with:
-          distribution: temurin
-          java-version: '21'
-          cache: gradle
-
-      - name: Set up Gradle
-        if: ${{ matrix.language == 'java-kotlin' }}
-        uses: gradle/actions/setup-gradle@v4
-        with:
-          cache-read-only: false
-
       - name: Initialize CodeQL
         uses: github/codeql-action/init@v4
         with:
           languages: ${{ matrix.language }}
           build-mode: ${{ matrix.build-mode }}
-
-      - name: Build all modules for CodeQL
-        if: ${{ matrix.language == 'java-kotlin' }}
-        run: ./gradlew --no-daemon --no-build-cache clean classes
 
       - name: Perform CodeQL Analysis
         uses: github/codeql-action/analyze@v4
