@@ -74,7 +74,7 @@ flowchart LR
 
 현재 저장소의 핵심 모듈은 다음과 같습니다.
 
-- `common`/`exception`/`domain`/`application`/`infrastructure`/`api`/`monitoring`/`bootstrap`: 계층별로 물리 분리된 Kotlin/Spring WebFlux 백엔드 Gradle 모듈. `bootstrap`이 Spring Boot 진입점이자 전체 조립 지점
+- `backend`: 계층별로 물리 분리된 Kotlin/Spring WebFlux 백엔드 Gradle 모듈 모음(`common`/`exception`/`domain`/`application`/`infrastructure`/`api`/`monitoring`/`bootstrap`). `backend/bootstrap`이 Spring Boot 진입점이자 전체 조립 지점
 - `frontend`: Vite/React 기반 브라우저 클라이언트
 - `deploy`: 로컬 인프라와 배포 관련 Compose/Nginx 설정
 - `MIYOU_ai-voice-chat.wiki`: 아키텍처, 성능 개선, 배포, 모니터링 문서
@@ -88,13 +88,13 @@ flowchart LR
 docker compose -f deploy/docker-compose.yml up -d
 
 # Spring Boot 애플리케이션 실행
-./gradlew :bootstrap:bootRun
+./gradlew :backend:bootstrap:bootRun
 ```
 
 Windows PowerShell에서는 Gradle wrapper를 다음처럼 실행할 수 있습니다.
 
 ```powershell
-.\gradlew.bat :bootstrap:bootRun
+.\gradlew.bat :backend:bootstrap:bootRun
 ```
 
 ### Frontend

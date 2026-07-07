@@ -9,7 +9,7 @@ kotlin {
 }
 
 dependencies {
-	implementation project(':common')
+	implementation project(':backend:common')
 	implementation 'io.projectreactor:reactor-core'
 
 	testImplementation 'org.junit.jupiter:junit-jupiter'

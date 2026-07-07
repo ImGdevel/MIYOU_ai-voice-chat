@@ -36,13 +36,13 @@ dependencyManagement {
 }
 
 dependencies {
-	implementation project(':common')
-	implementation project(':exception')
-	implementation project(':domain')
-	implementation project(':application')
-	implementation project(':infrastructure')
-	implementation project(':api')
-	implementation project(':monitoring')
+	implementation project(':backend:common')
+	implementation project(':backend:exception')
+	implementation project(':backend:domain')
+	implementation project(':backend:application')
+	implementation project(':backend:infrastructure')
+	implementation project(':backend:api')
+	implementation project(':backend:monitoring')
 	implementation 'org.springframework.boot:spring-boot-starter-aop'
 	implementation 'org.springframework.boot:spring-boot-starter-webflux'
 	implementation 'org.springframework.boot:spring-boot-starter-actuator'
@@ -66,15 +66,15 @@ dependencies {
 	testImplementation 'org.testcontainers:junit-jupiter:1.20.4'
 	testImplementation 'org.testcontainers:mongodb:1.20.4'
 	testImplementation 'org.testcontainers:testcontainers:1.20.4'
-	testImplementation testFixtures(project(':domain'))
-	testImplementation testFixtures(project(':infrastructure'))
+	testImplementation testFixtures(project(':backend:domain'))
+	testImplementation testFixtures(project(':backend:infrastructure'))
 	testRuntimeOnly 'org.junit.platform:junit-platform-launcher'
 
 	testFixturesImplementation sourceSets.main.output
-	testFixturesImplementation project(':domain')
-	testFixturesImplementation project(':application')
-	testFixturesImplementation project(':api')
-	testFixturesImplementation testFixtures(project(':domain'))
+	testFixturesImplementation project(':backend:domain')
+	testFixturesImplementation project(':backend:application')
+	testFixturesImplementation project(':backend:api')
+	testFixturesImplementation testFixtures(project(':backend:domain'))
 }
 ktlint {
 	version.set("1.8.0")

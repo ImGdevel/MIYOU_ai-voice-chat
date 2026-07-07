@@ -4,12 +4,12 @@ plugins {
 
 rootProject.name = 'webflux'
 
-include 'bootstrap'
-include 'common'
-include 'exception'
-include 'domain'
-include 'application'
-include 'infrastructure'
-include 'api'
-include 'monitoring'
+include 'backend:bootstrap'
+include 'backend:common'
+include 'backend:exception'
+include 'backend:domain'
+include 'backend:application'
+include 'backend:infrastructure'
+include 'backend:api'
+include 'backend:monitoring'
 

@@ -1,0 +1,11 @@
+// backend는 실제 소스가 없는 그룹핑 전용 프로젝트다(nested Gradle path
+// `backend:xxx`를 쓰면 Gradle이 `:backend` 자체도 프로젝트로 만든다).
+// root build.gradle의 subprojects{} 블록이 여기에도 Spring Boot 플러그인을
+// 적용해 bootJar 태스크가 생기므로, 메인 클래스가 없어 실패하지 않도록 끈다.
+bootJar {
+	enabled = false
+}
+
+jar {
+	enabled = false
+}
