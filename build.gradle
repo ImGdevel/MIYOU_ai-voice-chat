@@ -19,12 +19,14 @@ subprojects {
 	apply plugin: 'com.diffplug.spotless'
 
 	dependencies {
+		implementation platform('com.fasterxml.jackson:jackson-bom:2.18.8')
+		implementation platform('io.netty:netty-bom:4.1.135.Final')
 		constraints {
 			implementation('org.springframework.security:spring-security-web:6.4.15')
 			implementation('org.springframework.security:spring-security-core:6.4.15')
-			implementation('com.fasterxml.jackson.core:jackson-databind:2.18.8')
-			implementation('io.netty:netty-handler:4.1.135.Final')
-			implementation('io.netty:netty-resolver-dns:4.1.135.Final')
+			implementation('org.springframework.security:spring-security-config:6.4.15')
+			implementation('org.springframework.security:spring-security-oauth2-jose:6.4.15')
+			implementation('org.springframework.security:spring-security-test:6.4.15')
 		}
 	}
 
