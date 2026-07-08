@@ -27,6 +27,10 @@ spring:
         collection-name: ${QDRANT_COLLECTION:user_memories}
 server:
   port: 8081
+  error:
+    include-stacktrace: never
+    include-message: never
+    include-exception: false
 
 web:
   cors:
