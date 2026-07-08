@@ -31,6 +31,9 @@ class StructuredLogPipelineMetricsReporter(
         return linkedMapOf(
             "ts" to (summary.finishedAt ?: summary.startedAt)?.toString(),
             "pipelineId" to summary.pipelineId,
+            "sessionId" to summary.sessionId,
+            "userId" to summary.userId,
+            "personaId" to summary.personaId,
             "status" to summary.status.name,
             "totalDurationMs" to summary.durationMillis(),
             "firstResponseMs" to summary.firstResponseLatencyMillis,

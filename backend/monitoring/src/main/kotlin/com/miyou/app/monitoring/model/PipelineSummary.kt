@@ -5,6 +5,9 @@ import java.time.Instant
 
 data class PipelineSummary(
     val pipelineId: String,
+    val sessionId: String?,
+    val userId: String?,
+    val personaId: String?,
     val status: PipelineStatus,
     val startedAt: Instant?,
     val finishedAt: Instant?,
