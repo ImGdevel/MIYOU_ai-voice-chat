@@ -36,4 +36,28 @@ class ResponseFormatComplianceCheckerTest {
 
         assertThat(ResponseFormatComplianceChecker.hasFormatViolation(response)).isTrue()
     }
+
+    @Test
+    @DisplayName("플러스 기호 불릿이 섞이면 위반이다")
+    fun hasFormatViolation_shouldReturnTrueForPlusBullet() {
+        val response = "정리해드릴게요.\n+ 파일 확인\n+ 수정 방법 안내"
+
+        assertThat(ResponseFormatComplianceChecker.hasFormatViolation(response)).isTrue()
+    }
+
+    @Test
+    @DisplayName("국가 플래그 이모지가 섞이면 위반이다")
+    fun hasFormatViolation_shouldReturnTrueForFlagEmoji() {
+        val response = "여행 준비 잘 하고 계세요? 🇰🇷"
+
+        assertThat(ResponseFormatComplianceChecker.hasFormatViolation(response)).isTrue()
+    }
+
+    @Test
+    @DisplayName("별표/화살표 기호가 섞이면 위반이다")
+    fun hasFormatViolation_shouldReturnTrueForStarSymbol() {
+        val response = "정말 잘하셨어요 ⭐"
+
+        assertThat(ResponseFormatComplianceChecker.hasFormatViolation(response)).isTrue()
+    }
 }
