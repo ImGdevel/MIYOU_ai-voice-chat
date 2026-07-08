@@ -14,25 +14,14 @@ import org.springframework.web.server.ResponseStatusException
 import java.time.LocalDateTime
 
 /**
- * 글로벌 예외 처리.
- *
- * 모든 예외를 표준화된 ErrorResponse로 변환.
- *
- * ## BusinessException 단일 핸들러 통합
- * 모든 비즈니스 예외는 [handleBusinessException]에서 `errorCode.category` 기반으로 일괄 처리합니다.
- * (새 예외가 추가되어도 이 파일은 수정할 필요가 없음)
- *
- * ## require()/check() 예외 처리 원칙
- * 도메인 모델의 require()/check() 실패는 검증 누락(버그)으로 간주해 500 에러로 응답합니다.
- * (상세 설계: docs/plan/2026-07-08_1432_domain-validation-error-boundary.md)
+ * 애플리케이션의 모든 예외를 표준화된 ErrorResponse로 변환하는 글로벌 예외 핸들러.
+ * BusinessException은 카테고리별로 일괄 처리하며, require()/check() 실패는 500 에러로 대응합니다.
  */
 @RestControllerAdvice
 class GlobalExceptionHandler {
     private val logger = KotlinLogging.logger {}
 
-    /**
-     * BusinessException(및 모든 도메인 하위 예외) 통합 처리.
-     */
+    /** BusinessException 및 하위 도메인 예외를 일괄 처리합니다. */
     @ExceptionHandler(BusinessException::class)
     fun handleBusinessException(
         ex: BusinessException,
@@ -62,9 +51,7 @@ class GlobalExceptionHandler {
             .body(errorResponse)
     }
 
-    /**
-     * ResponseStatusException 처리.
-     */
+    /** ResponseStatusException을 처리합니다. */
     @ExceptionHandler(ResponseStatusException::class)
     fun handleResponseStatusException(ex: ResponseStatusException): ResponseEntity<ErrorResponse> {
         logger.warn { "Response status exception - status=${ex.statusCode.value()}, reason=${ex.reason}" }
@@ -80,9 +67,7 @@ class GlobalExceptionHandler {
             .body(errorResponse)
     }
 
-    /**
-     * 일반 Exception 처리.
-     */
+    /** 정의되지 않은 일반 Exception을 처리합니다. */
     @ExceptionHandler(Exception::class)
     fun handleGenericException(ex: Exception): ResponseEntity<ErrorResponse> {
         logger.error(ex) { "Unexpected exception" }

@@ -95,11 +95,7 @@ class MemoryRetrievalService(
     }
 
     /**
-     * 연상 기반 2차 검색(Associative Retrieval Hop)을 수행합니다.
-     *
-     * 1차 검색 결과 중 최상위 점수(최신성 감쇠가 반영된 스코어)가 연상 임계치([associativeHopMinScore]) 이상인
-     * 단 하나의 대표 메모리를 선정하여, 해당 메모리의 내용을 임베딩한 뒤 2차 유사도 검색을 수행합니다.
-     * 이를 통해 연쇄적으로 연관 있는 메모리들을 추가 확보합니다.
+     * 1차 검색 결과 중 점수가 임계치 이상인 최상위 메모리를 대표로 선정해 2차 유사도 검색(연상 검색)을 수행합니다.
      */
     private fun expandAssociatively(
         sessionId: String,

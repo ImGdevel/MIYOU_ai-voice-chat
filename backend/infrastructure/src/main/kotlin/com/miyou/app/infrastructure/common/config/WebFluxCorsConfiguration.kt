@@ -15,9 +15,7 @@ class WebFluxCorsConfiguration(
             .map { it.trim() }
             .filter { it.isNotBlank() }
 
-    // 모든 비즈니스 API가 app.api.prefix(/api/v1) 아래에 있으므로 매핑 하나로 전체를 커버한다.
-    // 컨트롤러 경로가 늘어날 때마다 CORS 설정을 따로 추가할 필요가 없다.
-    // 앞 슬래시 누락/공백 등으로 잘못된 패턴이 만들어지지 않도록 정규화한다.
+    // apiPrefix를 정규화하여 전체 비즈니스 API 경로에 CORS 매핑을 한번에 적용.
     private val apiMapping: String =
         when {
             apiPrefix.isBlank() -> "/**"

@@ -45,14 +45,7 @@ data class Memory(
     }
 
     /**
-     * 검색 랭킹용 점수(Recency 기반 중요도 감쇠)를 계산합니다.
-     *
-     * 주의: 이 계산은 검색 랭킹 평가용 임시 점수 계산이며, 실제 저장된 importance 값을 감쇠시키지 않습니다.
-     * 자주 조회된다고 해서 오래된 기억이 최신처럼 랭킹되지 않도록, 접근 시점(lastAccessedAt)이 아닌
-     * 실제 사건/생성 시점(createdAt) 기준으로 감쇠를 적용합니다.
-     *
-     * @param recencyWeight 최신성 가중치 (값이 클수록 시간이 지남에 따라 점수가 빠르게 감소)
-     * @return 랭킹 계산용 점수
+     * 생성 시점(createdAt) 기준으로 최신성이 감쇠된 검색 랭킹용 점수를 계산합니다.
      */
     fun calculateRankedScore(recencyWeight: Float): Float {
         val baseImportance = importance ?: 0.5f

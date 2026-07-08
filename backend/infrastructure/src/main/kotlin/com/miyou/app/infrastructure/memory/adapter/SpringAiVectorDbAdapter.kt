@@ -56,8 +56,7 @@ class SpringAiVectorDbAdapter(
                 metadata["type"] = memory.type.name
                 memory.importance?.let { metadata["importance"] = it }
                 memory.emotion?.let { metadata["emotion"] = it.name }
-                // Spring AI QdrantVectorStore(1.0.0-M5)의 payload 변환은 Long을 지원하지 않는다
-                // (String/Integer/Double/Float/Boolean/Map만 허용) - epoch millis를 Double로 저장.
+                // QdrantVectorStore가 Long을 지원하지 않으므로 Double로 변환하여 저장.
                 metadata["createdAt"] = memory.createdAt.toEpochMillisDouble()
                 memory.lastAccessedAt?.let { metadata["lastAccessedAt"] = it.toEpochMillisDouble() }
                 memory.accessCount?.let { metadata["accessCount"] = it }
@@ -250,8 +249,7 @@ class SpringAiVectorDbAdapter(
         sessionId: String,
         payload: Map<String, Value>,
     ): Memory {
-        // Spring AI QdrantVectorStore는 Document 텍스트를 "content"가 아니라 "doc_content" 페이로드
-        // 키에 저장한다(내부 상수 CONTENT_FIELD_NAME) - 실제 Qdrant에서는 이 키로만 읽힌다.
+        // QdrantVectorStore 내부 규칙에 따라 페이로드 키는 "doc_content"를 사용.
         val content = payload[CONTENT_FIELD_NAME]?.stringValue ?: ""
 
         val typeStr =
@@ -288,8 +286,7 @@ class SpringAiVectorDbAdapter(
         )
     }
 
-    // Spring AI QdrantVectorStore(1.0.0-M5)의 payload 변환이 Long을 지원하지 않는 workaround로
-    // epoch millis를 Double로 저장했기 때문에, 읽어올 때도 동일하게 Double -> Instant로 되돌린다.
+    // Double로 저장된 epoch millis를 Instant로 역변환.
     private fun instantFromPayload(
         payload: Map<String, Value>,
         key: String,

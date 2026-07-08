@@ -57,8 +57,7 @@ class DialoguePipelineService(
         val postProcessing = postProcessingService.persistAndExtract(inputsMono, sentences)
         val audioStream = ttsStreamService.traceTtsSynthesis(audioFlux)
 
-        // postProcessing은 크레딧 정책 범위 밖에서 concatWith로 이어붙인다.
-        // 대화 저장 실패는 크레딧 환불 트리거가 되어서는 안 된다.
+        // 대화 저장 실패가 환불을 유발하지 않도록 후처리(postProcessing)는 크레딧 영역 밖에서 실행.
         return prechargeConversation(session, audioStream)
             .concatWith(postProcessing.thenMany(Flux.empty()))
     }
@@ -81,20 +80,14 @@ class DialoguePipelineService(
         val textStream = llmTokens.cache()
         val postProcessing = postProcessingService.persistAndExtractText(inputsMono, textStream)
 
-        // postProcessing은 크레딧 정책 범위 밖에서 concatWith로 이어붙인다.
-        // 대화 저장 실패는 크레딧 환불 트리거가 되어서는 안 된다.
+        // 대화 저장 실패가 환불을 유발하지 않도록 후처리(postProcessing)는 크레딧 영역 밖에서 실행.
         return prechargeConversation(session, textStream)
             .concatWith(postProcessing.thenMany(Flux.empty()))
     }
 
     /**
-     * 대화 응답 스트림을 선차감 정책으로 감싼다.
-     *
-     * - 서비스 내부 오류(LLM/TTS 실패 등): error 핸들러 → 환불
-     * - 사용자 직접 취소(클라이언트 연결 종료): cancel 핸들러 → 차감 유지, 로그만 기록
-     *
-     * postProcessing(대화 저장, 메모리 추출)은 이 범위 밖에서 실행되므로
-     * 저장 실패가 환불을 유발하지 않는다.
+     * 대화 스트림에 선차감 정책을 적용합니다.
+     * 내부 오류 발생 시에는 환불하되, 사용자 취소나 후처리 실패는 환불되지 않습니다.
      */
     private fun <T> prechargeConversation(
         session: ConversationSession,
