@@ -23,13 +23,12 @@ class HexagonalArchitectureTest {
     @Test
     @DisplayName("도메인 레이어는 Spring이나 Mongo, Micrometer 등의 외부 프레임워크에 의존해서는 안 된다")
     fun domainShouldNotDependOnSpringOrMongoOrMicrometer() {
-        // 도메인 레이어는 프레임워크와 완전히 독립되어 순수 비즈니스 로직만 담고 있는지 검증
-        // 단, 도메인별 예외 패키지는 ErrorCode(HttpStatus 의존) 등으로 인해 Spring 의존을 허용함
+        // 도메인 레이어는 프레임워크와 완전히 독립되어 순수 비즈니스 로직만 담고 있는지 검증.
+        // ErrorCode는 HttpStatus를 직접 들고 있지 않고 ErrorCategory(순수 enum)만 노출하므로
+        // exception 패키지도 예외 없이 이 규칙을 지킨다.
         noClasses()
             .that()
             .resideInAPackage("com.miyou.app.domain..")
-            .and()
-            .resideOutsideOfPackage("com.miyou.app.domain..exception..")
             .should()
             .dependOnClassesThat()
             .resideInAnyPackage("org.springframework..", "io.micrometer..")

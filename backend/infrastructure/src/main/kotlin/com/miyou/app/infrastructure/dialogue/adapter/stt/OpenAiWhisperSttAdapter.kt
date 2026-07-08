@@ -63,9 +63,12 @@ class OpenAiWhisperSttAdapter(
                     .doOnNext { body ->
                         log.error { "OpenAI API error - status: ${response.statusCode()}, body: $body" }
                     }.then(
+                        // STT_FAILED는 category=INTERNAL(500) 고정값이라 여기서 직접 매핑한다.
+                        // OpenAiWhisperSttAdapter는 infrastructure 어댑터라 HttpStatus를
+                        // 참조해도 헥사고날 순수성 위반 아님 (domain/exception 모듈만 금지 대상).
                         Mono.error(
                             ResponseStatusException(
-                                DialogueErrorCode.STT_FAILED.httpStatus,
+                                HttpStatus.INTERNAL_SERVER_ERROR,
                                 DialogueErrorCode.STT_FAILED.message,
                             ),
                         ),
