@@ -179,7 +179,7 @@ class SystemPromptService(
         const val MEMORIES_TITLE = "기억 데이터:"
         const val EXPERIENTIAL_MEMORY_TITLE = "체험 기억:"
         const val FACTUAL_MEMORY_TITLE = "사실 기억:"
-        const val CONTEXT_TITLE = "지금 상황:"
+        const val CONTEXT_TITLE = "참고 정보:"
         const val TODAY_LABEL_PREFIX = "오늘은 "
         const val TODAY_LABEL_SUFFIX = "입니다."
 
