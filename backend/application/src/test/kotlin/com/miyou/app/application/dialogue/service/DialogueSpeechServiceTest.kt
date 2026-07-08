@@ -53,6 +53,24 @@ class DialogueSpeechServiceTest {
             }.verify()
     }
 
+    @Test
+    @DisplayName("파일명이 빈 오디오 업로드는 400 오류로 거부한다 (500 아님)")
+    fun transcribe_shouldRejectBlankFilename() {
+        val sttPort = mock(SttPort::class.java)
+        val service =
+            DialogueSpeechService(
+                sttPort,
+                SttPolicy(25L * 1024L * 1024L, "ko"),
+            )
+        val audioFile = createFilePart("", MediaType.parseMediaType("audio/webm"), ByteArray(2048) { 1 })
+
+        StepVerifier
+            .create(service.transcribe(audioFile, "ko"))
+            .expectErrorSatisfies { error ->
+                assertThat(error).isInstanceOf(InvalidAudioFileException::class.java)
+            }.verify()
+    }
+
     private fun createFilePart(
         filename: String,
         contentType: MediaType,

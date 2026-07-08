@@ -34,6 +34,12 @@ class DialogueSpeechService(
         if (contentType == null || contentType.type != "audio") {
             return Mono.error(InvalidAudioFileException())
         }
+        // AudioTranscriptionInput의 require(fileName.isNotBlank())까지 새어들어가면 400이
+        // 아니라 500으로 응답된다 - multipart 파일명은 Bean Validation 대상이 아니라서
+        // 여기서 직접 막아야 한다.
+        if (filePart.filename().isBlank()) {
+            return Mono.error(InvalidAudioFileException())
+        }
 
         return DataBufferUtils
             .join(filePart.content())

@@ -10,6 +10,7 @@ import com.miyou.app.domain.dialogue.port.ConversationSessionRepository
 import com.miyou.app.domain.dialogue.port.DialoguePipelineUseCase
 import com.miyou.app.fixture.ConversationSessionFixture
 import com.miyou.app.support.PermitAllSecurityTestConfig
+import com.miyou.app.support.anyValue
 import org.junit.jupiter.api.DisplayName
 import org.junit.jupiter.api.Test
 import org.mockito.Mockito.`when`
@@ -114,5 +115,69 @@ class DialogueControllerTest {
             .exchange()
             .expectStatus()
             .isBadRequest
+    }
+
+    @Test
+    @DisplayName("ragDialogueText returns 400 when sessionId exceeds 128 characters (not 500)")
+    fun ragDialogueText_returns400ForTooLongSessionId() {
+        val tooLongSessionId = "s".repeat(129)
+        val request = RagDialogueRequest(tooLongSessionId, "Hello world", Instant.now())
+
+        webTestClient
+            .post()
+            .uri("/rag/dialogue/text")
+            .contentType(MediaType.APPLICATION_JSON)
+            .bodyValue(request)
+            .exchange()
+            .expectStatus()
+            .isBadRequest
+    }
+
+    @Test
+    @DisplayName("createSession returns 400 when personaId exceeds 64 characters (not 500)")
+    fun createSession_returns400ForTooLongPersonaId() {
+        val request = CreateSessionRequest(userId = "user-1", personaId = "p".repeat(65))
+
+        webTestClient
+            .post()
+            .uri("/rag/dialogue/session")
+            .contentType(MediaType.APPLICATION_JSON)
+            .bodyValue(request)
+            .exchange()
+            .expectStatus()
+            .isBadRequest
+    }
+
+    @Test
+    @DisplayName("createSession returns 400 when personaId contains invalid characters (not 500)")
+    fun createSession_returns400ForInvalidPersonaIdCharacters() {
+        val request = CreateSessionRequest(userId = "user-1", personaId = "invalid persona!")
+
+        webTestClient
+            .post()
+            .uri("/rag/dialogue/session")
+            .contentType(MediaType.APPLICATION_JSON)
+            .bodyValue(request)
+            .exchange()
+            .expectStatus()
+            .isBadRequest
+    }
+
+    @Test
+    @DisplayName("createSession accepts an explicit JSON null personaId (falls back to default persona)")
+    fun createSession_acceptsExplicitNullPersonaId() {
+        val session = ConversationSessionFixture.create("session-null-persona")
+
+        `when`(sessionRepository.save(anyValue())).thenReturn(Mono.just(session))
+        `when`(creditChargeUseCase.initializeIfAbsent(anyValue())).thenReturn(Mono.empty())
+
+        webTestClient
+            .post()
+            .uri("/rag/dialogue/session")
+            .contentType(MediaType.APPLICATION_JSON)
+            .bodyValue("""{"userId":"user-1","personaId":null}""")
+            .exchange()
+            .expectStatus()
+            .isOk
     }
 }
