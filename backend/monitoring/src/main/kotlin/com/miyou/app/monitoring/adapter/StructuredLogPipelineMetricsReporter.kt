@@ -96,7 +96,9 @@ class StructuredLogPipelineMetricsReporter(
         val ttsStage = findStage(summary, DialoguePipelineStage.TTS_SYNTHESIS)
         return mapOf(
             "sentenceCount" to extractInt(sentenceAttrs, "sentenceCount"),
+            "sentenceChars" to extractInt(sentenceAttrs, "sentenceChars"),
             "audioChunks" to extractInt(ttsStage?.attributes.orEmpty(), "audioChunks"),
+            "audioBytes" to extractInt(ttsStage?.attributes.orEmpty(), "audioBytes"),
             "synthesisMs" to (ttsStage?.durationMillis ?: 0L),
         )
     }

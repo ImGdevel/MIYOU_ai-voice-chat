@@ -11,6 +11,7 @@ import com.miyou.app.infrastructure.dialogue.config.properties.RagDialogueProper
 import com.miyou.app.infrastructure.memory.adapter.SpringAiEmbeddingAdapter
 import com.miyou.app.infrastructure.memory.adapter.SpringAiVectorDbAdapter
 import com.miyou.app.monitoring.port.RagQualityMetricsPort
+import io.micrometer.core.instrument.simple.SimpleMeterRegistry
 import io.qdrant.client.QdrantClient
 import io.qdrant.client.QdrantGrpcClient
 import org.assertj.core.api.Assertions.assertThat
@@ -87,7 +88,7 @@ class AssociativeRetrievalQualityBenchmark {
         vectorStore.afterPropertiesSet()
 
         val properties = RagDialogueProperties().apply { qdrant.collectionName = collectionName }
-        val embeddingPort = SpringAiEmbeddingAdapter(embeddingModel)
+        val embeddingPort = SpringAiEmbeddingAdapter(embeddingModel, SimpleMeterRegistry())
         val vectorMemoryPort = SpringAiVectorDbAdapter(vectorStore, qdrantClient, properties)
         val metrics = NoOpRagQualityMetricsPort
 

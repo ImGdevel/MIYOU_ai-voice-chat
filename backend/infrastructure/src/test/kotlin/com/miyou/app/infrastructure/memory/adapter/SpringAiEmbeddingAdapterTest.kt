@@ -1,5 +1,6 @@
 package com.miyou.app.infrastructure.memory.adapter
 
+import io.micrometer.core.instrument.simple.SimpleMeterRegistry
 import org.assertj.core.api.Assertions.assertThat
 import org.assertj.core.api.Assertions.within
 import org.junit.jupiter.api.BeforeEach
@@ -26,7 +27,7 @@ class SpringAiEmbeddingAdapterTest {
 
     @BeforeEach
     fun setUp() {
-        embeddingAdapter = SpringAiEmbeddingAdapter(embeddingModel)
+        embeddingAdapter = SpringAiEmbeddingAdapter(embeddingModel, SimpleMeterRegistry())
     }
 
     @Test

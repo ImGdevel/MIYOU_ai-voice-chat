@@ -9,6 +9,7 @@ import com.miyou.app.infrastructure.dialogue.adapter.tts.loadbalancer.FakeSupert
 import com.miyou.app.infrastructure.dialogue.adapter.tts.loadbalancer.TtsEndpoint
 import com.miyou.app.infrastructure.dialogue.adapter.tts.loadbalancer.TtsLoadBalancer
 import com.miyou.app.infrastructure.dialogue.config.properties.RagDialogueProperties
+import io.micrometer.core.instrument.simple.SimpleMeterRegistry
 import org.assertj.core.api.Assertions.assertThat
 import org.junit.jupiter.api.AfterEach
 import org.junit.jupiter.api.BeforeEach
@@ -54,6 +55,7 @@ class LoadBalancedSupertoneTtsAdapterTest {
                 loadBalancer,
                 testVoice(),
                 RagDialogueProperties(),
+                SimpleMeterRegistry(),
             )
     }
 
@@ -232,6 +234,7 @@ class LoadBalancedSupertoneTtsAdapterTest {
                 badLoadBalancer,
                 testVoice(),
                 RagDialogueProperties(),
+                SimpleMeterRegistry(),
             )
 
         badAdapter.prepare().block()

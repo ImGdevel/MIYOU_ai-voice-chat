@@ -3,6 +3,7 @@ package com.miyou.app.infrastructure.dialogue.config
 import com.miyou.app.domain.dialogue.port.SttPort
 import com.miyou.app.infrastructure.dialogue.adapter.stt.OpenAiWhisperSttAdapter
 import com.miyou.app.infrastructure.dialogue.config.properties.RagDialogueProperties
+import io.micrometer.core.instrument.MeterRegistry
 import org.springframework.beans.factory.annotation.Value
 import org.springframework.context.annotation.Bean
 import org.springframework.context.annotation.Configuration
@@ -14,13 +15,14 @@ class SttConfiguration {
     fun sttPort(
         webClientBuilder: WebClient.Builder,
         properties: RagDialogueProperties,
+        meterRegistry: MeterRegistry,
         @Value("\${spring.ai.openai.api-key:}") springOpenAiApiKey: String,
         @Value("\${spring.ai.openai.base-url:https://api.openai.com}") springOpenAiBaseUrl: String,
     ): SttPort {
         val apiKey = resolveApiKey(properties, springOpenAiApiKey)
         val baseUrl = resolveBaseUrl(properties, springOpenAiBaseUrl)
         val model = properties.stt.model
-        return OpenAiWhisperSttAdapter(webClientBuilder, apiKey, baseUrl, model)
+        return OpenAiWhisperSttAdapter(webClientBuilder, apiKey, baseUrl, model, meterRegistry)
     }
 
     private fun resolveApiKey(

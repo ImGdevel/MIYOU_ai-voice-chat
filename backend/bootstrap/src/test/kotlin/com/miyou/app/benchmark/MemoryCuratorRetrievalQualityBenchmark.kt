@@ -11,6 +11,7 @@ import com.miyou.app.domain.memory.service.MemoryDecayService
 import com.miyou.app.infrastructure.dialogue.config.properties.RagDialogueProperties
 import com.miyou.app.infrastructure.memory.adapter.SpringAiEmbeddingAdapter
 import com.miyou.app.infrastructure.memory.adapter.SpringAiVectorDbAdapter
+import io.micrometer.core.instrument.simple.SimpleMeterRegistry
 import io.qdrant.client.QdrantClient
 import io.qdrant.client.QdrantGrpcClient
 import org.assertj.core.api.Assertions.assertThat
@@ -90,7 +91,7 @@ class MemoryCuratorRetrievalQualityBenchmark {
         vectorStore.afterPropertiesSet()
 
         val properties = RagDialogueProperties().apply { qdrant.collectionName = collectionName }
-        val embeddingPort = SpringAiEmbeddingAdapter(embeddingModel)
+        val embeddingPort = SpringAiEmbeddingAdapter(embeddingModel, SimpleMeterRegistry())
         val vectorMemoryPort = SpringAiVectorDbAdapter(vectorStore, qdrantClient, properties)
         val curatorPolicy = MemoryCuratorPolicy(0.05f, 0.1f, 0.9f, 0.1f, 90L)
         val curatorService = MemoryCuratorService(vectorMemoryPort, curatorPolicy, MemoryDecayService())

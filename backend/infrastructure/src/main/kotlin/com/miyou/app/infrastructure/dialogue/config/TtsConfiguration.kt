@@ -9,6 +9,7 @@ import com.miyou.app.infrastructure.dialogue.adapter.tts.loadbalancer.TtsEndpoin
 import com.miyou.app.infrastructure.dialogue.adapter.tts.loadbalancer.TtsLoadBalancer
 import com.miyou.app.infrastructure.dialogue.config.properties.RagDialogueProperties
 import io.github.oshai.kotlinlogging.KotlinLogging
+import io.micrometer.core.instrument.MeterRegistry
 import org.springframework.context.ApplicationEventPublisher
 import org.springframework.context.annotation.Bean
 import org.springframework.context.annotation.Configuration
@@ -69,5 +70,6 @@ class TtsConfiguration {
         loadBalancer: TtsLoadBalancer,
         voice: Voice,
         properties: RagDialogueProperties,
-    ): TtsPort = LoadBalancedSupertoneTtsAdapter(webClientBuilder, loadBalancer, voice, properties)
+        meterRegistry: MeterRegistry,
+    ): TtsPort = LoadBalancedSupertoneTtsAdapter(webClientBuilder, loadBalancer, voice, properties, meterRegistry)
 }

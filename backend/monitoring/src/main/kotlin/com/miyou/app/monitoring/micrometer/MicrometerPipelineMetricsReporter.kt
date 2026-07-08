@@ -87,7 +87,7 @@ class MicrometerPipelineMetricsReporter(
             DialoguePipelineStage.MEMORY_RETRIEVAL -> {
                 recordCounterFromAttribute(
                     stage,
-                    "memory.count",
+                    "memoryCount",
                     METRIC_PREFIX + ".memory.retrieved",
                     stageName,
                 )
@@ -97,7 +97,7 @@ class MicrometerPipelineMetricsReporter(
             DialoguePipelineStage.RETRIEVAL -> {
                 recordCounterFromAttribute(
                     stage,
-                    "document.count",
+                    "documentCount",
                     METRIC_PREFIX + ".documents.retrieved",
                     stageName,
                 )
@@ -106,8 +106,14 @@ class MicrometerPipelineMetricsReporter(
             DialoguePipelineStage.SENTENCE_ASSEMBLY -> {
                 recordCounterFromAttribute(
                     stage,
-                    "sentence.count",
+                    "sentenceCount",
                     METRIC_PREFIX + ".sentences.generated",
+                    stageName,
+                )
+                recordCounterFromAttribute(
+                    stage,
+                    "sentenceChars",
+                    METRIC_PREFIX + ".sentences.chars",
                     stageName,
                 )
             }
@@ -115,8 +121,14 @@ class MicrometerPipelineMetricsReporter(
             DialoguePipelineStage.TTS_SYNTHESIS -> {
                 recordCounterFromAttribute(
                     stage,
-                    "audio.chunks",
+                    "audioChunks",
                     METRIC_PREFIX + ".audio.chunks",
+                    stageName,
+                )
+                recordCounterFromAttribute(
+                    stage,
+                    "audioBytes",
+                    METRIC_PREFIX + ".audio.bytes",
                     stageName,
                 )
             }
@@ -174,7 +186,7 @@ class MicrometerPipelineMetricsReporter(
                     }
 
                     StageStatus.FAILED -> {
-                        val error = stage.attributes["error.type"]
+                        val error = stage.attributes["error"]
                         val errorType = error?.toString() ?: "unknown"
                         llmMetrics.recordLlmFailure(modelTag, errorType)
                     }
@@ -182,16 +194,16 @@ class MicrometerPipelineMetricsReporter(
                     else -> {}
                 }
 
-                recordTokenCounter(stage, "prompt.tokens", "prompt", modelTag)
-                recordTokenCounter(stage, "completion.tokens", "completion", modelTag)
-                recordTokenCounter(stage, "total.tokens", "total", modelTag)
+                recordTokenCounter(stage, "promptTokens", "prompt", modelTag)
+                recordTokenCounter(stage, "completionTokens", "completion", modelTag)
+                recordTokenCounter(stage, "totalTokens", "total", modelTag)
 
-                val promptTokens = stage.attributes["prompt.tokens"]
+                val promptTokens = stage.attributes["promptTokens"]
                 if (promptTokens is Number) {
                     llmMetrics.recordPromptLength(promptTokens.toInt())
                 }
 
-                val completionTokens = stage.attributes["completion.tokens"]
+                val completionTokens = stage.attributes["completionTokens"]
                 if (completionTokens is Number) {
                     llmMetrics.recordCompletionLength(completionTokens.toInt())
                 }
@@ -201,10 +213,10 @@ class MicrometerPipelineMetricsReporter(
                     llmMetrics.recordResponseTimeByModel(modelTag, stage.durationMillis)
                 }
 
-                val cost = stage.attributes["cost.usd"]
-                if (cost is Number) {
-                    meterRegistry.gauge("llm.cost.usd", cost.toDouble())
-                }
+                val outputChars = summary.llmOutputs.sumOf { it.length }
+                meterRegistry
+                    .summary(METRIC_PREFIX + ".llm.output.chars")
+                    .record(outputChars.toDouble())
             }
     }
 
@@ -275,37 +287,34 @@ class MicrometerPipelineMetricsReporter(
     }
 
     private fun recordCostMetrics(summary: PipelineSummary) {
+        val sentenceChars =
+            findStage(
+                summary,
+                DialoguePipelineStage.SENTENCE_ASSEMBLY
+            )?.attributes?.get("sentenceChars")
+
         summary.stages.forEach { stage ->
             when (stage.stage) {
                 DialoguePipelineStage.LLM_COMPLETION -> {
                     val model = stage.attributes["model"]?.toString() ?: "unknown"
-                    val promptTokens = stage.attributes["prompt.tokens"]
-                    val completionTokens = stage.attributes["completion.tokens"]
+                    val promptTokens = stage.attributes["promptTokens"]
+                    val completionTokens = stage.attributes["completionTokens"]
 
                     if (promptTokens is Number && completionTokens is Number) {
                         val promptTokenValue = promptTokens.toInt()
                         val completionTokenValue = completionTokens.toInt()
                         costMetrics.recordLlmCost(model, promptTokenValue, completionTokenValue)
 
-                        val userIdObj = summary.attributes["user.id"]
-                        if (userIdObj != null) {
-                            val userId = userIdObj.toString()
-                            val cost =
-                                calculateLlmCost(
-                                    model,
-                                    promptTokenValue,
-                                    completionTokenValue,
-                                )
-                            costMetrics.recordUserLlmCost(userId, model, cost)
+                        if (!summary.userId.isNullOrBlank()) {
+                            val cost = calculateLlmCost(model, promptTokenValue, completionTokenValue)
+                            costMetrics.recordUserLlmCost(summary.userId, model, cost)
                         }
                     }
                 }
 
                 DialoguePipelineStage.TTS_SYNTHESIS -> {
-                    val provider = stage.attributes["provider"]?.toString() ?: "unknown"
-                    val characters = stage.attributes["characters"]
-                    if (characters is Number) {
-                        costMetrics.recordTtsCost(provider, characters.toInt())
+                    if (sentenceChars is Number) {
+                        costMetrics.recordTtsCost(TTS_PROVIDER, sentenceChars.toInt())
                     }
                 }
 
@@ -313,6 +322,11 @@ class MicrometerPipelineMetricsReporter(
             }
         }
     }
+
+    private fun findStage(
+        summary: PipelineSummary,
+        stage: DialoguePipelineStage,
+    ): StageSnapshot? = summary.stages.firstOrNull { it.stage == stage }
 
     private fun recordUxMetrics(summary: PipelineSummary) {
         summary.firstResponseLatencyMillis
@@ -325,8 +339,7 @@ class MicrometerPipelineMetricsReporter(
         }
 
         if (summary.status == PipelineStatus.FAILED) {
-            val errorTypeObj = summary.attributes["error.type"]
-            val errorType = errorTypeObj?.toString() ?: "unknown"
+            val errorType = summary.attributes["error"]?.toString() ?: "unknown"
             uxMetrics.recordError(errorType)
         }
     }
@@ -362,5 +375,9 @@ class MicrometerPipelineMetricsReporter(
 
     companion object {
         private const val METRIC_PREFIX = "dialogue.pipeline"
+
+        // 현재 이 코드베이스에 연결된 TTS 공급자가 Supertone 하나뿐이라 고정값으로 태깅한다.
+        // 두 번째 공급자가 추가되면 그때 어댑터에서 실제 provider 이름을 전달받도록 바꾼다.
+        private const val TTS_PROVIDER = "supertone"
     }
 }
