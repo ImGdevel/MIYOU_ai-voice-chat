@@ -34,6 +34,10 @@ class ClientRegistrationConfig(
     @Value("\${app.oauth2.naver.client-secret:}") private val naverClientSecret: String,
     @Value("\${app.oauth2.redirect-base-uri:http://localhost:8081}") private val redirectBaseUri: String,
 ) {
+    // OAuth2 로그인/콜백은 app.api.prefix(ApiPathPrefixConfiguration)의 영향을 받지 않는다 -
+    // Spring Security의 WebFilter는 @RestController 핸들러 매핑과 별개 레이어라
+    // addPathPrefix로 옮겨지지 않는다. 그래서 여기서 prefix를 붙이지 않는다.
+
     @Bean
     fun clientRegistrationRepository(): ReactiveClientRegistrationRepository {
         val registrations =

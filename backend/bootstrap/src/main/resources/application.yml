@@ -40,6 +40,11 @@ web:
 # 빈으로 Boot의 auto-wiring 경로를 안 타도 이 검증만은 항상 실행됨), provider
 # 미설정 상태를 표현할 수 없다. 그래서 커스텀 프리픽스를 쓴다.
 app:
+  # 비즈니스 API(@RestController)에만 붙는 prefix. spring.webflux.base-path와 달리
+  # actuator/정적 리소스/OAuth2 로그인·콜백 필터는 안 건드린다 - ApiPathPrefixConfiguration
+  # 에서 이 값을 읽어 @RestController 핸들러에만 addPathPrefix로 적용한다.
+  api:
+    prefix: /api/v1
   oauth2:
     redirect-base-uri: ${OAUTH2_REDIRECT_BASE_URI:http://localhost:8081}
     google:

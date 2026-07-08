@@ -62,7 +62,7 @@ http://localhost:8081/
 ## API 직접 호출 (curl)
 
 ```bash
-curl -X POST http://localhost:8081/rag/dialogue/audio \
+curl -X POST http://localhost:8081/api/v1/rag/dialogue/audio \
   -H "Content-Type: application/json" \
   -H "Accept: audio/wav" \
   -d '{
