@@ -41,6 +41,7 @@ class DialoguePipelineService(
      * @param format 음성 포맷 (기본값: MP3)
      * @return 음성 데이터 스트림
      */
+    @MonitoredPipeline(inputArgIndex = 1)
     override fun executeAudioStreaming(
         session: ConversationSession,
         text: String,
@@ -69,7 +70,7 @@ class DialoguePipelineService(
      * @param text 사용자 입력 텍스트
      * @return LLM 응답 토큰 스트림
      */
-    @MonitoredPipeline
+    @MonitoredPipeline(inputArgIndex = 1)
     override fun executeTextOnly(
         session: ConversationSession,
         text: String,
