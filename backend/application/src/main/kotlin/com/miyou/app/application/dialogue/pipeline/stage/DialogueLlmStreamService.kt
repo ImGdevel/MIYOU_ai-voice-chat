@@ -47,6 +47,11 @@ class DialogueLlmStreamService(
                     mapOf("correlationId" to it.pipelineId())
                 } ?: emptyMap()
             inputsMono.flatMapMany { inputs ->
+                tracker?.recordStageAttribute(
+                    DialoguePipelineStage.PROMPT_BUILDING,
+                    "historyTurnIds",
+                    inputs.conversationContext.turns.mapNotNull { it.id },
+                )
                 pipelineTracer
                     .tracePrompt {
                         messageService.buildMessages(

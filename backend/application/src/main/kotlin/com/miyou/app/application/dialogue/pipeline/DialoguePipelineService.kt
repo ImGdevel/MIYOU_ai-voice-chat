@@ -11,7 +11,6 @@ import com.miyou.app.domain.dialogue.port.CreditDeductResult
 import com.miyou.app.domain.dialogue.port.CreditRefundCommand
 import com.miyou.app.domain.dialogue.port.DialogueCreditChargingPort
 import com.miyou.app.domain.dialogue.port.DialoguePipelineUseCase
-import com.miyou.app.monitoring.aop.MonitoredPipeline
 import io.github.oshai.kotlinlogging.KotlinLogging
 import org.springframework.stereotype.Service
 import reactor.core.publisher.Flux
@@ -41,7 +40,6 @@ class DialoguePipelineService(
      * @param format 음성 포맷 (기본값: MP3)
      * @return 음성 데이터 스트림
      */
-    @MonitoredPipeline(inputArgIndex = 1)
     override fun executeAudioStreaming(
         session: ConversationSession,
         text: String,
@@ -70,7 +68,6 @@ class DialoguePipelineService(
      * @param text 사용자 입력 텍스트
      * @return LLM 응답 토큰 스트림
      */
-    @MonitoredPipeline(inputArgIndex = 1)
     override fun executeTextOnly(
         session: ConversationSession,
         text: String,

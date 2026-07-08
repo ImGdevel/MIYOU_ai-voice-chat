@@ -1,7 +1,6 @@
 package com.miyou.app.application.monitoring.service
 
 import com.miyou.app.domain.dialogue.model.Message
-import com.miyou.app.domain.dialogue.model.MessageRole
 import com.miyou.app.domain.memory.model.MemoryRetrievalResult
 import com.miyou.app.domain.retrieval.model.RetrievalContext
 import com.miyou.app.monitoring.context.PipelineContext
@@ -104,8 +103,9 @@ class PipelineTracer {
             supplier = Supplier { Mono.fromCallable(builder::get) },
             onTrackerPresent = { tracker, mono ->
                 mono.doOnNext { messages ->
-                    val systemPrompt = messages.firstOrNull { it.role == MessageRole.SYSTEM }?.content.orEmpty()
-                    tracker.recordStageAttribute(DialoguePipelineStage.PROMPT_BUILDING, "systemPrompt", systemPrompt)
+                    // 시스템 프롬프트 전문은 기록하지 않는다 - 정적 페르소나 템플릿 부분은
+                    // 파이프라인 레벨 personaId로 식별 가능하고, 동적 부분(장기기억/검색문서)은
+                    // 이미 traceMemories/traceRetrieval이 별도로 기록하므로 중복이다.
                     tracker.recordStageAttribute(DialoguePipelineStage.PROMPT_BUILDING, "messageCount", messages.size)
                 }
             }

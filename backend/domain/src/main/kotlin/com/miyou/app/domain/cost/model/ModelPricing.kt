@@ -28,10 +28,17 @@ class ModelPricing {
             mapOf(
                 "text-embedding-3-small" to EmbeddingPricePerMillion(0.020, 0.010),
                 "text-embedding-3-large" to EmbeddingPricePerMillion(0.130, 0.065),
-                "text-embedding-ada-002" to EmbeddingPricePerMillion(0.100, 0.050)
+                "text-embedding-ada-002" to EmbeddingPricePerMillion(0.100, 0.050),
+                // OpenAI 임베딩 API 응답의 실제 model 필드는 "-v2" 버전 접미사가 붙어서
+                // 온다(예: "text-embedding-ada-002-v2") - 실측으로 확인함, 별도 키로 등록.
+                "text-embedding-ada-002-v2" to EmbeddingPricePerMillion(0.100, 0.050)
             )
 
         private const val TTS_PRICE_PER_100MS = 0.00015
+
+        // OpenAI Whisper(whisper-1) 분당 단가 - 이 파일 작성 시점 기준. 실제 적용 전
+        // OpenAI 공식 가격 페이지로 재확인 필요(다른 단가 테이블처럼 변경될 수 있음).
+        private const val STT_PRICE_PER_MINUTE = 0.006
 
         /**
          * LLM 토큰 사용량에 따른 크레딧 비용을 계산합니다.
@@ -65,6 +72,18 @@ class ModelPricing {
         @JvmStatic
         fun calculateTtsCredits(audioLengthMillis: Long): Long {
             val totalCost = (audioLengthMillis / 100.0) * TTS_PRICE_PER_100MS
+            return kotlin.math.ceil(totalCost * CREDITS_PER_DOLLAR).toLong()
+        }
+
+        /**
+         * STT(Whisper) 오디오 길이에 따른 크레딧 비용을 계산합니다.
+         *
+         * @param audioDurationSeconds 전사한 오디오 길이(초)
+         * @return 계산된 크레딧 소모량
+         */
+        @JvmStatic
+        fun calculateSttCredits(audioDurationSeconds: Double): Long {
+            val totalCost = (audioDurationSeconds / 60.0) * STT_PRICE_PER_MINUTE
             return kotlin.math.ceil(totalCost * CREDITS_PER_DOLLAR).toLong()
         }
 

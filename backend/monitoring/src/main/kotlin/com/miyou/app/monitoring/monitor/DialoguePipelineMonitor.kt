@@ -9,5 +9,10 @@ class DialoguePipelineMonitor(
     private val reporter: PipelineMetricsReporter,
     private val clock: Clock,
 ) {
-    fun create(inputText: String): DialoguePipelineTracker = DialoguePipelineTracker(inputText, reporter, clock)
+    fun create(
+        sessionId: String?,
+        userId: String?,
+        personaId: String?,
+        inputText: String?,
+    ): DialoguePipelineTracker = DialoguePipelineTracker(sessionId, userId, personaId, inputText, reporter, clock)
 }

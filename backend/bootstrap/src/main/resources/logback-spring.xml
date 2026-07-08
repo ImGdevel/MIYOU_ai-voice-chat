@@ -1,0 +1,36 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<configuration>
+    <!-- Spring Boot 기본 콘솔 출력(색상/패턴)을 그대로 재사용 - 기존 로그 동작 변경 없음. -->
+    <include resource="org/springframework/boot/logging/logback/defaults.xml" />
+    <include resource="org/springframework/boot/logging/logback/console-appender.xml" />
+
+    <!--
+      파이프라인 실행 1건당 JSON 한 줄을 남기는 전용 로그 - StructuredLogPipelineMetricsReporter가
+      com.miyou.app.monitoring.tracelog 로거로 찍는다. 문제 재현 시 pipelineId로 grep해서
+      본다(디버깅용). 기간별 집계/비용/트래픽은 Prometheus가 담당하므로 여기는 순수 상세
+      기록용 - Prometheus retention(15일/2GB)과 같은 선으로 롤링/보존한다.
+    -->
+    <property name="PIPELINE_TRACE_LOG_DIR" value="${PIPELINE_TRACE_LOG_DIR:-logs}" />
+
+    <appender name="PIPELINE_TRACE" class="ch.qos.logback.core.rolling.RollingFileAppender">
+        <file>${PIPELINE_TRACE_LOG_DIR}/pipeline-trace.log</file>
+        <rollingPolicy class="ch.qos.logback.core.rolling.SizeAndTimeBasedRollingPolicy">
+            <fileNamePattern>${PIPELINE_TRACE_LOG_DIR}/pipeline-trace.%d{yyyy-MM-dd}.%i.log.gz</fileNamePattern>
+            <maxFileSize>100MB</maxFileSize>
+            <maxHistory>14</maxHistory>
+            <totalSizeCap>2GB</totalSizeCap>
+        </rollingPolicy>
+        <encoder>
+            <!-- 리포터가 이미 완성된 JSON 문자열을 넘기므로 그대로 한 줄만 남긴다. -->
+            <pattern>%msg%n</pattern>
+        </encoder>
+    </appender>
+
+    <logger name="com.miyou.app.monitoring.tracelog" level="INFO" additivity="false">
+        <appender-ref ref="PIPELINE_TRACE" />
+    </logger>
+
+    <root level="INFO">
+        <appender-ref ref="CONSOLE" />
+    </root>
+</configuration>

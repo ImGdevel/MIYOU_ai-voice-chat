@@ -1,10 +1,12 @@
 package com.miyou.app.infrastructure.dialogue.adapter.stt
 
+import com.miyou.app.domain.cost.model.ModelPricing
 import com.miyou.app.domain.dialogue.exception.DialogueErrorCode
 import com.miyou.app.domain.dialogue.model.AudioTranscriptionInput
 import com.miyou.app.domain.dialogue.port.SttPort
 import com.miyou.app.exception.BusinessException
 import io.github.oshai.kotlinlogging.KotlinLogging
+import io.micrometer.core.instrument.MeterRegistry
 import org.springframework.core.io.ByteArrayResource
 import org.springframework.http.HttpHeaders
 import org.springframework.http.MediaType
@@ -21,6 +23,7 @@ class OpenAiWhisperSttAdapter(
     apiKey: String,
     baseUrl: String,
     private val model: String,
+    private val meterRegistry: MeterRegistry,
 ) : SttPort {
     private val log = KotlinLogging.logger {}
     private val webClient: WebClient =
@@ -40,7 +43,9 @@ class OpenAiWhisperSttAdapter(
                 if (!input.language().isNullOrBlank()) {
                     part("language", input.language())
                 }
-                part("response_format", "json")
+                // verbose_json이어야 응답에 duration(초)이 포함돼 비용 계측이 가능하다.
+                // text 필드는 동일하게 내려오므로 기존 파싱 로직에 영향 없음.
+                part("response_format", "verbose_json")
 
                 val audioResource =
                     object : ByteArrayResource(input.audioBytes()) {
@@ -67,8 +72,19 @@ class OpenAiWhisperSttAdapter(
                     )
             })
             .bodyToMono(OpenAiTranscriptionResponse::class.java)
+            .doOnNext { response -> recordCostMetrics(response.duration) }
             .map { response -> checkNotNull(response.text) { DialogueErrorCode.STT_FAILED.message } }
             .doOnSuccess { text -> log.info { "STT completed: ${text.length} chars" } }
+    }
+
+    private fun recordCostMetrics(durationSeconds: Double?) {
+        if (durationSeconds == null || durationSeconds <= 0.0) {
+            return
+        }
+        val credits = ModelPricing.calculateSttCredits(durationSeconds)
+
+        meterRegistry.counter("stt.audio.seconds", "model", model).increment(durationSeconds)
+        meterRegistry.counter("stt.cost.credits", "model", model).increment(credits.toDouble())
     }
 
     private fun normalizeBaseUrl(baseUrl: String): String {
@@ -81,5 +97,6 @@ class OpenAiWhisperSttAdapter(
 
     private data class OpenAiTranscriptionResponse(
         val text: String?,
+        val duration: Double? = null,
     )
 }

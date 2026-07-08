@@ -9,6 +9,8 @@ import com.miyou.app.infrastructure.dialogue.adapter.tts.loadbalancer.TtsErrorCl
 import com.miyou.app.infrastructure.dialogue.adapter.tts.loadbalancer.TtsLoadBalancer
 import com.miyou.app.infrastructure.dialogue.config.properties.RagDialogueProperties
 import io.github.oshai.kotlinlogging.KotlinLogging
+import io.micrometer.core.instrument.MeterRegistry
+import io.micrometer.core.instrument.Timer
 import org.springframework.core.io.buffer.DataBuffer
 import org.springframework.http.MediaType
 import org.springframework.stereotype.Component
@@ -17,6 +19,7 @@ import reactor.core.publisher.Flux
 import reactor.core.publisher.Mono
 import java.time.Duration
 import java.util.concurrent.ConcurrentHashMap
+import java.util.concurrent.atomic.AtomicLong
 
 @Component
 class LoadBalancedSupertoneTtsAdapter(
@@ -24,6 +27,7 @@ class LoadBalancedSupertoneTtsAdapter(
     private val loadBalancer: TtsLoadBalancer,
     private val voice: Voice,
     private val properties: RagDialogueProperties,
+    private val meterRegistry: MeterRegistry,
 ) : TtsPort {
     private val log = KotlinLogging.logger {}
     private val webClientCache = ConcurrentHashMap<String, WebClient>()
@@ -88,6 +92,11 @@ class LoadBalancedSupertoneTtsAdapter(
                 "include_phonemes" to false,
             )
         val webClient = getOrCreateWebClient(endpoint)
+        // 문장(호출) 단위 TTS 레이턴시/응답 크기 분포 - "각 마디마다 몇 초 걸리는지"를
+        // Grafana 히스토그램으로 바로 보기 위함. 도메인 포트 시그니처는 안 건드리고
+        // infra 계층에서 바로 Micrometer에 남긴다(TtsCreditMonitor와 동일 패턴).
+        val sample = Timer.start(meterRegistry)
+        val totalBytes = AtomicLong(0)
         return webClient
             .post()
             .uri("/v1/text-to-speech/{voice_id}/stream", voice.id)
@@ -102,8 +111,27 @@ class LoadBalancedSupertoneTtsAdapter(
                 dataBuffer.read(bytes)
                 org.springframework.core.io.buffer.DataBufferUtils
                     .release(dataBuffer)
+                totalBytes.addAndGet(bytes.size.toLong())
                 bytes
-            }
+            }.doOnComplete { recordCallMetrics(endpoint.id, sample, totalBytes.get()) }
+            .doOnError { recordCallMetrics(endpoint.id, sample, totalBytes.get()) }
+    }
+
+    private fun recordCallMetrics(
+        endpointId: String,
+        sample: Timer.Sample,
+        bytes: Long,
+    ) {
+        sample.stop(
+            Timer
+                .builder("tts.call.duration")
+                .tag("endpoint", endpointId)
+                .description("문장 1건당 TTS API 호출 소요시간")
+                .register(meterRegistry),
+        )
+        meterRegistry
+            .summary("tts.call.bytes", "endpoint", endpointId)
+            .record(bytes.toDouble())
     }
 
     private fun getOrCreateWebClient(endpoint: TtsEndpoint): WebClient =

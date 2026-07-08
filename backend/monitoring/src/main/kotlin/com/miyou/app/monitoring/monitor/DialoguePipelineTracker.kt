@@ -20,6 +20,9 @@ import java.util.concurrent.atomic.AtomicReference
 import java.util.function.Supplier
 
 class DialoguePipelineTracker(
+    private val sessionId: String?,
+    private val userId: String?,
+    private val personaId: String?,
     inputText: String?,
     private val reporter: PipelineMetricsReporter,
     private val clock: Clock,
@@ -152,6 +155,9 @@ class DialoguePipelineTracker(
             val summary =
                 PipelineSummary(
                     pipelineId,
+                    sessionId,
+                    userId,
+                    personaId,
                     status,
                     startedAt,
                     finishedAt,

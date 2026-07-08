@@ -61,6 +61,11 @@ class DialogueTtsStreamService(
             { sentenceAssembler.assemble(llmTokens) },
             { tracker, sentence ->
                 tracker.recordLlmOutput(sentence)
+                tracker.incrementStageCounter(
+                    DialoguePipelineStage.SENTENCE_ASSEMBLY,
+                    "sentenceChars",
+                    sentence.length.toLong()
+                )
                 logger.debug { "Sentence: [$sentence]" }
             },
         )
@@ -133,6 +138,11 @@ class DialogueTtsStreamService(
                 DialoguePipelineStage.TTS_SYNTHESIS,
                 "audioChunks",
                 1,
+            )
+            tracker.incrementStageCounter(
+                DialoguePipelineStage.TTS_SYNTHESIS,
+                "audioBytes",
+                chunk.size.toLong(),
             )
             tracker.markResponseEmission()
         }
