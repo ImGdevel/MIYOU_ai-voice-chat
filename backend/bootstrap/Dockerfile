@@ -40,9 +40,20 @@ RUN --mount=type=cache,target=/home/gradle/.gradle \
 # Mongo/Redis/Qdrant가 없는 빌드 컨테이너에서도 안전하게 트레이닝된다.
 # 트레이닝이 실패하면(환경 문제 등) 빌드 자체를 실패시켜 조용히 CDS 없이
 # 배포되는 상황을 막는다.
-RUN java -Dspring.context.exit=onRefresh \
+# JwtConfig(jwt.secret)/Spring AI OpenAiChatModel(api-key)/TtsEndpoint(apiKey)
+# 전부 빈 생성 시점에 값이 비어 있으면 즉시 예외를 던지므로(require/Assert),
+# 실제 키가 필요하다. --secret 마운트로 .env를 읽어 그 시점에만 환경변수로
+# export한다 - 이미지 레이어에는 절대 기록되지 않는다(RUN 프로세스 종료와
+# 함께 마운트도 사라짐). .env가 CRLF(윈도우)로 저장돼 있으면 값 끝에 \r이
+# 붙어 JWT/API 키가 미묘하게 깨지므로 sed로 제거한 뒤 로드하고, 시크릿이
+# 안 붙었을 때도 셸이 죽지 않도록 파일 존재 여부를 먼저 확인한다.
+RUN --mount=type=secret,id=envfile,target=/run/secrets/envfile \
+    sh -c 'set -a; \
+    if [ -f /run/secrets/envfile ]; then sed "s/\r$//" /run/secrets/envfile > /tmp/envfile && . /tmp/envfile; fi; \
+    set +a; \
+    java -Dspring.context.exit=onRefresh \
     -XX:ArchiveClassesAtExit=backend/bootstrap/build/libs/app.jsa \
-    -jar backend/bootstrap/build/libs/app.jar
+    -jar backend/bootstrap/build/libs/app.jar'
 
 FROM eclipse-temurin:21-jre-jammy
 WORKDIR /app
