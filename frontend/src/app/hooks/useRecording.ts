@@ -52,6 +52,9 @@ export function useRecording({ onComplete, onError, onStatusChange, isBusy, stat
       });
 
       mediaRecorder.addEventListener("stop", async () => {
+        recordStreamRef.current?.getTracks().forEach((track) => track.stop());
+        recordStreamRef.current = null;
+
         try {
           onStatusChange("processing");
 
@@ -70,9 +73,7 @@ export function useRecording({ onComplete, onError, onStatusChange, isBusy, stat
           onError(error instanceof Error ? error : new Error(String(error)));
           onStatusChange("idle");
         } finally {
-          recordStreamRef.current?.getTracks().forEach((track) => track.stop());
           mediaRecorderRef.current = null;
-          recordStreamRef.current = null;
           recordedChunksRef.current = [];
           recordingStartedAtRef.current = 0;
         }

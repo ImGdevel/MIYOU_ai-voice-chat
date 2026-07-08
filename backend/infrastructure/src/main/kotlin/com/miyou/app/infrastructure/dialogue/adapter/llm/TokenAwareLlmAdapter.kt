@@ -1,5 +1,7 @@
 package com.miyou.app.infrastructure.dialogue.adapter.llm
 
+import com.github.benmanes.caffeine.cache.Cache
+import com.github.benmanes.caffeine.cache.Caffeine
 import com.miyou.app.domain.dialogue.model.CompletionRequest
 import com.miyou.app.domain.dialogue.model.Message
 import com.miyou.app.domain.dialogue.model.TokenUsage
@@ -18,8 +20,7 @@ import reactor.core.publisher.Flux
 import reactor.core.publisher.Mono
 import reactor.core.publisher.SignalType
 import reactor.core.scheduler.Schedulers
-import java.util.concurrent.ConcurrentHashMap
-import java.util.concurrent.atomic.AtomicReference
+import java.time.Duration
 
 /**
  * 토큰 사용량을 추적하는 LLM 호출 어댑터.
@@ -30,7 +31,18 @@ class TokenAwareLlmAdapter(
     private val chatModel: ChatModel,
 ) : LlmPort,
     TokenUsageProvider {
-    private val usageByCorrelation = ConcurrentHashMap<String, AtomicReference<TokenUsage>>()
+    /**
+     * correlationId별 토큰 사용량 캐시.
+     *
+     * 정상 완료 시 getTokenUsage()에서, 에러/취소 시 doFinally에서 각각 항목을 지우지만,
+     * 호출부가 getTokenUsage()를 아예 호출하지 않는 경로(다운스트림 오류, 클라이언트
+     * 조기 종료 등)까지 대비해 TTL 만료를 걸어 무한 누적을 막는다.
+     */
+    private val usageByCorrelation: Cache<String, TokenUsage> =
+        Caffeine
+            .newBuilder()
+            .expireAfterWrite(Duration.ofMinutes(5))
+            .build()
 
     override fun streamCompletion(request: CompletionRequest): Flux<String> {
         val messages = convertMessages(request.messages())
@@ -59,7 +71,7 @@ class TokenAwareLlmAdapter(
                 // 정상 완료 시에는 getTokenUsage()의 remove-on-read로 정리되지만,
                 // 에러/취소로 끝나면 그 경로를 절대 못 타므로 여기서 확실히 제거해 맵 누수를 막는다.
                 if (signalType == SignalType.ON_ERROR || signalType == SignalType.CANCEL) {
-                    correlationIdOf(request)?.let { usageByCorrelation.remove(it) }
+                    correlationIdOf(request)?.let { usageByCorrelation.invalidate(it) }
                 }
             }.mapNotNull { response ->
                 val generation = response.result
@@ -96,8 +108,9 @@ class TokenAwareLlmAdapter(
         if (correlationId.isBlank()) {
             return null
         }
-        val ref = usageByCorrelation.remove(correlationId)
-        return ref?.get()
+        val usage = usageByCorrelation.getIfPresent(correlationId)
+        usageByCorrelation.invalidate(correlationId)
+        return usage
     }
 
     private fun updateUsage(
@@ -106,9 +119,7 @@ class TokenAwareLlmAdapter(
         completionTokens: Int,
     ) {
         val correlationId = correlationIdOf(request) ?: return
-        usageByCorrelation
-            .computeIfAbsent(correlationId) { AtomicReference(TokenUsage.zero()) }
-            .set(TokenUsage.of(promptTokens, completionTokens))
+        usageByCorrelation.put(correlationId, TokenUsage.of(promptTokens, completionTokens))
     }
 
     private fun correlationIdOf(request: CompletionRequest): String? {
