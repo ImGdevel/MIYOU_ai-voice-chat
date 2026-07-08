@@ -6,6 +6,7 @@
 
 - [2026-07-07_1429_refactoring-candidates.md](2026-07-07_1429_refactoring-candidates.md) — 전체 계층(domain/application/api/infrastructure/frontend) 리팩토링 후보 전수 조사, GitHub 이슈 11건 매핑.
 - [2026-07-08_1432_domain-validation-error-boundary.md](2026-07-08_1432_domain-validation-error-boundary.md) — 도메인 require()/check() 예외의 400/500 경계 설계, DTO-도메인 검증 갭 감사 결과.
+- [2026-07-08_1700_error-category-http-status-separation.md](2026-07-08_1700_error-category-http-status-separation.md) — ErrorCode에서 HttpStatus 분리, ErrorCategory 도입 배경/설계, Google AIP-193·Stripe 사례 참조.
 
 ## Rule
 
