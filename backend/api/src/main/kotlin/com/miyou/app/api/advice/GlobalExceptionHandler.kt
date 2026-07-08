@@ -11,7 +11,7 @@ import org.springframework.http.server.reactive.ServerHttpRequest
 import org.springframework.web.bind.annotation.ExceptionHandler
 import org.springframework.web.bind.annotation.RestControllerAdvice
 import org.springframework.web.server.ResponseStatusException
-import java.time.LocalDateTime
+import java.time.Instant
 
 /**
  * 애플리케이션의 모든 예외를 표준화된 ErrorResponse로 변환하는 글로벌 예외 핸들러.
@@ -41,7 +41,7 @@ class GlobalExceptionHandler {
             ErrorResponse(
                 code = ex.errorCode.code,
                 message = ex.message,
-                timestamp = LocalDateTime.now(),
+                timestamp = Instant.now(),
                 path = request.path.value(),
                 details = ex.details.takeIf { it.isNotEmpty() },
             )
@@ -59,7 +59,7 @@ class GlobalExceptionHandler {
             ErrorResponse(
                 code = CommonErrorCode.INVALID_REQUEST.code,
                 message = ex.reason ?: "요청 처리 중 오류가 발생했습니다.",
-                timestamp = LocalDateTime.now(),
+                timestamp = Instant.now(),
             )
         return ResponseEntity
             .status(ex.statusCode)
@@ -75,7 +75,7 @@ class GlobalExceptionHandler {
             ErrorResponse(
                 code = CommonErrorCode.INTERNAL_SERVER_ERROR.code,
                 message = CommonErrorCode.INTERNAL_SERVER_ERROR.message,
-                timestamp = LocalDateTime.now(),
+                timestamp = Instant.now(),
             )
         return ResponseEntity
             .status(HttpStatus.INTERNAL_SERVER_ERROR)

@@ -1,5 +1,6 @@
 package com.miyou.app.api.auth
 
+import com.miyou.app.api.auth.docs.AuthApi
 import com.miyou.app.api.auth.dto.AuthTokenResponse
 import com.miyou.app.api.auth.dto.RefreshTokenRequest
 import com.miyou.app.application.auth.usecase.LogoutUseCase
@@ -18,9 +19,9 @@ import reactor.core.publisher.Mono
 class AuthController(
     private val tokenRefreshUseCase: TokenRefreshUseCase,
     private val logoutUseCase: LogoutUseCase,
-) {
+) : AuthApi {
     @PostMapping("/refresh")
-    fun refresh(
+    override fun refresh(
         @Valid @RequestBody request: RefreshTokenRequest,
     ): Mono<AuthTokenResponse> =
         tokenRefreshUseCase
@@ -29,7 +30,7 @@ class AuthController(
 
     @PostMapping("/logout")
     @ResponseStatus(HttpStatus.NO_CONTENT)
-    fun logout(
+    override fun logout(
         @Valid @RequestBody request: RefreshTokenRequest,
     ): Mono<Void> = logoutUseCase.logout(request.refreshToken)
 }
