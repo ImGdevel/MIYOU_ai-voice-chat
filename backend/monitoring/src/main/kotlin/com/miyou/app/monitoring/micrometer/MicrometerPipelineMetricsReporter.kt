@@ -239,6 +239,14 @@ class MicrometerPipelineMetricsReporter(
     }
 
     private fun recordResponseLatencyMetrics(summary: PipelineSummary) {
+        summary.firstTokenLatencyMillis?.let { firstTokenLatency ->
+            Timer
+                .builder(METRIC_PREFIX + ".response.first_token")
+                .description("TTFT - time from request to first LLM token")
+                .register(meterRegistry)
+                .record(firstTokenLatency, TimeUnit.MILLISECONDS)
+        }
+
         summary.firstResponseLatencyMillis?.let { firstLatency ->
             Timer
                 .builder(METRIC_PREFIX + ".response.first")

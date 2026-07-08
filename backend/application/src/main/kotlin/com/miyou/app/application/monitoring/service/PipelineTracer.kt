@@ -9,6 +9,7 @@ import com.miyou.app.monitoring.monitor.DialoguePipelineTracker
 import org.springframework.stereotype.Component
 import reactor.core.publisher.Flux
 import reactor.core.publisher.Mono
+import java.util.concurrent.atomic.AtomicBoolean
 import java.util.function.BiConsumer
 import java.util.function.Supplier
 
@@ -170,6 +171,23 @@ class PipelineTracer {
             val tracker = PipelineContext.findTracker(signal.contextView)
             if (tracker != null) {
                 tracker.incrementStageCounter(stage, key, delta.toLong())
+            }
+        }
+    }
+
+    /**
+     * source의 첫 onNext 시점에 tracker.markFirstToken()을 한 번만 호출한다.
+     * TTFT(Time To First Token) - 문장 조립/TTS를 거치기 전, LLM이 첫 토큰을
+     * 내놓은 순수 시점을 잰다.
+     */
+    fun <T> markFirstOnNext(source: Flux<T>): Flux<T> {
+        val marked = AtomicBoolean(false)
+        return source.doOnEach { signal ->
+            if (!signal.isOnNext) {
+                return@doOnEach
+            }
+            if (marked.compareAndSet(false, true)) {
+                PipelineContext.findTracker(signal.contextView)?.markFirstToken()
             }
         }
     }

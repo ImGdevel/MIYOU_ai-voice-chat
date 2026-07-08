@@ -16,6 +16,7 @@ data class PipelineSummary(
     val llmOutputs: List<String>,
     val firstResponseLatencyMillis: Long?,
     val lastResponseLatencyMillis: Long?,
+    val firstTokenLatencyMillis: Long?,
 ) {
     fun durationMillis(): Long =
         if (startedAt == null || finishedAt == null) {

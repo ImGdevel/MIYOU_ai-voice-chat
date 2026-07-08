@@ -40,6 +40,7 @@ class DialoguePipelineTracker(
     private val llmOutputs: MutableList<String> = CopyOnWriteArrayList()
     private val firstResponseAt: AtomicReference<Instant> = AtomicReference()
     private val lastResponseAt: AtomicReference<Instant> = AtomicReference()
+    private val firstTokenAt: AtomicReference<Instant> = AtomicReference()
 
     @Volatile
     private var finishedAt: Instant? = null
@@ -132,6 +133,15 @@ class DialoguePipelineTracker(
         lastResponseAt.set(now)
     }
 
+    /**
+     * LLM이 첫 토큰을 내놓은 시점(TTFT, Time To First Token) - 문장 조립/TTS를
+     * 거쳐야 찍히는 [markResponseEmission]의 firstResponseAt보다 항상 더 이르다.
+     * 순수 "요청 → 첫 토큰" 구간만 보고 싶을 때 사용.
+     */
+    fun markFirstToken() {
+        firstTokenAt.compareAndSet(null, clock.instant())
+    }
+
     fun pipelineId(): String = pipelineId
 
     private fun stageMetric(stage: DialoguePipelineStage): StageMetric =
@@ -168,6 +178,7 @@ class DialoguePipelineTracker(
                     llmOutputs.toList(),
                     latencyFromStart(firstResponseAt.get()),
                     latencyFromStart(lastResponseAt.get()),
+                    latencyFromStart(firstTokenAt.get()),
                 )
             reporter.report(summary)
         }
