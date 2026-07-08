@@ -10,6 +10,7 @@ import com.miyou.app.domain.dialogue.port.ConversationSessionRepository
 import com.miyou.app.domain.dialogue.port.DialoguePipelineUseCase
 import com.miyou.app.fixture.ConversationSessionFixture
 import com.miyou.app.support.PermitAllSecurityTestConfig
+import com.miyou.app.support.anyValue
 import org.junit.jupiter.api.DisplayName
 import org.junit.jupiter.api.Test
 import org.mockito.Mockito.`when`
@@ -160,5 +161,23 @@ class DialogueControllerTest {
             .exchange()
             .expectStatus()
             .isBadRequest
+    }
+
+    @Test
+    @DisplayName("createSession accepts an explicit JSON null personaId (falls back to default persona)")
+    fun createSession_acceptsExplicitNullPersonaId() {
+        val session = ConversationSessionFixture.create("session-null-persona")
+
+        `when`(sessionRepository.save(anyValue())).thenReturn(Mono.just(session))
+        `when`(creditChargeUseCase.initializeIfAbsent(anyValue())).thenReturn(Mono.empty())
+
+        webTestClient
+            .post()
+            .uri("/rag/dialogue/session")
+            .contentType(MediaType.APPLICATION_JSON)
+            .bodyValue("""{"userId":"user-1","personaId":null}""")
+            .exchange()
+            .expectStatus()
+            .isOk
     }
 }
