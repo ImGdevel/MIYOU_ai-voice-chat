@@ -62,12 +62,7 @@ class OpenAiWhisperSttAdapter(
                     .doOnNext { body ->
                         log.error { "OpenAI API error - status: ${response.statusCode()}, body: $body" }
                     }.then(
-                        // ResponseStatusException(Spring Web 예외)을 던지면 GlobalExceptionHandler의
-                        // handleResponseStatusException이 status만 그대로 넘기고 code는 무조건
-                        // "INVALID_REQUEST"로 하드코딩해버려 500인데 클라이언트 잘못처럼 보이는
-                        // 코드가 나가는 버그가 있었다. BusinessException으로 던지면
-                        // handleBusinessException 통합 핸들러가 errorCode.category로 정확한
-                        // status(500)/code("STT_FAILED")를 매핑해준다.
+                        // ResponseStatusException 대신 BusinessException을 던져 올바른 HTTP 상태 및 에러 코드가 매핑되도록 처리
                         Mono.error(BusinessException(DialogueErrorCode.STT_FAILED)),
                     )
             })

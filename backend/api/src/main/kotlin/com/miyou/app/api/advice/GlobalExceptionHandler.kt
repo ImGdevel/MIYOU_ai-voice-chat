@@ -18,27 +18,13 @@ import java.time.LocalDateTime
  *
  * 모든 예외를 표준화된 ErrorResponse로 변환.
  *
- * ## BusinessException은 단일 핸들러로 통합 처리
- * 예전엔 구체 예외 타입마다 [ExceptionHandler]를 따로 뒀는데, 전부 동일한
- * `code/message/details` 조립 로직을 반복하면서 일부는 details/path를 응답에서
- * 빠뜨리는 버그가 있었다. 지금은 [handleBusinessException] 하나가 [BusinessException]의
- * `errorCode.category`를 [ErrorCategoryHttpStatusMapping]으로 HttpStatus로 변환해
- * 일괄 처리한다 - 새 도메인 예외를 추가해도 이 파일은 안 건드려도 된다.
+ * ## BusinessException 단일 핸들러 통합
+ * 모든 비즈니스 예외는 [handleBusinessException]에서 `errorCode.category` 기반으로 일괄 처리합니다.
+ * (새 예외가 추가되어도 이 파일은 수정할 필요가 없음)
  *
- * ## require()/check() 예외가 여기 안 걸리는 이유
- * 도메인 모델의 `require()`/`check()`가 던지는 `IllegalArgumentException`/
- * `IllegalStateException`은 의도적으로 전용 핸들러가 없다 - 맨 아래
- * [handleGenericException]에서 500으로 처리된다. 이게 기본값이어야 하는 이유:
- * client가 보낸 원시값은 도메인 생성자에 닿기 전에 DTO Bean Validation(또는
- * 명시적 검증)으로 이미 걸러졌어야 한다. 그 지점을 통과한 뒤에도 require()가
- * 터진다면 상위 계층이 보장했어야 할 계약이 깨진 것 - 즉 버그다. 블랭킷
- * `IllegalArgumentException -> 400` 매핑을 일부러 안 만든 이유도 이거다 -
- * 그러면 이런 계약 위반(버그)까지 "client 잘못"으로 위장되고, 검증 갭이
- * 조용히 400으로 삼켜져서 아무도 눈치 못 챈다.
- *
- * 새 DTO 필드가 도메인 값객체 생성자에 들어간다면, 그 값객체의 require() 조건과
- * DTO의 Bean Validation 애노테이션을 반드시 1:1로 맞춰야 한다.
- * 상세: docs/plan/2026-07-08_1432_domain-validation-error-boundary.md
+ * ## require()/check() 예외 처리 원칙
+ * 도메인 모델의 require()/check() 실패는 검증 누락(버그)으로 간주해 500 에러로 응답합니다.
+ * (상세 설계: docs/plan/2026-07-08_1432_domain-validation-error-boundary.md)
  */
 @RestControllerAdvice
 class GlobalExceptionHandler {
