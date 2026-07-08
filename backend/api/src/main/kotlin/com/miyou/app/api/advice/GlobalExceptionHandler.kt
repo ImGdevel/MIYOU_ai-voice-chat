@@ -30,6 +30,21 @@ import java.time.LocalDateTime
  * 글로벌 예외 처리.
  *
  * 모든 예외를 표준화된 ErrorResponse로 변환.
+ *
+ * ## require()/check() 예외가 여기 안 걸리는 이유
+ * 도메인 모델의 `require()`/`check()`가 던지는 `IllegalArgumentException`/
+ * `IllegalStateException`은 의도적으로 전용 핸들러가 없다 - 맨 아래
+ * [handleGenericException]에서 500으로 처리된다. 이게 기본값이어야 하는 이유:
+ * client가 보낸 원시값은 도메인 생성자에 닿기 전에 DTO Bean Validation(또는
+ * 명시적 검증)으로 이미 걸러졌어야 한다. 그 지점을 통과한 뒤에도 require()가
+ * 터진다면 상위 계층이 보장했어야 할 계약이 깨진 것 - 즉 버그다. 블랭킷
+ * `IllegalArgumentException -> 400` 매핑을 일부러 안 만든 이유도 이거다 -
+ * 그러면 이런 계약 위반(버그)까지 "client 잘못"으로 위장되고, 검증 갭이
+ * 조용히 400으로 삼켜져서 아무도 눈치 못 챈다.
+ *
+ * 새 DTO 필드가 도메인 값객체 생성자에 들어간다면, 그 값객체의 require() 조건과
+ * DTO의 Bean Validation 애노테이션을 반드시 1:1로 맞춰야 한다.
+ * 상세: docs/plan/2026-07-08_1432_domain-validation-error-boundary.md
  */
 @RestControllerAdvice
 class GlobalExceptionHandler {

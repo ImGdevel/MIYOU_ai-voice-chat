@@ -115,4 +115,50 @@ class DialogueControllerTest {
             .expectStatus()
             .isBadRequest
     }
+
+    @Test
+    @DisplayName("ragDialogueText returns 400 when sessionId exceeds 128 characters (not 500)")
+    fun ragDialogueText_returns400ForTooLongSessionId() {
+        val tooLongSessionId = "s".repeat(129)
+        val request = RagDialogueRequest(tooLongSessionId, "Hello world", Instant.now())
+
+        webTestClient
+            .post()
+            .uri("/rag/dialogue/text")
+            .contentType(MediaType.APPLICATION_JSON)
+            .bodyValue(request)
+            .exchange()
+            .expectStatus()
+            .isBadRequest
+    }
+
+    @Test
+    @DisplayName("createSession returns 400 when personaId exceeds 64 characters (not 500)")
+    fun createSession_returns400ForTooLongPersonaId() {
+        val request = CreateSessionRequest(userId = "user-1", personaId = "p".repeat(65))
+
+        webTestClient
+            .post()
+            .uri("/rag/dialogue/session")
+            .contentType(MediaType.APPLICATION_JSON)
+            .bodyValue(request)
+            .exchange()
+            .expectStatus()
+            .isBadRequest
+    }
+
+    @Test
+    @DisplayName("createSession returns 400 when personaId contains invalid characters (not 500)")
+    fun createSession_returns400ForInvalidPersonaIdCharacters() {
+        val request = CreateSessionRequest(userId = "user-1", personaId = "invalid persona!")
+
+        webTestClient
+            .post()
+            .uri("/rag/dialogue/session")
+            .contentType(MediaType.APPLICATION_JSON)
+            .bodyValue(request)
+            .exchange()
+            .expectStatus()
+            .isBadRequest
+    }
 }
