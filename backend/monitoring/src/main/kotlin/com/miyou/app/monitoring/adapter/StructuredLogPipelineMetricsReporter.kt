@@ -40,6 +40,7 @@ class StructuredLogPipelineMetricsReporter(
             "personaId" to summary.personaId,
             "status" to summary.status.name,
             "totalDurationMs" to summary.durationMillis(),
+            "firstTokenMs" to summary.firstTokenLatencyMillis,
             "firstResponseMs" to summary.firstResponseLatencyMillis,
             "lastResponseMs" to summary.lastResponseLatencyMillis,
             "input" to

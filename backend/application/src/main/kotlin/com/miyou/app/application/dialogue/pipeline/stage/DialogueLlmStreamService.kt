@@ -38,6 +38,7 @@ class DialogueLlmStreamService(
         streamLlmTokens(inputsMono)
             .subscribeOn(Schedulers.boundedElastic())
             .transform(::trackLlmTokens)
+            .transform(pipelineTracer::markFirstOnNext)
 
     private fun streamLlmTokens(inputsMono: Mono<PipelineInputs>): Flux<String> =
         Flux.deferContextual { contextView ->
