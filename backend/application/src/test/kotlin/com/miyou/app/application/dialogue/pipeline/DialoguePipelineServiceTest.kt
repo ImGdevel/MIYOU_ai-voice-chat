@@ -61,11 +61,11 @@ class DialoguePipelineServiceTest {
     }
 
     // ──────────────────────────────────────────────
-    //  executeAudioStreaming
+    //  오디오 스트리밍 실행
     // ──────────────────────────────────────────────
 
     @Nested
-    @DisplayName("executeAudioStreaming")
+    @DisplayName("오디오 스트리밍 실행")
     inner class ExecuteAudioStreaming {
         @Test
         @DisplayName("오디오 스트리밍 실행 시 전체 파이프라인에 처리를 위임한다")
@@ -182,11 +182,11 @@ class DialoguePipelineServiceTest {
     }
 
     // ──────────────────────────────────────────────
-    //  executeTextOnly
+    //  텍스트 전용 실행
     // ──────────────────────────────────────────────
 
     @Nested
-    @DisplayName("executeTextOnly")
+    @DisplayName("텍스트 전용 실행")
     inner class ExecuteTextOnly {
         @Test
         @DisplayName("텍스트 전용 실행 시 위임된 토큰 스트림을 반환한다")

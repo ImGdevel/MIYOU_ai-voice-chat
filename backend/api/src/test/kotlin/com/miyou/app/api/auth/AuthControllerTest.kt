@@ -31,12 +31,13 @@ class AuthControllerTest {
     private lateinit var logoutUseCase: LogoutUseCase
 
     @Test
-    @DisplayName("refresh returns a new token pair for a valid refresh token")
+    @DisplayName("유효한 리프레시 토큰에 대해 새로운 토큰 쌍을 반환한다")
     fun refresh_returnsNewTokenPair() {
+        // given
         val tokens = AuthTokens("new-access-token", Instant.now().plusSeconds(900), "new-refresh-token")
-
         `when`(tokenRefreshUseCase.refresh("old-refresh-token")).thenReturn(Mono.just(tokens))
 
+        // when & then
         webTestClient
             .post()
             .uri("/auth/refresh")
@@ -53,11 +54,13 @@ class AuthControllerTest {
     }
 
     @Test
-    @DisplayName("refresh returns 401 for an invalid or expired refresh token")
+    @DisplayName("유효하지 않거나 만료된 리프레시 토큰의 경우 401 에러를 반환한다")
     fun refresh_invalidToken_returns401() {
+        // given: 유효하지 않은 리프레시 토큰일 때 InvalidRefreshTokenException 에러를 던지도록 모킹
         `when`(tokenRefreshUseCase.refresh("bad-token"))
             .thenReturn(Mono.error(InvalidRefreshTokenException("bad-token")))
 
+        // when & then
         webTestClient
             .post()
             .uri("/auth/refresh")
@@ -69,10 +72,12 @@ class AuthControllerTest {
     }
 
     @Test
-    @DisplayName("logout returns 204 and delegates to the use case")
+    @DisplayName("로그아웃 요청 시 204 상태코드를 반환하고 로그아웃 유스케이스를 실행한다")
     fun logout_returns204() {
+        // given
         `when`(logoutUseCase.logout("token-1")).thenReturn(Mono.empty())
 
+        // when & then
         webTestClient
             .post()
             .uri("/auth/logout")

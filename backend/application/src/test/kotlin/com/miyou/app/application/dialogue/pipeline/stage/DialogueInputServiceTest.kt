@@ -57,11 +57,13 @@ class DialogueInputServiceTest {
                 .create(session.sessionId, "previous question")
                 .withResponse("previous answer")
 
+        // 모의 객체 설정: 검색 기능 및 이전 대화 이력 조회 설정
         `when`(pipelineTracer.traceRetrieval(anyValue())).thenAnswer { Mono.just(retrievalContext) }
         `when`(pipelineTracer.traceMemories(anyValue())).thenAnswer { Mono.just(memories) }
         `when`(conversationRepository.findRecent(eqValue(session.sessionId), anyIntValue()))
             .thenReturn(Flux.just(previousTurn))
 
+        // 실행 및 검증: 파이프라인 입력 객체가 모든 요소를 정상적으로 포함하고 있는지 확인
         StepVerifier
             .create(service.prepareInputs(session, query))
             .assertNext { inputs ->

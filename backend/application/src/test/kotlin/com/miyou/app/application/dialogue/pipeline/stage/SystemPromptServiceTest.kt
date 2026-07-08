@@ -35,6 +35,7 @@ class SystemPromptServiceTest {
                 "",
             )
 
+        // 시스템 프롬프트 서비스 초기화 및 프롬프트 생성 실행
         val service = SystemPromptService(templateLoader, policy)
         val sessionId = ConversationSessionFixture.createId().value
         val experiential = Memory.create(sessionId, MemoryType.EXPERIENTIAL, "user likes sushi", 0.8f)
@@ -48,6 +49,7 @@ class SystemPromptServiceTest {
 
         val prompt = service.buildSystemPrompt(PersonaId.of("maid"), context, memories)
 
+        // 검증: 렌더링된 최종 프롬프트에 페르소나, 공통 룰, 메모리, 검색 결과 등이 적절히 포함되었는지 확인
         assertThat(prompt)
             .contains("persona")
             .contains("common")

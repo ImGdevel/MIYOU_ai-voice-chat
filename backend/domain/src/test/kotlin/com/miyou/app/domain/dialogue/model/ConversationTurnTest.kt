@@ -28,6 +28,7 @@ class ConversationTurnTest {
     fun create_blankQuery_throwsException() {
         val sessionId = ConversationSessionFixture.createId()
 
+        // 빈 문자열 질문으로 대화 턴을 생성하려고 할 때 IllegalArgumentException이 발생하는지 검증
         assertThatThrownBy { ConversationTurn.create(sessionId, "   ") }
             .isInstanceOf(IllegalArgumentException::class.java)
             .hasMessageContaining("query cannot be null or blank")

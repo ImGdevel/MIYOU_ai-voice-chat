@@ -14,35 +14,41 @@ class MissionTest {
         @Test
         @DisplayName("정상 생성하면 missionId가 자동 생성된다")
         fun create_generatesUniqueId() {
+            // given & when - 공유 미션을 2개 생성
             val mission1 = Mission.create(MissionType.SHARE_SERVICE, "공유 미션", "설명", 500L, false)
             val mission2 = Mission.create(MissionType.SHARE_SERVICE, "공유 미션", "설명", 500L, false)
 
+            // then - 각 미션이 고유한 ID를 갖는지 검증
             assertThat(mission1.missionId().value).isNotEqualTo(mission2.missionId().value)
         }
 
         @Test
         @DisplayName("rewardAmount가 0 이하이면 예외가 발생한다")
         fun create_nonPositiveReward_throws() {
+            // given & when & then - 보상 금액이 0일 때 IllegalArgumentException 예외 및 메시지 검증
             assertThatThrownBy {
                 Mission.create(MissionType.TASK_COMPLETION, "테스트 미션", "설명", 0L, false)
             }.isInstanceOf(IllegalArgumentException::class.java)
-                .hasMessageContaining("rewardAmount must be positive")
+                .hasMessageContaining("보상 금액은 양수여야 합니다.")
         }
 
         @Test
         @DisplayName("name이 blank이면 예외가 발생한다")
         fun create_blankName_throws() {
+            // given & when & then - 미션 이름이 공백일 때 IllegalArgumentException 예외 및 메시지 검증
             assertThatThrownBy {
                 Mission.create(MissionType.REFERRAL, "  ", "설명", 100L, false)
             }.isInstanceOf(IllegalArgumentException::class.java)
-                .hasMessageContaining("mission name cannot be blank")
+                .hasMessageContaining("미션 이름은 비어 있을 수 없습니다.")
         }
 
         @Test
         @DisplayName("repeatable=true로 생성하면 반복 가능 상태가 저장된다")
         fun create_repeatable_setsFlag() {
+            // given & when - repeatable이 true인 커스텀 미션 생성
             val mission = Mission.create(MissionType.CUSTOM, "반복 미션", "설명", 100L, true)
 
+            // then - 반복 여부가 true로 설정되었는지 검증
             assertThat(mission.repeatable()).isTrue()
         }
     }

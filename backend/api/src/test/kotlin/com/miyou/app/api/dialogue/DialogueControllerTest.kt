@@ -43,7 +43,7 @@ class DialogueControllerTest {
     private lateinit var creditChargeUseCase: CreditChargeUseCase
 
     @Test
-    @DisplayName("ragDialogueText returns an SSE token stream")
+    @DisplayName("ragDialogueText는 SSE 토큰 스트림을 반환한다")
     fun ragDialogueText_returnsTokenStream() {
         val sessionIdValue = "test-session-1"
         val session = ConversationSessionFixture.create(sessionIdValue)
@@ -64,7 +64,7 @@ class DialogueControllerTest {
     }
 
     @Test
-    @DisplayName("createSession returns 400 when userId is blank")
+    @DisplayName("createSession은 userId가 비어있을 때 400을 반환한다")
     fun createSession_returns400ForBlankUserId() {
         val request = CreateSessionRequest(userId = "", personaId = "default")
 
@@ -79,7 +79,7 @@ class DialogueControllerTest {
     }
 
     @Test
-    @DisplayName("ragDialogueAudio uses the default WAV format")
+    @DisplayName("ragDialogueAudio는 기본 WAV 포맷을 사용한다")
     fun ragDialogueAudio_usesDefaultWavFormat() {
         val sessionIdValue = "test-session-2"
         val session = ConversationSessionFixture.create(sessionIdValue)
@@ -103,7 +103,7 @@ class DialogueControllerTest {
     }
 
     @Test
-    @DisplayName("ragDialogueText returns 400 for blank text")
+    @DisplayName("ragDialogueText는 텍스트가 비어있을 때 400을 반환한다")
     fun ragDialogueText_returns400ForBlankText() {
         val request = RagDialogueRequest(ConversationSessionFixture.DEFAULT_SESSION_ID, "", Instant.now())
 
@@ -118,7 +118,7 @@ class DialogueControllerTest {
     }
 
     @Test
-    @DisplayName("ragDialogueText returns 400 when sessionId exceeds 128 characters (not 500)")
+    @DisplayName("ragDialogueText는 sessionId가 128자를 초과할 때 400을 반환한다 (500이 아님)")
     fun ragDialogueText_returns400ForTooLongSessionId() {
         val tooLongSessionId = "s".repeat(129)
         val request = RagDialogueRequest(tooLongSessionId, "Hello world", Instant.now())
@@ -134,7 +134,7 @@ class DialogueControllerTest {
     }
 
     @Test
-    @DisplayName("createSession returns 400 when personaId exceeds 64 characters (not 500)")
+    @DisplayName("createSession은 personaId가 64자를 초과할 때 400을 반환한다 (500이 아님)")
     fun createSession_returns400ForTooLongPersonaId() {
         val request = CreateSessionRequest(userId = "user-1", personaId = "p".repeat(65))
 
@@ -149,7 +149,7 @@ class DialogueControllerTest {
     }
 
     @Test
-    @DisplayName("createSession returns 400 when personaId contains invalid characters (not 500)")
+    @DisplayName("createSession은 personaId에 유효하지 않은 문자가 포함되어 있을 때 400을 반환한다 (500이 아님)")
     fun createSession_returns400ForInvalidPersonaIdCharacters() {
         val request = CreateSessionRequest(userId = "user-1", personaId = "invalid persona!")
 
@@ -164,7 +164,7 @@ class DialogueControllerTest {
     }
 
     @Test
-    @DisplayName("createSession accepts an explicit JSON null personaId (falls back to default persona)")
+    @DisplayName("createSession은 명시적인 JSON null personaId를 허용한다 (기본 페르소나로 대체됨)")
     fun createSession_acceptsExplicitNullPersonaId() {
         val session = ConversationSessionFixture.create("session-null-persona")
 

@@ -77,11 +77,14 @@ class MemoryExtractionServiceTest {
     @Test
     @DisplayName("임계값 미달 턴이면 추출을 트리거하지 않는다")
     fun checkAndExtract_belowThreshold_skipsExtraction() {
+        // given - 대화 카운트가 임계값(5) 미만인 3으로 설정
         val sessionId = ConversationSessionFixture.createId().value
         `when`(counterPort.get(sessionId)).thenReturn(Mono.just(3L))
 
+        // when - 메모리 추출 체크 실행
         StepVerifier.create(service.checkAndExtract(sessionId)).verifyComplete()
 
+        // then - 추출 포트가 호출되지 않고, 메모리 저장이 스킵되는지 확인
         verifyNoInteractions(extractionPort)
         verify(vectorMemoryPort, never()).upsert(anyValue(), anyValue())
     }
@@ -89,6 +92,7 @@ class MemoryExtractionServiceTest {
     @Test
     @DisplayName("임계값 도달 턴이면 reasoning이 있어도 Memory에는 content/importance만 저장된다")
     fun checkAndExtract_atThreshold_savesExtractedMemoryWithoutReasoning() {
+        // given - 대화 카운트가 임계값(5)에 도달 및 최근 턴 데이터 준비
         val sessionIdObj = ConversationSessionFixture.createId()
         val sessionId = sessionIdObj.value
         val turn = ConversationTurn.create(sessionIdObj, "나는 커피를 좋아해")
@@ -116,12 +120,15 @@ class MemoryExtractionServiceTest {
             Mono.just(invocation.getArgument<Memory>(0))
         }
 
+        // when - 메모리 추출 체크 실행
         StepVerifier.create(service.checkAndExtract(sessionId)).verifyComplete()
 
+        // then - 저장된 메모리에 추출 결과(내용, 타입, 중요도)가 정확히 반영되었는지 검증
         assertThat(savedMemory?.content).isEqualTo(extracted.content)
         assertThat(savedMemory?.type).isEqualTo(MemoryType.FACTUAL)
         assertThat(savedMemory?.importance).isCloseTo(0.7f, Offset.offset(0.001f))
 
+        // 메트릭스 기록이 제대로 동작했는지 확인
         verify(extractionMetrics).recordExtractionTriggered()
         verify(extractionMetrics).recordExtractionSuccess(1)
         verify(extractionMetrics).recordExtractedMemoryType("FACTUAL", 1)
@@ -131,6 +138,7 @@ class MemoryExtractionServiceTest {
     @Test
     @DisplayName("supersedesMemoryId가 컨텍스트의 기존 메모리를 가리키면 즉시 소프트 아카이브한다")
     fun checkAndExtract_withSupersedesMemoryId_archivesExistingMemory() {
+        // given - 새로운 추출 메모리가 기존 메모리를 덮어쓰도록(supersedesMemoryId) 설정
         val sessionIdObj = ConversationSessionFixture.createId()
         val sessionId = sessionIdObj.value
         val turn = ConversationTurn.create(sessionIdObj, "이제 라면 안 먹어, 질려서")
@@ -173,8 +181,10 @@ class MemoryExtractionServiceTest {
             Mono.empty<Void>()
         }
 
+        // when - 메모리 추출 체크 실행
         StepVerifier.create(service.checkAndExtract(sessionId)).verifyComplete()
 
+        // then - 덮어씌워진 기존 메모리(mem-1)가 소프트 아카이브(archivedAt 채워짐) 되었는지 검증
         assertThat(archivedMemory?.id).isEqualTo("mem-1")
         assertThat(archivedMemory?.archivedAt).isNotNull()
     }
