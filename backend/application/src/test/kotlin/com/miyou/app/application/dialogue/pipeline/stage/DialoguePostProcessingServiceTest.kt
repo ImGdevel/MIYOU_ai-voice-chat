@@ -146,6 +146,44 @@ class DialoguePostProcessingServiceTest {
     }
 
     @Test
+    @DisplayName("응답에 마크다운이 섞이면 포맷 위반 메트릭을 기록한다")
+    fun persistAndExtract_shouldRecordFormatViolationWhenResponseHasMarkdown() {
+        val session = ConversationSessionFixture.create()
+        val sessionId = session.sessionId
+        val turn = ConversationTurn.create(sessionId, "question")
+        val inputs = createInputs(session, turn)
+
+        `when`(pipelineTracer.tracePersistence<ConversationTurn>(anyValue()))
+            .thenAnswer { Mono.just(turn.withResponse("- 항목1\n- 항목2")) }
+        `when`(conversationCounterPort.increment(sessionId.value)).thenReturn(Mono.just(1L))
+
+        StepVerifier
+            .create(service.persistAndExtract(Mono.just(inputs), Flux.just("- 항목1", "- 항목2")))
+            .verifyComplete()
+
+        verify(conversationMetricsConfiguration).recordFormatViolation()
+    }
+
+    @Test
+    @DisplayName("순수 대화체 응답이면 포맷 위반 메트릭을 기록하지 않는다")
+    fun persistAndExtract_shouldNotRecordFormatViolationForPlainDialogue() {
+        val session = ConversationSessionFixture.create()
+        val sessionId = session.sessionId
+        val turn = ConversationTurn.create(sessionId, "question")
+        val inputs = createInputs(session, turn)
+
+        `when`(pipelineTracer.tracePersistence<ConversationTurn>(anyValue()))
+            .thenAnswer { Mono.just(turn.withResponse("안녕하세요, 오늘도 좋은 하루예요")) }
+        `when`(conversationCounterPort.increment(sessionId.value)).thenReturn(Mono.just(1L))
+
+        StepVerifier
+            .create(service.persistAndExtract(Mono.just(inputs), Flux.just("안녕하세요,", "오늘도 좋은 하루예요")))
+            .verifyComplete()
+
+        verify(conversationMetricsConfiguration, never()).recordFormatViolation()
+    }
+
+    @Test
     @DisplayName("생성 시 임계값이 0 이하이면 예외가 발생한다")
     fun constructor_withInvalidThreshold_shouldThrowException() {
         assertThatThrownBy {

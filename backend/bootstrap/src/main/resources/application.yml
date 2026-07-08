@@ -20,6 +20,7 @@ spring:
         options:
           model: gpt-4o-mini
           temperature: 0.7
+          max-tokens: 500
     vectorstore:
       qdrant:
         host: ${QDRANT_HOST:localhost}

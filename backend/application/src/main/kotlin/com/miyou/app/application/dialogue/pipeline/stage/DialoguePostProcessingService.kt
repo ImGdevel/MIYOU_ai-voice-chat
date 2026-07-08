@@ -93,6 +93,9 @@ class DialoguePostProcessingService(
                     .flatMap { response ->
                         conversationMetrics.recordQueryLength(inputs.currentTurn.query.length)
                         conversationMetrics.recordResponseLength(response.length)
+                        if (ResponseFormatComplianceChecker.hasFormatViolation(response)) {
+                            conversationMetrics.recordFormatViolation()
+                        }
                         persistConversation(inputsMono, response)
                     }.flatMap { conversationCounterPort.increment(sessionId) }
                     .doOnNext { count ->
