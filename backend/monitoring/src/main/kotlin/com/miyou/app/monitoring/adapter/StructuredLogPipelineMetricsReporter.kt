@@ -43,6 +43,12 @@ class StructuredLogPipelineMetricsReporter(
                     "length" to extractInt(attrs, "input.length"),
                     "preview" to extractString(attrs, "input.preview"),
                 ),
+            "historyTurnIds" to
+                (
+                    findStage(summary, DialoguePipelineStage.PROMPT_BUILDING)
+                        ?.attributes
+                        ?.get("historyTurnIds") as? List<*> ?: emptyList<Any?>()
+                ),
             "rag" to buildRag(summary),
             "llm" to buildLlm(summary),
             "tts" to buildTts(summary),
