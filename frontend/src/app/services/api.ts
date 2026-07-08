@@ -1,10 +1,10 @@
 import { getMiyouUserId } from "../utils/userIdentity";
-import { API_BASE_URL } from "../constants";
+import { API_BASE_URL, API_PREFIX } from "../constants";
 import { SessionResponse } from "../types";
 
 export function buildApiUrl(path: string): string {
-  if (!API_BASE_URL) return path;
-  return `${API_BASE_URL}${path.startsWith("/") ? path : `/${path}`}`;
+  const normalizedPath = path.startsWith("/") ? path : `/${path}`;
+  return `${API_BASE_URL}${API_PREFIX}${normalizedPath}`;
 }
 
 export function responseError(prefix: string, response: Response): Error {

@@ -1,6 +1,11 @@
 spring:
   application:
     name: app-miyou
+  webflux:
+    # 모든 비즈니스 API(컨트롤러 + actuator)를 이 prefix 아래로 마운트한다.
+    # ClientRegistrationConfig의 OAuth2 redirectUri도 이 값을 읽어서 붙인다 —
+    # 두 곳에 따로 안 적도록 여기 하나만 바꾸면 된다.
+    base-path: /api/v1
   data:
     mongodb:
       uri: ${MONGODB_URI:mongodb://localhost:27018/ragdb?directConnection=true}

@@ -9,9 +9,9 @@ MIYOU는 사용자가 캐릭터나 면접관 같은 페르소나를 선택하고
 ## 서비스 기능
 
 - 페르소나 기반 대화: `메이드 리리아`, `기술 면접관` 등 대화 모드를 선택합니다.
-- 음성 입력: 브라우저 녹음 데이터를 `/rag/dialogue/stt`로 보내 OpenAI Whisper 기반 STT를 수행합니다.
-- 텍스트 스트리밍: `/rag/dialogue/text`에서 SSE 형식으로 LLM 토큰을 스트리밍합니다.
-- 음성 응답: `/rag/dialogue/audio`에서 LLM 응답을 문장 단위로 TTS 합성해 MP3/WAV 스트림으로 반환합니다.
+- 음성 입력: 브라우저 녹음 데이터를 `/api/v1/rag/dialogue/stt`로 보내 OpenAI Whisper 기반 STT를 수행합니다.
+- 텍스트 스트리밍: `/api/v1/rag/dialogue/text`에서 SSE 형식으로 LLM 토큰을 스트리밍합니다.
+- 음성 응답: `/api/v1/rag/dialogue/audio`에서 LLM 응답을 문장 단위로 TTS 합성해 MP3/WAV 스트림으로 반환합니다.
 - 장기 메모리: 대화 이력과 추출 메모리를 MongoDB, Redis, Qdrant를 조합해 관리합니다.
 - 크레딧/미션: 대화 비용 차감, 가입 보너스, 미션 보상 모델을 도메인으로 분리했습니다.
 - 운영 관찰: 파이프라인 단계별 지표와 사용량을 MongoDB 및 Prometheus 지표로 수집합니다.
@@ -32,9 +32,9 @@ MIYOU는 사용자가 캐릭터나 면접관 같은 페르소나를 선택하고
 
 ```mermaid
 flowchart LR
-    Client["Browser client"] --> Session["POST /rag/dialogue/session"]
+    Client["Browser client"] --> Session["POST /api/v1/rag/dialogue/session"]
     Client --> Input["Text or recorded audio"]
-    Input --> STT["POST /rag/dialogue/stt"]
+    Input --> STT["POST /api/v1/rag/dialogue/stt"]
     Input --> Dialogue["DialogueController"]
 
     subgraph Pipeline["WebFlux dialogue pipeline"]
@@ -61,12 +61,12 @@ flowchart LR
 
 | Method | Path | 설명 |
 |--------|------|------|
-| `POST` | `/rag/dialogue/session` | 페르소나 기준 대화 세션 생성 |
-| `POST` | `/rag/dialogue/text` | 텍스트 응답 SSE 스트리밍 |
-| `POST` | `/rag/dialogue/audio?format=mp3` | 음성 응답 오디오 스트리밍 |
-| `POST` | `/rag/dialogue/stt` | 녹음 파일 STT 변환 |
-| `GET` | `/metrics/performance`, `/metrics/usage`, `/metrics/pipeline/{pipelineId}` | 파이프라인 성능/사용량 조회 |
-| `GET` | `/actuator/prometheus` | Prometheus scrape endpoint |
+| `POST` | `/api/v1/rag/dialogue/session` | 페르소나 기준 대화 세션 생성 |
+| `POST` | `/api/v1/rag/dialogue/text` | 텍스트 응답 SSE 스트리밍 |
+| `POST` | `/api/v1/rag/dialogue/audio?format=mp3` | 음성 응답 오디오 스트리밍 |
+| `POST` | `/api/v1/rag/dialogue/stt` | 녹음 파일 STT 변환 |
+| `GET` | `/api/v1/metrics/performance`, `/api/v1/metrics/usage`, `/api/v1/metrics/pipeline/{pipelineId}` | 파이프라인 성능/사용량 조회 |
+| `GET` | `/api/v1/actuator/prometheus` | Prometheus scrape endpoint |
 
 ## 아키텍처
 
@@ -149,7 +149,7 @@ README에는 실제 코드 또는 Wiki의 근거가 확인되는 항목만 적�
 | 요청 단위 토큰 격리 | `TokenAwareLlmAdapter` | `correlationId`별로 토큰 사용량을 저장하고 조회 시 제거해 동시 스트리밍 요청의 사용량이 섞이는 위험을 줄였습니다. |
 | 최근 대화 조회 제한 | `DialogueInputService.loadConversationHistory()` | 대화 이력은 `findRecent(sessionId, 10)`으로 제한해 프롬프트 입력 범위를 고정합니다. DB 성능 개선 배수는 실제 `explain` 결과 없이는 단정하지 않습니다. |
 | TTS endpoint 구성 | `application.yml`, `LoadBalancedSupertoneTtsAdapter` | Supertone endpoint 5개를 설정하고 persona별 voice를 선택할 수 있게 구성했습니다. 현재 오디오 합성 경로는 코드 기준 `concatMap` 순차 스트리밍입니다. |
-| 파이프라인 모니터링 | `@MonitoredPipeline`, `MetricsController`, Micrometer config | 단계별 처리 지표, 토큰/비용 정보, 최근 성능 지표를 `/metrics/*` 및 Prometheus endpoint로 조회할 수 있습니다. |
+| 파이프라인 모니터링 | `@MonitoredPipeline`, `MetricsController`, Micrometer config | 단계별 처리 지표, 토큰/비용 정보, 최근 성능 지표를 `/api/v1/metrics/*` 및 Prometheus endpoint로 조회할 수 있습니다. |
 | 크레딧 집계 상한 | `MetricsController.MAX_CREDIT_SAMPLE = 10_000` | 전체 크레딧 추정 조회가 무제한 샘플을 읽지 않도록 최근 사용량 샘플 상한을 둡니다. |
 
 ## 테스트

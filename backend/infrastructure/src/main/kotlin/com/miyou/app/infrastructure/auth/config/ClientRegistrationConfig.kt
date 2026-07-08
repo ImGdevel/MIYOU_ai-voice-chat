@@ -32,8 +32,14 @@ class ClientRegistrationConfig(
     @Value("\${app.oauth2.kakao.client-secret:}") private val kakaoClientSecret: String,
     @Value("\${app.oauth2.naver.client-id:}") private val naverClientId: String,
     @Value("\${app.oauth2.naver.client-secret:}") private val naverClientSecret: String,
-    @Value("\${app.oauth2.redirect-base-uri:http://localhost:8081}") private val redirectBaseUri: String,
+    @Value("\${app.oauth2.redirect-base-uri:http://localhost:8081}") redirectBaseUri: String,
+    @Value("\${spring.webflux.base-path:}") basePath: String,
 ) {
+    // 콜백 경로(/login/oauth2/code/*)는 spring.webflux.base-path 아래로 마운트된
+    // 디스패처를 통해서만 도달 가능하다 - base-path를 여기서 직접 붙여야
+    // Google/Kakao/Naver가 리다이렉트하는 실제 URL과 서버가 실제로 받는 경로가 맞는다.
+    private val redirectBaseUri: String = "${redirectBaseUri.trimEnd('/')}${basePath.trimEnd('/')}"
+
     @Bean
     fun clientRegistrationRepository(): ReactiveClientRegistrationRepository {
         val registrations =
