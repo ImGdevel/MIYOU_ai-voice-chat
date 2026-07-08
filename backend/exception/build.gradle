@@ -25,3 +25,7 @@ bootJar {
 jar {
 	enabled = true
 }
+
+dependencies {
+	compileOnly 'io.swagger.core.v3:swagger-annotations:2.2.22'
+}

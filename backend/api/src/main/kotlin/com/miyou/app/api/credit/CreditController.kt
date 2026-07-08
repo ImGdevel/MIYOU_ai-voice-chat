@@ -1,6 +1,7 @@
 package com.miyou.app.api.credit
 
 import com.miyou.app.api.common.UserIdResolver
+import com.miyou.app.api.credit.docs.CreditApi
 import com.miyou.app.api.credit.dto.ChargeByPaymentRequest
 import com.miyou.app.api.credit.dto.CreditTransactionResponse
 import com.miyou.app.api.credit.dto.UserCreditResponse
@@ -30,9 +31,9 @@ class CreditController(
     private val creditQueryUseCase: CreditQueryUseCase,
     private val creditChargeUseCase: CreditChargeUseCase,
     private val paymentGatewayMap: Map<String, PaymentGatewayPort>,
-) {
+) : CreditApi {
     @GetMapping("/balance")
-    fun getBalance(
+    override fun getBalance(
         @RequestParam(required = false) userId: String?,
         @AuthenticationPrincipal principal: AuthenticatedUser?,
     ): Mono<UserCreditResponse> =
@@ -45,7 +46,7 @@ class CreditController(
             }.map(UserCreditResponse::from)
 
     @GetMapping("/transactions")
-    fun getTransactions(
+    override fun getTransactions(
         @RequestParam(required = false) userId: String?,
         @RequestParam(defaultValue = "0") page: Int,
         @RequestParam(defaultValue = "20") size: Int,
@@ -62,7 +63,7 @@ class CreditController(
 
     @PostMapping("/charge/payment")
     @ResponseStatus(HttpStatus.CREATED)
-    fun chargeByPayment(
+    override fun chargeByPayment(
         @Valid @RequestBody request: ChargeByPaymentRequest,
         @AuthenticationPrincipal principal: AuthenticatedUser?,
     ): Mono<CreditTransactionResponse> {

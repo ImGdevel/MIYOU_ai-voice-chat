@@ -1,6 +1,7 @@
 package com.miyou.app.api.mission
 
 import com.miyou.app.api.common.UserIdResolver
+import com.miyou.app.api.mission.docs.MissionApi
 import com.miyou.app.api.mission.dto.MissionResponse
 import com.miyou.app.api.mission.dto.UserMissionResponse
 import com.miyou.app.application.mission.usecase.MissionCompletionUseCase
@@ -26,12 +27,13 @@ import reactor.core.publisher.Mono
 class MissionController(
     private val missionQueryUseCase: MissionQueryUseCase,
     private val missionCompletionUseCase: MissionCompletionUseCase,
-) {
+) : MissionApi {
     @GetMapping
-    fun getAllMissions(): Flux<MissionResponse> = missionQueryUseCase.getAllMissions().map(MissionResponse::from)
+    override fun getAllMissions(): Flux<MissionResponse> =
+        missionQueryUseCase.getAllMissions().map(MissionResponse::from)
 
     @GetMapping("/my")
-    fun getUserMissions(
+    override fun getUserMissions(
         @RequestParam(required = false) userId: String?,
         @AuthenticationPrincipal principal: AuthenticatedUser?,
     ): Flux<UserMissionResponse> =
@@ -42,7 +44,7 @@ class MissionController(
 
     @PostMapping("/{missionId}/complete")
     @ResponseStatus(HttpStatus.OK)
-    fun completeMission(
+    override fun completeMission(
         @PathVariable missionId: String,
         @RequestParam(required = false) userId: String?,
         @AuthenticationPrincipal principal: AuthenticatedUser?,
