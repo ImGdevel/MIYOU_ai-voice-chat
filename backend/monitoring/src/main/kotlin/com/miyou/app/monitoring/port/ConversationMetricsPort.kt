@@ -10,4 +10,6 @@ interface ConversationMetricsPort {
     fun recordResponseLength(length: Int)
 
     fun recordConversationCount(count: Long)
+
+    fun recordFormatViolation()
 }

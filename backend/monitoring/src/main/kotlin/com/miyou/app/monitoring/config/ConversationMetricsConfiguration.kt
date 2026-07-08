@@ -43,6 +43,12 @@ class ConversationMetricsConfiguration(
             .publishPercentiles(0.5, 0.75, 0.9, 0.95, 0.99)
             .register(meterRegistry)
 
+    private val formatViolationCounter: Counter =
+        Counter
+            .builder("conversation.response.format_violation.count")
+            .description("Number of LLM responses that contained markdown/emoji despite the format instruction")
+            .register(meterRegistry)
+
     override fun recordConversationIncrement() {
         conversationIncrementCounter.increment()
     }
@@ -61,6 +67,10 @@ class ConversationMetricsConfiguration(
 
     override fun recordConversationCount(count: Long) {
         conversationCountSummary.record(count.toDouble())
+    }
+
+    override fun recordFormatViolation() {
+        formatViolationCounter.increment()
     }
 
     fun recordConversationByType(type: String) {
