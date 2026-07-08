@@ -3,6 +3,7 @@ package com.miyou.app.application.memory.service
 import com.miyou.app.application.memory.policy.MemoryCuratorPolicy
 import com.miyou.app.domain.memory.model.Memory
 import com.miyou.app.domain.memory.port.VectorMemoryPort
+import com.miyou.app.domain.memory.service.MemoryDecayService
 import io.github.oshai.kotlinlogging.KotlinLogging
 import org.springframework.stereotype.Service
 import reactor.core.publisher.Mono
@@ -18,6 +19,7 @@ import java.time.Instant
 class MemoryCuratorService(
     private val vectorMemoryPort: VectorMemoryPort,
     private val policy: MemoryCuratorPolicy,
+    private val memoryDecayService: MemoryDecayService,
 ) {
     private val logger = KotlinLogging.logger {}
 
@@ -37,14 +39,21 @@ class MemoryCuratorService(
     private fun applyPolicy(memory: Memory): Memory {
         val now = Instant.now()
         val decayed =
-            memory.decayImportance(
+            memoryDecayService.decayImportance(
+                memory,
                 now,
                 policy.decayRateHigh,
                 policy.decayRateLow,
                 policy.decayExemptThreshold,
             )
-        return if (decayed.shouldArchive(now, policy.archiveImportanceThreshold, policy.archiveIdleDays)) {
-            decayed.archive(now)
+        return if (memoryDecayService.shouldArchive(
+                decayed,
+                now,
+                policy.archiveImportanceThreshold,
+                policy.archiveIdleDays
+            )
+        ) {
+            memoryDecayService.archive(decayed, now)
         } else {
             decayed
         }

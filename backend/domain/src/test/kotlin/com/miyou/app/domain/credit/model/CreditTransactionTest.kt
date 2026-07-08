@@ -27,9 +27,9 @@ class CreditTransactionTest {
                     4900L,
                 )
 
-            assertThat(transaction.transactionId()).isNotNull()
-            assertThat(transaction.transactionId().value()).isNotBlank()
-            assertThat(transaction.createdAt()).isNotNull()
+            assertThat(transaction.transactionId).isNotNull()
+            assertThat(transaction.transactionId.value).isNotBlank()
+            assertThat(transaction.createdAt).isNotNull()
         }
 
         @Test
@@ -46,11 +46,11 @@ class CreditTransactionTest {
                     4900L,
                 )
 
-            assertThat(transaction.type()).isEqualTo(CreditTransactionType.DEDUCT)
-            assertThat(transaction.amount()).isEqualTo(100L)
-            assertThat(transaction.balanceBefore()).isEqualTo(5000L)
-            assertThat(transaction.balanceAfter()).isEqualTo(4900L)
-            assertThat(transaction.source()).isInstanceOf(ConversationDeduction::class.java)
+            assertThat(transaction.type).isEqualTo(CreditTransactionType.DEDUCT)
+            assertThat(transaction.amount).isEqualTo(100L)
+            assertThat(transaction.balanceBefore).isEqualTo(5000L)
+            assertThat(transaction.balanceAfter).isEqualTo(4900L)
+            assertThat(transaction.source).isInstanceOf(ConversationDeduction::class.java)
         }
 
         @Test
@@ -60,14 +60,14 @@ class CreditTransactionTest {
                 CreditTransaction.of(
                     UserIdFixture.create(),
                     CreditTransactionType.CHARGE,
-                    SignupBonus(),
+                    SignupBonus,
                     5000L,
                     0L,
                     5000L,
                     "ref-123",
                 )
 
-            assertThat(transaction.referenceId()).isEqualTo("ref-123")
+            assertThat(transaction.referenceId).isEqualTo("ref-123")
         }
 
         @Test
@@ -77,7 +77,7 @@ class CreditTransactionTest {
                 CreditTransaction.of(
                     UserIdFixture.create(),
                     CreditTransactionType.DEDUCT,
-                    SignupBonus(),
+                    SignupBonus,
                     0L,
                     1000L,
                     1000L,
@@ -108,8 +108,8 @@ class CreditTransactionTest {
                     4900L,
                 )
 
-            assertThat(transaction1.transactionId().value())
-                .isNotEqualTo(transaction2.transactionId().value())
+            assertThat(transaction1.transactionId.value)
+                .isNotEqualTo(transaction2.transactionId.value)
         }
     }
 
@@ -127,7 +127,7 @@ class CreditTransactionTest {
         @Test
         @DisplayName("SignupBonus의 sourceType은 SIGNUP_BONUS다")
         fun signupBonus_sourceType() {
-            assertThat(SignupBonus().sourceType()).isEqualTo(CreditSourceType.SIGNUP_BONUS)
+            assertThat(SignupBonus.sourceType()).isEqualTo(CreditSourceType.SIGNUP_BONUS)
         }
     }
 }

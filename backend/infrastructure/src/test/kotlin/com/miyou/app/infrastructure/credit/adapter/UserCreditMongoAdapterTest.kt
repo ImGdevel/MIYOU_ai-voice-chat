@@ -46,8 +46,8 @@ class UserCreditMongoAdapterTest {
             StepVerifier
                 .create(adapter.findByUserId(userId))
                 .assertNext { credit ->
-                    assertThat(credit.userId()).isEqualTo(userId)
-                    assertThat(credit.balance()).isEqualTo(3000L)
+                    assertThat(credit.userId).isEqualTo(userId)
+                    assertThat(credit.balance).isEqualTo(3000L)
                 }.verifyComplete()
         }
 
@@ -93,8 +93,8 @@ class UserCreditMongoAdapterTest {
             StepVerifier
                 .create(adapter.save(credit))
                 .assertNext { saved ->
-                    assertThat(saved.userId()).isEqualTo(userId)
-                    assertThat(saved.balance()).isEqualTo(5000L)
+                    assertThat(saved.userId).isEqualTo(userId)
+                    assertThat(saved.balance).isEqualTo(5000L)
                 }.verifyComplete()
 
             val captured = captor.value

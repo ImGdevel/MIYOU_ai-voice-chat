@@ -18,10 +18,10 @@ data class UserCreditDocument(
     companion object {
         fun fromDomain(credit: UserCredit): UserCreditDocument =
             UserCreditDocument(
-                credit.userId(),
-                credit.userId(),
-                credit.balance(),
-                credit.version(),
+                credit.userId,
+                credit.userId,
+                credit.balance,
+                credit.version,
                 Instant.now(),
             )
     }

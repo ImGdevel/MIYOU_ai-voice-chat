@@ -7,6 +7,7 @@ import com.miyou.app.domain.voice.model.Voice
 import com.miyou.app.infrastructure.dialogue.adapter.tts.loadbalancer.TtsEndpoint
 import com.miyou.app.infrastructure.dialogue.adapter.tts.loadbalancer.TtsErrorClassifier
 import com.miyou.app.infrastructure.dialogue.adapter.tts.loadbalancer.TtsLoadBalancer
+import com.miyou.app.infrastructure.dialogue.config.properties.RagDialogueProperties
 import io.github.oshai.kotlinlogging.KotlinLogging
 import org.springframework.core.io.buffer.DataBuffer
 import org.springframework.http.MediaType
@@ -22,6 +23,7 @@ class LoadBalancedSupertoneTtsAdapter(
     private val webClientBuilder: WebClient.Builder,
     private val loadBalancer: TtsLoadBalancer,
     private val voice: Voice,
+    private val properties: RagDialogueProperties,
 ) : TtsPort {
     private val log = KotlinLogging.logger {}
     private val webClientCache = ConcurrentHashMap<String, WebClient>()
@@ -32,8 +34,9 @@ class LoadBalancedSupertoneTtsAdapter(
         command: TtsCommand,
         attemptCount: Int,
     ): Flux<ByteArray> {
-        if (attemptCount >= 2) {
-            return Flux.error(RuntimeException("최대 TTS 재시도 횟수(2회)를 초과했습니다"))
+        val maxRetries = properties.supertone.maxRetries
+        if (attemptCount >= maxRetries) {
+            return Flux.error(RuntimeException("최대 TTS 재시도 횟수(${maxRetries}회)를 초과했습니다"))
         }
 
         val endpoint = loadBalancer.selectEndpoint()
@@ -110,20 +113,6 @@ class LoadBalancedSupertoneTtsAdapter(
                 .defaultHeader("x-sup-api-key", endpoint.apiKey)
                 .build()
         }
-
-    override fun synthesize(command: TtsCommand): Mono<ByteArray> =
-        streamSynthesize(command)
-            .collectList()
-            .map { byteArrays ->
-                val totalSize = byteArrays.sumOf { it.size }
-                val result = ByteArray(totalSize)
-                var offset = 0
-                for (bytes in byteArrays) {
-                    bytes.copyInto(result, offset)
-                    offset += bytes.size
-                }
-                result
-            }
 
     override fun prepare(): Mono<Void> =
         Flux

@@ -162,8 +162,6 @@ class SystemPromptService(
         return compacted.trim()
     }
 
-    private fun normalizeTemplateInput(template: String?): String = template ?: ""
-
     private data class PromptSections(
         val persona: String,
         val common: String,

@@ -16,6 +16,4 @@ data class CreditTransactionId(
         @JvmStatic
         fun generate(): CreditTransactionId = CreditTransactionId(UUID.randomUUID().toString())
     }
-
-    fun value(): String = value
 }

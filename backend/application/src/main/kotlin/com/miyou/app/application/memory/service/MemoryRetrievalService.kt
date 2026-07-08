@@ -31,6 +31,8 @@ class MemoryRetrievalService(
     private val associativeHopEnabled = policy.associativeHopEnabled
     private val associativeHopTopK = policy.associativeHopTopK
     private val associativeHopMinScore = policy.associativeHopMinScore
+    private val recencyWeight = policy.recencyWeight
+    private val candidateMultiplier = policy.candidateMultiplier
 
     /**
      * 관련 메모리 검색.
@@ -56,7 +58,7 @@ class MemoryRetrievalService(
                 ragMetrics.recordMemoryCandidateCount(candidates.size)
             }.map { memories -> rankAndLimit(memories, topK) }
             .doOnNext { ranked ->
-                val candidateCount = topK * CANDIDATE_MULTIPLIER
+                val candidateCount = topK * candidateMultiplier
                 val filteredCount = max(0, candidateCount - ranked.size)
                 ragMetrics.recordMemoryFilteredCount(filteredCount)
                 ranked.forEach { memory ->
@@ -83,7 +85,7 @@ class MemoryRetrievalService(
                     queryEmbedding,
                     types,
                     importanceThreshold,
-                    topK * CANDIDATE_MULTIPLIER,
+                    topK * candidateMultiplier,
                 ).collectList()
 
         if (!associativeHopEnabled) {
@@ -106,8 +108,8 @@ class MemoryRetrievalService(
     ): Mono<List<Memory>> {
         val trigger =
             candidates
-                .sortedByDescending { it.calculateRankedScore(RECENCY_WEIGHT) }
-                .firstOrNull { it.calculateRankedScore(RECENCY_WEIGHT) >= associativeHopMinScore }
+                .sortedByDescending { it.calculateRankedScore(recencyWeight) }
+                .firstOrNull { it.calculateRankedScore(recencyWeight) >= associativeHopMinScore }
                 ?: return Mono.just(candidates)
 
         return embeddingPort
@@ -138,7 +140,7 @@ class MemoryRetrievalService(
         memories: List<Memory>,
         topK: Int,
     ): List<Memory> {
-        val sorted = memories.sortedByDescending { memory -> memory.calculateRankedScore(RECENCY_WEIGHT) }
+        val sorted = memories.sortedByDescending { memory -> memory.calculateRankedScore(recencyWeight) }
         return sorted.take(topK)
     }
 
@@ -173,10 +175,5 @@ class MemoryRetrievalService(
                     ).thenReturn(updated)
             }.collectList()
             .map(this::groupByType)
-    }
-
-    private companion object {
-        const val RECENCY_WEIGHT = 0.1f
-        const val CANDIDATE_MULTIPLIER = 2
     }
 }

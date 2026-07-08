@@ -3,7 +3,7 @@ package com.miyou.app.domain.mission.port
 import com.miyou.app.domain.mission.model.MissionId
 import reactor.core.publisher.Mono
 
-interface CreditChargingPort {
+interface MissionCreditChargingPort {
     fun grantReward(command: CreditRewardCommand): Mono<CreditRewardResult>
 }
 

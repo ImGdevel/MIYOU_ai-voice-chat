@@ -30,4 +30,9 @@ enum class CreditErrorCode(
         HttpStatus.BAD_REQUEST,
         "지원하지 않는 결제 제공자입니다.",
     ),
+    USER_CREDIT_NOT_FOUND(
+        "USER_CREDIT_NOT_FOUND",
+        HttpStatus.INTERNAL_SERVER_ERROR,
+        "사용자 크레딧 기록을 찾을 수 없습니다.",
+    ),
 }

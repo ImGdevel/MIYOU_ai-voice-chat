@@ -54,7 +54,7 @@ class CreditRepositoryIntegrationTest : ContainerizedIntegrationTestSupport() {
 
         StepVerifier
             .create(userCreditAdapter.save(credit).then(userCreditAdapter.findByUserId(userId)))
-            .assertNext { found -> assertThat(found.balance()).isEqualTo(5000L) }
+            .assertNext { found -> assertThat(found.balance).isEqualTo(5000L) }
             .verifyComplete()
     }
 
@@ -62,7 +62,7 @@ class CreditRepositoryIntegrationTest : ContainerizedIntegrationTestSupport() {
     @DisplayName("트랜잭션 저장 후 최신순으로 조회한다")
     fun saveMultiple_thenFindByUserId_returnsDescOrder() {
         val userId = "tx-order-user"
-        val tx1 = CreditTransaction.of(userId, CreditTransactionType.CHARGE, SignupBonus(), 5000L, 0L, 5000L)
+        val tx1 = CreditTransaction.of(userId, CreditTransactionType.CHARGE, SignupBonus, 5000L, 0L, 5000L)
         Thread.sleep(5)
         val tx2 =
             CreditTransaction.of(
@@ -91,9 +91,9 @@ class CreditRepositoryIntegrationTest : ContainerizedIntegrationTestSupport() {
                     .then(creditTxAdapter.save(tx2))
                     .then(creditTxAdapter.save(tx3))
                     .thenMany(creditTxAdapter.findByUserIdOrderByCreatedAtDesc(userId, PageRequest.of(0, 10))),
-            ).assertNext { tx -> assertThat(tx.balanceBefore()).isEqualTo(4900L) }
-            .assertNext { tx -> assertThat(tx.balanceBefore()).isEqualTo(5000L) }
-            .assertNext { tx -> assertThat(tx.type()).isEqualTo(CreditTransactionType.CHARGE) }
+            ).assertNext { tx -> assertThat(tx.balanceBefore).isEqualTo(4900L) }
+            .assertNext { tx -> assertThat(tx.balanceBefore).isEqualTo(5000L) }
+            .assertNext { tx -> assertThat(tx.type).isEqualTo(CreditTransactionType.CHARGE) }
             .verifyComplete()
     }
 
@@ -117,11 +117,11 @@ class CreditRepositoryIntegrationTest : ContainerizedIntegrationTestSupport() {
             .create(
                 creditTxAdapter
                     .save(tx)
-                    .then(creditTxRepo.findById(tx.transactionId().value()))
+                    .then(creditTxRepo.findById(tx.transactionId.value))
                     .map(CreditTransactionDocument::toDomain),
             ).assertNext { restored ->
-                assertThat(restored.source().sourceType()).isEqualTo(CreditSourceType.CONVERSATION_DEDUCTION)
-                assertThat((restored.source() as ConversationDeduction).sessionId()).isEqualTo("my-session-xyz")
+                assertThat(restored.source.sourceType()).isEqualTo(CreditSourceType.CONVERSATION_DEDUCTION)
+                assertThat((restored.source as ConversationDeduction).sessionId()).isEqualTo("my-session-xyz")
             }.verifyComplete()
     }
 
@@ -144,11 +144,11 @@ class CreditRepositoryIntegrationTest : ContainerizedIntegrationTestSupport() {
             .create(
                 creditTxAdapter
                     .save(tx)
-                    .then(creditTxRepo.findById(tx.transactionId().value()))
+                    .then(creditTxRepo.findById(tx.transactionId.value))
                     .map(CreditTransactionDocument::toDomain),
             ).assertNext { restored ->
-                assertThat(restored.source().sourceType()).isEqualTo(CreditSourceType.PAYMENT_CHARGE)
-                assertThat((restored.source() as PaymentCharge).paymentId()).isEqualTo("toss-pay-001")
+                assertThat(restored.source.sourceType()).isEqualTo(CreditSourceType.PAYMENT_CHARGE)
+                assertThat((restored.source as PaymentCharge).paymentId()).isEqualTo("toss-pay-001")
             }.verifyComplete()
     }
 }

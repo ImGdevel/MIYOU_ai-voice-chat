@@ -23,11 +23,11 @@ data class UserMissionDocument(
 ) {
     companion object {
         fun fromDomain(userMission: UserMission): UserMissionDocument {
-            val compositeId = "${userMission.userId}:${userMission.missionId.value()}"
+            val compositeId = "${userMission.userId}:${userMission.missionId.value}"
             return UserMissionDocument(
                 compositeId,
                 userMission.userId,
-                userMission.missionId.value(),
+                userMission.missionId.value,
                 userMission.status.name,
                 userMission.completedAt,
                 userMission.rewardedAt,

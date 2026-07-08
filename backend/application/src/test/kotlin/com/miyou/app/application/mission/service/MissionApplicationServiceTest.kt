@@ -1,8 +1,10 @@
 package com.miyou.app.application.mission.service
 
-import com.miyou.app.domain.mission.port.CreditChargingPort
+import com.miyou.app.domain.mission.exception.MissionAlreadyCompletedException
+import com.miyou.app.domain.mission.exception.MissionNotFoundException
 import com.miyou.app.domain.mission.port.CreditRewardCommand
 import com.miyou.app.domain.mission.port.CreditRewardResult
+import com.miyou.app.domain.mission.port.MissionCreditChargingPort
 import com.miyou.app.fixture.MissionFixture
 import com.miyou.app.fixture.UserIdFixture
 import com.miyou.app.support.anyValue
@@ -17,8 +19,6 @@ import org.mockito.Mockito.verify
 import org.mockito.Mockito.`when`
 import org.mockito.invocation.InvocationOnMock
 import org.mockito.junit.jupiter.MockitoExtension
-import org.springframework.http.HttpStatus
-import org.springframework.web.server.ResponseStatusException
 import reactor.core.publisher.Flux
 import reactor.core.publisher.Mono
 import reactor.test.StepVerifier
@@ -34,7 +34,7 @@ class MissionApplicationServiceTest {
     private lateinit var userMissionRepository: com.miyou.app.domain.mission.port.UserMissionRepository
 
     @Mock
-    private lateinit var creditChargingPort: CreditChargingPort
+    private lateinit var creditChargingPort: MissionCreditChargingPort
 
     private lateinit var service: MissionApplicationService
 
@@ -115,7 +115,7 @@ class MissionApplicationServiceTest {
         StepVerifier
             .create(service.completeMission(userId, missionId))
             .expectErrorMatches { error ->
-                error is ResponseStatusException && error.statusCode == HttpStatus.NOT_FOUND
+                error is MissionNotFoundException
             }.verify()
 
         verify(
@@ -151,7 +151,7 @@ class MissionApplicationServiceTest {
         StepVerifier
             .create(service.completeMission(userId, missionId))
             .expectErrorMatches { error ->
-                error is ResponseStatusException && error.statusCode == HttpStatus.CONFLICT
+                error is MissionAlreadyCompletedException
             }.verify()
     }
 }

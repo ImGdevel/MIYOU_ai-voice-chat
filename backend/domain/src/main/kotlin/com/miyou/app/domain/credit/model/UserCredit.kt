@@ -59,10 +59,4 @@ data class UserCredit(
             return UserCredit(userId, initialBalance, 0L)
         }
     }
-
-    fun userId(): String = userId
-
-    fun balance(): Long = balance
-
-    fun version(): Long = version
 }

@@ -1,6 +1,8 @@
 package com.miyou.app.application.dialogue.service
 
 import com.miyou.app.application.dialogue.policy.SttPolicy
+import com.miyou.app.domain.dialogue.exception.AudioTooShortException
+import com.miyou.app.domain.dialogue.exception.InvalidAudioFileException
 import com.miyou.app.domain.dialogue.port.SttPort
 import org.assertj.core.api.Assertions.assertThat
 import org.junit.jupiter.api.DisplayName
@@ -11,7 +13,6 @@ import org.springframework.core.io.buffer.DefaultDataBufferFactory
 import org.springframework.http.HttpHeaders
 import org.springframework.http.MediaType
 import org.springframework.http.codec.multipart.FilePart
-import org.springframework.web.server.ResponseStatusException
 import reactor.core.publisher.Flux
 import reactor.test.StepVerifier
 
@@ -30,8 +31,7 @@ class DialogueSpeechServiceTest {
         StepVerifier
             .create(service.transcribe(textFile, "ko"))
             .expectErrorSatisfies { error ->
-                assertThat(error).isInstanceOf(ResponseStatusException::class.java)
-                assertThat((error as ResponseStatusException).statusCode.is4xxClientError).isTrue()
+                assertThat(error).isInstanceOf(InvalidAudioFileException::class.java)
             }.verify()
     }
 
@@ -49,8 +49,7 @@ class DialogueSpeechServiceTest {
         StepVerifier
             .create(service.transcribe(audioFile, "ko"))
             .expectErrorSatisfies { error ->
-                assertThat(error).isInstanceOf(ResponseStatusException::class.java)
-                assertThat((error as ResponseStatusException).statusCode.value()).isEqualTo(400)
+                assertThat(error).isInstanceOf(AudioTooShortException::class.java)
             }.verify()
     }
 

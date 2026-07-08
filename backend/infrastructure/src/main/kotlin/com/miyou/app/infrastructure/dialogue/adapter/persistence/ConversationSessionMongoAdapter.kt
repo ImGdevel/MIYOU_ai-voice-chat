@@ -4,6 +4,7 @@ import com.miyou.app.domain.dialogue.model.ConversationSession
 import com.miyou.app.domain.dialogue.model.ConversationSessionId
 import com.miyou.app.domain.dialogue.model.PersonaId
 import com.miyou.app.domain.dialogue.port.ConversationSessionRepository
+import com.miyou.app.infrastructure.common.constants.RedisKeys
 import com.miyou.app.infrastructure.dialogue.adapter.persistence.document.ConversationSessionDocument
 import com.miyou.app.infrastructure.dialogue.repository.ConversationSessionMongoRepository
 import io.github.oshai.kotlinlogging.KotlinLogging
@@ -27,7 +28,7 @@ class ConversationSessionMongoAdapter(
     }
 
     override fun findById(sessionId: ConversationSessionId): Mono<ConversationSession> =
-        mongoRepository.findById(sessionId.value()).map(::toDomain)
+        mongoRepository.findById(sessionId.value).map(::toDomain)
 
     override fun findByUserId(userId: String): Flux<ConversationSession> =
         mongoRepository.findActiveByUserId(userId, CREATED_AT_DESC).map(::toDomain)
@@ -48,7 +49,7 @@ class ConversationSessionMongoAdapter(
 
     override fun softDelete(sessionId: ConversationSessionId): Mono<ConversationSession> =
         mongoRepository
-            .findById(sessionId.value())
+            .findById(sessionId.value)
             .flatMap { document ->
                 val deleted = toDomain(document).softDelete()
                 mongoRepository
@@ -57,21 +58,21 @@ class ConversationSessionMongoAdapter(
             }.flatMap { deleted ->
                 evictHistoryCache(sessionId)
                     .onErrorResume { e ->
-                        log.warn(e) { "Failed to evict history cache for session ${sessionId.value()} on soft-delete" }
+                        log.warn(e) { "Failed to evict history cache for session ${sessionId.value} on soft-delete" }
                         Mono.empty()
                     }.thenReturn(deleted)
             }
 
     private fun evictHistoryCache(sessionId: ConversationSessionId): Mono<Void> =
-        redisTemplate.delete(HISTORY_KEY_PREFIX + sessionId.value()).then()
+        redisTemplate.delete(HISTORY_KEY_PREFIX + sessionId.value).then()
 
     private fun toDocument(session: ConversationSession): ConversationSessionDocument =
         ConversationSessionDocument(
-            session.sessionId().value(),
-            session.personaId().value(),
-            session.userId(),
-            session.createdAt(),
-            session.deletedAt(),
+            session.sessionId.value,
+            session.personaId.value,
+            session.userId,
+            session.createdAt,
+            session.deletedAt,
         )
 
     private fun toDomain(document: ConversationSessionDocument): ConversationSession =
@@ -84,7 +85,7 @@ class ConversationSessionMongoAdapter(
         )
 
     private companion object {
-        const val HISTORY_KEY_PREFIX = "dialogue:conversation:history:"
+        const val HISTORY_KEY_PREFIX = RedisKeys.DIALOGUE_HISTORY_PREFIX
         val CREATED_AT_DESC = Sort.by(Sort.Direction.DESC, "createdAt")
     }
 }

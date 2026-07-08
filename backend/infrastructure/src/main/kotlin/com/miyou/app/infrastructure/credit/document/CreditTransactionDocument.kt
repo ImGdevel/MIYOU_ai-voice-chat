@@ -35,16 +35,16 @@ data class CreditTransactionDocument(
     companion object {
         fun fromDomain(tx: CreditTransaction): CreditTransactionDocument =
             CreditTransactionDocument(
-                tx.transactionId().value(),
-                tx.userId(),
-                tx.type().name,
-                tx.source().sourceType().name,
-                serializeSource(tx.source()),
-                tx.amount(),
-                tx.balanceBefore(),
-                tx.balanceAfter(),
-                tx.referenceId(),
-                tx.createdAt(),
+                tx.transactionId.value,
+                tx.userId,
+                tx.type.name,
+                tx.source.sourceType().name,
+                serializeSource(tx.source),
+                tx.amount,
+                tx.balanceBefore,
+                tx.balanceAfter,
+                tx.referenceId,
+                tx.createdAt,
             )
 
         private fun serializeSource(source: CreditSource): Map<String, String> {
@@ -83,7 +83,7 @@ data class CreditTransactionDocument(
                 }
 
                 "SIGNUP_BONUS" -> {
-                    SignupBonus()
+                    SignupBonus
                 }
 
                 "PAYMENT_CHARGE" -> {

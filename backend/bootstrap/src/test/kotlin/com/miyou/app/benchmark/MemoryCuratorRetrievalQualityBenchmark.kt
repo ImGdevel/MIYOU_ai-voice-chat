@@ -7,6 +7,7 @@ import com.miyou.app.domain.memory.model.Memory
 import com.miyou.app.domain.memory.model.MemoryType
 import com.miyou.app.domain.memory.port.EmbeddingPort
 import com.miyou.app.domain.memory.port.VectorMemoryPort
+import com.miyou.app.domain.memory.service.MemoryDecayService
 import com.miyou.app.infrastructure.dialogue.config.properties.RagDialogueProperties
 import com.miyou.app.infrastructure.memory.adapter.SpringAiEmbeddingAdapter
 import com.miyou.app.infrastructure.memory.adapter.SpringAiVectorDbAdapter
@@ -92,7 +93,7 @@ class MemoryCuratorRetrievalQualityBenchmark {
         val embeddingPort = SpringAiEmbeddingAdapter(embeddingModel)
         val vectorMemoryPort = SpringAiVectorDbAdapter(vectorStore, qdrantClient, properties)
         val curatorPolicy = MemoryCuratorPolicy(0.05f, 0.1f, 0.9f, 0.1f, 90L)
-        val curatorService = MemoryCuratorService(vectorMemoryPort, curatorPolicy)
+        val curatorService = MemoryCuratorService(vectorMemoryPort, curatorPolicy, MemoryDecayService())
 
         val sessionId = ConversationSessionId.generate().value
         val query = "요즘 취미로 뭐 하고 지내?"

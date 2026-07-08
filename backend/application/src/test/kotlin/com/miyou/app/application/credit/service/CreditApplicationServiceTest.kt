@@ -2,6 +2,7 @@ package com.miyou.app.application.credit.service
 
 import com.miyou.app.application.credit.port.CreditTransactionRepository
 import com.miyou.app.domain.credit.exception.InsufficientCreditException
+import com.miyou.app.domain.credit.exception.UserCreditNotFoundException
 import com.miyou.app.domain.credit.model.CreditTransaction
 import com.miyou.app.domain.credit.model.CreditTransactionType
 import com.miyou.app.domain.credit.model.PaymentCharge
@@ -193,7 +194,7 @@ class CreditApplicationServiceTest {
             .create(service.refundForConversation(userId, sessionId.value))
             .expectErrorSatisfies { error ->
                 assertThat(error)
-                    .isInstanceOf(IllegalStateException::class.java)
+                    .isInstanceOf(UserCreditNotFoundException::class.java)
                     .hasMessageContaining("User credit record not found")
             }.verify()
 

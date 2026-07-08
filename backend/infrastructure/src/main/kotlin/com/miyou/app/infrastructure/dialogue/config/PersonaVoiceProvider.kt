@@ -45,16 +45,15 @@ class PersonaVoiceProvider(
                 voiceSettingsConfig.speed,
             )
 
-        return Voice
-            .builder()
-            .id(config.voiceId)
-            .name(personaKey)
-            .provider("supertone")
-            .settings(settings)
-            .language(config.language)
-            .style(VoiceStyle.fromString(config.style))
-            .outputFormat(AudioFormat.fromString(properties.supertone.outputFormat))
-            .build()
+        return Voice(
+            id = config.voiceId,
+            name = personaKey,
+            provider = "supertone",
+            settings = settings,
+            language = config.language,
+            style = VoiceStyle.fromString(config.style),
+            outputFormat = AudioFormat.fromString(properties.supertone.outputFormat),
+        )
     }
 
     companion object {

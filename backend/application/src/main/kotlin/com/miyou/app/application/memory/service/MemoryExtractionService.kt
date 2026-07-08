@@ -11,6 +11,7 @@ import com.miyou.app.domain.memory.port.ConversationCounterPort
 import com.miyou.app.domain.memory.port.EmbeddingPort
 import com.miyou.app.domain.memory.port.MemoryExtractionPort
 import com.miyou.app.domain.memory.port.VectorMemoryPort
+import com.miyou.app.domain.memory.service.MemoryDecayService
 import com.miyou.app.monitoring.port.MemoryExtractionMetricsPort
 import io.github.oshai.kotlinlogging.KotlinLogging
 import org.springframework.stereotype.Service
@@ -34,6 +35,7 @@ class MemoryExtractionService(
     private val retrievalService: MemoryRetrievalService,
     private val extractionMetrics: MemoryExtractionMetricsPort,
     private val conversationThreshold: Int,
+    private val memoryDecayService: MemoryDecayService,
 ) {
     private val logger = KotlinLogging.logger {}
 
@@ -119,7 +121,7 @@ class MemoryExtractionService(
         val target = existingMemories.firstOrNull { it.id == targetId } ?: return Mono.empty()
         if (target.archivedAt != null) return Mono.empty()
         return vectorMemoryPort
-            .applyDecayAndArchive(target.archive(Instant.now()))
+            .applyDecayAndArchive(memoryDecayService.archive(target, Instant.now()))
             .doOnSuccess {
                 logger.info { "모순 감지로 기존 메모리 아카이브 id=$targetId, 대체 내용=${extracted.content}" }
             }

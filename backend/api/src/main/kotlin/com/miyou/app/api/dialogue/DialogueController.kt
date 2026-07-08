@@ -1,5 +1,6 @@
 package com.miyou.app.api.dialogue
 
+import com.miyou.app.api.common.UserIdResolver
 import com.miyou.app.api.dialogue.docs.DialogueApi
 import com.miyou.app.api.dialogue.dto.CreateSessionRequest
 import com.miyou.app.api.dialogue.dto.CreateSessionResponse
@@ -9,15 +10,13 @@ import com.miyou.app.application.credit.usecase.CreditChargeUseCase
 import com.miyou.app.application.dialogue.service.DialogueSpeechService
 import com.miyou.app.common.model.AudioFormat
 import com.miyou.app.domain.auth.model.AuthenticatedUser
-import com.miyou.app.domain.credit.exception.InsufficientCreditException
+import com.miyou.app.domain.dialogue.exception.SessionNotFoundException
+import com.miyou.app.domain.dialogue.exception.UnsupportedAudioFormatException
 import com.miyou.app.domain.dialogue.model.ConversationSession
 import com.miyou.app.domain.dialogue.model.ConversationSessionId
 import com.miyou.app.domain.dialogue.model.PersonaId
 import com.miyou.app.domain.dialogue.port.ConversationSessionRepository
 import com.miyou.app.domain.dialogue.port.DialoguePipelineUseCase
-import com.miyou.app.exception.CommonErrorCode
-import com.miyou.app.exception.CreditErrorCode
-import com.miyou.app.exception.DialogueErrorCode
 import io.github.oshai.kotlinlogging.KotlinLogging
 import jakarta.validation.Valid
 import org.springframework.core.io.buffer.DataBuffer
@@ -34,7 +33,6 @@ import org.springframework.web.bind.annotation.RequestMapping
 import org.springframework.web.bind.annotation.RequestParam
 import org.springframework.web.bind.annotation.RequestPart
 import org.springframework.web.bind.annotation.RestController
-import org.springframework.web.server.ResponseStatusException
 import reactor.core.publisher.Flux
 import reactor.core.publisher.Mono
 
@@ -55,28 +53,14 @@ class DialogueController(
         @Valid @RequestBody request: CreateSessionRequest,
         @AuthenticationPrincipal principal: AuthenticatedUser?,
     ): Mono<CreateSessionResponse> {
-        val personaId =
-            if (request.personaId.isNotBlank()) {
-                PersonaId.of(
-                    request.personaId
-                )
-            } else {
-                PersonaId.defaultPersona()
-            }
-        val userId = principal?.userId ?: request.userId
-
-        val session = ConversationSession.create(personaId, userId)
-        return sessionRepository
-            .save(session)
+        val personaId = PersonaId.ofNullable(request.personaId)
+        return UserIdResolver
+            .resolve(principal, request.userId)
+            .map { userId -> ConversationSession.create(personaId, userId) }
+            .flatMap(sessionRepository::save)
             .flatMap { saved ->
                 creditChargeUseCase.initializeIfAbsent(saved.userId).thenReturn(saved)
-            }.map { saved ->
-                CreateSessionResponse(
-                    saved.sessionId.value,
-                    saved.userId,
-                    saved.personaId.value,
-                )
-            }
+            }.map(CreateSessionResponse::from)
     }
 
     @PostMapping(path = ["/audio"], produces = ["audio/wav", "audio/mpeg"])
@@ -89,11 +73,7 @@ class DialogueController(
             try {
                 AudioFormat.fromString(format)
             } catch (ex: IllegalArgumentException) {
-                throw ResponseStatusException(
-                    CommonErrorCode.UNSUPPORTED_AUDIO_FORMAT.httpStatus,
-                    CommonErrorCode.UNSUPPORTED_AUDIO_FORMAT.message,
-                    ex,
-                )
+                throw UnsupportedAudioFormatException(format, ex)
             }
 
         response.headers.contentType = MediaType.valueOf(targetFormat.mediaType)
@@ -101,17 +81,9 @@ class DialogueController(
 
         return sessionRepository
             .findById(sessionId)
-            .switchIfEmpty(
-                Mono.error(
-                    ResponseStatusException(
-                        CommonErrorCode.SESSION_NOT_FOUND.httpStatus,
-                        CommonErrorCode.SESSION_NOT_FOUND.message,
-                    ),
-                ),
-            ).flatMapMany { session ->
+            .switchIfEmpty(Mono.error(SessionNotFoundException(request.sessionId)))
+            .flatMapMany { session ->
                 dialoguePipelineUseCase.executeAudioStreaming(session, request.text, targetFormat)
-            }.onErrorMap(InsufficientCreditException::class.java) {
-                insufficientCreditException()
             }.map(bufferFactory::wrap)
     }
 
@@ -122,17 +94,9 @@ class DialogueController(
         val sessionId = ConversationSessionId.of(request.sessionId)
         return sessionRepository
             .findById(sessionId)
-            .switchIfEmpty(
-                Mono.error(
-                    ResponseStatusException(
-                        CommonErrorCode.SESSION_NOT_FOUND.httpStatus,
-                        CommonErrorCode.SESSION_NOT_FOUND.message,
-                    ),
-                ),
-            ).flatMapMany { session ->
+            .switchIfEmpty(Mono.error(SessionNotFoundException(request.sessionId)))
+            .flatMapMany { session ->
                 dialoguePipelineUseCase.executeTextOnly(session, request.text)
-            }.onErrorMap(InsufficientCreditException::class.java) {
-                insufficientCreditException()
             }
     }
 
@@ -146,10 +110,4 @@ class DialogueController(
             .transcribe(audioFile, language)
             .map(::SttTranscriptionResponse)
     }
-
-    private fun insufficientCreditException(): ResponseStatusException =
-        ResponseStatusException(
-            CreditErrorCode.INSUFFICIENT_CREDIT.httpStatus,
-            CreditErrorCode.INSUFFICIENT_CREDIT.message,
-        )
 }

@@ -17,7 +17,7 @@ class MissionTest {
             val mission1 = Mission.create(MissionType.SHARE_SERVICE, "공유 미션", "설명", 500L, false)
             val mission2 = Mission.create(MissionType.SHARE_SERVICE, "공유 미션", "설명", 500L, false)
 
-            assertThat(mission1.missionId().value()).isNotEqualTo(mission2.missionId().value())
+            assertThat(mission1.missionId().value).isNotEqualTo(mission2.missionId().value)
         }
 
         @Test

@@ -17,6 +17,4 @@ data class ConversationSessionId(
         @JvmStatic
         fun generate(): ConversationSessionId = ConversationSessionId(UUID.randomUUID().toString())
     }
-
-    fun value(): String = value
 }

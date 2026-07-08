@@ -2,6 +2,7 @@ package com.miyou.app.infrastructure.memory.adapter
 
 import com.fasterxml.jackson.module.kotlin.jacksonObjectMapper
 import com.miyou.app.domain.dialogue.port.LlmPort
+import com.miyou.app.domain.dialogue.port.TemplateLoaderPort
 import com.miyou.app.domain.memory.model.ConversationSnippet
 import com.miyou.app.domain.memory.model.Memory
 import com.miyou.app.domain.memory.model.MemoryEmotion
@@ -34,6 +35,9 @@ class LlmMemoryExtractionAdapterTest {
             LlmMemoryExtractionAdapter(
                 llmPort,
                 jacksonObjectMapper(),
+                object : TemplateLoaderPort {
+                    override fun load(templateName: String): String = "test system prompt"
+                },
                 MemoryExtractionConfig("gpt-4o-mini", 5, 0.2f, 0.3f),
             )
     }

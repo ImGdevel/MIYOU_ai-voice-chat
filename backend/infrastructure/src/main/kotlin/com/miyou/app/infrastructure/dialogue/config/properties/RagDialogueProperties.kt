@@ -35,6 +35,7 @@ class RagDialogueProperties {
         var voiceSettings: VoiceSettings = VoiceSettings()
         var creditMonitor: CreditMonitorConfig = CreditMonitorConfig()
         var circuitBreaker: CircuitBreakerConfig = CircuitBreakerConfig()
+        var maxRetries: Int = 2
     }
 
     class Stt {

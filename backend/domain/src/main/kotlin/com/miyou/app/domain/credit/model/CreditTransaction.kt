@@ -28,27 +28,7 @@ data class CreditTransaction(
             amount: Long,
             balanceBefore: Long,
             balanceAfter: Long,
-        ): CreditTransaction =
-            CreditTransaction(
-                CreditTransactionId.generate(),
-                userId,
-                type,
-                source,
-                amount,
-                balanceBefore,
-                balanceAfter,
-                referenceId = null,
-            ).withCreatedAtOrNow()
-
-        @JvmStatic
-        fun of(
-            userId: String,
-            type: CreditTransactionType,
-            source: CreditSource,
-            amount: Long,
-            balanceBefore: Long,
-            balanceAfter: Long,
-            referenceId: String,
+            referenceId: String? = null,
         ): CreditTransaction =
             CreditTransaction(
                 CreditTransactionId.generate(),
@@ -61,22 +41,4 @@ data class CreditTransaction(
                 referenceId = referenceId,
             ).withCreatedAtOrNow()
     }
-
-    fun transactionId(): CreditTransactionId = transactionId
-
-    fun userId(): String = userId
-
-    fun type(): CreditTransactionType = type
-
-    fun source(): CreditSource = source
-
-    fun amount(): Long = amount
-
-    fun balanceBefore(): Long = balanceBefore
-
-    fun balanceAfter(): Long = balanceAfter
-
-    fun referenceId(): String? = referenceId
-
-    fun createdAt(): java.time.Instant? = createdAt
 }

@@ -6,10 +6,10 @@ import com.miyou.app.application.dialogue.pipeline.stage.DialoguePostProcessingS
 import com.miyou.app.application.dialogue.pipeline.stage.DialogueTtsStreamService
 import com.miyou.app.common.model.AudioFormat
 import com.miyou.app.domain.dialogue.model.ConversationSession
-import com.miyou.app.domain.dialogue.port.CreditChargingPort
 import com.miyou.app.domain.dialogue.port.CreditDeductCommand
 import com.miyou.app.domain.dialogue.port.CreditDeductResult
 import com.miyou.app.domain.dialogue.port.CreditRefundCommand
+import com.miyou.app.domain.dialogue.port.DialogueCreditChargingPort
 import com.miyou.app.domain.dialogue.port.DialoguePipelineUseCase
 import com.miyou.app.monitoring.aop.MonitoredPipeline
 import io.github.oshai.kotlinlogging.KotlinLogging
@@ -29,7 +29,7 @@ class DialoguePipelineService(
     private val llmStreamService: DialogueLlmStreamService,
     private val ttsStreamService: DialogueTtsStreamService,
     private val postProcessingService: DialoguePostProcessingService,
-    private val creditChargingPort: CreditChargingPort,
+    private val creditChargingPort: DialogueCreditChargingPort,
 ) : DialoguePipelineUseCase {
     private val logger = KotlinLogging.logger {}
 

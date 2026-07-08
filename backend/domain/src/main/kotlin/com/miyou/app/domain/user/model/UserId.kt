@@ -17,6 +17,4 @@ data class UserId(
         @JvmStatic
         fun generate(): UserId = UserId(UUID.randomUUID().toString())
     }
-
-    fun value(): String = value
 }

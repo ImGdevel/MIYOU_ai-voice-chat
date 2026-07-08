@@ -7,9 +7,9 @@ import com.miyou.app.api.credit.dto.UserCreditResponse
 import com.miyou.app.application.credit.usecase.CreditChargeUseCase
 import com.miyou.app.application.credit.usecase.CreditQueryUseCase
 import com.miyou.app.domain.auth.model.AuthenticatedUser
+import com.miyou.app.domain.credit.exception.UnsupportedPaymentProviderException
 import com.miyou.app.domain.credit.model.PaymentCharge
 import com.miyou.app.domain.credit.port.PaymentGatewayPort
-import com.miyou.app.exception.CreditErrorCode
 import jakarta.validation.Valid
 import org.springframework.data.domain.PageRequest
 import org.springframework.http.HttpStatus
@@ -21,7 +21,6 @@ import org.springframework.web.bind.annotation.RequestMapping
 import org.springframework.web.bind.annotation.RequestParam
 import org.springframework.web.bind.annotation.ResponseStatus
 import org.springframework.web.bind.annotation.RestController
-import org.springframework.web.server.ResponseStatusException
 import reactor.core.publisher.Flux
 import reactor.core.publisher.Mono
 
@@ -69,12 +68,7 @@ class CreditController(
     ): Mono<CreditTransactionResponse> {
         val gateway =
             paymentGatewayMap[request.pgProvider]
-                ?: return Mono.error(
-                    ResponseStatusException(
-                        CreditErrorCode.UNSUPPORTED_PAYMENT_PROVIDER.httpStatus,
-                        CreditErrorCode.UNSUPPORTED_PAYMENT_PROVIDER.message,
-                    ),
-                )
+                ?: return Mono.error(UnsupportedPaymentProviderException(request.pgProvider))
 
         return UserIdResolver
             .resolve(principal, request.userId)
