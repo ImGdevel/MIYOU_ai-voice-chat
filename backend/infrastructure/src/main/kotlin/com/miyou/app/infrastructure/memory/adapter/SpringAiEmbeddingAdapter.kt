@@ -3,7 +3,6 @@ package com.miyou.app.infrastructure.memory.adapter
 import com.miyou.app.domain.cost.model.ModelPricing
 import com.miyou.app.domain.memory.model.MemoryEmbedding
 import com.miyou.app.domain.memory.port.EmbeddingPort
-import io.micrometer.core.instrument.Counter
 import io.micrometer.core.instrument.MeterRegistry
 import org.springframework.ai.embedding.EmbeddingModel
 import org.springframework.ai.embedding.EmbeddingRequest
@@ -44,19 +43,8 @@ class SpringAiEmbeddingAdapter(
         }
         val credits = ModelPricing.calculateEmbeddingCredits(model, tokens, false)
 
-        Counter
-            .builder("embedding.tokens")
-            .tag("model", model)
-            .description("임베딩 요청 토큰 사용량")
-            .register(meterRegistry)
-            .increment(tokens.toDouble())
-
-        Counter
-            .builder("embedding.cost.credits")
-            .tag("model", model)
-            .description("임베딩 요청 크레딧 비용")
-            .register(meterRegistry)
-            .increment(credits.toDouble())
+        meterRegistry.counter("embedding.tokens", "model", model).increment(tokens.toDouble())
+        meterRegistry.counter("embedding.cost.credits", "model", model).increment(credits.toDouble())
     }
 
     private companion object {

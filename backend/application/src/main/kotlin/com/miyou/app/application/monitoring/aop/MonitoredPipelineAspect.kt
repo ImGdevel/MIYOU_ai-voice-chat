@@ -36,7 +36,7 @@ class MonitoredPipelineAspect(
             return result
         }
 
-        val session = joinPoint.args[0] as ConversationSession
+        val session = joinPoint.args.getOrNull(0) as? ConversationSession ?: return result
         val text = joinPoint.args.getOrNull(1) as? String
         val tracker =
             pipelineMonitor.create(

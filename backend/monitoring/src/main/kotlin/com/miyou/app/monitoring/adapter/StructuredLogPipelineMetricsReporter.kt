@@ -22,8 +22,12 @@ class StructuredLogPipelineMetricsReporter(
     private val traceLogger = LoggerFactory.getLogger(TRACE_LOGGER_NAME)
 
     override fun report(summary: PipelineSummary) {
-        val record = buildTraceRecord(summary)
-        traceLogger.info(objectMapper.writeValueAsString(record))
+        try {
+            val record = buildTraceRecord(summary)
+            traceLogger.info(objectMapper.writeValueAsString(record))
+        } catch (error: Exception) {
+            traceLogger.error("Failed to serialize pipeline trace record for pipelineId=${summary.pipelineId}", error)
+        }
     }
 
     private fun buildTraceRecord(summary: PipelineSummary): Map<String, Any?> {

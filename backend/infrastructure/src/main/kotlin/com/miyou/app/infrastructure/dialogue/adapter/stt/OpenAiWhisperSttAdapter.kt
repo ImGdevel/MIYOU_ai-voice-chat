@@ -6,7 +6,6 @@ import com.miyou.app.domain.dialogue.model.AudioTranscriptionInput
 import com.miyou.app.domain.dialogue.port.SttPort
 import com.miyou.app.exception.BusinessException
 import io.github.oshai.kotlinlogging.KotlinLogging
-import io.micrometer.core.instrument.Counter
 import io.micrometer.core.instrument.MeterRegistry
 import org.springframework.core.io.ByteArrayResource
 import org.springframework.http.HttpHeaders
@@ -84,19 +83,8 @@ class OpenAiWhisperSttAdapter(
         }
         val credits = ModelPricing.calculateSttCredits(durationSeconds)
 
-        Counter
-            .builder("stt.audio.seconds")
-            .tag("model", model)
-            .description("STT 요청 오디오 길이(초)")
-            .register(meterRegistry)
-            .increment(durationSeconds)
-
-        Counter
-            .builder("stt.cost.credits")
-            .tag("model", model)
-            .description("STT 요청 크레딧 비용")
-            .register(meterRegistry)
-            .increment(credits.toDouble())
+        meterRegistry.counter("stt.audio.seconds", "model", model).increment(durationSeconds)
+        meterRegistry.counter("stt.cost.credits", "model", model).increment(credits.toDouble())
     }
 
     private fun normalizeBaseUrl(baseUrl: String): String {
