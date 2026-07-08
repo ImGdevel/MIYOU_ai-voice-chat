@@ -40,4 +40,14 @@ enum class CommonErrorCode(
         HttpStatus.INTERNAL_SERVER_ERROR,
         "서버 오류가 발생했습니다.",
     ),
+    INVALID_REFRESH_TOKEN(
+        "INVALID_REFRESH_TOKEN",
+        HttpStatus.UNAUTHORIZED,
+        "유효하지 않거나 만료된 리프레시 토큰입니다.",
+    ),
+    PIPELINE_NOT_FOUND(
+        "PIPELINE_NOT_FOUND",
+        HttpStatus.NOT_FOUND,
+        "요청한 파이프라인을 찾을 수 없습니다.",
+    ),
 }

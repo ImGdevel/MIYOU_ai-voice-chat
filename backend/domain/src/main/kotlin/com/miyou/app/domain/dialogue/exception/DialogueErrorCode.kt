@@ -1,5 +1,6 @@
-package com.miyou.app.exception
+package com.miyou.app.domain.dialogue.exception
 
+import com.miyou.app.exception.ErrorCode
 import org.springframework.http.HttpStatus
 
 /**
@@ -56,3 +57,5 @@ enum class DialogueErrorCode(
         "음성 합성에 실패했습니다.",
     ),
 }
+// Dummy comment for recompilation
+

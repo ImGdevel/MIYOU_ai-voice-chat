@@ -9,8 +9,8 @@ data class Mission(
     val repeatable: Boolean,
 ) {
     init {
-        require(name.isNotBlank()) { "mission name cannot be blank" }
-        require(rewardAmount > 0) { "rewardAmount must be positive" }
+        require(name.isNotBlank()) { "미션 이름은 비어 있을 수 없습니다." }
+        require(rewardAmount > 0) { "보상 금액은 양수여야 합니다." }
     }
 
     companion object {

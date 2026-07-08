@@ -1,5 +1,6 @@
-package com.miyou.app.exception
+package com.miyou.app.domain.credit.exception
 
+import com.miyou.app.exception.ErrorCode
 import org.springframework.http.HttpStatus
 
 /**

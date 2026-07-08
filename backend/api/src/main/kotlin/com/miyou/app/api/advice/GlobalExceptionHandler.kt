@@ -1,26 +1,25 @@
 package com.miyou.app.api.advice
 
 import com.miyou.app.domain.auth.exception.InvalidRefreshTokenException
+import com.miyou.app.domain.credit.exception.CreditErrorCode
 import com.miyou.app.domain.credit.exception.InsufficientCreditException
 import com.miyou.app.domain.credit.exception.UnsupportedPaymentProviderException
 import com.miyou.app.domain.credit.exception.UserCreditNotFoundException
 import com.miyou.app.domain.dialogue.exception.AudioFileTooLargeException
 import com.miyou.app.domain.dialogue.exception.AudioTooShortException
+import com.miyou.app.domain.dialogue.exception.DialogueErrorCode
 import com.miyou.app.domain.dialogue.exception.InvalidAudioFileException
 import com.miyou.app.domain.dialogue.exception.PersonaNotFoundException
 import com.miyou.app.domain.dialogue.exception.SessionNotFoundException
 import com.miyou.app.domain.dialogue.exception.UnsupportedAudioFormatException
-import com.miyou.app.domain.mission.exception.MissionAlreadyCompletedException
-import com.miyou.app.domain.mission.exception.MissionNotFoundException
+import com.miyou.app.domain.mission.exception.MissionErrorCode
+import com.miyou.app.exception.BusinessException
 import com.miyou.app.exception.CommonErrorCode
-import com.miyou.app.exception.CreditErrorCode
-import com.miyou.app.exception.DialogueErrorCode
 import com.miyou.app.exception.ErrorResponse
-import com.miyou.app.exception.MissionErrorCode
-import com.miyou.app.monitoring.exception.PipelineNotFoundException
 import io.github.oshai.kotlinlogging.KotlinLogging
 import org.springframework.http.HttpStatus
 import org.springframework.http.ResponseEntity
+import org.springframework.http.server.reactive.ServerHttpRequest
 import org.springframework.web.bind.annotation.ExceptionHandler
 import org.springframework.web.bind.annotation.RestControllerAdvice
 import org.springframework.web.server.ResponseStatusException
@@ -233,37 +232,24 @@ class GlobalExceptionHandler {
     }
 
     /**
-     * MissionNotFoundException 처리.
+     * BusinessException 처리.
      */
-    @ExceptionHandler(MissionNotFoundException::class)
-    fun handleMissionNotFound(ex: MissionNotFoundException): ResponseEntity<ErrorResponse> {
-        logger.warn { "Mission not found - missionId=${ex.missionId}" }
+    @ExceptionHandler(BusinessException::class)
+    fun handleBusinessException(
+        ex: BusinessException,
+        request: ServerHttpRequest,
+    ): ResponseEntity<ErrorResponse> {
+        logger.warn { "Business exception occurred - code=${ex.errorCode.code}, message=${ex.message}" }
         val errorResponse =
             ErrorResponse(
-                code = MissionErrorCode.MISSION_NOT_FOUND.code,
-                message = MissionErrorCode.MISSION_NOT_FOUND.message,
+                code = ex.errorCode.code,
+                message = ex.message,
                 timestamp = LocalDateTime.now(),
+                path = request.path.value(),
+                details = ex.details.takeIf { it.isNotEmpty() },
             )
         return ResponseEntity
-            .status(MissionErrorCode.MISSION_NOT_FOUND.httpStatus)
-            .contentType(org.springframework.http.MediaType.APPLICATION_JSON)
-            .body(errorResponse)
-    }
-
-    /**
-     * MissionAlreadyCompletedException 처리.
-     */
-    @ExceptionHandler(MissionAlreadyCompletedException::class)
-    fun handleMissionAlreadyCompleted(ex: MissionAlreadyCompletedException): ResponseEntity<ErrorResponse> {
-        logger.warn { "Mission already completed - missionId=${ex.missionId}" }
-        val errorResponse =
-            ErrorResponse(
-                code = MissionErrorCode.MISSION_ALREADY_COMPLETED.code,
-                message = ex.message ?: MissionErrorCode.MISSION_ALREADY_COMPLETED.message,
-                timestamp = LocalDateTime.now(),
-            )
-        return ResponseEntity
-            .status(MissionErrorCode.MISSION_ALREADY_COMPLETED.httpStatus)
+            .status(ex.errorCode.httpStatus)
             .contentType(org.springframework.http.MediaType.APPLICATION_JSON)
             .body(errorResponse)
     }
@@ -282,24 +268,6 @@ class GlobalExceptionHandler {
             )
         return ResponseEntity
             .status(ex.statusCode)
-            .contentType(org.springframework.http.MediaType.APPLICATION_JSON)
-            .body(errorResponse)
-    }
-
-    /**
-     * PipelineNotFoundException 처리.
-     */
-    @ExceptionHandler(PipelineNotFoundException::class)
-    fun handlePipelineNotFound(ex: PipelineNotFoundException): ResponseEntity<ErrorResponse> {
-        logger.warn { "Pipeline not found - pipelineId=${ex.pipelineId}" }
-        val errorResponse =
-            ErrorResponse(
-                code = CommonErrorCode.RESOURCE_NOT_FOUND.code,
-                message = "요청한 리소스를 찾을 수 없습니다.",
-                timestamp = LocalDateTime.now(),
-            )
-        return ResponseEntity
-            .status(HttpStatus.NOT_FOUND)
             .contentType(org.springframework.http.MediaType.APPLICATION_JSON)
             .body(errorResponse)
     }

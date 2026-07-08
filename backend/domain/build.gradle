@@ -10,6 +10,8 @@ kotlin {
 
 dependencies {
 	implementation project(':backend:common')
+	implementation project(':backend:exception')
+	implementation 'org.springframework:spring-web'
 	implementation 'io.projectreactor:reactor-core'
 
 	testImplementation 'org.junit.jupiter:junit-jupiter'
@@ -18,6 +20,8 @@ dependencies {
 	testRuntimeOnly 'org.junit.platform:junit-platform-launcher'
 
 	testFixturesImplementation 'org.mockito:mockito-core'
+	testFixturesImplementation project(':backend:domain')
+	testFixturesImplementation files(tasks.compileKotlin.destinationDirectory)
 }
 
 test {

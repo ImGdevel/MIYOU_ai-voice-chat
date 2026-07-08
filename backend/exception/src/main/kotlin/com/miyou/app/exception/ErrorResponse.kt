@@ -15,4 +15,5 @@ data class ErrorResponse(
     val message: String,
     val timestamp: LocalDateTime = LocalDateTime.now(),
     val path: String? = null,
+    val details: Map<String, Any>? = null,
 )

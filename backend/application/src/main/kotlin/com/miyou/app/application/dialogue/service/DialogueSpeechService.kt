@@ -32,13 +32,13 @@ class DialogueSpeechService(
     ): Mono<AudioTranscriptionInput> {
         val contentType: MediaType? = filePart.headers().contentType
         if (contentType == null || contentType.type != "audio") {
-            return Mono.error(InvalidAudioFileException())
+            return Mono.error(InvalidAudioFileException("contentType is not audio: $contentType"))
         }
         // AudioTranscriptionInput의 require(fileName.isNotBlank())까지 새어들어가면 400이
         // 아니라 500으로 응답된다 - multipart 파일명은 Bean Validation 대상이 아니라서
         // 여기서 직접 막아야 한다.
         if (filePart.filename().isBlank()) {
-            return Mono.error(InvalidAudioFileException())
+            return Mono.error(InvalidAudioFileException("filename is blank"))
         }
 
         return DataBufferUtils
@@ -58,12 +58,12 @@ class DialogueSpeechService(
 
     private fun validateAudioSize(size: Int): Mono<Unit> {
         if (size < MIN_STT_AUDIO_BYTES) {
-            return Mono.error(AudioTooShortException())
+            return Mono.error(AudioTooShortException(size = size, minSize = MIN_STT_AUDIO_BYTES))
         }
 
         val maxFileSizeBytes = sttPolicy.maxFileSizeBytes
         if (size > maxFileSizeBytes) {
-            return Mono.error(AudioFileTooLargeException())
+            return Mono.error(AudioFileTooLargeException(size = size, maxSize = maxFileSizeBytes.toInt()))
         }
         return Mono.just(Unit)
     }

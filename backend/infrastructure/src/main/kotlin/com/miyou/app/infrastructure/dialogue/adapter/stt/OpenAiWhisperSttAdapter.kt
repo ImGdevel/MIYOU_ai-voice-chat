@@ -1,8 +1,8 @@
 package com.miyou.app.infrastructure.dialogue.adapter.stt
 
+import com.miyou.app.domain.dialogue.exception.DialogueErrorCode
 import com.miyou.app.domain.dialogue.model.AudioTranscriptionInput
 import com.miyou.app.domain.dialogue.port.SttPort
-import com.miyou.app.exception.DialogueErrorCode
 import io.github.oshai.kotlinlogging.KotlinLogging
 import org.springframework.core.io.ByteArrayResource
 import org.springframework.http.HttpHeaders
