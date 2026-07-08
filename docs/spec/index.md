@@ -4,7 +4,7 @@
 
 ## Documents
 
-- 현재 등록된 문서 없음.
+- [tech/monitoring-data-collection/README.md](tech/monitoring-data-collection/README.md) — 모니터링/메트릭 시스템이 실제로 수집·저장·노출하는 전체 데이터 인벤토리 및 죽은 코드/키 불일치 목록.
 
 ## Rule
 
