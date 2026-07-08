@@ -37,6 +37,7 @@ class DialogueTtsStreamServiceTest {
         val service = DialogueTtsStreamService(ttsPort, sentenceAssembler, pipelineTracer, voiceProvider)
         val prepareCallCount = AtomicInteger()
 
+        // 모의 객체 설정: TTS 포트 준비 및 파이프라인 트레이서 설정
         `when`(ttsPort.prepare()).thenAnswer {
             Mono.defer {
                 prepareCallCount.incrementAndGet()
@@ -51,6 +52,7 @@ class DialogueTtsStreamServiceTest {
 
         val warmup = service.prepareTtsWarmup()
 
+        // 실행 및 검증: 연속해서 두 번 호출하더라도 실제 준비는 단 한 번만 실행되는지 확인 (캐싱 여부 검증)
         StepVerifier
             .create(warmup.then(warmup))
             .verifyComplete()

@@ -43,8 +43,9 @@ class DialogueControllerCreditTest {
     private lateinit var creditChargeUseCase: CreditChargeUseCase
 
     @Test
-    @DisplayName("audio dialogue proceeds when the user has enough credit")
+    @DisplayName("사용자의 크레딧이 충분할 때 오디오 대화가 정상적으로 진행된다")
     fun audioDialogue_proceedsWhenCreditIsSufficient() {
+        // given: 세션 ID 및 테스트 리퀘스트 데이터 설정
         val sessionIdValue = "credit-session-1"
         val session = ConversationSessionFixture.create(sessionIdValue)
         val request = RagDialogueRequest(sessionIdValue, "hello", Instant.now())
@@ -53,6 +54,7 @@ class DialogueControllerCreditTest {
         `when`(dialoguePipelineUseCase.executeAudioStreaming(session, "hello", AudioFormat.WAV))
             .thenReturn(Flux.just("audio-bytes".toByteArray()))
 
+        // when & then: 오디오 스트리밍 대화 요청 시 HTTP 200 응답 확인
         webTestClient
             .post()
             .uri("/rag/dialogue/audio")
@@ -65,8 +67,9 @@ class DialogueControllerCreditTest {
     }
 
     @Test
-    @DisplayName("audio dialogue returns 402 when credit is insufficient")
+    @DisplayName("크레딧이 부족할 때 오디오 대화는 402 코드를 반환한다")
     fun audioDialogue_returns402WhenCreditIsInsufficient() {
+        // given: 크레딧이 부족한 사용자의 세션 정보
         val sessionIdValue = "credit-session-low"
         val session = ConversationSessionFixture.create(sessionIdValue)
         val request = RagDialogueRequest(sessionIdValue, "hello", Instant.now())
@@ -75,6 +78,7 @@ class DialogueControllerCreditTest {
         `when`(dialoguePipelineUseCase.executeAudioStreaming(session, "hello", AudioFormat.WAV))
             .thenReturn(Flux.error(InsufficientCreditException(session.userId, 99L, 100L)))
 
+        // when & then: 크레딧 부족 예외 발생 시 HTTP 402(Payment Required) 상태코드가 반환되는지 확인
         webTestClient
             .post()
             .uri("/rag/dialogue/audio")
@@ -85,6 +89,7 @@ class DialogueControllerCreditTest {
             .expectStatus()
             .isEqualTo(402)
 
+        // 실제로 파이프라인 유스케이스가 실행되었는지 확인
         verify(dialoguePipelineUseCase).executeAudioStreaming(session, "hello", AudioFormat.WAV)
     }
 }

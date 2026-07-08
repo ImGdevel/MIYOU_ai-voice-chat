@@ -32,6 +32,9 @@ class DialogueSpeechServiceTest {
             .create(service.transcribe(textFile, "ko"))
             .expectErrorSatisfies { error ->
                 assertThat(error).isInstanceOf(InvalidAudioFileException::class.java)
+                val ex = error as InvalidAudioFileException
+                assertThat(ex.reason).contains("contentType is not audio")
+                assertThat(ex.details["reason"]).isEqualTo("contentType is not audio: text/plain")
             }.verify()
     }
 
@@ -50,6 +53,11 @@ class DialogueSpeechServiceTest {
             .create(service.transcribe(audioFile, "ko"))
             .expectErrorSatisfies { error ->
                 assertThat(error).isInstanceOf(AudioTooShortException::class.java)
+                val ex = error as AudioTooShortException
+                assertThat(ex.size).isEqualTo(310)
+                assertThat(ex.minSize).isEqualTo(1024)
+                assertThat(ex.details["size"]).isEqualTo(310)
+                assertThat(ex.details["minSize"]).isEqualTo(1024)
             }.verify()
     }
 
@@ -68,6 +76,9 @@ class DialogueSpeechServiceTest {
             .create(service.transcribe(audioFile, "ko"))
             .expectErrorSatisfies { error ->
                 assertThat(error).isInstanceOf(InvalidAudioFileException::class.java)
+                val ex = error as InvalidAudioFileException
+                assertThat(ex.reason).isEqualTo("filename is blank")
+                assertThat(ex.details["reason"]).isEqualTo("filename is blank")
             }.verify()
     }
 

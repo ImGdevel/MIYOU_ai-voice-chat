@@ -43,14 +43,16 @@ class CreditControllerTest {
     private lateinit var tossGateway: PaymentGatewayPort
 
     @Test
-    @DisplayName("getBalance returns the user's balance")
+    @DisplayName("사용자의 크레딧 잔액을 반환한다")
     fun getBalance_returnsUserBalance() {
+        // given
         val userId = UserIdFixture.create()
 
         `when`(creditChargeUseCase.initializeIfAbsent(userId)).thenReturn(Mono.empty())
         `when`(creditQueryUseCase.getBalance(userId))
             .thenReturn(Mono.just(UserCreditFixture.create(userId, 4900L)))
 
+        // when & then
         webTestClient
             .get()
             .uri("/credit/balance?userId={id}", userId)
@@ -65,8 +67,9 @@ class CreditControllerTest {
     }
 
     @Test
-    @DisplayName("getTransactions returns the user's transaction history")
+    @DisplayName("사용자의 크레딧 거래 내역을 반환한다")
     fun getTransactions_returnsUserTransactionHistory() {
+        // given
         val userId = UserIdFixture.create()
         val pageable = PageRequest.of(0, 20)
         val tx1 = CreditTransactionFixture.deduction(userId, 5000L)
@@ -74,6 +77,7 @@ class CreditControllerTest {
 
         `when`(creditQueryUseCase.getTransactions(userId, pageable)).thenReturn(Flux.just(tx1, tx2))
 
+        // when & then
         webTestClient
             .get()
             .uri("/credit/transactions?userId={id}", userId)
@@ -86,8 +90,9 @@ class CreditControllerTest {
     }
 
     @Test
-    @DisplayName("chargeByPayment confirms the payment and creates a charge transaction")
+    @DisplayName("결제를 승인하고 크레딧 충전 거래를 생성한다")
     fun chargeByPayment_confirmsPaymentAndCreatesChargeTransaction() {
+        // given
         val userId = UserIdFixture.create()
         val request = ChargeByPaymentRequest(userId, "paykey-001", "order-001", "toss", 10000L)
         val confirmRequest = PaymentGatewayPort.PaymentConfirmRequest("paykey-001", "order-001", 10000L)
@@ -107,6 +112,7 @@ class CreditControllerTest {
         `when`(creditChargeUseCase.chargeByPayment(userId, 10000L, PaymentCharge("paykey-001", "toss")))
             .thenReturn(Mono.just(transaction))
 
+        // when & then
         webTestClient
             .post()
             .uri("/credit/charge/payment")
@@ -126,9 +132,10 @@ class CreditControllerTest {
 
     @Test
     @DisplayName(
-        "getBalance prefers the authenticated principal's userId over the query param userId (anonymous+OAuth coexistence)"
+        "인증된 사용자의 userId를 쿼리 파라미터의 userId보다 우선하여 사용한다 (익명 및 소셜 로그인 공존 상황)"
     )
     fun getBalance_authenticatedPrincipal_overridesQueryParamUserId() {
+        // given: 인증 정보로 로그인된 유저 ID 설정
         val authenticatedUserId = "authenticated-user-1"
         val queryParamUserId = "different-anonymous-user"
         val principal = AuthenticatedUser(authenticatedUserId)
@@ -137,6 +144,7 @@ class CreditControllerTest {
         `when`(creditQueryUseCase.getBalance(authenticatedUserId))
             .thenReturn(Mono.just(UserCreditFixture.create(authenticatedUserId, 1234L)))
 
+        // when & then: 쿼리 파라미터로 다른 유저 ID를 넘겨도 인증 객체의 유저 ID를 우선으로 응답받아야 함
         webTestClient
             .mutateWith(mockAuthentication(UsernamePasswordAuthenticationToken(principal, null, emptyList())))
             .get()

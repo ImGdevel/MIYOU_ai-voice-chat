@@ -21,6 +21,7 @@ class SentenceAssemblerTest {
 
         val result = sentenceAssembler.assemble(tokens)
 
+        // 실행 및 검증: 단어 토큰들이 합쳐져 하나의 문장으로 완성되는지 확인
         StepVerifier
             .create(result)
             .expectNext("Hello world.")

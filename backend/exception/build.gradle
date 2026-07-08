@@ -7,10 +7,6 @@ kotlin {
 	jvmToolchain(21)
 }
 
-dependencies {
-	implementation 'org.springframework:spring-web'
-}
-
 ktlint {
 	version.set("1.8.0")
 	verbose.set(true)

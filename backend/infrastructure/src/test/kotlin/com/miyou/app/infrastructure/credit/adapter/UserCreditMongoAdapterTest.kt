@@ -34,15 +34,17 @@ class UserCreditMongoAdapterTest {
     }
 
     @Nested
-    @DisplayName("findByUserId")
+    @DisplayName("사용자 ID로 크레딧 조회 (findByUserId)")
     inner class FindByUserId {
         @Test
         @DisplayName("사용자가 존재하면 도메인 객체를 반환한다")
         fun findByUserId_existing_returnsDomain() {
+            // given
             val userId = UserIdFixture.create()
             val doc = UserCreditDocument.fromDomain(UserCreditFixture.create(userId, 3000L))
             `when`(mongoRepository.findByUserId(userId)).thenReturn(Mono.just(doc))
 
+            // when & then: 조회 시 DB 다큐먼트에서 변환된 도메인 객체의 유저 ID와 잔액 확인
             StepVerifier
                 .create(adapter.findByUserId(userId))
                 .assertNext { credit ->
@@ -54,9 +56,11 @@ class UserCreditMongoAdapterTest {
         @Test
         @DisplayName("사용자가 없으면 빈 결과를 반환한다")
         fun findByUserId_notFound_returnsEmpty() {
+            // given
             val userId = UserIdFixture.create()
             `when`(mongoRepository.findByUserId(userId)).thenReturn(Mono.empty())
 
+            // when & then: 조회 결과가 없는 경우 빈 Mono 반환 검증
             StepVerifier
                 .create(adapter.findByUserId(userId))
                 .verifyComplete()
@@ -65,23 +69,26 @@ class UserCreditMongoAdapterTest {
         @Test
         @DisplayName("저장소 오류를 그대로 전파한다")
         fun findByUserId_error_propagates() {
+            // given
             val userId = UserIdFixture.create()
             `when`(mongoRepository.findByUserId(userId))
-                .thenReturn(Mono.error(RuntimeException("DB connection failed")))
+                .thenReturn(Mono.error(RuntimeException("DB 연결 실패")))
 
+            // when & then: DB 에러가 그대로 전파되는지 확인
             StepVerifier
                 .create(adapter.findByUserId(userId))
-                .expectErrorMessage("DB connection failed")
+                .expectErrorMessage("DB 연결 실패")
                 .verify()
         }
     }
 
     @Nested
-    @DisplayName("save")
+    @DisplayName("크레딧 저장 (save)")
     inner class Save {
         @Test
         @DisplayName("도메인 객체를 변환해 저장하고 저장된 결과를 반환한다")
         fun save_convertsAndPersists() {
+            // given
             val userId = UserIdFixture.create()
             val credit: UserCredit = UserCreditFixture.create(userId, 5000L)
             val captor = ArgumentCaptor.forClass(UserCreditDocument::class.java)
@@ -90,6 +97,7 @@ class UserCreditMongoAdapterTest {
                     Mono.just(invocation.getArgument<UserCreditDocument>(0))
                 }
 
+            // when & then: 도메인 객체 저장 후 올바르게 변환 및 리턴되었는지 검증
             StepVerifier
                 .create(adapter.save(credit))
                 .assertNext { saved ->
@@ -97,6 +105,7 @@ class UserCreditMongoAdapterTest {
                     assertThat(saved.balance).isEqualTo(5000L)
                 }.verifyComplete()
 
+            // 실제로 리포지토리에 캡처되어 전달된 다큐먼트 상태 확인
             val captured = captor.value
             assertThat(captured.userId).isEqualTo(userId)
             assertThat(captured.balance).isEqualTo(5000L)
@@ -105,13 +114,15 @@ class UserCreditMongoAdapterTest {
         @Test
         @DisplayName("저장 중 발생한 오류를 그대로 전파한다")
         fun save_error_propagates() {
+            // given
             val credit = UserCreditFixture.create()
             `when`(mongoRepository.save(any()))
-                .thenReturn(Mono.error(RuntimeException("save failed")))
+                .thenReturn(Mono.error(RuntimeException("저장 실패")))
 
+            // when & then: 저장 에러 전파 검증
             StepVerifier
                 .create(adapter.save(credit))
-                .expectErrorMessage("save failed")
+                .expectErrorMessage("저장 실패")
                 .verify()
         }
     }

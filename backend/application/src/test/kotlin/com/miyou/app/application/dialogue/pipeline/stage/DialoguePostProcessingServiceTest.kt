@@ -77,10 +77,12 @@ class DialoguePostProcessingServiceTest {
             .thenAnswer { Mono.just(turn.withResponse("answer one answer two")) }
         `when`(conversationCounterPort.increment(sessionId.value)).thenReturn(Mono.just(1L))
 
+        // 실행 및 검증: 스트림으로 들어오는 답변 조각들을 모아 대화 턴이 정상적으로 영속화되는지 확인
         StepVerifier
             .create(service.persistAndExtract(Mono.just(inputs), Flux.just("answer one", "answer two")))
             .verifyComplete()
 
+        // 검증: 영속화 로직과 대화 카운트 증가 로직이 성공적으로 호출되었는지 확인
         verify(pipelineTracer).tracePersistence<ConversationTurn>(anyValue())
         verify(conversationCounterPort).increment(sessionId.value)
     }

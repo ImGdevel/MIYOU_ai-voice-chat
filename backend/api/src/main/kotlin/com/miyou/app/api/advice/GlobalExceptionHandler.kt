@@ -1,26 +1,13 @@
 package com.miyou.app.api.advice
 
-import com.miyou.app.domain.auth.exception.InvalidRefreshTokenException
-import com.miyou.app.domain.credit.exception.InsufficientCreditException
-import com.miyou.app.domain.credit.exception.UnsupportedPaymentProviderException
-import com.miyou.app.domain.credit.exception.UserCreditNotFoundException
-import com.miyou.app.domain.dialogue.exception.AudioFileTooLargeException
-import com.miyou.app.domain.dialogue.exception.AudioTooShortException
-import com.miyou.app.domain.dialogue.exception.InvalidAudioFileException
-import com.miyou.app.domain.dialogue.exception.PersonaNotFoundException
-import com.miyou.app.domain.dialogue.exception.SessionNotFoundException
-import com.miyou.app.domain.dialogue.exception.UnsupportedAudioFormatException
-import com.miyou.app.domain.mission.exception.MissionAlreadyCompletedException
-import com.miyou.app.domain.mission.exception.MissionNotFoundException
+import com.miyou.app.exception.BusinessException
 import com.miyou.app.exception.CommonErrorCode
-import com.miyou.app.exception.CreditErrorCode
-import com.miyou.app.exception.DialogueErrorCode
 import com.miyou.app.exception.ErrorResponse
-import com.miyou.app.exception.MissionErrorCode
-import com.miyou.app.monitoring.exception.PipelineNotFoundException
 import io.github.oshai.kotlinlogging.KotlinLogging
 import org.springframework.http.HttpStatus
+import org.springframework.http.MediaType
 import org.springframework.http.ResponseEntity
+import org.springframework.http.server.reactive.ServerHttpRequest
 import org.springframework.web.bind.annotation.ExceptionHandler
 import org.springframework.web.bind.annotation.RestControllerAdvice
 import org.springframework.web.server.ResponseStatusException
@@ -30,6 +17,13 @@ import java.time.LocalDateTime
  * 글로벌 예외 처리.
  *
  * 모든 예외를 표준화된 ErrorResponse로 변환.
+ *
+ * ## BusinessException은 단일 핸들러로 통합 처리
+ * 예전엔 구체 예외 타입마다 [ExceptionHandler]를 따로 뒀는데, 전부 동일한
+ * `code/message/details` 조립 로직을 반복하면서 일부는 details/path를 응답에서
+ * 빠뜨리는 버그가 있었다. 지금은 [handleBusinessException] 하나가 [BusinessException]의
+ * `errorCode.category`를 [ErrorCategoryHttpStatusMapping]으로 HttpStatus로 변환해
+ * 일괄 처리한다 - 새 도메인 예외를 추가해도 이 파일은 안 건드려도 된다.
  *
  * ## require()/check() 예외가 여기 안 걸리는 이유
  * 도메인 모델의 `require()`/`check()`가 던지는 `IllegalArgumentException`/
@@ -51,220 +45,34 @@ class GlobalExceptionHandler {
     private val logger = KotlinLogging.logger {}
 
     /**
-     * InsufficientCreditException 처리.
+     * BusinessException(및 모든 도메인 하위 예외) 통합 처리.
      */
-    @ExceptionHandler(InsufficientCreditException::class)
-    fun handleInsufficientCredit(ex: InsufficientCreditException): ResponseEntity<ErrorResponse> {
-        logger.warn {
-            "Insufficient credit - userId=${ex.userId}, current=${ex.currentBalance}, required=${ex.requiredAmount}"
+    @ExceptionHandler(BusinessException::class)
+    fun handleBusinessException(
+        ex: BusinessException,
+        request: ServerHttpRequest,
+    ): ResponseEntity<ErrorResponse> {
+        val status = ErrorCategoryHttpStatusMapping.resolve(ex.errorCode.category)
+        val logMessage = {
+            "Business exception - code=${ex.errorCode.code}, category=${ex.errorCode.category}, details=${ex.details}"
+        }
+        if (status.is5xxServerError) {
+            // 5xx는 서버 내부 문제 - 스택트레이스 남겨야 디버깅 가능
+            logger.error(ex) { logMessage() }
+        } else {
+            logger.warn { logMessage() }
         }
         val errorResponse =
             ErrorResponse(
-                code = CreditErrorCode.INSUFFICIENT_CREDIT.code,
-                message = CreditErrorCode.INSUFFICIENT_CREDIT.message,
+                code = ex.errorCode.code,
+                message = ex.message,
                 timestamp = LocalDateTime.now(),
+                path = request.path.value(),
+                details = ex.details.takeIf { it.isNotEmpty() },
             )
         return ResponseEntity
-            .status(CreditErrorCode.INSUFFICIENT_CREDIT.httpStatus)
-            .contentType(org.springframework.http.MediaType.APPLICATION_JSON)
-            .body(errorResponse)
-    }
-
-    /**
-     * UnsupportedPaymentProviderException 처리.
-     */
-    @ExceptionHandler(UnsupportedPaymentProviderException::class)
-    fun handleUnsupportedPaymentProvider(ex: UnsupportedPaymentProviderException): ResponseEntity<ErrorResponse> {
-        logger.warn { "Unsupported payment provider - pgProvider=${ex.pgProvider}" }
-        val errorResponse =
-            ErrorResponse(
-                code = CreditErrorCode.UNSUPPORTED_PAYMENT_PROVIDER.code,
-                message = CreditErrorCode.UNSUPPORTED_PAYMENT_PROVIDER.message,
-                timestamp = LocalDateTime.now(),
-            )
-        return ResponseEntity
-            .status(CreditErrorCode.UNSUPPORTED_PAYMENT_PROVIDER.httpStatus)
-            .contentType(org.springframework.http.MediaType.APPLICATION_JSON)
-            .body(errorResponse)
-    }
-
-    /**
-     * UserCreditNotFoundException 처리.
-     */
-    @ExceptionHandler(UserCreditNotFoundException::class)
-    fun handleUserCreditNotFound(ex: UserCreditNotFoundException): ResponseEntity<ErrorResponse> {
-        logger.error { "User credit record not found - userId=${ex.userId}" }
-        val errorResponse =
-            ErrorResponse(
-                code = CreditErrorCode.USER_CREDIT_NOT_FOUND.code,
-                message = CreditErrorCode.USER_CREDIT_NOT_FOUND.message,
-                timestamp = LocalDateTime.now(),
-            )
-        return ResponseEntity
-            .status(CreditErrorCode.USER_CREDIT_NOT_FOUND.httpStatus)
-            .contentType(org.springframework.http.MediaType.APPLICATION_JSON)
-            .body(errorResponse)
-    }
-
-    /**
-     * InvalidRefreshTokenException 처리.
-     */
-    @ExceptionHandler(InvalidRefreshTokenException::class)
-    fun handleInvalidRefreshToken(ex: InvalidRefreshTokenException): ResponseEntity<ErrorResponse> {
-        logger.warn { "Invalid refresh token - tokenId=${ex.tokenId}" }
-        val errorResponse =
-            ErrorResponse(
-                code = "INVALID_REFRESH_TOKEN",
-                message = "유효하지 않거나 만료된 refresh token입니다.",
-                timestamp = LocalDateTime.now(),
-            )
-        return ResponseEntity
-            .status(HttpStatus.UNAUTHORIZED)
-            .contentType(org.springframework.http.MediaType.APPLICATION_JSON)
-            .body(errorResponse)
-    }
-
-    /**
-     * SessionNotFoundException 처리.
-     */
-    @ExceptionHandler(SessionNotFoundException::class)
-    fun handleSessionNotFound(ex: SessionNotFoundException): ResponseEntity<ErrorResponse> {
-        logger.warn { "Session not found - sessionId=${ex.sessionId}" }
-        val errorResponse =
-            ErrorResponse(
-                code = CommonErrorCode.SESSION_NOT_FOUND.code,
-                message = CommonErrorCode.SESSION_NOT_FOUND.message,
-                timestamp = LocalDateTime.now(),
-            )
-        return ResponseEntity
-            .status(CommonErrorCode.SESSION_NOT_FOUND.httpStatus)
-            .contentType(org.springframework.http.MediaType.APPLICATION_JSON)
-            .body(errorResponse)
-    }
-
-    /**
-     * UnsupportedAudioFormatException 처리.
-     */
-    @ExceptionHandler(UnsupportedAudioFormatException::class)
-    fun handleUnsupportedAudioFormat(ex: UnsupportedAudioFormatException): ResponseEntity<ErrorResponse> {
-        logger.warn { "Unsupported audio format - format=${ex.format}" }
-        val errorResponse =
-            ErrorResponse(
-                code = CommonErrorCode.UNSUPPORTED_AUDIO_FORMAT.code,
-                message = CommonErrorCode.UNSUPPORTED_AUDIO_FORMAT.message,
-                timestamp = LocalDateTime.now(),
-            )
-        return ResponseEntity
-            .status(CommonErrorCode.UNSUPPORTED_AUDIO_FORMAT.httpStatus)
-            .contentType(org.springframework.http.MediaType.APPLICATION_JSON)
-            .body(errorResponse)
-    }
-
-    /**
-     * InvalidAudioFileException 처리.
-     */
-    @ExceptionHandler(InvalidAudioFileException::class)
-    fun handleInvalidAudioFile(ex: InvalidAudioFileException): ResponseEntity<ErrorResponse> {
-        logger.warn { "Invalid audio file upload" }
-        val errorResponse =
-            ErrorResponse(
-                code = DialogueErrorCode.INVALID_AUDIO_FILE.code,
-                message = DialogueErrorCode.INVALID_AUDIO_FILE.message,
-                timestamp = LocalDateTime.now(),
-            )
-        return ResponseEntity
-            .status(DialogueErrorCode.INVALID_AUDIO_FILE.httpStatus)
-            .contentType(org.springframework.http.MediaType.APPLICATION_JSON)
-            .body(errorResponse)
-    }
-
-    /**
-     * AudioTooShortException 처리.
-     */
-    @ExceptionHandler(AudioTooShortException::class)
-    fun handleAudioTooShort(ex: AudioTooShortException): ResponseEntity<ErrorResponse> {
-        logger.warn { "Audio too short" }
-        val errorResponse =
-            ErrorResponse(
-                code = DialogueErrorCode.AUDIO_TOO_SHORT.code,
-                message = DialogueErrorCode.AUDIO_TOO_SHORT.message,
-                timestamp = LocalDateTime.now(),
-            )
-        return ResponseEntity
-            .status(DialogueErrorCode.AUDIO_TOO_SHORT.httpStatus)
-            .contentType(org.springframework.http.MediaType.APPLICATION_JSON)
-            .body(errorResponse)
-    }
-
-    /**
-     * AudioFileTooLargeException 처리.
-     */
-    @ExceptionHandler(AudioFileTooLargeException::class)
-    fun handleAudioFileTooLarge(ex: AudioFileTooLargeException): ResponseEntity<ErrorResponse> {
-        logger.warn { "Audio file too large" }
-        val errorResponse =
-            ErrorResponse(
-                code = DialogueErrorCode.AUDIO_FILE_TOO_LARGE.code,
-                message = DialogueErrorCode.AUDIO_FILE_TOO_LARGE.message,
-                timestamp = LocalDateTime.now(),
-            )
-        return ResponseEntity
-            .status(DialogueErrorCode.AUDIO_FILE_TOO_LARGE.httpStatus)
-            .contentType(org.springframework.http.MediaType.APPLICATION_JSON)
-            .body(errorResponse)
-    }
-
-    /**
-     * PersonaNotFoundException 처리.
-     */
-    @ExceptionHandler(PersonaNotFoundException::class)
-    fun handlePersonaNotFound(ex: PersonaNotFoundException): ResponseEntity<ErrorResponse> {
-        logger.warn { "Persona not found - personaId=${ex.personaId}" }
-        val errorResponse =
-            ErrorResponse(
-                code = DialogueErrorCode.PERSONA_NOT_FOUND.code,
-                message = DialogueErrorCode.PERSONA_NOT_FOUND.message,
-                timestamp = LocalDateTime.now(),
-            )
-        return ResponseEntity
-            .status(DialogueErrorCode.PERSONA_NOT_FOUND.httpStatus)
-            .contentType(org.springframework.http.MediaType.APPLICATION_JSON)
-            .body(errorResponse)
-    }
-
-    /**
-     * MissionNotFoundException 처리.
-     */
-    @ExceptionHandler(MissionNotFoundException::class)
-    fun handleMissionNotFound(ex: MissionNotFoundException): ResponseEntity<ErrorResponse> {
-        logger.warn { "Mission not found - missionId=${ex.missionId}" }
-        val errorResponse =
-            ErrorResponse(
-                code = MissionErrorCode.MISSION_NOT_FOUND.code,
-                message = MissionErrorCode.MISSION_NOT_FOUND.message,
-                timestamp = LocalDateTime.now(),
-            )
-        return ResponseEntity
-            .status(MissionErrorCode.MISSION_NOT_FOUND.httpStatus)
-            .contentType(org.springframework.http.MediaType.APPLICATION_JSON)
-            .body(errorResponse)
-    }
-
-    /**
-     * MissionAlreadyCompletedException 처리.
-     */
-    @ExceptionHandler(MissionAlreadyCompletedException::class)
-    fun handleMissionAlreadyCompleted(ex: MissionAlreadyCompletedException): ResponseEntity<ErrorResponse> {
-        logger.warn { "Mission already completed - missionId=${ex.missionId}" }
-        val errorResponse =
-            ErrorResponse(
-                code = MissionErrorCode.MISSION_ALREADY_COMPLETED.code,
-                message = ex.message ?: MissionErrorCode.MISSION_ALREADY_COMPLETED.message,
-                timestamp = LocalDateTime.now(),
-            )
-        return ResponseEntity
-            .status(MissionErrorCode.MISSION_ALREADY_COMPLETED.httpStatus)
-            .contentType(org.springframework.http.MediaType.APPLICATION_JSON)
+            .status(status)
+            .contentType(MediaType.APPLICATION_JSON)
             .body(errorResponse)
     }
 
@@ -282,25 +90,7 @@ class GlobalExceptionHandler {
             )
         return ResponseEntity
             .status(ex.statusCode)
-            .contentType(org.springframework.http.MediaType.APPLICATION_JSON)
-            .body(errorResponse)
-    }
-
-    /**
-     * PipelineNotFoundException 처리.
-     */
-    @ExceptionHandler(PipelineNotFoundException::class)
-    fun handlePipelineNotFound(ex: PipelineNotFoundException): ResponseEntity<ErrorResponse> {
-        logger.warn { "Pipeline not found - pipelineId=${ex.pipelineId}" }
-        val errorResponse =
-            ErrorResponse(
-                code = CommonErrorCode.RESOURCE_NOT_FOUND.code,
-                message = "요청한 리소스를 찾을 수 없습니다.",
-                timestamp = LocalDateTime.now(),
-            )
-        return ResponseEntity
-            .status(HttpStatus.NOT_FOUND)
-            .contentType(org.springframework.http.MediaType.APPLICATION_JSON)
+            .contentType(MediaType.APPLICATION_JSON)
             .body(errorResponse)
     }
 
@@ -318,7 +108,7 @@ class GlobalExceptionHandler {
             )
         return ResponseEntity
             .status(HttpStatus.INTERNAL_SERVER_ERROR)
-            .contentType(org.springframework.http.MediaType.APPLICATION_JSON)
+            .contentType(MediaType.APPLICATION_JSON)
             .body(errorResponse)
     }
 }

@@ -96,8 +96,10 @@ class PersonaVoiceProviderTest {
     @Test
     @DisplayName("알 수 없는 페르소나에는 기본 음성을 반환한다")
     fun getVoiceForPersona_returnsDefaultVoiceForUnknownPersona() {
+        // 실행: 정의되지 않은 unknown 페르소나에 대한 음성 조회
         val result = voiceProvider.getVoiceForPersona("unknown")
 
+        // 검증: 기본으로 설정된 defaultVoice가 반환되어야 함
         assertThat(result).isEqualTo(defaultVoice)
     }
 }

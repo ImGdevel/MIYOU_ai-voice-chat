@@ -11,8 +11,13 @@ class TtsErrorClassifierTest {
     @Test
     @DisplayName("400 응답은 client error로 분류한다")
     fun classify400AsClientError() {
-        val result = TtsErrorClassifier.classifyError(responseException(400, "Bad Request"))
+        // HTTP 400 Bad Request 응답 예외 생성
+        val exception = responseException(400, "Bad Request")
 
+        // 실행: 예외 분류기 실행
+        val result = TtsErrorClassifier.classifyError(exception)
+
+        // 검증: CLIENT_ERROR로 정상 분류되는지 확인
         assertThat(result).isEqualTo(TtsEndpoint.FailureType.CLIENT_ERROR)
     }
 

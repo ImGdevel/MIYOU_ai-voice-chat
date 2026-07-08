@@ -55,19 +55,21 @@ class ConversationCachingAdapterTest {
     }
 
     @Test
-    @DisplayName("save persists to MongoDB and appends the turn to Redis")
+    @DisplayName("save는 MongoDB에 영속화하고 Redis에 대화 턴을 추가한다")
     fun save_persistsToMongoAndAppendsToRedis() {
         val sessionId = ConversationSessionFixture.createId()
         val turn = ConversationTurn.create(sessionId, "hello")
         val cacheKey = "dialogue:conversation:history:${sessionId.value}"
         val saved = ConversationDocument("id-1", sessionId.value, "hello", null, Instant.now())
 
+        // 모의 객체 설정: MongoDB 저장 성공 처리 및 Redis 목록 푸시/트림/TTL 만료 설정
         `when`(mongoRepository.save(anyValue())).thenReturn(Mono.just(saved))
         `when`(redisTemplate.opsForList()).thenReturn(listOps)
         `when`(listOps.rightPush(eqValue(cacheKey), anyStringValue())).thenReturn(Mono.just(1L))
         `when`(listOps.trim(cacheKey, -10L, -1L)).thenReturn(Mono.just(true))
         `when`(redisTemplate.expire(cacheKey, java.time.Duration.ofHours(24))).thenReturn(Mono.just(true))
 
+        // 실행 및 검증: MongoDB 저장 성공 후 반환되는 도큐먼트 ID 검증
         StepVerifier
             .create(adapter.save(turn))
             .assertNext { result -> assertThat(result.id).isEqualTo("id-1") }
@@ -75,7 +77,7 @@ class ConversationCachingAdapterTest {
     }
 
     @Test
-    @DisplayName("findRecent returns cached turns without hitting MongoDB")
+    @DisplayName("findRecent는 MongoDB를 조회하지 않고 캐싱된 대화 턴을 반환한다")
     fun findRecent_returnsCachedTurnsWithoutMongoLookup() {
         val sessionId = ConversationSessionFixture.createId()
         val cacheKey = "dialogue:conversation:history:${sessionId.value}"
@@ -97,7 +99,7 @@ class ConversationCachingAdapterTest {
     }
 
     @Test
-    @DisplayName("evict deletes the Redis history key")
+    @DisplayName("evict는 Redis의 대화 이력 키를 삭제한다")
     fun evict_deletesRedisHistoryKey() {
         val sessionId = ConversationSessionFixture.createId()
         val cacheKey = "dialogue:conversation:history:${sessionId.value}"

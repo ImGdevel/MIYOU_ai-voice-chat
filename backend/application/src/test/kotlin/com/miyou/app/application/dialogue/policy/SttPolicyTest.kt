@@ -17,6 +17,7 @@ class SttPolicyTest {
     @Test
     @DisplayName("생성 시 최대 파일 크기가 0 이하이면 예외가 발생한다")
     fun constructor_shouldRejectNonPositiveMaxFileSizeBytes() {
+        // 최대 파일 크기가 0 또는 음수일 때 IllegalArgumentException이 발생하는지 검증
         assertThatThrownBy { SttPolicy(0L, "ko") }
             .isInstanceOf(IllegalArgumentException::class.java)
             .hasMessage("maxFileSizeBytes must be positive")

@@ -1,5 +1,11 @@
 package com.miyou.app.domain.credit.exception
 
+import com.miyou.app.exception.BusinessException
+
 class UnsupportedPaymentProviderException(
     val pgProvider: String,
-) : RuntimeException("Unsupported payment provider: $pgProvider")
+) : BusinessException(
+        errorCode = CreditErrorCode.UNSUPPORTED_PAYMENT_PROVIDER,
+        message = "${CreditErrorCode.UNSUPPORTED_PAYMENT_PROVIDER.message} (pgProvider=$pgProvider)",
+        details = mapOf("pgProvider" to pgProvider)
+    )

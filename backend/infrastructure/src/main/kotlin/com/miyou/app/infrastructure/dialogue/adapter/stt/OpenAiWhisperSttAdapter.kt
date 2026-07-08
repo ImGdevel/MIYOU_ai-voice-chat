@@ -1,17 +1,16 @@
 package com.miyou.app.infrastructure.dialogue.adapter.stt
 
+import com.miyou.app.domain.dialogue.exception.DialogueErrorCode
 import com.miyou.app.domain.dialogue.model.AudioTranscriptionInput
 import com.miyou.app.domain.dialogue.port.SttPort
-import com.miyou.app.exception.DialogueErrorCode
+import com.miyou.app.exception.BusinessException
 import io.github.oshai.kotlinlogging.KotlinLogging
 import org.springframework.core.io.ByteArrayResource
 import org.springframework.http.HttpHeaders
-import org.springframework.http.HttpStatus
 import org.springframework.http.MediaType
 import org.springframework.http.client.MultipartBodyBuilder
 import org.springframework.web.reactive.function.BodyInserters
 import org.springframework.web.reactive.function.client.WebClient
-import org.springframework.web.server.ResponseStatusException
 import reactor.core.publisher.Mono
 
 /**
@@ -63,12 +62,13 @@ class OpenAiWhisperSttAdapter(
                     .doOnNext { body ->
                         log.error { "OpenAI API error - status: ${response.statusCode()}, body: $body" }
                     }.then(
-                        Mono.error(
-                            ResponseStatusException(
-                                DialogueErrorCode.STT_FAILED.httpStatus,
-                                DialogueErrorCode.STT_FAILED.message,
-                            ),
-                        ),
+                        // ResponseStatusException(Spring Web 예외)을 던지면 GlobalExceptionHandler의
+                        // handleResponseStatusException이 status만 그대로 넘기고 code는 무조건
+                        // "INVALID_REQUEST"로 하드코딩해버려 500인데 클라이언트 잘못처럼 보이는
+                        // 코드가 나가는 버그가 있었다. BusinessException으로 던지면
+                        // handleBusinessException 통합 핸들러가 errorCode.category로 정확한
+                        // status(500)/code("STT_FAILED")를 매핑해준다.
+                        Mono.error(BusinessException(DialogueErrorCode.STT_FAILED)),
                     )
             })
             .bodyToMono(OpenAiTranscriptionResponse::class.java)

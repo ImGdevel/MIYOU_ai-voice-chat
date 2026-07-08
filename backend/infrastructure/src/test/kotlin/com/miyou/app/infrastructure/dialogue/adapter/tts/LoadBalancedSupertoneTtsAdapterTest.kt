@@ -66,8 +66,10 @@ class LoadBalancedSupertoneTtsAdapterTest {
     @Test
     @DisplayName("정상 요청이면 오디오 스트림을 반환한다")
     fun streamSynthesizeSuccess() {
+        // 모의 Supertone 서버가 성공 응답을 주도록 설정
         fakeServer.setEndpointBehavior("key-1", FakeSupertoneServer.ServerBehavior.success())
 
+        // 실행 및 검증: 스트림 합성 결과를 구독하여 오디오 바이트가 올바르게 흘러나오는지 검사
         StepVerifier
             .create(adapter.streamSynthesize(TtsCommand("Hello, world!", AudioFormat.WAV)))
             .expectNextMatches { it.isNotEmpty() }

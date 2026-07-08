@@ -28,11 +28,14 @@ class TtsLoadBalancerTest {
     @Test
     @DisplayName("사용할 수 없는 endpoint는 선택 대상에서 제외한다")
     fun selectEndpoint_skipsUnavailableEndpoints() {
+        // endpoint-1과 endpoint-2를 각각 일시 실패와 영구 실패 상태로 만듦
         endpoints[0].health = TtsEndpoint.EndpointHealth.TEMPORARY_FAILURE
         endpoints[1].health = TtsEndpoint.EndpointHealth.PERMANENT_FAILURE
 
+        // 실행: 사용 가능한 엔드포인트 선택
         val selected = loadBalancer.selectEndpoint()
 
+        // 검증: 건강한 상태인 endpoint-3이 선택되어야 함
         assertThat(selected.id).isEqualTo("endpoint-3")
         assertThat(selected.canAcceptRequest()).isTrue()
     }
